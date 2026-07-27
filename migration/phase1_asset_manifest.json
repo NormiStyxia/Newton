@@ -31,8 +31,9 @@
     {
       "source": "migration/phase1_asset_derivation/solid.svg",
       "derived": "assets/image/phase1/solid.png",
-      "derivedSha256": "FA3DA906AF136F00A5ABF2EC6C04A80C57B8F687360143F3B0DD90E0B4A190E3",
-      "size": "8x8"
+      "derivedSha256": "8C5A6579494F648FD292A65B0B09CE7985AB5AE2257110A2DF88666D8678B6E5",
+      "size": "64x64",
+      "note": "64px non-uniform RGB texture avoids remote packaging dropping the former 8px/106-byte placeholder."
     }
   ]
 }
