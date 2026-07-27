@@ -1,0 +1,102 @@
+{
+  "schemaVersion": 1,
+  "levelId": "level_01",
+  "name": "第一颗苹果",
+  "playfield": {
+    "width": 1400,
+    "height": 700
+  },
+  "objects": [
+    {
+      "id": "launcher_main",
+      "type": "launcher",
+      "name": "苹果发射器",
+      "transform": {
+        "x": 146.3513031481672,
+        "y": 467,
+        "width": 110,
+        "height": 96,
+        "rotation": 0
+      },
+      "properties": {
+        "launchAngle": 0,
+        "launchPower": 1,
+        "appleSpawnOffsetX": 0,
+        "appleSpawnOffsetY": 0
+      }
+    },
+    {
+      "id": "goal_main",
+      "type": "goal_sensor",
+      "name": "爱因斯坦观察窗",
+      "transform": {
+        "x": 726.6581392279712,
+        "y": 493.10993757704875,
+        "width": 180,
+        "height": 161.1627906976744,
+        "rotation": 0
+      },
+      "properties": {
+        "requiredStayTime": 700,
+        "targetTag": "apple"
+      }
+    },
+    {
+      "id": "wall_02",
+      "type": "wall",
+      "name": "普通墙体",
+      "transform": {
+        "x": 394.1917737363359,
+        "y": 520,
+        "width": 48,
+        "height": 120,
+        "rotation": 0
+      },
+      "properties": {
+        "collisionEnabled": true,
+        "friction": 0.62,
+        "restitution": 0.32,
+        "isPhaseable": false
+      }
+    }
+  ],
+  "cardDeck": {
+    "cards": [
+      {
+        "cardId": "side-gravity",
+        "count": 1,
+        "order": 1,
+        "enabled": false,
+        "usageMode": "REUSABLE"
+      },
+      {
+        "cardId": "feather-gravity",
+        "count": 1,
+        "order": 0,
+        "enabled": false,
+        "usageMode": "REUSABLE"
+      },
+      {
+        "cardId": "hooke-bounce",
+        "count": 1,
+        "order": 2,
+        "enabled": false,
+        "usageMode": "REUSABLE"
+      },
+      {
+        "cardId": "up-impulse",
+        "count": 1,
+        "order": 3,
+        "enabled": false,
+        "usageMode": "SINGLE_USE"
+      }
+    ]
+  },
+  "rules": {
+    "initialGravity": {
+      "x": 0,
+      "y": 1,
+      "strength": 1
+    }
+  }
+}

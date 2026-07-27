@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "policy": "Original Phaser SVG files are read-only. Maker PNG files are independent derived assets.",
+  "level": {
+    "source": "D:/System Files/Download/牛顿/牛顿/data/levels/level_01.json",
+    "copy": "assets/Data/Levels/level_01.json",
+    "sha256": "85B234BC82F5AA6C3894642E2D277627D8718877AB7E336C58CB2944F2A4AE2C"
+  },
+  "assets": [
+    {
+      "source": "D:/System Files/Download/牛顿/牛顿/public/assets/apple.svg",
+      "sourceSha256": "5D339E4548FCB430D9BD0FAD9ECCD3E026FEC2E567D1E335C4DDE6F022E25C03",
+      "derived": "assets/image/phase1/apple.png",
+      "derivedSha256": "0D851F218040CD1459F91A6247F7863F28CA9B46E17530B2F1FB6C7013C513D3",
+      "size": "128x128"
+    },
+    {
+      "source": "D:/System Files/Download/牛顿/牛顿/public/assets/launcher.svg",
+      "sourceSha256": "F3CB903233570BADB9F18E679458CD7407895F2CFE064D765CE664383080A62C",
+      "derived": "assets/image/phase1/launcher.png",
+      "derivedSha256": "1791E8AE413877F06E88F73EBD584D08F2CF2A8D90441C5B8B4AACC80F4FD7F5",
+      "size": "300x380"
+    },
+    {
+      "source": "D:/System Files/Download/牛顿/牛顿/public/assets/goal-ring.svg",
+      "sourceSha256": "8E792FD4D51EED12E3EBE881A386E53AC5C36D5B25A7778249D33DFEA6D9063C",
+      "derived": "assets/image/phase1/goal-ring.png",
+      "derivedSha256": "B13891EC4BD0B84D3AD3D5F2E07CF5543B116A5E63291A9BC67AA061D506AFFF",
+      "size": "240x240"
+    },
+    {
+      "source": "migration/phase1_asset_derivation/solid.svg",
+      "derived": "assets/image/phase1/solid.png",
+      "derivedSha256": "FA3DA906AF136F00A5ABF2EC6C04A80C57B8F687360143F3B0DD90E0B4A190E3",
+      "size": "8x8"
+    }
+  ]
+}
