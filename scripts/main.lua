@@ -78,6 +78,7 @@ local activeCardPointer_ = nil
 local activeCardDragged_ = false
 local activeCardDeploying_ = false
 local activeCardPressedAt_ = nil
+local activeCardPressPose_ = nil
 local primedCardId_ = nil
 local cardParameterStart_ = nil
 local cardDeployEnteredMs_ = nil
@@ -143,6 +144,8 @@ local cardHandReordering_ = false
 local cardBurns_ = {}
 local cardBurnParticles_ = {}
 local burningCardIds_ = {}
+local rulePulse_ = nil
+local ruleFlash_ = nil
 local ruleDeployCount_ = 0
 local ReevaluateButtons = nil
 local InitializeMechanisms = nil
@@ -150,13 +153,16 @@ local RecordReplayEvent = nil
 local StartReplay = nil
 local StopReplay = nil
 
-local function SetStatus(value)
+-- Lua limits one chunk to 200 locals. This entry script already has a large
+-- state surface, so helper functions deliberately live in its script environment
+-- while mutable runtime state remains file-local above.
+function SetStatus(value)
     status_ = value
     print("[Migration] " .. value)
 end
 
 ---@param mode "none"|"playing"|"paused"|"finished"
-local function SetReplayMode(mode)
+function SetReplayMode(mode)
     assert(mode == "none" or mode == "playing" or mode == "paused" or mode == "finished",
         "unknown replay mode: " .. tostring(mode))
     replayMode_ = mode
@@ -165,7 +171,7 @@ local function SetReplayMode(mode)
     replayFinished_ = mode == "finished"
 end
 
-local function ReplayLog(event)
+function ReplayLog(event)
     print(string.format(
         "[Replay] %s mode=%s samples=%d duration=%.3f",
         event,
@@ -175,11 +181,57 @@ local function ReplayLog(event)
     ))
 end
 
-local function PlaySound(kind)
+function PlaySound(kind)
     if audio_ then audio_:Play(kind) end
 end
 
-local function LoadLevel(index)
+function RuleFeedbackText(id, candidate)
+    if id == "feather-gravity" then return "场地重力强度已减弱，当前重力方向保持不变。" end
+    if id == "side-gravity" then
+        local labels = { LEFT = "左", RIGHT = "右", UP = "上", DOWN = "下" }
+        return "场地重力已改为向" .. (labels[candidate] or "当前") .. "，动态物体速度保持不变。"
+    end
+    if id == "hooke-bounce" then return "苹果与普通墙体的弹性响应已提高。" end
+    if id == "up-impulse" then return "向上冲量已叠加到苹果当前速度。" end
+    if id == "mirror-motion" then
+        return (candidate == "HORIZONTAL" and "水平" or "垂直") .. "速度已镜像，另一轴速度保持不变。"
+    end
+    return "苹果获得一次相位充能，下一次可穿过玻璃相位墙。"
+end
+
+function RuleFlashSymbol(id, candidate)
+    local sideSymbols = { LEFT = "←", RIGHT = "→", UP = "↑", DOWN = "↓" }
+    if id == "feather-gravity" then return "g½" end
+    if id == "side-gravity" then return sideSymbols[candidate] or "↓" end
+    if id == "hooke-bounce" then return "↗" end
+    if id == "up-impulse" then return "↑" end
+    if id == "mirror-motion" then return candidate == "VERTICAL" and "↕" or "↔" end
+    return "∞"
+end
+
+function StartRuleFeedback(id, candidate, accent)
+    observation_ = RuleFeedbackText(id, candidate)
+    rulePulse_ = { elapsed = 0, duration = .22, color = accent or Renderer2D.COLORS.primaryActive }
+    ruleFlash_ = {
+        elapsed = 0,
+        duration = .48,
+        symbol = RuleFlashSymbol(id, candidate),
+        color = id == "quantum-phase" and Renderer2D.COLORS.quantum or Renderer2D.COLORS.primaryActive,
+    }
+end
+
+function UpdateRuleFeedback(dt)
+    if rulePulse_ then
+        rulePulse_.elapsed = rulePulse_.elapsed + dt
+        if rulePulse_.elapsed >= rulePulse_.duration then rulePulse_ = nil end
+    end
+    if ruleFlash_ then
+        ruleFlash_.elapsed = ruleFlash_.elapsed + dt
+        if ruleFlash_.elapsed >= ruleFlash_.duration then ruleFlash_ = nil end
+    end
+end
+
+function LoadLevel(index)
     index = math.max(1, math.min(CONFIG.levelCount, index))
     local resource = string.format("Data/Levels/level_%02d.json", index)
     local level, err = LevelData.Load(resource)
@@ -194,7 +246,7 @@ local function LoadLevel(index)
     return level
 end
 
-local function InitializeCards()
+function InitializeCards()
     cardStates_ = {}
     cardDeckById_ = {}
     handOrder_ = {}
@@ -217,7 +269,7 @@ local function InitializeCards()
     for _, card in ipairs(ordered) do handOrder_[#handOrder_ + 1] = card.cardId end
 end
 
-local function CurrentPhysicsTimeScale()
+function CurrentPhysicsTimeScale()
     if level_ and level_.physicsProbe and level_.physicsProbe:IsActive() then
         return level_.physicsProbe:GetTimeScale()
     end
@@ -227,20 +279,20 @@ end
 -- Matter reports velocity in pixels per 60 Hz frame, independent of its
 -- current delta. Box2D stores physical metres per second, so a Matter value
 -- occupies only timeScale of that physical velocity while bullet time is on.
-local function CurrentMatterVelocityToWorld()
+function CurrentMatterVelocityToWorld()
     return CONFIG.matterVelocityToWorld * CurrentPhysicsTimeScale()
 end
 
-local function CurrentMatterSpeedFromWorld(velocity)
+function CurrentMatterSpeedFromWorld(velocity)
     return math.sqrt(velocity.x * velocity.x + velocity.y * velocity.y) / CurrentMatterVelocityToWorld()
 end
 
-local function ApplyAppleCardMaterial()
+function ApplyAppleCardMaterial()
     if not apple_ or not apple_.shape then return end
     apple_.shape.restitution = MatterCalibration.CardRestitution(Rules.GetRestitutionMultiplier(rules_))
 end
 
-local function RestoreAppleContactMaterial()
+function RestoreAppleContactMaterial()
     if not apple_ or not apple_.shape then return end
     if math.abs(apple_.shape.friction - MatterCalibration.APPLE_FRICTION) > .0001 then
         apple_.shape.friction = MatterCalibration.APPLE_FRICTION
@@ -248,7 +300,7 @@ local function RestoreAppleContactMaterial()
     end
 end
 
-local function SetGravity()
+function SetGravity()
     if not physicsWorld_ or not level_ or not physicsProfile_ then return end
     local base = level_.rules.initialGravity
     local gravity = Rules.GetGravity(rules_, base)
@@ -267,7 +319,7 @@ local function SetGravity()
 end
 
 ---@param active boolean
-local function SetBulletTimeActive(active)
+function SetBulletTimeActive(active)
     if bulletTimeActive_ == active then return end
     local previousScale = CurrentPhysicsTimeScale()
     bulletTimeActive_ = active
@@ -284,7 +336,7 @@ local function SetBulletTimeActive(active)
     SetGravity()
 end
 
-local function UpdateAngerFromRules()
+function UpdateAngerFromRules()
     local persistent = next(rules_.activeFields) ~= nil or rules_.phaseActive
     if persistent then
         anger_ = math.min(96, 54 + ruleDeployCount_ * 10)
@@ -293,7 +345,7 @@ local function UpdateAngerFromRules()
     end
 end
 
-local function SyncPhysicsUpdateEnabled()
+function SyncPhysicsUpdateEnabled()
     if not physicsWorld_ then return end
     if replayActive_ or isPaused_ then
         SetBulletTimeActive(false)
@@ -308,7 +360,7 @@ local function SyncPhysicsUpdateEnabled()
     physicsWorld_:SetUpdateEnabled(true)
 end
 
-local function CreateScene()
+function CreateScene()
     scene_ = Scene()
     scene_:CreateComponent("Octree")
     scene_:CreateComponent("DebugRenderer")
@@ -323,7 +375,7 @@ local function CreateScene()
     SetGravity()
 end
 
-local function SetupViewport()
+function SetupViewport()
     if not scene_ then return end
     local cameraNode = scene_:CreateChild("Camera")
     camera_ = cameraNode:CreateComponent("Camera")
@@ -334,7 +386,7 @@ local function SetupViewport()
     renderer:SetViewport(0, viewport_)
 end
 
-local function BuildLevel(index)
+function BuildLevel(index)
     level_ = LoadLevel(index)
     physicsProfile_ = PhysicsProfiles.Resolve(level_.physicsProfile)
     failureCount_ = failureCountsByLevel_[level_.levelId] or 0
@@ -370,6 +422,7 @@ local function BuildLevel(index)
     activeCardDragged_ = false
     activeCardDeploying_ = false
     activeCardPressedAt_ = nil
+    activeCardPressPose_ = nil
     cardParameterStart_ = nil
     cardDeployEnteredMs_ = nil
     cardLastMotionAtMs_ = nil
@@ -399,6 +452,8 @@ local function BuildLevel(index)
     cardBurns_ = {}
     cardBurnParticles_ = {}
     burningCardIds_ = {}
+    rulePulse_ = nil
+    ruleFlash_ = nil
     ruleDeployCount_ = 0
     replayNextSampleMs_ = 0
     replayPreviousSample_ = nil
@@ -414,7 +469,7 @@ local function BuildLevel(index)
     SetStatus("READY · 等待发射")
 end
 
-local function ResetExperiment(playResetSound)
+function ResetExperiment(playResetSound)
     if not apple_ or not level_ then return end
     if level_.physicsProbe then
         level_.physicsProbe:Stop({ apple = apple_ })
@@ -473,6 +528,8 @@ local function ResetExperiment(playResetSound)
     cardBurns_ = {}
     cardBurnParticles_ = {}
     burningCardIds_ = {}
+    rulePulse_ = nil
+    ruleFlash_ = nil
     ruleDeployCount_ = 0
     replayNextSampleMs_ = 0
     replayPreviousSample_ = nil
@@ -499,7 +556,7 @@ local function ResetExperiment(playResetSound)
     SetStatus("READY · 等待发射")
 end
 
-local function DesignPointer(screenX, screenY)
+function DesignPointer(screenX, screenY)
     if screenX == nil or screenY == nil then
         local mouse = input.mousePosition
         screenX, screenY = mouse.x, mouse.y
@@ -511,7 +568,7 @@ end
 -- Touch events carry physical screen coordinates, the same coordinate space as
 -- input.mousePosition. A single active touch keeps a gesture from triggering
 -- more than one game action on mobile devices.
-local function PointerState()
+function PointerState()
     if pointer_.activeTouchId ~= nil or pointer_.touchPressed or pointer_.touchReleased then
         local x, y = DesignPointer(pointer_.touchX, pointer_.touchY)
         local down = pointer_.activeTouchId ~= nil
@@ -528,27 +585,27 @@ local function PointerState()
         input:GetMouseButtonRelease(MOUSEB_LEFT)
 end
 
-local function PointerInPlayfield(x, y)
+function PointerInPlayfield(x, y)
     return x >= frame_.playfieldX + 18 and x <= frame_.playfieldX + frame_.playfieldWidth - 18
         and y >= frame_.playfieldY + 18 and y <= frame_.groundY - 18
 end
 
-local function PointerToWorld(x, y)
+function PointerToWorld(x, y)
     return design_:LogicalToWorld(x, y)
 end
 
-local function AppleScreenPosition()
+function AppleScreenPosition()
     local p = apple_.node.position2D
     return design_:WorldToLogical(p.x, p.y)
 end
 
-local function IsNearApple(x, y)
+function IsNearApple(x, y)
     local ax, ay = AppleScreenPosition()
     local dx, dy = x - ax, y - ay
     return dx * dx + dy * dy <= 46 * 46
 end
 
-local function UpdateAppleDrag(x, y)
+function UpdateAppleDrag(x, y)
     local launcher = apple_.launcher
     local lx, ly = design_:LevelToLogical(launcher.spawnLevelX, launcher.spawnLevelY)
     local dx, dy = x - lx, y - ly
@@ -560,7 +617,7 @@ local function UpdateAppleDrag(x, y)
     apple_.node:SetPosition2D(wx, wy)
 end
 
-local function LaunchApple()
+function LaunchApple()
     draggedApple_ = false
     local launcher = apple_.launcher
     local applePos = apple_.node.position2D
@@ -603,13 +660,13 @@ local function LaunchApple()
     PlaySound("launch")
 end
 
-local function CancelAppleDrag()
+function CancelAppleDrag()
     if not draggedApple_ or launched_ or not apple_ then return end
     draggedApple_ = false
     apple_.node:SetPosition2D(apple_.launcher.spawnWorldX, apple_.launcher.spawnWorldY)
 end
 
-local function ToggleTacticalPause()
+function ToggleTacticalPause()
     if success_ or failed_ or absorbing_ then return end
     if not isPaused_ then CancelAppleDrag() end
     isPaused_ = not isPaused_
@@ -620,18 +677,18 @@ local function ToggleTacticalPause()
     end
 end
 
-local function IsAppleGoalPair(nodeA, nodeB)
+function IsAppleGoalPair(nodeA, nodeB)
     if not nodeA or not nodeB or not runtime_ then return false end
     local goal = LevelData.FindFirst(level_, "goal_sensor")
     if not goal then return false end
     return (nodeA.name == "Apple" and nodeB.name == goal.id) or (nodeB.name == "Apple" and nodeA.name == goal.id)
 end
 
-local function IsAppleNode(node)
+function IsAppleNode(node)
     return node and node.name == "Apple"
 end
 
-local function DoorOpenVector(object)
+function DoorOpenVector(object)
     local distance = object.openDistance * mapper_.objectScale / CONFIG.pixelsPerMeter
     if object.openDirection == "UP" then return 0, distance end
     if object.openDirection == "DOWN" then return 0, -distance end
@@ -639,7 +696,7 @@ local function DoorOpenVector(object)
     return distance, 0
 end
 
-local function DoorBlockedByApple(object)
+function DoorBlockedByApple(object)
     if not apple_ then return false end
     local openX, openY = DoorOpenVector(object)
     local position = apple_.node.position2D
@@ -651,12 +708,12 @@ local function DoorBlockedByApple(object)
     return position.x >= minX and position.x <= maxX and position.y >= minY and position.y <= maxY
 end
 
-local function SetDoorTarget(object, open)
+function SetDoorTarget(object, open)
     object.targetOpen = open
     if not open then object.closeAt = uiElapsed_ * 1000 + object.closeDelay end
 end
 
-local function ApplyDoorSignal(object, active)
+function ApplyDoorSignal(object, active)
     if object.response == "OPEN" then
         SetDoorTarget(object, active)
     elseif object.response == "CLOSE" then
@@ -666,7 +723,7 @@ local function ApplyDoorSignal(object, active)
     end
 end
 
-local function EmitChannelSignal(channelId, active, sourceId)
+function EmitChannelSignal(channelId, active, sourceId)
     if not channelId or channelId == "" then return end
     channelStates_[channelId] = { active = active, sourceId = sourceId }
     if not runtime_ then return end
@@ -679,7 +736,7 @@ local function EmitChannelSignal(channelId, active, sourceId)
     end
 end
 
-local function EvaluateButton(object)
+function EvaluateButton(object)
     local gravityMultiplier = Rules.GetGravityMultiplier(rules_, level_.rules.initialGravity)
     local conditionSatisfied = object.contactCount > 0 and gravityMultiplier >= object.gravityThreshold
     local activationEdge = not object.conditionSatisfied and conditionSatisfied
@@ -729,7 +786,7 @@ InitializeMechanisms = function()
     end
 end
 
-local function UpdateDoors(dt)
+function UpdateDoors(dt)
     if not runtime_ then return end
     for _, object in ipairs(runtime_.ordered) do
         if object.type == "door" then
@@ -752,7 +809,7 @@ local function UpdateDoors(dt)
     end
 end
 
-local function UpdateSpringExits()
+function UpdateSpringExits()
     if not runtime_ or not apple_ then return end
     for _, object in ipairs(runtime_.ordered) do
         if object.type == "spring" and object.pendingExitVelocity then
@@ -763,7 +820,7 @@ local function UpdateSpringExits()
     end
 end
 
-local function UpdateSpringVisuals(dt)
+function UpdateSpringVisuals(dt)
     if not runtime_ then return end
     for _, object in ipairs(runtime_.ordered) do
         if object.type == "spring" and object.pulseElapsedMs ~= nil then
@@ -773,7 +830,7 @@ local function UpdateSpringVisuals(dt)
     end
 end
 
-local function CapAppleSpeed()
+function CapAppleSpeed()
     if not launched_ or not apple_ or apple_.body.bodyType ~= BT_DYNAMIC then return end
     local velocity = apple_.body.linearVelocity
     local speed = math.sqrt(velocity.x * velocity.x + velocity.y * velocity.y)
@@ -784,7 +841,7 @@ local function CapAppleSpeed()
     apple_.body.awake = true
 end
 
-local function IsInsidePhaseableWall(worldX, worldY)
+function IsInsidePhaseableWall(worldX, worldY)
     if not runtime_ then return false end
     for _, object in ipairs(runtime_.ordered) do
         if object.type == "wall" and object.phaseable then
@@ -798,7 +855,7 @@ local function IsInsidePhaseableWall(worldX, worldY)
     return false
 end
 
-local function UpdatePhaseTraversal()
+function UpdatePhaseTraversal()
     if not apple_ or not rules_.phaseActive then return end
     local position = apple_.node.position2D
     if IsInsidePhaseableWall(position.x, position.y) then
@@ -812,7 +869,7 @@ local function UpdatePhaseTraversal()
     end
 end
 
-local function ApplyDecision(id, mirrorAxis)
+function ApplyDecision(id, mirrorAxis)
     if id == "mirror-motion" then
         if not mirrorAxis then
             SetStatus("CARD · 运动镜像需要明确的方向手势")
@@ -842,11 +899,12 @@ local function ApplyDecision(id, mirrorAxis)
     RecordReplayEvent("CARD_PLAYED", id)
     UpdateAngerFromRules()
     SetStatus("RULE DEPLOYED · " .. (Rules.CARDS[id] and Rules.CARDS[id].name or id))
+    StartRuleFeedback(id, mirrorAxis, Rules.CARDS[id] and Rules.CARDS[id].accent)
     PlaySound("card")
     return true
 end
 
-local function ApplyCardResolution(id, candidate)
+function ApplyCardResolution(id, candidate)
     local definition = Rules.CARDS[id]
     if not definition then return false end
     if definition.kind == "field" then
@@ -864,6 +922,7 @@ local function ApplyCardResolution(id, candidate)
         RecordReplayEvent("CARD_PLAYED", id)
         UpdateAngerFromRules()
         SetStatus("RULE DEPLOYED · " .. definition.name)
+        StartRuleFeedback(id, candidate, definition.accent)
         PlaySound("card")
         return true
     end
@@ -872,17 +931,17 @@ local function ApplyCardResolution(id, candidate)
     return applied
 end
 
-local function BurnProgress(burn)
+function BurnProgress(burn)
     local animationElapsed = math.max(0, burn.elapsed - burn.delay)
     local linear = math.max(0, math.min(1, animationElapsed / burn.duration))
     return 1 - math.cos(linear * math.pi * .5)
 end
 
-local function BurnNoise(seed, salt)
+function BurnNoise(seed, salt)
     return .5 + .5 * math.sin(seed * 12.9898 + salt * 78.233)
 end
 
-local function EmitBurnParticles(burn, burst)
+function EmitBurnParticles(burn, burst)
     local idSeed = 0
     for index = 1, #burn.id do idSeed = idSeed + string.byte(burn.id, index) * index end
     for index = 0, 4 do
@@ -906,7 +965,7 @@ local function EmitBurnParticles(burn, burst)
     end
 end
 
-local function QueueCardResolution(id, x, y, candidate)
+function QueueCardResolution(id, x, y, candidate, pose)
     burningCardIds_[id] = true
     cardBurns_[#cardBurns_ + 1] = {
         id = id,
@@ -920,11 +979,13 @@ local function QueueCardResolution(id, x, y, candidate)
         totalDuration = 745,
         emittedBursts = 0,
         applied = false,
+        startScale = (pose and pose.scale) or 1.05,
+        startAngle = (pose and pose.angle) or 0,
     }
     SetStatus("CARD RESOLVING · 燃烧")
 end
 
-local function CardEntries()
+function CardEntries()
     local result = {}
     for _, id in ipairs(handOrder_) do
         local card = cardDeckById_[id]
@@ -934,13 +995,13 @@ local function CardEntries()
     return result
 end
 
-local function CardPose(index, count)
+function CardPose(index, count)
     local entries = CardEntries()
     local poses = Rules.CardHand(#entries, frame_.playfieldX + frame_.playfieldWidth / 2, frame_.cardHandY, frame_.playfieldWidth)
     return entries[index], poses[index]
 end
 
-local function CardHomePose(id)
+function CardHomePose(id)
     local entries = CardEntries()
     local poses = Rules.CardHand(#entries, frame_.playfieldX + frame_.playfieldWidth / 2, frame_.cardHandY, frame_.playfieldWidth)
     for i, card in ipairs(entries) do
@@ -952,7 +1013,7 @@ end
 -- Phaser leaves a dragged card under the pointer while the rest of the hand
 -- moves to its new slots over 160 ms. Keep the target layout in handOrder_,
 -- and retain only the transient visual interpolation here.
-local function CardDisplayedPose(id, pose)
+function CardDisplayedPose(id, pose)
     local motion = cardHomeMotions_[id]
     if not motion then
         return { x = pose.x, y = pose.y, angle = pose.angle, depth = pose.depth, scale = 1 }
@@ -971,7 +1032,7 @@ end
 -- Every card-facing system must agree on the same transient pose. In
 -- particular, a primed card is not at its nominal hand slot: Phaser lifts it
 -- by 10 px, scales it to 1.04 and raises it above the hand before hit testing.
-local function CardVisualPose(id, pose)
+function CardVisualPose(id, pose)
     local displayed = CardDisplayedPose(id, pose)
     local visual = {
         x = displayed.x,
@@ -981,19 +1042,23 @@ local function CardVisualPose(id, pose)
         scale = displayed.scale or 1,
     }
     if activeCardId_ == id then
-        visual.angle = 0
         visual.depth = 73
         local pressProgress = activeCardPressedAt_ and math.max(0, math.min(1, (uiElapsed_ - activeCardPressedAt_) / .09)) or 1
         local pressEase = 1 - (1 - pressProgress) ^ 3
-        local pressScale = primedCardId_ == id and (1.04 + .01 * pressEase) or (1 + .05 * pressEase)
-        visual.scale = visual.scale * pressScale
+        local pressPose = activeCardPressPose_ or visual
+        visual.angle = (pressPose.angle or 0) * (1 - pressEase)
+        visual.scale = (pressPose.scale or 1) + (1.05 - (pressPose.scale or 1)) * pressEase
         if cardParameterStart_ then
             visual.x, visual.y = cardParameterStart_.x, cardParameterStart_.y
         elseif activeCardDragged_ and activeCardPointer_ then
             visual.x, visual.y = activeCardPointer_.x, activeCardPointer_.y
         else
-            visual.y = visual.y - (primedCardId_ == id and 10 or 18)
+            -- POINTER_DOWN preserves the card's rendered pose. A direct
+            -- touch therefore scales in place; only a prior hover carries
+            -- Phaser's 18 px lift into the press.
+            visual.x, visual.y = pressPose.x, pressPose.y
         end
+        if activeCardDragged_ then visual.angle = 0; visual.scale = 1.05 end
         return visual
     end
     if primedCardId_ == id then
@@ -1014,7 +1079,7 @@ local function CardVisualPose(id, pose)
     return visual
 end
 
-local function CurrentCardVisualPose(id)
+function CurrentCardVisualPose(id)
     local entries = CardEntries()
     local poses = Rules.CardHand(#entries, frame_.playfieldX + frame_.playfieldWidth * .5, frame_.cardHandY, frame_.playfieldWidth)
     for index, card in ipairs(entries) do
@@ -1023,20 +1088,20 @@ local function CurrentCardVisualPose(id)
     return nil
 end
 
-local function PrimedCardPose(id)
+function PrimedCardPose(id)
     local home = CardHomePose(id)
     if not home then return nil end
     return { x = home.x, y = home.y - 10, angle = 0, depth = 73, scale = 1.04 }
 end
 
-local function UpdateCardHomeMotions(dt)
+function UpdateCardHomeMotions(dt)
     for id, motion in pairs(cardHomeMotions_) do
         motion.elapsed = motion.elapsed + dt
         if motion.elapsed >= motion.duration then cardHomeMotions_[id] = nil end
     end
 end
 
-local function AnimateCardToHome(id, from, duration)
+function AnimateCardToHome(id, from, duration)
     local home = CardHomePose(id)
     if not home or not from then return end
     cardHomeMotions_[id] = {
@@ -1056,7 +1121,7 @@ end
 ---@param id string
 ---@param targetIndex integer
 ---@return boolean
-local function MoveCardToHandSlot(id, targetIndex)
+function MoveCardToHandSlot(id, targetIndex)
     local entries = CardEntries()
     local currentIndex = nil
     local currentPoses = Rules.CardHand(#entries, frame_.playfieldX + frame_.playfieldWidth * .5, frame_.cardHandY, frame_.playfieldWidth)
@@ -1111,7 +1176,7 @@ local function MoveCardToHandSlot(id, targetIndex)
     return true
 end
 
-local function UpdateCardHoverStates(dt)
+function UpdateCardHoverStates(dt)
     for _, card in ipairs(CardEntries()) do
         local state = cardHoverStates_[card.cardId]
         if state then
@@ -1123,7 +1188,7 @@ local function UpdateCardHoverStates(dt)
     end
 end
 
-local function SetHoveredCard(id)
+function SetHoveredCard(id)
     if hoveredCardId_ == id then return end
     hoveredCardId_ = id
     for _, card in ipairs(CardEntries()) do
@@ -1139,12 +1204,12 @@ local function SetHoveredCard(id)
     end
 end
 
-local function CardHoverProgress(id)
+function CardHoverProgress(id)
     local state = cardHoverStates_[id]
     return state and state.value or 0
 end
 
-local function FindTopCardAt(x, y)
+function FindTopCardAt(x, y)
     local entries = CardEntries()
     local poses = Rules.CardHand(#entries, frame_.playfieldX + frame_.playfieldWidth / 2, frame_.cardHandY, frame_.playfieldWidth)
     local found, foundDepth, foundIndex = nil, -math.huge, -math.huge
@@ -1165,7 +1230,7 @@ local function FindTopCardAt(x, y)
     return found
 end
 
-local function UpdateHoverState(x, y)
+function UpdateHoverState(x, y)
     hoveredNavigation_ = nil
     hoveredLevelIndex_ = nil
     punchHovered_ = false
@@ -1202,9 +1267,10 @@ local function UpdateHoverState(x, y)
     end
 end
 
-local function TryCardPress(x, y)
+function TryCardPress(x, y)
     local card = FindTopCardAt(x, y)
     if not card then return false end
+    local pressPose = CurrentCardVisualPose(card.cardId)
     if primedCardId_ and primedCardId_ ~= card.cardId then
         local previous = primedCardId_
         primedCardId_ = nil
@@ -1216,6 +1282,7 @@ local function TryCardPress(x, y)
     activeCardDragged_ = false
     activeCardDeploying_ = false
     activeCardPressedAt_ = uiElapsed_
+    activeCardPressPose_ = pressPose
     cardHandReordering_ = false
     cardParameterStart_ = nil
     cardDeployEnteredMs_ = nil
@@ -1228,12 +1295,13 @@ local function TryCardPress(x, y)
     return true
 end
 
-local function ClearCardInteraction()
+function ClearCardInteraction()
     activeCardStart_ = nil
     activeCardPointer_ = nil
     activeCardDragged_ = false
     activeCardDeploying_ = false
     activeCardPressedAt_ = nil
+    activeCardPressPose_ = nil
     cardHandReordering_ = false
     cardParameterStart_ = nil
     cardDeployEnteredMs_ = nil
@@ -1243,7 +1311,7 @@ local function ClearCardInteraction()
     cardGestureDistance_ = 0
 end
 
-local function UpdateCardParameter(dt)
+function UpdateCardParameter(dt)
     if not activeCardId_ or not activeCardPointer_ or not activeCardDeploying_ then return end
     if activeCardId_ ~= "side-gravity" and activeCardId_ ~= "mirror-motion" then return end
     local pointer = activeCardPointer_
@@ -1305,7 +1373,7 @@ local function UpdateCardParameter(dt)
     end
 end
 
-local function ResolveActiveCard(x, y)
+function ResolveActiveCard(x, y)
     local id = activeCardId_
     if not id then return end
     local candidate = cardCandidate_
@@ -1371,16 +1439,17 @@ local function ResolveActiveCard(x, y)
         ClearCardInteraction()
         return
     end
+    local burnPose = CurrentCardVisualPose(id)
     activeCardId_ = nil
-    QueueCardResolution(id, deployment.x, deployment.y, candidate)
+    QueueCardResolution(id, deployment.x, deployment.y, candidate, burnPose)
     ClearCardInteraction()
 end
 
-local function IsResultOverlayVisible()
+function IsResultOverlayVisible()
     return level_ and level_.resultOverlayVisible == true
 end
 
-local function HandleReplayPointer(x, y, press)
+function HandleReplayPointer(x, y, press)
     if not press then return end
     local cx, cy = frame_.playfieldX + frame_.playfieldWidth * .5, frame_.playfieldY + 34
     if replayFinished_ then
@@ -1423,7 +1492,7 @@ local function HandleReplayPointer(x, y, press)
     end
 end
 
-local function HandlePointer()
+function HandlePointer()
     if not frame_ or not apple_ then return end
     local x, y, down, press, release = PointerState()
     UpdateHoverState(x, y)
@@ -1517,7 +1586,7 @@ local function HandlePointer()
     end
 end
 
-local function ResetGoal()
+function ResetGoal()
     goalContact_ = false
     goalContactMs_ = 0
     local goal = level_ and LevelData.FindFirst(level_, "goal_sensor") or nil
@@ -1525,7 +1594,7 @@ local function ResetGoal()
     if runtimeGoal then runtimeGoal.active = false; runtimeGoal.contactProgress = 0 end
 end
 
-local function RecordReplay(dt)
+function RecordReplay(dt)
     if not launched_ or replayActive_ or not apple_ then return end
     local p = apple_.node.position2D
     local v = apple_.body.linearVelocity
@@ -1556,7 +1625,7 @@ local function RecordReplay(dt)
     replayPreviousSample_ = current
 end
 
-local function CaptureReplayFinalSample()
+function CaptureReplayFinalSample()
     if not apple_ or #replaySamples_ == 0 then return end
     local last = replaySamples_[#replaySamples_]
     ---@type number
@@ -1581,16 +1650,16 @@ RecordReplayEvent = function(kind, cardId)
     replayEvents_[#replayEvents_ + 1] = { t = flightMs_, type = kind, cardId = cardId, x = p.x, y = p.y }
 end
 
-local function ReplayDuration()
+function ReplayDuration()
     local last = replaySamples_[#replaySamples_]
     return last and last.t or 0
 end
 
-local function CanReplay()
+function CanReplay()
     return #replaySamples_ >= 2 and ReplayDuration() > 0
 end
 
-local function ReplayStateAt(time)
+function ReplayStateAt(time)
     if #replaySamples_ == 0 then return nil end
     if #replaySamples_ == 1 or time <= replaySamples_[1].t then return replaySamples_[1] end
     for i = 2, #replaySamples_ do
@@ -1670,7 +1739,7 @@ StopReplay = function()
     ReplayLog("exit")
 end
 
-local function UpdateReplay(dt)
+function UpdateReplay(dt)
     if replayMode_ ~= "playing" then return end
     replayTime_ = math.min(ReplayDuration(), replayTime_ + math.max(0, dt) * 1000 * replaySpeed_)
     if replayTime_ >= ReplayDuration() then
@@ -1679,7 +1748,7 @@ local function UpdateReplay(dt)
     end
 end
 
-local function RegisterFailure()
+function RegisterFailure()
     failureCount_ = failureCount_ + 1
     if level_ then failureCountsByLevel_[level_.levelId] = failureCount_ end
     observation_ = "轨迹停止。重置后再次发射。"
@@ -1687,7 +1756,7 @@ local function RegisterFailure()
     SetStatus("FAILED · 实验未成立")
 end
 
-local function UpdateExperiment(dt)
+function UpdateExperiment(dt)
     if replayActive_ then return end
     if absorbing_ then
         if goalPulseElapsedMs_ ~= nil then
@@ -1766,7 +1835,7 @@ local function UpdateExperiment(dt)
     UpdateDoors(dt)
 end
 
-local function DrawPrediction(direction, alpha, x, y, velocityX, velocityY)
+function DrawPrediction(direction, alpha, x, y, velocityX, velocityY)
     if not apple_ or not level_ then return end
     if x == nil or y == nil then x, y = AppleScreenPosition() end
     if velocityX == nil or velocityY == nil then
@@ -1805,7 +1874,7 @@ local function DrawPrediction(direction, alpha, x, y, velocityX, velocityY)
     end
 end
 
-local function DrawAim()
+function DrawAim()
     if not draggedApple_ or not apple_ then return end
     local x, y = AppleScreenPosition()
     local lx, ly = design_:LevelToLogical(apple_.launcher.spawnLevelX, apple_.launcher.spawnLevelY)
@@ -1818,7 +1887,7 @@ local function DrawAim()
     DrawPrediction(nil, 0.55, x, y, -(x - lx) * .165, -(y - ly) * .165)
 end
 
-local function DrawCardPrediction()
+function DrawCardPrediction()
     if not activeCardId_ or not cardParameterStart_ or not cardCandidate_ then return end
     local x, y = AppleScreenPosition()
     if activeCardId_ == "side-gravity" then
@@ -1833,7 +1902,7 @@ local function DrawCardPrediction()
     end
 end
 
-local function DrawLaunchHint()
+function DrawLaunchHint()
     if launched_ or draggedApple_ or absorbing_ or success_ or failed_ or not apple_ then return end
     local launcher = apple_.launcher
     local lx, ly = design_:LevelToLogical(launcher.spawnLevelX, launcher.spawnLevelY)
@@ -1844,14 +1913,14 @@ local function DrawLaunchHint()
     painter_:Circle(lx + 20 - pulse * 60, ly + 16 + pulse * 18, 5, Renderer2D.COLORS.primaryActive, nil, nil, math.floor(208 - pulse * 170))
 end
 
-local function DrawTrail()
+function DrawTrail()
     for i, point in ipairs(trail_) do
         local progress = i / #trail_
         painter_:Circle(point.x, point.y, 1.5 + progress * 3, Renderer2D.COLORS.primary, nil, nil, math.floor(progress * .32 * 255))
     end
 end
 
-local function DrawVelocityArrow()
+function DrawVelocityArrow()
     if not apple_ then return end
     local x, y = AppleScreenPosition()
     local velocity = apple_.body.linearVelocity
@@ -1871,7 +1940,37 @@ local function DrawVelocityArrow()
     nvgClosePath(painter_.vg); nvgFill(painter_.vg)
 end
 
-local function DrawReplay()
+function DrawRulePulse()
+    if not rulePulse_ then return end
+    local progress = math.max(0, math.min(1, rulePulse_.elapsed / rulePulse_.duration))
+    painter_:FillRect(
+        frame_.playfieldX,
+        frame_.playfieldY,
+        frame_.playfieldWidth,
+        frame_.playfieldHeight,
+        rulePulse_.color,
+        math.floor((1 - progress) * .13 * 255)
+    )
+end
+
+function DrawRuleFlash()
+    if not ruleFlash_ or not apple_ then return end
+    local progress = math.max(0, math.min(1, ruleFlash_.elapsed / ruleFlash_.duration))
+    local x, y = AppleScreenPosition()
+    local scale = 1 + progress * .2
+    painter_:Text(
+        x,
+        y - 18 - progress * 72,
+        ruleFlash_.symbol,
+        50 * scale,
+        ruleFlash_.color,
+        NVG_ALIGN_CENTER + NVG_ALIGN_MIDDLE,
+        "maker-display",
+        math.floor((1 - progress) * 255)
+    )
+end
+
+function DrawReplay()
     local state = ReplayStateAt(replayTime_)
     if not state then return end
     local samples = replaySamples_
@@ -1956,7 +2055,7 @@ local function DrawReplay()
     end
 end
 
-local function DrawHUD()
+function DrawHUD()
     local f = frame_
     local titleX = f.workspaceX - 37
     painter_:Text(titleX + 36, 19, "牛顿看了想打人", 29, Renderer2D.COLORS.white, NVG_ALIGN_LEFT + NVG_ALIGN_TOP, "maker-display")
@@ -1985,7 +2084,67 @@ local function DrawHUD()
     end
 end
 
-local function DrawCards()
+function CardUseLabel(usage, remaining)
+    return usage == "REUSABLE" and "可重复" or (tostring(remaining) .. " 次")
+end
+
+function CardBadgeText(id, usage, remaining)
+    if burningCardIds_[id] then return "燃烧" end
+    if activeCardId_ == id then
+        if cardHandReordering_ then return "排序" end
+        if activeCardDeploying_ then
+            local needsParameter = id == "side-gravity" or id == "mirror-motion"
+            if not needsParameter then
+                return activeCardPointer_ and PointerInPlayfield(activeCardPointer_.x, activeCardPointer_.y) and "可部署" or "移入场地"
+            end
+            if cardParameterStart_ then
+                if cardGestureDistance_ >= 48 then return "松手确认" end
+                return cardCandidate_ and "继续滑动" or "滑动选方向"
+            end
+            if activeCardPointer_ and PointerInPlayfield(activeCardPointer_.x, activeCardPointer_.y) then return "停稳后选方向" end
+            return cardDeployEnteredMs_ and "移回场地" or "移入场地"
+        end
+    end
+    if primedCardId_ == id then return "0.05" end
+    return usage == "REUSABLE" and "∞" or tostring(remaining)
+end
+
+function DrawCardBadge(value, edge)
+    local size = 10 * CARD_TEXT_SCALE
+    local horizontalPadding = 5 * CARD_TEXT_SCALE
+    nvgFontFace(painter_.vg, "maker-body")
+    nvgFontSize(painter_.vg, size)
+    local width = math.max(25, nvgTextBounds(painter_.vg, 0, 0, value) + horizontalPadding * 2)
+    local right = 51 * CARD_TEXT_SCALE
+    painter_:RoundedRect(right - width, -94, width, 20, 4, edge)
+    painter_:Text(right - width * .5, -91, value, size, Renderer2D.COLORS.white, NVG_ALIGN_CENTER + NVG_ALIGN_TOP)
+end
+
+function DrawCardSurface(id, def, card, cardState, badgeText, active, hovered)
+    local field = def.kind == "field"
+    local usage = cardState and cardState.usageMode or card.usageMode
+    local remaining = cardState and cardState.remainingUses or card.count
+    local fill = id == "quantum-phase" and (hovered and Renderer2D.COLORS.quantumCardSurfaceHover or Renderer2D.COLORS.quantumSoft)
+        or (field and (hovered and Renderer2D.COLORS.fieldCardSurfaceHover or Renderer2D.COLORS.fieldCardSurface)
+            or (hovered and Renderer2D.COLORS.decisionCardSurfaceHover or Renderer2D.COLORS.decisionCardSurface))
+    local edge = id == "quantum-phase" and Renderer2D.COLORS.quantum or (field and Renderer2D.COLORS.fieldCardBorder or Renderer2D.COLORS.decisionCardBorder)
+    local titleColor = field and Renderer2D.COLORS.text or Renderer2D.COLORS.decisionCardText
+    local bodyColor = field and Renderer2D.COLORS.body or Renderer2D.COLORS.decisionCardBody
+    painter_:RoundedRect(-70, -96, 144, 202, 8, Renderer2D.COLORS.dark, nil, nil, hovered and 41 or 26)
+    painter_:RoundedRect(-72, -101, 144, 202, 8, edge)
+    painter_:RoundedRect(-66, -95, 132, 190, 6, fill)
+    painter_:RoundedRect(-66, -95, 132, 24, 6, edge, nil, nil, 36)
+    painter_:RoundedRect(-57, -37, 114, 88, 5, Renderer2D.COLORS.panel, edge, 1, 107)
+    painter_:StrokeRect(-57, 59, 114, 0, edge, 1, 133)
+    painter_:RoundedRect(-72, -101, 144, 202, 8, nil, active and Renderer2D.COLORS.primaryActive or edge, active and 3 or 2)
+    painter_:Text(-58, -85, (field and "场地 · " or "决策 · ") .. CardUseLabel(usage, remaining), 9 * CARD_TEXT_SCALE, edge)
+    painter_:Text(0, -58, def.name, 16 * CARD_TEXT_SCALE, titleColor, NVG_ALIGN_CENTER + NVG_ALIGN_TOP, "maker-display")
+    painter_:Text(0, 8, def.symbol, 42 * CARD_TEXT_SCALE, titleColor, NVG_ALIGN_CENTER + NVG_ALIGN_MIDDLE, "maker-display")
+    painter_:TextBox(-51 * CARD_TEXT_SCALE, 69, 102 * CARD_TEXT_SCALE, def.description, 10 * CARD_TEXT_SCALE, bodyColor, NVG_ALIGN_CENTER + NVG_ALIGN_TOP)
+    DrawCardBadge(badgeText or CardBadgeText(id, usage, remaining), edge)
+end
+
+function DrawCards()
     local entries = CardEntries()
     local poses = Rules.CardHand(#entries, frame_.playfieldX + frame_.playfieldWidth / 2, frame_.cardHandY, frame_.playfieldWidth)
     local drawEntries = {}
@@ -2006,35 +2165,15 @@ local function DrawCards()
     end)
     for _, entry in ipairs(drawEntries) do
             local card, pose = entry.card, entry.pose
-            local def = Rules.CARDS[card.cardId]
             local active = activeCardId_ == card.cardId
             local primed = primedCardId_ == card.cardId
-            local hoverProgress = (active or primed) and 0 or CardHoverProgress(card.cardId)
             local hovered = hoveredCardId_ == card.cardId and not active and not primed
-            local field = def.kind == "field"
-            local fill = card.cardId == "quantum-phase" and (hovered and Renderer2D.COLORS.quantumCardSurfaceHover or Renderer2D.COLORS.quantumSoft)
-                or (field and (hovered and Renderer2D.COLORS.fieldCardSurfaceHover or Renderer2D.COLORS.fieldCardSurface)
-                    or (hovered and Renderer2D.COLORS.decisionCardSurfaceHover or Renderer2D.COLORS.decisionCardSurface))
-            local edge = card.cardId == "quantum-phase" and Renderer2D.COLORS.quantum or (field and Renderer2D.COLORS.fieldCardBorder or Renderer2D.COLORS.decisionCardBorder)
-            local titleColor = field and Renderer2D.COLORS.text or Renderer2D.COLORS.decisionCardText
-            local bodyColor = field and Renderer2D.COLORS.body or Renderer2D.COLORS.decisionCardBody
             nvgSave(painter_.vg); nvgTranslate(painter_.vg, pose.x, pose.y); nvgRotate(painter_.vg, math.rad(pose.angle)); nvgScale(painter_.vg, pose.scale or 1, pose.scale or 1)
             local cardState = cardStates_[card.cardId]
             local usage = cardState and cardState.usageMode or card.usageMode
             local remaining = cardState and cardState.remainingUses or card.count
-            painter_:RoundedRect(-70, -96, 144, 202, 8, Renderer2D.COLORS.dark, nil, nil, hovered and 41 or 26)
-            painter_:RoundedRect(-72, -101, 144, 202, 8, edge)
-            painter_:RoundedRect(-66, -95, 132, 190, 6, fill)
-            painter_:RoundedRect(-66, -95, 132, 24, 6, edge, nil, nil, 36)
-            painter_:RoundedRect(-57, -37, 114, 88, 5, Renderer2D.COLORS.panel, edge, 1, 107)
-            painter_:StrokeRect(-57, 59, 114, 0, edge, 1, 133)
-            painter_:RoundedRect(-72, -101, 144, 202, 8, nil, (active or primed) and Renderer2D.COLORS.primaryActive or edge, (active or primed) and 3 or 2)
-            painter_:Text(-58, -85, (field and "场地 · " or "决策 · ") .. (usage == "REUSABLE" and "可重复" or (tostring(remaining) .. " 次")), 9 * CARD_TEXT_SCALE, edge)
-            painter_:Text(0, -58, def.name, 16 * CARD_TEXT_SCALE, titleColor, NVG_ALIGN_CENTER + NVG_ALIGN_TOP, "maker-display")
-            painter_:Text(0, 8, def.symbol, 42 * CARD_TEXT_SCALE, titleColor, NVG_ALIGN_CENTER + NVG_ALIGN_MIDDLE, "maker-display")
-            painter_:TextBox(-51, 69, 102 * CARD_TEXT_SCALE, def.description, 10 * CARD_TEXT_SCALE, bodyColor, NVG_ALIGN_CENTER + NVG_ALIGN_TOP)
-            painter_:RoundedRect(39, -94, 25, 20, 4, edge)
-            painter_:Text(51, -91, usage == "REUSABLE" and "∞" or tostring(remaining), 10 * CARD_TEXT_SCALE, Renderer2D.COLORS.white, NVG_ALIGN_CENTER + NVG_ALIGN_TOP)
+            local faceActive = primed or (active and activeCardDeploying_)
+            DrawCardSurface(card.cardId, Rules.CARDS[card.cardId], card, cardState, CardBadgeText(card.cardId, usage, remaining), faceActive, hovered)
             nvgRestore(painter_.vg)
     end
     local cx = frame_.playfieldX + frame_.playfieldWidth - 58
@@ -2062,7 +2201,7 @@ local function DrawCards()
     painter_:Text(cx, cy + 42, punchStatus, 10, punchColor, NVG_ALIGN_CENTER + NVG_ALIGN_TOP, "maker-display", punchAlpha)
 end
 
-local function DrawSelectorArrow(x, y, direction, active, alpha)
+function DrawSelectorArrow(x, y, direction, active, alpha)
     local function fillArrow(drawX, drawY, color, opacity, shaftWidth, headHalf, extent)
         nvgFillColor(painter_.vg, nvgRGBA(color[1], color[2], color[3], math.floor(opacity * 255)))
         local shaftLength = extent + 2
@@ -2084,7 +2223,7 @@ local function DrawSelectorArrow(x, y, direction, active, alpha)
     fillArrow(x, y, active and Renderer2D.COLORS.greenLight or Renderer2D.COLORS.darkSecondary, alpha, active and 10 or 9, active and 13 or 12, active and 22 or 20)
 end
 
-local function DrawCardParameterSelector()
+function DrawCardParameterSelector()
     if not activeCardId_ or not cardParameterStart_ or not activeCardPointer_ then return end
     local anchor, pointer = cardParameterStart_, activeCardPointer_
     nvgStrokeColor(painter_.vg, nvgRGBA(95, 143, 104, 61)); nvgStrokeWidth(painter_.vg, 2)
@@ -2119,7 +2258,7 @@ local function DrawCardParameterSelector()
     end
 end
 
-local function DrawCardBurns()
+function DrawCardBurns()
     for _, burn in ipairs(cardBurns_) do
         local progress = BurnProgress(burn)
         local def = Rules.CARDS[burn.id]
@@ -2127,74 +2266,69 @@ local function DrawCardBurns()
         local cardState = cardStates_[burn.id]
         local top = burn.y - 101 + progress * 202
         local visibleHeight = math.max(0, 202 * (1 - progress))
-        if visibleHeight > 1 then
+        local edgePoints = {}
+        for i = 0, 12 do
+            local x = burn.x - 68 + i * (136 / 12)
+            local y = top + math.sin(i * 1.73) * 3.6 + math.sin(i * .67 + .8) * 2.2
+            edgePoints[i + 1] = { x = x, y = math.min(burn.y + 101, y) }
+        end
+        if visibleHeight > 1 and def and card then
             local shakeProgress = math.max(0, math.min(1, burn.elapsed / 70))
             local shakeEase = 1 - (1 - shakeProgress) ^ 3
-            local angle = (BurnNoise(#burn.id, 8) * 1.6 - .8) * shakeEase
-            nvgSave(painter_.vg)
-            nvgScissor(painter_.vg, burn.x - 72, top, 144, visibleHeight)
-            nvgTranslate(painter_.vg, burn.x, burn.y)
-            nvgRotate(painter_.vg, math.rad(angle))
-            nvgScale(painter_.vg, 1 + .02 * shakeEase, 1 + .02 * shakeEase)
-            local field = def and def.kind == "field"
-            local fill = burn.id == "quantum-phase" and Renderer2D.COLORS.quantumSoft
-                or (field and Renderer2D.COLORS.fieldCardSurface or Renderer2D.COLORS.decisionCardSurface)
-            local edge = burn.id == "quantum-phase" and Renderer2D.COLORS.quantum
-                or (field and Renderer2D.COLORS.fieldCardBorder or Renderer2D.COLORS.decisionCardBorder)
-            local titleColor = field and Renderer2D.COLORS.text or Renderer2D.COLORS.decisionCardText
-            local bodyColor = field and Renderer2D.COLORS.body or Renderer2D.COLORS.decisionCardBody
-            local usage = cardState and cardState.usageMode or (card and card.usageMode) or "SINGLE_USE"
-            local remaining = cardState and cardState.remainingUses or (card and card.count) or 0
-            painter_:RoundedRect(-70, -96, 144, 202, 8, Renderer2D.COLORS.dark, nil, nil, 26)
-            painter_:RoundedRect(-72, -101, 144, 202, 8, edge)
-            painter_:RoundedRect(-66, -95, 132, 190, 6, fill)
-            painter_:RoundedRect(-66, -95, 132, 24, 6, edge, nil, nil, 36)
-            painter_:RoundedRect(-57, -37, 114, 88, 5, Renderer2D.COLORS.panel, edge, 1, 107)
-            painter_:StrokeRect(-57, 59, 114, 0, edge, 1, 133)
-            painter_:RoundedRect(-72, -101, 144, 202, 8, nil, edge, 2)
-            painter_:Text(-58, -85, (field and "场地 · " or "决策 · ") .. (usage == "REUSABLE" and "可重复" or (tostring(remaining) .. " 次")), 9 * CARD_TEXT_SCALE, edge)
-            painter_:Text(0, -58, def and def.name or burn.id, 16 * CARD_TEXT_SCALE, titleColor, NVG_ALIGN_CENTER + NVG_ALIGN_TOP, "maker-display")
-            painter_:Text(0, 8, def and def.symbol or "", 42 * CARD_TEXT_SCALE, titleColor, NVG_ALIGN_CENTER + NVG_ALIGN_MIDDLE, "maker-display")
-            painter_:TextBox(-51, 69, 102 * CARD_TEXT_SCALE, def and def.description or "", 10 * CARD_TEXT_SCALE, bodyColor, NVG_ALIGN_CENTER + NVG_ALIGN_TOP)
-            painter_:RoundedRect(39, -94, 25, 20, 4, edge)
-            painter_:Text(51, -91, usage == "REUSABLE" and "∞" or tostring(remaining), 10 * CARD_TEXT_SCALE, Renderer2D.COLORS.white, NVG_ALIGN_CENTER + NVG_ALIGN_TOP)
-            nvgRestore(painter_.vg)
-            local edgePoints = {}
-            for i = 0, 12 do
-                local x = burn.x - 68 + i * (136 / 12)
-                local y = top + math.sin(i * 1.73) * 3.6 + math.sin(i * .67 + .8) * 2.2
-                edgePoints[i + 1] = { x = x, y = math.min(burn.y + 101, y) }
+            local targetAngle = BurnNoise(#burn.id, 8) * 1.6 - .8
+            local angle = (burn.startAngle or 0) + (targetAngle - (burn.startAngle or 0)) * shakeEase
+            local scale = (burn.startScale or 1.05) + (1.02 - (burn.startScale or 1.05)) * shakeEase
+            local clipPoints = { { x = burn.x - 72, y = edgePoints[1].y } }
+            for _, point in ipairs(edgePoints) do clipPoints[#clipPoints + 1] = point end
+            clipPoints[#clipPoints + 1] = { x = burn.x + 72, y = edgePoints[#edgePoints].y }
+
+            -- NanoVG only clips rectangular regions. Consecutive strips along
+            -- the source's 13-point edge reproduce the GeometryMask silhouette
+            -- instead of retaining the previous rectangular burn cutoff.
+            for index = 1, #clipPoints - 1 do
+                local left, right = clipPoints[index], clipPoints[index + 1]
+                local width = math.max(1, right.x - left.x + 1)
+                local height = math.max(0, burn.y + 101 - left.y)
+                if height > 0 then
+                    nvgSave(painter_.vg)
+                    nvgScissor(painter_.vg, left.x, left.y, width, height)
+                    nvgTranslate(painter_.vg, burn.x, burn.y)
+                    nvgRotate(painter_.vg, math.rad(angle))
+                    nvgScale(painter_.vg, scale, scale)
+                    DrawCardSurface(burn.id, def, card, cardState, "燃烧", true, false)
+                    nvgRestore(painter_.vg)
+                end
             end
-            if progress > .04 then
-                local function drawBurnEdge(color, width, alpha, offset)
-                    nvgStrokeColor(painter_.vg, nvgRGBA(color[1], color[2], color[3], math.floor(alpha * 255)))
-                    nvgStrokeWidth(painter_.vg, width)
-                    nvgBeginPath(painter_.vg)
-                    for index, point in ipairs(edgePoints) do
-                        if index == 1 then nvgMoveTo(painter_.vg, point.x, point.y + offset) else nvgLineTo(painter_.vg, point.x, point.y + offset) end
-                    end
-                    nvgStroke(painter_.vg)
+        end
+        if progress > .04 then
+            local function drawBurnEdge(color, width, alpha, offset)
+                nvgStrokeColor(painter_.vg, nvgRGBA(color[1], color[2], color[3], math.floor(alpha * 255)))
+                nvgStrokeWidth(painter_.vg, width)
+                nvgBeginPath(painter_.vg)
+                for index, point in ipairs(edgePoints) do
+                    if index == 1 then nvgMoveTo(painter_.vg, point.x, point.y + offset) else nvgLineTo(painter_.vg, point.x, point.y + offset) end
                 end
-                drawBurnEdge(Renderer2D.COLORS.ash, 4, .46, 2)
-                drawBurnEdge(Renderer2D.COLORS.burnEdge, 5, .38, 0)
-                drawBurnEdge(Renderer2D.COLORS.burnCore, 2, .96, -1)
-                nvgFillColor(painter_.vg, nvgRGBA(Renderer2D.COLORS.burnCore[1], Renderer2D.COLORS.burnCore[2], Renderer2D.COLORS.burnCore[3], math.floor(.54 * 255)))
-                for index = 3, #edgePoints - 1, 3 do
-                    local point = edgePoints[index]
-                    local flameHeight = 4 + ((index - 1) * 3) % 5
-                    nvgBeginPath(painter_.vg)
-                    nvgMoveTo(painter_.vg, point.x - 3, point.y)
-                    nvgLineTo(painter_.vg, point.x, point.y - flameHeight)
-                    nvgLineTo(painter_.vg, point.x + 3, point.y)
-                    nvgClosePath(painter_.vg)
-                    nvgFill(painter_.vg)
-                end
+                nvgStroke(painter_.vg)
+            end
+            drawBurnEdge(Renderer2D.COLORS.ash, 4, .46, 2)
+            drawBurnEdge(Renderer2D.COLORS.burnEdge, 5, .38, 0)
+            drawBurnEdge(Renderer2D.COLORS.burnCore, 2, .96, -1)
+            nvgFillColor(painter_.vg, nvgRGBA(Renderer2D.COLORS.burnCore[1], Renderer2D.COLORS.burnCore[2], Renderer2D.COLORS.burnCore[3], math.floor(.54 * 255)))
+            for index = 3, #edgePoints - 1, 3 do
+                local point = edgePoints[index]
+                local flameHeight = 4 + ((index - 1) * 3) % 5
+                nvgBeginPath(painter_.vg)
+                nvgMoveTo(painter_.vg, point.x - 3, point.y)
+                nvgLineTo(painter_.vg, point.x, point.y - flameHeight)
+                nvgLineTo(painter_.vg, point.x + 3, point.y)
+                nvgClosePath(painter_.vg)
+                nvgFill(painter_.vg)
             end
         end
     end
 end
 
-local function DrawCardBurnParticles()
+function DrawCardBurnParticles()
     for _, particle in ipairs(cardBurnParticles_) do
         local elapsed = particle.elapsed - particle.delay
         if elapsed >= 0 then
@@ -2214,10 +2348,11 @@ local function DrawCardBurnParticles()
     end
 end
 
-local function DrawOverlay()
+function DrawOverlay()
     if replayMode_ ~= "none" then return end
     if (activeCardId_ or primedCardId_ or #cardBurns_ > 0) and not isPaused_ and not success_ and not failed_ then
-        painter_:RoundedRect(frame_.playfieldX + 8, frame_.playfieldY + 8, frame_.playfieldWidth - 16, frame_.playfieldHeight - 16, 5, Renderer2D.COLORS.greenSoft, Renderer2D.COLORS.primaryActive, 3, 46)
+        painter_:RoundedRect(frame_.playfieldX + 8, frame_.playfieldY + 8, frame_.playfieldWidth - 16, frame_.playfieldHeight - 16, 5, Renderer2D.COLORS.greenSoft, nil, nil, 46)
+        painter_:RoundedRect(frame_.playfieldX + 8, frame_.playfieldY + 8, frame_.playfieldWidth - 16, frame_.playfieldHeight - 16, 5, nil, Renderer2D.COLORS.primaryActive, 3, 179)
     end
     if isPaused_ then
         painter_:FillRect(frame_.playfieldX, frame_.playfieldY, frame_.playfieldWidth, frame_.playfieldHeight, { 0, 0, 0, 255 }, 66)
@@ -2275,6 +2410,7 @@ function HandleUpdate(_eventType, eventData)
     local dt = eventData:GetFloat("TimeStep")
     if audio_ then audio_:Update(dt) end
     uiElapsed_ = uiElapsed_ + dt
+    UpdateRuleFeedback(dt)
     frame_ = design_:Frame()
     -- Replay owns the input/update frame. Do not let cards, reset shortcuts,
     -- or normal completion updates mutate the suspended experiment.
@@ -2533,12 +2669,14 @@ function HandleRender()
         local absorbProgress = absorbing_ and math.max(0, math.min(1, absorbElapsedMs_ / 520)) or 0
         painter_:DrawApple(frame_, apple_, 1 - absorbProgress * .65, 1 - absorbProgress * .65)
         DrawVelocityArrow()
+        DrawRulePulse()
     end
     DrawHUD()
     DrawCards()
     DrawCardParameterSelector()
     DrawCardBurns()
     DrawCardBurnParticles()
+    DrawRuleFlash()
     DrawOverlay()
     painter_:Finish()
 end

@@ -103,7 +103,7 @@ end
 ---@param velocity Vector2
 ---@param angle number
 ---@param pixelsPerMeter number
----@param baseMatterVelocityToWorld number
+---@param matterVelocityToWorld number
 function PhysicsTelemetry:Capture(timeStep, timeScale, position, velocity, angle, pixelsPerMeter, matterVelocityToWorld)
     if not self.enabled then return end
     local stepMs = math.max(0, timeStep) * 1000 * timeScale

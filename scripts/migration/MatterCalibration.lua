@@ -7,8 +7,8 @@ local MatterCalibration = {}
 MatterCalibration.APPLE_FRICTION = 0.1
 -- Matter has an additional static-friction multiplier. It only selects the
 -- solver branch; it does not replace the pair's dynamic friction material.
--- Box2D cannot expose that branch independently, so main.lua applies its
--- separate compatibility coefficient only while a static contact is viable.
+-- Box2D cannot expose that branch independently, so production fixtures keep
+-- the observed dynamic material instead of mutating a global apple fixture.
 MatterCalibration.APPLE_FRICTION_STATIC = 0.5
 MatterCalibration.MATTER_FRICTION_NORMAL_MULTIPLIER = 5
 MatterCalibration.MATTER_RESTING_TANGENT_SPEED = math.sqrt(6)

@@ -3,6 +3,7 @@ from __future__ import annotations
 import hashlib
 import json
 import math
+import re
 import struct
 from pathlib import Path
 
@@ -185,6 +186,9 @@ def main() -> int:
     all_lua = "\n".join(path.read_text(encoding="utf-8") for path in (MAKER_ROOT / "scripts").rglob("*.lua"))
     portrait_source = PHASER_ROOT / "public/assets/newton-portrait.png"
     portrait_copy = MAKER_ROOT / "assets/image/newton-portrait.png"
+
+    def has_main_function(name: str) -> bool:
+        return re.search(rf"^(?:local\s+)?function\s+{re.escape(name)}\s*\(", main_lua, re.M) is not None
     expect(portrait_copy.exists(), "Newton portrait copy missing")
     expect(portrait_source.exists() and sha256(portrait_source) == sha256(portrait_copy), "Newton portrait hash mismatch")
 
@@ -208,7 +212,7 @@ def main() -> int:
     expect("audio/phase1/launch.wav" in synth_audio_lua and "self.elapsedMs - self.lastImpactMs < 80" in synth_audio_lua, "SynthAudio playback or impact gate missing")
     expect("apple_.shape.trigger = false" in main_lua and "object.contactProgress = 0" in main_lua, "success retry does not restore collision state")
     expect("isEditor_" not in main_lua and "EditorController" not in all_lua, "runtime editor remains in Maker build")
-    expect("local function PointerState()" in main_lua and "local x, y, down, press, release = PointerState()" in main_lua, "input state is not unified")
+    expect(has_main_function("PointerState") and "local x, y, down, press, release = PointerState()" in main_lua, "input state is not unified")
     expect('SubscribeToEvent("TouchBegin", "HandleTouchBegin")' in main_lua and 'SubscribeToEvent("TouchMove", "HandleTouchMove")' in main_lua and 'SubscribeToEvent("TouchEnd", "HandleTouchEnd")' in main_lua, "touch events are not wired")
     expect("function HandleTouchBegin" in main_lua and "function HandleTouchMove" in main_lua and "function HandleTouchEnd" in main_lua, "touch event handlers are missing")
     expect("activeTouchId" in main_lua and 'eventData:GetInt("TouchID")' in main_lua, "single-touch ownership is missing")
@@ -216,7 +220,7 @@ def main() -> int:
     expect("MATTER_BASE_DELTA_MS = 1000 / 60" in trajectory_lua and "input.forceScale * MATTER_BASE_DELTA_MS * MATTER_BASE_DELTA_MS" in trajectory_lua, "trajectory integration scale differs from Phaser")
     expect("velocityX = velocityX * frictionFactor + accelerationX" in trajectory_lua and "if frame % input.sampleEvery == 0" in trajectory_lua, "trajectory integration order differs from Phaser")
     expect("matterFramesPerSecond = 60" in main_lua and "matterVelocityToWorld" in main_lua, "Matter-to-Box2D velocity conversion missing")
-    expect("CONFIG.maxAppleSpeed = 25 * CONFIG.matterVelocityToWorld" in main_lua and "local function CapAppleSpeed()" in main_lua, "source apple speed cap missing")
+    expect("CONFIG.maxAppleSpeed = 25 * CONFIG.matterVelocityToWorld" in main_lua and has_main_function("CapAppleSpeed"), "source apple speed cap missing")
     expect("PhysicsProfiles.Resolve" in main_lua and "physicsProfile_.gravityAcceleration" in main_lua, "gravity profile is not wired")
     expect("STANDARD_GRAVITY_ACCELERATION" in profiles_lua and "MATTER_BASE_DELTA_MS * MATTER_BASE_DELTA_MS" in profiles_lua, "standard gravity conversion missing")
     expect("INCIDENT_GRAVITY_ACCELERATION" in profiles_lua and "incident_codex_migration_01" in profiles_lua, "incident gravity profile missing")
@@ -237,7 +241,7 @@ def main() -> int:
     expect("input:GetMouseButtonPress(MOUSEB_RIGHT)" in main_lua and "input:GetKeyPress(KEY_ESCAPE)" in main_lua and "ToggleTacticalPause" in main_lua, "source keyboard or cancel interaction is missing")
     expect("replayNextSampleMs_" in main_lua and "while replayNextSampleMs_ <= flightMs_ + .0001 do" in main_lua, "replay no longer interpolates at the source sample cadence")
     expect("replayPreviousSample_" in main_lua and "deltaAngle = ((current.angle - previous.angle + 540) % 360) - 180" in main_lua, "replay angle interpolation differs from Phaser")
-    expect("local function IsResultOverlayVisible()" in main_lua and 'if replayMode_ ~= "none" then return end' in main_lua, "replay does not hide the completed-result overlay")
+    expect(has_main_function("IsResultOverlayVisible") and 'if replayMode_ ~= "none" then return end' in main_lua, "replay does not hide the completed-result overlay")
     expect("if replayActive_ then HandleReplayPointer(x, y, press); return end" in main_lua, "replay controls do not retain pointer priority over result controls")
     expect("SetReplayMode(\"playing\")" in main_lua and "level_.resultOverlayVisible = false" in main_lua and "SyncPhysicsUpdateEnabled()" in main_lua, "replay does not take exclusive ownership of outcome UI and physics")
     replay_start = main_lua.split("StartReplay = function()", 1)[1].split("StopReplay = function()", 1)[0]
@@ -247,10 +251,10 @@ def main() -> int:
     # Card interactions must use the same visual transform for painting and
     # hit testing. Parameter cards resolve at their settled anchor, not where
     # the pointer happened to be released.
-    expect("local function CardVisualPose" in main_lua and "local pose = CardVisualPose(card.cardId, poses[i])" in main_lua,
+    expect(has_main_function("CardVisualPose") and "local pose = CardVisualPose(card.cardId, poses[i])" in main_lua,
            "card draw and hit testing do not share one visual transform")
     expect("local deployment = needsParameter and cardParameterStart_" in main_lua
-           and "QueueCardResolution(id, deployment.x, deployment.y, candidate)" in main_lua,
+           and "QueueCardResolution(id, deployment.x, deployment.y, candidate" in main_lua,
            "parameter card burn still resolves at the release point")
     expect("AnimateCardToHome(previous, PrimedCardPose(previous), .12)" in main_lua
            and "AnimateCardToHome(id, from, .18)" in main_lua,
@@ -279,13 +283,26 @@ def main() -> int:
     expect(any(item.get("source", "").endswith("fist.svg") for item in manifest.get("vectorSources", [])), "fist.svg source hash is not recorded")
     expect("frame_.playfieldWidth - 98" in main_lua and "frame_.cardHandY - 17" in main_lua, "Newton ability hit target differs from the original 80px container")
     expect("depth = 54 + (1 - normalized) * 4" in rules_lua, "card hand depth differs from CardHandLayout")
-    expect("local function UpdateCardHoverStates(dt)" in main_lua and "local function FindTopCardAt(x, y)" in main_lua, "card hover or depth-aware hit testing is missing")
-    expect("failureCountsByLevel_" in main_lua and "local function RegisterFailure()" in main_lua, "failure counts are not isolated per level")
+    expect(has_main_function("UpdateCardHoverStates") and has_main_function("FindTopCardAt"), "card hover or depth-aware hit testing is missing")
+    expect("failureCountsByLevel_" in main_lua and has_main_function("RegisterFailure"), "failure counts are not isolated per level")
+    expect("activeCardPressPose_" in main_lua and "visual.x, visual.y = pressPose.x, pressPose.y" in main_lua,
+           "a direct card press no longer preserves its actual rendered pose")
+    expect("function CardBadgeText" in main_lua and "停稳后选方向" in main_lua and "松手确认" in main_lua and "燃烧" in main_lua,
+           "card interaction states are not reflected by the status badge")
+    expect("nvgTextBounds(painter_.vg, 0, 0, value)" in main_lua and "-51 * CARD_TEXT_SCALE" in main_lua,
+           "card badge sizing or description text geometry differs from Phaser scaling")
+    expect("local clipPoints" in main_lua and "DrawCardSurface(burn.id, def, card, cardState, \"燃烧\", true, false)" in main_lua
+           and "startScale" in main_lua,
+           "card burn does not preserve the jagged mask and active face")
+    expect("function StartRuleFeedback" in main_lua and "function DrawRulePulse" in main_lua and "function DrawRuleFlash" in main_lua,
+           "card resolution feedback layers are missing")
+    expect("Renderer2D.COLORS.greenSoft, nil, nil, 46" in main_lua and "Renderer2D.COLORS.primaryActive, 3, 179" in main_lua,
+           "bullet-time fill and border alphas are not independently calibrated")
     expect("observation_ = \"苹果已在爱因斯坦观察窗内稳定停留。\"" in main_lua and "function Renderer:DrawNewton(frame, level, anger, observation)" in renderer_lua, "runtime observation state differs from Phaser")
 
     result = {
         "mode": "FAST_VALIDATE",
-        "checks": 144,
+        "checks": 150,
         "errors": errors,
         "status": "pass" if not errors else "fail",
     }

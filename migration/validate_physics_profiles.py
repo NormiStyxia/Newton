@@ -25,6 +25,9 @@ def main() -> int:
     calibration = (ROOT / "scripts/migration/MatterCalibration.lua").read_text(encoding="utf-8")
     level_data = (ROOT / "scripts/migration/LevelData.lua").read_text(encoding="utf-8")
 
+    def has_main_function(name: str) -> bool:
+        return re.search(rf"^(?:local\s+)?function\s+{re.escape(name)}\s*\(", main_lua, re.M) is not None
+
     standard_id = "standard"
     incident_id = "incident_codex_migration_01"
     expect(f'DEFAULT_ID = "{standard_id}"' in profiles, "standard is not the profile default")
@@ -170,9 +173,9 @@ def main() -> int:
            "Matter frictionAir is not applied to the apple's angular motion")
     expect("CaptureReplayFinalSample()" in main_lua and "if not CanReplay() then" in main_lua,
            "replay start does not reject an unrecorded timeline")
-    expect("local function CanReplay()" in main_lua and "#replaySamples_ >= 2" in main_lua,
+    expect(has_main_function("CanReplay") and "#replaySamples_ >= 2" in main_lua,
            "replay availability does not require a real timeline")
-    expect("local function SetReplayMode(mode)" in main_lua and 'SetReplayMode("playing")' in main_lua
+    expect(has_main_function("SetReplayMode") and 'SetReplayMode("playing")' in main_lua
            and 'replayMode_ ~= "none"' in main_lua and "ClearCardInteraction()" in main_lua,
            "replay start does not take exclusive ownership of the result UI")
     expect("level_.resultOverlayVisible = false" in main_lua
