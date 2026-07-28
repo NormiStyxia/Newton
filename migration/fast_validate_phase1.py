@@ -234,6 +234,8 @@ def main() -> int:
     expect("input:GetMouseButtonPress(MOUSEB_RIGHT)" in main_lua and "input:GetKeyPress(KEY_ESCAPE)" in main_lua and "ToggleTacticalPause" in main_lua, "source keyboard or cancel interaction is missing")
     expect("replayNextSampleMs_" in main_lua and "while replayNextSampleMs_ <= flightMs_ + .0001 do" in main_lua, "replay no longer interpolates at the source sample cadence")
     expect("replayPreviousSample_" in main_lua and "deltaAngle = ((current.angle - previous.angle + 540) % 360) - 180" in main_lua, "replay angle interpolation differs from Phaser")
+    expect("local function DrawOverlay()" in main_lua and "if replayActive_ then return end" in main_lua, "replay does not hide the completed-result overlay")
+    expect("if replayActive_ then HandleReplayPointer(x, y, press); return end" in main_lua, "replay controls do not retain pointer priority over result controls")
     expect("absorbing_" in main_lua and "absorbElapsedMs_ = math.min(520" in main_lua and "absorbElapsedMs_ >= 520" in main_lua, "success absorption timing differs from Phaser")
     expect("function Renderer:DrawApple(frame, apple, scale, alpha)" in renderer_lua and "1 - absorbProgress * .65" in main_lua, "success absorption visual differs from Phaser")
     expect("goalPulseElapsedMs_" in main_lua and "goalPulseElapsedMs_ / 460" in main_lua, "goal pulse timing differs from Phaser")
@@ -261,7 +263,7 @@ def main() -> int:
 
     result = {
         "mode": "FAST_VALIDATE",
-        "checks": 142,
+        "checks": 144,
         "errors": errors,
         "status": "pass" if not errors else "fail",
     }

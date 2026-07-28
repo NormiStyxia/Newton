@@ -1978,6 +1978,9 @@ local function DrawCardBurnParticles()
 end
 
 local function DrawOverlay()
+    -- Phaser keeps the cleared result while replaying, but hides the modal so
+    -- the replay controller owns both the screen and pointer interaction.
+    if replayActive_ then return end
     if (activeCardId_ or primedCardId_ or #cardBurns_ > 0) and not isPaused_ and not success_ and not failed_ then
         painter_:RoundedRect(frame_.playfieldX + 8, frame_.playfieldY + 8, frame_.playfieldWidth - 16, frame_.playfieldHeight - 16, 5, Renderer2D.COLORS.greenSoft, Renderer2D.COLORS.primaryActive, 3, 46)
     end
