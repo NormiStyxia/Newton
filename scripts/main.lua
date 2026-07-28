@@ -72,6 +72,7 @@ local frame_ = nil
 local levelIndex_ = 1
 local rules_ = Rules.NewState()
 local draggedApple_ = false
+local aimPreview_ = nil
 local activeCardId_ = nil
 local activeCardStart_ = nil
 local activeCardPointer_ = nil
@@ -414,6 +415,7 @@ function BuildLevel(index)
     level_.physicsProbe = require("migration.PhysicsProbe").New()
     InitializeCards()
     draggedApple_ = false
+    aimPreview_ = nil
     activeCardId_ = nil
     primedCardId_ = nil
     isPaused_ = false
@@ -494,6 +496,7 @@ function ResetExperiment(playResetSound)
     RestoreAppleContactMaterial()
     launched_ = false
     draggedApple_ = false
+    aimPreview_ = nil
     activeCardId_ = nil
     primedCardId_ = nil
     activeCardStart_ = nil
@@ -613,6 +616,7 @@ function UpdateAppleDrag(x, y)
     if length > 98 then dx, dy = dx * 98 / length, dy * 98 / length end
     dx = math.max(dx, -76)
     dy = math.min(dy, 78)
+    aimPreview_ = { x = lx + dx, y = ly + dy, launcherX = lx, launcherY = ly }
     local wx, wy = PointerToWorld(lx + dx, ly + dy)
     apple_.node:SetPosition2D(wx, wy)
 end
@@ -621,9 +625,16 @@ function LaunchApple()
     draggedApple_ = false
     local launcher = apple_.launcher
     local applePos = apple_.node.position2D
-    local dx = (applePos.x - launcher.spawnWorldX) * CONFIG.pixelsPerMeter
-    local dy = -(applePos.y - launcher.spawnWorldY) * CONFIG.pixelsPerMeter
+    local dx, dy
+    if aimPreview_ then
+        dx = aimPreview_.x - aimPreview_.launcherX
+        dy = aimPreview_.y - aimPreview_.launcherY
+    else
+        dx = (applePos.x - launcher.spawnWorldX) * CONFIG.pixelsPerMeter
+        dy = -(applePos.y - launcher.spawnWorldY) * CONFIG.pixelsPerMeter
+    end
     local length = math.sqrt(dx * dx + dy * dy)
+    aimPreview_ = nil
     if length < 24 then ResetExperiment(false); return end
     local vx = -dx * 0.165
     local vy = -dy * 0.165
@@ -663,6 +674,7 @@ end
 function CancelAppleDrag()
     if not draggedApple_ or launched_ or not apple_ then return end
     draggedApple_ = false
+    aimPreview_ = nil
     apple_.node:SetPosition2D(apple_.launcher.spawnWorldX, apple_.launcher.spawnWorldY)
 end
 
@@ -1875,9 +1887,9 @@ function DrawPrediction(direction, alpha, x, y, velocityX, velocityY)
 end
 
 function DrawAim()
-    if not draggedApple_ or not apple_ then return end
-    local x, y = AppleScreenPosition()
-    local lx, ly = design_:LevelToLogical(apple_.launcher.spawnLevelX, apple_.launcher.spawnLevelY)
+    if not draggedApple_ or not aimPreview_ then return end
+    local x, y = aimPreview_.x, aimPreview_.y
+    local lx, ly = aimPreview_.launcherX, aimPreview_.launcherY
     nvgStrokeColor(painter_.vg, nvgRGBA(95, 143, 104, 224)); nvgStrokeWidth(painter_.vg, 6)
     nvgBeginPath(painter_.vg)
     nvgMoveTo(painter_.vg, lx - 18, ly + 4)
