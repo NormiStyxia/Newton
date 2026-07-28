@@ -5,17 +5,19 @@ local MatterCalibration = {}
 -- the scene constructors. These are the values that exist on the source
 -- bodies while they are actually simulated, not the declarative level values.
 MatterCalibration.APPLE_FRICTION = 0.1
--- Matter keeps a separate static-friction multiplier. Box2D exposes only one
--- fixture coefficient, so main.lua switches to the release coefficient only
--- while a slow apple is on a slope that Matter would let it leave.
+-- Matter has an additional static-friction multiplier. It only selects the
+-- solver branch; it does not replace the pair's dynamic friction material.
+-- Box2D cannot expose that branch independently, so production fixtures stay
+-- at the source pair's actual friction coefficient below.
 MatterCalibration.APPLE_FRICTION_STATIC = 0.5
+MatterCalibration.MATTER_FRICTION_NORMAL_MULTIPLIER = 5
+MatterCalibration.MATTER_RESTING_TANGENT_SPEED = math.sqrt(6)
 MatterCalibration.APPLE_FRICTION_AIR = 0.01
 MatterCalibration.APPLE_INITIAL_RESTITUTION = 0
 MatterCalibration.STATIC_FRICTION = 0.1
 MatterCalibration.STATIC_RESTITUTION = 0
 MatterCalibration.CARD_RESTITUTION_BASE = 0.36
 MatterCalibration.MATTER_FRAMES_PER_SECOND = 60
-MatterCalibration.STATIC_RELEASE_SPEED = 0.35
 
 ---@param frictionAir number
 ---@param timeScale? number
@@ -37,18 +39,24 @@ function MatterCalibration.CardRestitution(multiplier)
     return math.max(0, math.min(0.98, MatterCalibration.CARD_RESTITUTION_BASE * multiplier))
 end
 
----@param contactFriction number
 ---@return number
-function MatterCalibration.AppleFixtureFrictionForContact(contactFriction)
-    -- Box2D mixes fixture friction with sqrt(a * b), whereas Matter chooses
-    -- min(a, b). Laboratory fixtures stay at Matter's 0.1 runtime material.
-    local fixture = (contactFriction * contactFriction) / MatterCalibration.STATIC_FRICTION
-    return math.max(0, math.min(1, fixture))
+function MatterCalibration.MatterStaticFrictionThreshold()
+    -- Resolver.solveVelocity compares tangential velocity against
+    -- pair.friction * pair.frictionStatic * _frictionNormalMultiplier.
+    -- Keep this source fact available for telemetry; do not mutate Box2D
+    -- fixtures in an attempt to emulate Matter's internal solver branch.
+    return MatterCalibration.APPLE_FRICTION
+        * MatterCalibration.APPLE_FRICTION_STATIC
+        * MatterCalibration.MATTER_FRICTION_NORMAL_MULTIPLIER
 end
 
 ---@return number
-function MatterCalibration.StaticReleaseContactFriction()
-    return MatterCalibration.APPLE_FRICTION * MatterCalibration.APPLE_FRICTION_STATIC
+function MatterCalibration.AppleFixtureFrictionForMatterStaticContact()
+    -- Box2D mixes fixture friction with sqrt(a * b). Static laboratory
+    -- fixtures remain at 0.1, so set the apple fixture to produce Matter's
+    -- .25 low-speed static contact coefficient: sqrt(.625 * .1) == .25.
+    local contactFriction = MatterCalibration.MatterStaticFrictionThreshold()
+    return (contactFriction * contactFriction) / MatterCalibration.STATIC_FRICTION
 end
 
 return MatterCalibration

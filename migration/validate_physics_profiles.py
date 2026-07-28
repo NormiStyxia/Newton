@@ -121,8 +121,8 @@ def main() -> int:
            "card material updates are not isolated from normal gravity setup")
     expect("UpdateMatterStaticFriction" in main_lua and "TrackApplePhysicalContact" in main_lua,
            "Box2D does not adapt low-speed static friction to Matter's model")
-    expect("StaticReleaseContactFriction" in calibration and "AppleFixtureFrictionForContact" in calibration,
-           "Matter static release coefficient is not converted through Box2D friction mixing")
+    expect("MatterStaticFrictionThreshold" in calibration and "AppleFixtureFrictionForMatterStaticContact" in calibration,
+           "Matter static-friction contact coefficient is not converted through Box2D friction mixing")
     expect("1 / 3" not in main_lua and "SetBulletTimeActive" in main_lua and "bulletTimeScale = 0.05" in main_lua,
            "bullet time still uses sparse full physics steps")
     expect("physicsWorld_:SetAllowSleeping(false)" in main_lua,
@@ -165,26 +165,24 @@ def main() -> int:
            "spring exit velocity is not scaled for Matter bullet time")
     expect("eventData:GetFloat(\"TimeStep\")" in main_lua and "timeStep" in calibration,
            "air damping is not calibrated to the current physics step")
-    expect("CaptureReplayFinalSample()" in main_lua and "if #replaySamples_ < 2 then return end" not in main_lua,
-           "replay start still rejects a short terminal trajectory")
-    expect("if #replaySamples_ == 0 then" in main_lua and "replaySamples_[1] = {" in main_lua,
-           "replay start does not provide a deterministic fallback sample")
-    expect("if #replaySamples_ == 1 then" in main_lua and "replaySamples_[2] = {" in main_lua,
-           "replay start does not normalize a short terminal trajectory into a time range")
-    expect("replayActive_ = true" in main_lua and "ClearCardInteraction()" in main_lua,
-           "replay start does not take ownership of the UI state")
+    expect("CaptureReplayFinalSample()" in main_lua and "if not CanReplay() then" in main_lua,
+           "replay start does not reject an unrecorded timeline")
+    expect("local function CanReplay()" in main_lua and "#replaySamples_ >= 2" in main_lua,
+           "replay availability does not require a real timeline")
+    expect("replayActive_ = true" in main_lua and "replayModalSuppressed_ = true" in main_lua and "ClearCardInteraction()" in main_lua,
+           "replay start does not take exclusive ownership of the result UI")
 
     # Matter combines contact friction with min(a, b); Box2D uses sqrt(a*b).
     # Giving each Box2D fixture 0.1 yields the same apple/static baseline,
     # while restitution keeps the source's max(a, b) behavior.
     expect(math.isclose(math.sqrt(0.1 * 0.1), min(0.1, 1.0), rel_tol=0, abs_tol=1e-12),
            "Box2D fixture friction does not reproduce Matter apple/static friction")
-    static_release = 0.1 * 0.5
-    release_fixture = static_release**2 / 0.1
-    expect(math.isclose(static_release, 0.05, rel_tol=0, abs_tol=1e-12),
-           "Matter static friction threshold is not 0.05")
-    expect(math.isclose(math.sqrt(release_fixture * 0.1), static_release, rel_tol=0, abs_tol=1e-12),
-           "Box2D release fixture does not reproduce Matter's low-speed threshold")
+    static_contact = 0.1 * 0.5 * 5
+    static_fixture = static_contact**2 / 0.1
+    expect(math.isclose(static_contact, 0.25, rel_tol=0, abs_tol=1e-12),
+           "Matter static friction threshold is not 0.25")
+    expect(math.isclose(math.sqrt(static_fixture * 0.1), static_contact, rel_tol=0, abs_tol=1e-12),
+           "Box2D fixture does not reproduce Matter's low-speed static contact")
     expect(max(0.0, 0.0) == 0.0 and max(0.88, 0.0) == 0.88,
            "baseline and Hooke restitution do not reproduce Matter contact response")
 

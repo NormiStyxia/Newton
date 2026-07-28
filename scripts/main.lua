@@ -123,6 +123,7 @@ local replaySamples_ = {}
 local replayEvents_ = {}
 local replaySavedApple_ = nil
 local replayOutcome_ = nil
+local replayModalSuppressed_ = false
 local replayNextSampleMs_ = 0
 local replayPreviousSample_ = nil
 local applePhysicalContacts_ = {}
@@ -216,13 +217,13 @@ local function ApplyAppleCardMaterial()
     apple_.shape.restitution = MatterCalibration.CardRestitution(Rules.GetRestitutionMultiplier(rules_))
 end
 
-local function SetAppleFixtureFriction(value)
-    if apple_ and apple_.shape then apple_.shape.friction = value end
+local function RestoreAppleContactMaterial()
+    if apple_ and apple_.shape then apple_.shape.friction = MatterCalibration.APPLE_FRICTION end
 end
 
 local function ClearApplePhysicalContacts()
     applePhysicalContacts_ = {}
-    SetAppleFixtureFriction(MatterCalibration.APPLE_FRICTION)
+    RestoreAppleContactMaterial()
 end
 
 local function PhysicalContactNormal(node)
@@ -264,24 +265,33 @@ end
 local function UpdateMatterStaticFriction()
     if not apple_ or not apple_.shape or not apple_.body or apple_.body.bodyType ~= BT_DYNAMIC or not physicsWorld_ then return end
     local gravity = physicsWorld_.gravity
-    local gravityMagnitude = math.sqrt(gravity.x * gravity.x + gravity.y * gravity.y)
-    if gravityMagnitude < .0001 or CurrentMatterSpeedFromWorld(apple_.body.linearVelocity) >= MatterCalibration.STATIC_RELEASE_SPEED then
-        SetAppleFixtureFriction(MatterCalibration.APPLE_FRICTION)
-        return
-    end
-    local sourceStaticFriction = MatterCalibration.StaticReleaseContactFriction()
+    local velocity = apple_.body.linearVelocity
+    local velocityScale = CurrentMatterVelocityToWorld()
+    local staticThreshold = MatterCalibration.MatterStaticFrictionThreshold()
+    local hasPhysicalContact = false
     for _, contact in pairs(applePhysicalContacts_) do
         local normalX, normalY = PhysicalContactNormal(contact.node)
         if normalX then
+            hasPhysicalContact = true
+            local tangentVelocity = (-normalY * velocity.x + normalX * velocity.y) / velocityScale
             local normalAcceleration = math.abs(gravity.x * normalX + gravity.y * normalY)
-            local tangentAcceleration = math.abs(-gravity.x * normalY + gravity.y * normalX)
-            if normalAcceleration > .0001 and tangentAcceleration > sourceStaticFriction * normalAcceleration + .0001 then
-                SetAppleFixtureFriction(MatterCalibration.AppleFixtureFrictionForContact(sourceStaticFriction))
+            local tangentAcceleration = math.abs(-normalY * gravity.x + normalX * gravity.y)
+            -- Matter uses its static branch only for slow tangential contact
+            -- motion. Box2D has one fixture coefficient, so use .25 only
+            -- while every active physical contact remains statically viable.
+            if math.abs(tangentVelocity) > MatterCalibration.MATTER_RESTING_TANGENT_SPEED
+                or normalAcceleration < .0001
+                or tangentAcceleration > staticThreshold * normalAcceleration + .0001 then
+                RestoreAppleContactMaterial()
                 return
             end
         end
     end
-    SetAppleFixtureFriction(MatterCalibration.APPLE_FRICTION)
+    if hasPhysicalContact then
+        apple_.shape.friction = MatterCalibration.AppleFixtureFrictionForMatterStaticContact()
+    else
+        RestoreAppleContactMaterial()
+    end
 end
 
 local function SetGravity()
@@ -429,6 +439,7 @@ local function BuildLevel(index)
     replayEvents_ = {}
     replaySavedApple_ = nil
     replayOutcome_ = nil
+    replayModalSuppressed_ = false
     cardBurns_ = {}
     cardBurnParticles_ = {}
     burningCardIds_ = {}
@@ -501,6 +512,7 @@ local function ResetExperiment(playResetSound)
     replayEvents_ = {}
     replaySavedApple_ = nil
     replayOutcome_ = nil
+    replayModalSuppressed_ = false
     cardBurns_ = {}
     cardBurnParticles_ = {}
     burningCardIds_ = {}
@@ -1406,9 +1418,30 @@ local function ResolveActiveCard(x, y)
     ClearCardInteraction()
 end
 
+local function IsResultOverlayVisible()
+    return not replayActive_ and not replayModalSuppressed_ and replayOutcome_ == nil and (success_ or failed_)
+end
+
 local function HandleReplayPointer(x, y, press)
     if not press then return end
     local cx, cy = frame_.playfieldX + frame_.playfieldWidth * .5, frame_.playfieldY + 34
+    if replayFinished_ then
+        local endX = frame_.playfieldX + frame_.playfieldWidth - 190
+        local endY = frame_.playfieldY + frame_.playfieldHeight - 54
+        local function inEndButton(offsetX, width)
+            return x >= endX + offsetX - width * .5 and x <= endX + offsetX + width * .5
+                and y >= endY - 17 and y <= endY + 17
+        end
+        if inEndButton(38, 92) then
+            replayTime_ = 0
+            replayFinished_ = false
+            replayPaused_ = false
+            return
+        elseif inEndButton(137, 84) then
+            StopReplay()
+            return
+        end
+    end
     local function inButton(buttonX, width)
         return x >= buttonX - width * .5 and x <= buttonX + width * .5 and y >= cy - 17 and y <= cy + 17
     end
@@ -1434,7 +1467,7 @@ local function HandlePointer()
     local x, y, down, press, release = PointerState()
     UpdateHoverState(x, y)
     if replayActive_ then HandleReplayPointer(x, y, press); return end
-    if success_ or failed_ then
+    if IsResultOverlayVisible() then
         if press then
             local cx, cy = frame_.playfieldX + frame_.playfieldWidth * .5, frame_.playfieldY + frame_.playfieldHeight * .5
             local function inOverlayButton(buttonX, buttonY)
@@ -1592,6 +1625,10 @@ local function ReplayDuration()
     return last and last.t or 0
 end
 
+local function CanReplay()
+    return #replaySamples_ >= 2 and ReplayDuration() > 0
+end
+
 local function ReplayStateAt(time)
     if #replaySamples_ == 0 then return nil end
     if #replaySamples_ == 1 or time <= replaySamples_[1].t then return replaySamples_[1] end
@@ -1616,43 +1653,26 @@ end
 StartReplay = function()
     if replayActive_ or not apple_ or not (success_ or failed_) then return end
     CaptureReplayFinalSample()
+    if not CanReplay() then
+        -- Phaser only constructs a replay from a real recorded timeline. A
+        -- fabricated 33 ms record finishes on the next frame and looks frozen.
+        SetStatus("REPLAY · 轨迹记录不足")
+        return
+    end
     local p, v = apple_.node.position2D, apple_.body.linearVelocity
-    -- A completed experiment normally has a launch sample plus a terminal
-    -- sample. Keep the replay UI recoverable when an external completion
-    -- route produced no sample instead of silently leaving the result modal
-    -- as the only visible control.
-    if #replaySamples_ == 0 then
-        replaySamples_[1] = {
-            t = 0,
-            x = p.x,
-            y = p.y,
-            vx = v.x,
-            vy = v.y,
-            angle = apple_.node.rotation2D,
-        }
-    end
-    if #replaySamples_ == 1 then
-        -- A replay UI has a time range by contract. Keep an otherwise empty
-        -- terminal record playable rather than completing on its first frame.
-        local sample = replaySamples_[1]
-        replaySamples_[2] = {
-            t = (sample.t or 0) + CONFIG.replaySampleMs,
-            x = p.x,
-            y = p.y,
-            vx = v.x,
-            vy = v.y,
-            angle = apple_.node.rotation2D,
-        }
-    end
     replaySavedApple_ = {
         x = p.x, y = p.y, angle = apple_.node.rotation2D,
         bodyType = apple_.body.bodyType, vx = v.x, vy = v.y, angularVelocity = apple_.body.angularVelocity,
     }
-    -- Replay owns the presentation state. Keeping success_ set and only
-    -- skipping DrawOverlay made the old modal and input state leak through.
+    -- Keep modal suppression independent from the result state. This is the
+    -- final rendering backstop for stale completion state during the handoff.
     replayOutcome_ = success_ and "CLEARED" or "FAILED"
+    replayModalSuppressed_ = true
     success_ = false
     failed_ = false
+    absorbing_ = false
+    absorbElapsedMs_ = 0
+    ResetGoal()
     isPaused_ = false
     SetBulletTimeActive(false)
     replayActive_ = true
@@ -1690,6 +1710,7 @@ StopReplay = function()
         apple_.body.angularVelocity = saved.angularVelocity
         apple_.body.awake = true
     end
+    replayModalSuppressed_ = false
     ClearApplePhysicalContacts()
     SyncPhysicsUpdateEnabled()
     if success_ then SetStatus("CLEARED · 观测成立")
@@ -1967,6 +1988,18 @@ local function DrawReplay()
         painter_:Text(feedX + 42, feedY + 42 + row * 34, label, 13, Renderer2D.COLORS.white, NVG_ALIGN_LEFT + NVG_ALIGN_TOP, "maker-display")
         painter_:Text(feedX + 42, feedY + 58 + row * 34, event.t <= replayTime_ and "已执行" or "等待中", 10, Renderer2D.COLORS.greenSecondary)
     end
+    if replayFinished_ then
+        local endX = frame_.playfieldX + frame_.playfieldWidth - 190
+        local endY = frame_.playfieldY + frame_.playfieldHeight - 54
+        painter_:RoundedRect(endX - 175, endY - 24, 350, 48, 4, Renderer2D.COLORS.panel, Renderer2D.COLORS.primaryActive, 2, 245)
+        painter_:Text(endX - 160, endY - 7, "回放完成", 13, Renderer2D.COLORS.text, NVG_ALIGN_LEFT + NVG_ALIGN_TOP, "maker-display")
+        local function endButton(x, width, label)
+            painter_:RoundedRect(x - width * .5, endY - 17, width, 34, 4, Renderer2D.COLORS.darkSecondary, Renderer2D.COLORS.greenLight, 1, 168)
+            painter_:Text(x, endY - 7, label, 12, Renderer2D.COLORS.greenSecondary, NVG_ALIGN_CENTER + NVG_ALIGN_TOP, "maker-display")
+        end
+        endButton(endX + 38, 92, "再次播放")
+        endButton(endX + 137, 84, "退出回放")
+    end
 end
 
 local function DrawHUD()
@@ -2228,10 +2261,7 @@ local function DrawCardBurnParticles()
 end
 
 local function DrawOverlay()
-    -- Keep this guard as a rendering backstop. StartReplay also removes the
-    -- success/failure presentation state, so stale modal state cannot block
-    -- the replay even if render and input arrive in different frames.
-    if replayActive_ or replayOutcome_ ~= nil then return end
+    if replayActive_ or replayModalSuppressed_ then return end
     if (activeCardId_ or primedCardId_ or #cardBurns_ > 0) and not isPaused_ and not success_ and not failed_ then
         painter_:RoundedRect(frame_.playfieldX + 8, frame_.playfieldY + 8, frame_.playfieldWidth - 16, frame_.playfieldHeight - 16, 5, Renderer2D.COLORS.greenSoft, Renderer2D.COLORS.primaryActive, 3, 46)
     end
@@ -2239,7 +2269,7 @@ local function DrawOverlay()
         painter_:FillRect(frame_.playfieldX, frame_.playfieldY, frame_.playfieldWidth, frame_.playfieldHeight, { 0, 0, 0, 255 }, 66)
         painter_:Text(frame_.playfieldX + frame_.playfieldWidth - 24, frame_.playfieldY + 18, "实验暂停 · 规则卡可操作", 13, Renderer2D.COLORS.text, NVG_ALIGN_RIGHT + NVG_ALIGN_TOP)
     end
-    if success_ or failed_ then
+    if IsResultOverlayVisible() then
         painter_:FillRect(0, 0, frame_.logicalWidth, frame_.logicalHeight, Renderer2D.COLORS.background, 199)
         local cx, cy = frame_.playfieldX + frame_.playfieldWidth * .5, frame_.playfieldY + frame_.playfieldHeight * .5
         local function overlayButton(x, y, label, secondary)
@@ -2290,6 +2320,17 @@ function HandleUpdate(_eventType, eventData)
     local dt = eventData:GetFloat("TimeStep")
     if audio_ then audio_:Update(dt) end
     uiElapsed_ = uiElapsed_ + dt
+    frame_ = design_:Frame()
+    -- Replay owns the input/update frame. Do not let cards, reset shortcuts,
+    -- or normal completion updates mutate the suspended experiment.
+    if replayActive_ then
+        HandlePointer()
+        if input:GetKeyPress(KEY_ESCAPE) then StopReplay() end
+        SyncPhysicsUpdateEnabled()
+        if replayActive_ then UpdateReplay(dt) end
+        if debugDraw_ and physicsWorld_ then physicsWorld_:DrawDebugGeometry() end
+        return
+    end
     UpdateCardHomeMotions(dt)
     UpdateCardHoverStates(dt)
     UpdateSpringVisuals(dt)
@@ -2323,8 +2364,13 @@ function HandleUpdate(_eventType, eventData)
         particle.elapsed = particle.elapsed + dt * 1000
         if particle.elapsed >= particle.delay + particle.duration then table.remove(cardBurnParticles_, i) end
     end
-    frame_ = design_:Frame()
     HandlePointer()
+    if replayActive_ then
+        SyncPhysicsUpdateEnabled()
+        UpdateReplay(dt)
+        if debugDraw_ and physicsWorld_ then physicsWorld_:DrawDebugGeometry() end
+        return
+    end
     UpdateCardParameter(dt)
     if input:GetKeyPress(KEY_R) then ResetExperiment() end
     if input:GetMouseButtonPress(MOUSEB_RIGHT) and (activeCardId_ or primedCardId_) then
