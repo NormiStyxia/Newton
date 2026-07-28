@@ -88,12 +88,13 @@ def main() -> int:
     expect("trigger = true" in factory_lua, "goal sensor trigger missing")
     expect("CollisionCircle2D" in factory_lua and "CollisionBox2D" in factory_lua, "Box2D shapes missing")
     expect("BT_DYNAMIC" in main_lua and "BT_STATIC" in factory_lua, "body state transition missing")
-    expect("image/phase1/solid.png" not in factory_lua, "runtime still depends on solid.png")
+    expect("image/phase1/" not in factory_lua, "runtime still depends on custom PNG assets")
+    expect("NoTextureUnlit.xml" in factory_lua, "procedural unlit visual material missing")
     expect("nvgCreate" not in all_lua and "nvgBeginFrame" not in all_lua, "raw NanoVG unexpectedly present")
 
     result = {
         "mode": "FAST_VALIDATE",
-        "checks": 30,
+        "checks": 31,
         "errors": errors,
         "status": "pass" if not errors else "fail",
     }

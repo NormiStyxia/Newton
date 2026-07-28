@@ -1,6 +1,8 @@
 {
   "schemaVersion": 1,
   "policy": "Original Phaser SVG files are read-only. Maker PNG files are independent derived assets.",
+  "runtimeAssetMode": "builtin-models-with-procedural-unlit-materials",
+  "runtimeAssetNote": "All phase1 PNGs are retained as migration references only because Maker recognized their UUIDs but did not materialize their hashed files in the Web runtime pack.",
   "level": {
     "source": "D:/System Files/Download/牛顿/牛顿/data/levels/level_01.json",
     "copy": "assets/Data/Levels/level_01.json",

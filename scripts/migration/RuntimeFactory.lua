@@ -9,34 +9,47 @@ local APPLE_RADIUS = 27 / 100
 local APPLE_DISPLAY_DIAMETER = 64 / 100
 local APPLE_MASS = 1
 
-local ASSETS = {
-    apple = "image/phase1/apple.png",
-    launcher = "image/phase1/launcher.png",
-    goal = "image/phase1/goal-ring.png",
-}
-
-local function RequireSprite(resourcePath)
-    local sprite = cache:GetResource("Sprite2D", resourcePath)
-    if not sprite then error("Sprite2D 资源加载失败：" .. resourcePath) end
-    ---@cast sprite Sprite2D
-    return sprite
+---@param color Color
+---@return Material
+local function CreateUnlitMaterial(color)
+    local technique = cache:GetResource("Technique", "Techniques/NoTextureUnlit.xml")
+    if not technique then error("内置无贴图 Technique 加载失败") end
+    ---@cast technique Technique
+    local material = Material:new()
+    material:SetTechnique(0, technique)
+    material:SetShaderParameter("MatDiffColor", Variant(color))
+    return material
 end
 
----@param node Node
----@param resourcePath string
----@param rect Rect
----@param layer integer
----@param color Color|nil
----@return StaticSprite2D
-local function AddSprite(node, resourcePath, rect, layer, color)
-    local drawable = node:CreateComponent("StaticSprite2D")
-    ---@cast drawable StaticSprite2D
-    drawable.sprite = RequireSprite(resourcePath)
-    drawable.useDrawRect = true
-    drawable.drawRect = rect
-    drawable.layer = layer
-    if color then drawable.color = color end
-    return drawable
+---@param parent Node
+---@param name string
+---@param modelPath string
+---@param desiredSize Vector3
+---@param color Color
+---@param localPosition Vector3|nil
+---@param localRotation Quaternion|nil
+---@return Node
+local function AddModelVisual(parent, name, modelPath, desiredSize, color, localPosition, localRotation)
+    local modelResource = cache:GetResource("Model", modelPath)
+    if not modelResource then error("内置模型加载失败：" .. modelPath) end
+    ---@cast modelResource Model
+
+    local visualNode = parent:CreateChild(name)
+    if localPosition then visualNode.position = localPosition end
+    if localRotation then visualNode.rotation = localRotation end
+
+    local drawable = visualNode:CreateComponent("StaticModel")
+    ---@cast drawable StaticModel
+    drawable:SetModel(modelResource)
+    drawable:SetMaterial(CreateUnlitMaterial(color))
+
+    local modelSize = drawable.boundingBox.size
+    visualNode.scale = Vector3(
+        desiredSize.x / math.max(modelSize.x, 0.0001),
+        desiredSize.y / math.max(modelSize.y, 0.0001),
+        desiredSize.z / math.max(modelSize.z, 0.0001)
+    )
+    return visualNode
 end
 
 ---@param scene Scene
@@ -87,9 +100,15 @@ function RuntimeFactory.CreateGround(scene, mapper, groundLevelY)
     shape.categoryBits = CATEGORY_WORLD
     shape.maskBits = MASK_ALL
 
-    -- The ground remains a fully functional Box2D body. Its former solid PNG
-    -- visual is intentionally omitted because Maker recognized the asset UUID
-    -- but repeatedly failed to materialize the hashed PNG in the runtime pack.
+    AddModelVisual(
+        node,
+        "GroundVisual",
+        "Models/Box.mdl",
+        Vector3(bodyWidth, 0.14, 0.12),
+        Color(0.18, 0.31, 0.25, 1),
+        Vector3(0, bodyHeight * 0.25, 0.2),
+        nil
+    )
     return { id = "world-floor", type = "ground", node = node, body = body, shape = shape }
 end
 
@@ -109,17 +128,28 @@ FACTORIES.launcher = function(context, data)
     local node = context.scene:CreateChild(data.id)
     node:SetPosition2D(worldX, worldY)
     node:SetRotation2D(mapper.LevelRotationToWorld(transform.rotation))
-    AddSprite(
+
+    local bottom = -displayHeight * (1 - anchorY)
+    local top = displayHeight * anchorY
+    local baseHeight = math.max(0.12, displayHeight * 0.14)
+    local armHeight = math.max(0.2, top - bottom - baseHeight)
+    AddModelVisual(
         node,
-        ASSETS.launcher,
-        Rect(
-            -displayWidth * 0.5,
-            -displayHeight * (1 - anchorY),
-            displayWidth * 0.5,
-            displayHeight * anchorY
-        ),
-        10,
+        "LauncherBase",
+        "Models/Box.mdl",
+        Vector3(displayWidth, baseHeight, 0.16),
+        Color(0.36, 0.12, 0.08, 1),
+        Vector3(0, bottom + baseHeight * 0.5, 0.05),
         nil
+    )
+    AddModelVisual(
+        node,
+        "LauncherArm",
+        "Models/Box.mdl",
+        Vector3(math.max(0.12, displayWidth * 0.24), armHeight, 0.14),
+        Color(0.72, 0.25, 0.12, 1),
+        Vector3(0, bottom + baseHeight + armHeight * 0.5, 0.04),
+        Quaternion(0, 0, -5)
     )
     return {
         id = data.id,
@@ -157,12 +187,14 @@ FACTORIES.goal_sensor = function(context, data)
     shape.trigger = true
     shape.categoryBits = CATEGORY_SENSOR
     shape.maskBits = CATEGORY_APPLE
-    AddSprite(
+    AddModelVisual(
         node,
-        ASSETS.goal,
-        Rect(-worldWidth * 0.5, -worldHeight * 0.5, worldWidth * 0.5, worldHeight * 0.5),
-        8,
-        nil
+        "GoalVisual",
+        "Models/Torus.mdl",
+        Vector3(worldWidth, 0.12, worldHeight),
+        Color(0.30, 0.92, 0.70, 1),
+        Vector3(0, 0, 0.12),
+        Quaternion(90, 0, 0)
     )
     return { id = data.id, type = data.type, node = node, body = body, shape = shape, data = data }
 end
@@ -210,16 +242,13 @@ function RuntimeFactory.CreateApple(scene, launcher)
     shape.restitution = 0.36
     shape.categoryBits = CATEGORY_APPLE
     shape.maskBits = MASK_ALL
-    AddSprite(
+    AddModelVisual(
         node,
-        ASSETS.apple,
-        Rect(
-            -APPLE_DISPLAY_DIAMETER * 0.5,
-            -APPLE_DISPLAY_DIAMETER * 0.5,
-            APPLE_DISPLAY_DIAMETER * 0.5,
-            APPLE_DISPLAY_DIAMETER * 0.5
-        ),
-        20,
+        "AppleVisual",
+        "Models/Sphere.mdl",
+        Vector3(APPLE_DISPLAY_DIAMETER, APPLE_DISPLAY_DIAMETER, 0.32),
+        Color(0.82, 0.16, 0.10, 1),
+        Vector3(0, 0, 0),
         nil
     )
     return {
