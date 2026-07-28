@@ -109,6 +109,7 @@ def main() -> int:
     # values. These assertions lock the migration to the observed runtime
     # values rather than the misleading declarative options.
     expect("APPLE_FRICTION = 0.1" in calibration, "apple effective friction is not calibrated")
+    expect("APPLE_FRICTION_STATIC = 0.5" in calibration, "Matter static-friction multiplier is not calibrated")
     expect("APPLE_FRICTION_AIR = 0.01" in calibration, "apple effective air friction is not calibrated")
     expect("APPLE_INITIAL_RESTITUTION = 0" in calibration, "apple initial restitution is not calibrated")
     expect("STATIC_FRICTION = 0.1" in calibration and "STATIC_RESTITUTION = 0" in calibration,
@@ -118,6 +119,10 @@ def main() -> int:
            "RuntimeFactory does not use calibrated Matter materials")
     expect("MatterCalibration.CardRestitution" in main_lua and "ApplyAppleCardMaterial" in main_lua,
            "card material updates are not isolated from normal gravity setup")
+    expect("UpdateMatterStaticFriction" in main_lua and "TrackApplePhysicalContact" in main_lua,
+           "Box2D does not adapt low-speed static friction to Matter's model")
+    expect("StaticReleaseContactFriction" in calibration and "AppleFixtureFrictionForContact" in calibration,
+           "Matter static release coefficient is not converted through Box2D friction mixing")
     expect("1 / 3" not in main_lua and "SetBulletTimeActive" in main_lua and "bulletTimeScale = 0.05" in main_lua,
            "bullet time still uses sparse full physics steps")
     expect("physicsWorld_:SetAllowSleeping(false)" in main_lua,
@@ -174,6 +179,12 @@ def main() -> int:
     # while restitution keeps the source's max(a, b) behavior.
     expect(math.isclose(math.sqrt(0.1 * 0.1), min(0.1, 1.0), rel_tol=0, abs_tol=1e-12),
            "Box2D fixture friction does not reproduce Matter apple/static friction")
+    static_release = 0.1 * 0.5
+    release_fixture = static_release**2 / 0.1
+    expect(math.isclose(static_release, 0.05, rel_tol=0, abs_tol=1e-12),
+           "Matter static friction threshold is not 0.05")
+    expect(math.isclose(math.sqrt(release_fixture * 0.1), static_release, rel_tol=0, abs_tol=1e-12),
+           "Box2D release fixture does not reproduce Matter's low-speed threshold")
     expect(max(0.0, 0.0) == 0.0 and max(0.88, 0.0) == 0.88,
            "baseline and Hooke restitution do not reproduce Matter contact response")
 

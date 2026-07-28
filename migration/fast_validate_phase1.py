@@ -223,19 +223,38 @@ def main() -> int:
     expect("CreateLaboratoryBoundaries" in factory_lua and "world-ceiling" in factory_lua and "world-left" in factory_lua and "world-right" in factory_lua, "laboratory boundaries are incomplete")
     expect("DEFAULT_GRAVITY_MAGNITUDE = 1.05" in rules_lua and "function Rules.GetGravityMultiplier" in rules_lua, "source gravity magnitude or button multiplier missing")
     expect("APPLE_FRICTION_AIR = 0.01" in calibration_lua and "Box2DLinearDamping" in calibration_lua, "effective Matter air friction is not calibrated")
+    expect("APPLE_FRICTION_STATIC = 0.5" in calibration_lua and "StaticReleaseContactFriction" in calibration_lua, "Matter static friction release is not calibrated")
     expect("MatterCalibration.APPLE_FRICTION" in factory_lua and "MatterCalibration.STATIC_RESTITUTION" in factory_lua, "effective Matter fixture materials are not calibrated")
+    expect("UpdateMatterStaticFriction" in main_lua and "TrackApplePhysicalContact" in main_lua and "AppleFixtureFrictionForContact" in main_lua, "low-speed Matter friction is not adapted for Box2D")
     expect('SubscribeToEvent("PhysicsPreStep", "HandlePhysicsPreStep")' in main_lua and 'SubscribeToEvent("PhysicsPostStep", "HandlePhysicsPostStep")' in main_lua, "physics step event wiring missing")
     expect("applePreSolveVelocity_" in main_lua and "local v = applePreSolveVelocity_ or apple_.body.linearVelocity" in main_lua, "spring does not retain pre-solve velocity")
     expect("object.impulseStrength * Rules.GetRestitutionMultiplier(rules_)" in main_lua and "* CurrentMatterVelocityToWorld()" in main_lua, "spring impulse time-scale conversion missing")
-    expect("CapAppleSpeed()\n    apple_.body.linearDamping" in main_lua, "speed cap is not applied before the physics pass")
+    expect("CapAppleSpeed()\n    UpdateMatterStaticFriction()\n    apple_.body.linearDamping" in main_lua, "speed cap or Matter static-friction adaptation is not applied before the physics pass")
     expect("UpdateSpringExits()\n    UpdateExperiment(eventData:GetFloat(\"TimeStep\") * CurrentPhysicsTimeScale())" in main_lua, "physics post-step timing differs from source bullet time")
     expect("uiElapsed_ * 1000 - object.triggeredAt" in main_lua and "uiElapsed_ * 1000 >= object.closeAt" in main_lua, "scene-time cooldown or door delay differs from source")
     expect("if #trail_ > 18" in main_lua and "flightMs_ - lastTrailAt_ > 55" in main_lua and "DrawVelocityArrow" in main_lua, "trail or velocity visualization differs from Phaser")
     expect("input:GetMouseButtonPress(MOUSEB_RIGHT)" in main_lua and "input:GetKeyPress(KEY_ESCAPE)" in main_lua and "ToggleTacticalPause" in main_lua, "source keyboard or cancel interaction is missing")
     expect("replayNextSampleMs_" in main_lua and "while replayNextSampleMs_ <= flightMs_ + .0001 do" in main_lua, "replay no longer interpolates at the source sample cadence")
     expect("replayPreviousSample_" in main_lua and "deltaAngle = ((current.angle - previous.angle + 540) % 360) - 180" in main_lua, "replay angle interpolation differs from Phaser")
-    expect("local function DrawOverlay()" in main_lua and "if replayActive_ then return end" in main_lua, "replay does not hide the completed-result overlay")
+    expect("local function DrawOverlay()" in main_lua and "if replayActive_ or replayOutcome_ ~= nil then return end" in main_lua, "replay does not hide the completed-result overlay")
     expect("if replayActive_ then HandleReplayPointer(x, y, press); return end" in main_lua, "replay controls do not retain pointer priority over result controls")
+    expect('replayOutcome_ = success_ and "CLEARED" or "FAILED"' in main_lua and "success_ = false" in main_lua and "SyncPhysicsUpdateEnabled()" in main_lua, "replay does not take exclusive ownership of outcome UI and physics")
+    expect('success_ = outcome == "CLEARED"' in main_lua and 'failed_ = outcome == "FAILED"' in main_lua, "replay exit does not restore its saved result state")
+
+    # Card interactions must use the same visual transform for painting and
+    # hit testing. Parameter cards resolve at their settled anchor, not where
+    # the pointer happened to be released.
+    expect("local function CardVisualPose" in main_lua and "local pose = CardVisualPose(card.cardId, poses[i])" in main_lua,
+           "card draw and hit testing do not share one visual transform")
+    expect("local deployment = needsParameter and cardParameterStart_" in main_lua
+           and "QueueCardResolution(id, deployment.x, deployment.y, candidate)" in main_lua,
+           "parameter card burn still resolves at the release point")
+    expect("AnimateCardToHome(previous, PrimedCardPose(previous), .12)" in main_lua
+           and "AnimateCardToHome(id, from, .18)" in main_lua,
+           "primed or cancelled cards do not restore with Phaser timing")
+    expect("CARD_TEXT_SCALE = 144 / 124" in main_lua and "hasCandidate and .58" in main_lua
+           and "local function clamp(value, minimum, maximum)" in main_lua,
+           "card content scaling or parameter selector feedback differs from Phaser")
     expect("absorbing_" in main_lua and "absorbElapsedMs_ = math.min(520" in main_lua and "absorbElapsedMs_ >= 520" in main_lua, "success absorption timing differs from Phaser")
     expect("function Renderer:DrawApple(frame, apple, scale, alpha)" in renderer_lua and "1 - absorbProgress * .65" in main_lua, "success absorption visual differs from Phaser")
     expect("goalPulseElapsedMs_" in main_lua and "goalPulseElapsedMs_ / 460" in main_lua, "goal pulse timing differs from Phaser")
