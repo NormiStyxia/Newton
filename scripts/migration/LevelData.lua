@@ -1,3 +1,5 @@
+local PhysicsProfiles = require("migration.PhysicsProfiles")
+
 local LevelData = {}
 
 LevelData.SCHEMA_VERSION = 1
@@ -48,6 +50,9 @@ function LevelData.Validate(level)
     end
     if type(level.levelId) ~= "string" or not level.levelId:match("^[%w_-]+$") then
         AddError(errors, "levelId 格式无效")
+    end
+    if level.physicsProfile ~= nil and not PhysicsProfiles.IsKnown(level.physicsProfile) then
+        AddError(errors, "physicsProfile 无效：" .. tostring(level.physicsProfile))
     end
     if type(level.playfield) ~= "table"
         or not IsFiniteNumber(level.playfield.width)

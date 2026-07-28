@@ -145,24 +145,24 @@ function RuntimeFactory.CreateViewportBackground(scene)
     return { scene = scene, type = "design-background" }
 end
 
-function RuntimeFactory.CreateGround(scene, mapper, groundLevelY)
-    local _, groundViewportY = mapper:LevelToViewport(0, groundLevelY)
-    local bodyWidth = (mapper.viewportWidth - 34) / mapper.pixelsPerMeter
-    local bodyHeight = 28 / mapper.pixelsPerMeter
-    local worldX, worldY = mapper:ViewportToWorld(mapper.viewportWidth * 0.5, groundViewportY + 14)
-    local node = scene:CreateChild("Ground")
+local function createWorldBoundary(scene, mapper, definition)
+    local worldX, worldY = mapper:ViewportToWorld(definition.x, definition.y)
+    local bodyWidth = definition.width / mapper.pixelsPerMeter
+    local bodyHeight = definition.height / mapper.pixelsPerMeter
+    local node = scene:CreateChild(definition.id)
     node:SetPosition2D(worldX, worldY)
     local body = node:CreateComponent("RigidBody2D")
     body.bodyType = BT_STATIC
     local shape = node:CreateComponent("CollisionBox2D")
     shape:SetSize(bodyWidth, bodyHeight)
-    shape.friction = 0.78
-    shape.restitution = 0.22
+    shape.friction = definition.friction
+    shape.restitution = definition.restitution
     shape.categoryBits = CATEGORY_WORLD
     shape.maskBits = MASK_ALL
     return {
-        id = "world-floor",
-        type = "ground",
+        id = definition.id,
+        type = "world-boundary",
+        boundary = definition.boundary,
         node = node,
         body = body,
         shape = shape,
@@ -171,6 +171,67 @@ function RuntimeFactory.CreateGround(scene, mapper, groundLevelY)
         worldX = worldX,
         worldY = worldY,
     }
+end
+
+---@param scene Scene
+---@param mapper CoordinateMapper
+---@param groundLevelY number
+---@param enabledBoundaries table<string, boolean>
+---@return table
+function RuntimeFactory.CreateLaboratoryBoundaries(scene, mapper, groundLevelY, enabledBoundaries)
+    assert(type(enabledBoundaries) == "table", "physics profile boundaries are required")
+    local _, groundViewportY = mapper:LevelToViewport(0, groundLevelY)
+    local definitions = {
+        {
+            boundary = "floor",
+            id = "world-floor",
+            x = mapper.viewportWidth * 0.5,
+            y = groundViewportY + 14,
+            width = mapper.viewportWidth - 34,
+            height = 28,
+            friction = 0.78,
+            restitution = 0.22,
+        },
+        {
+            boundary = "ceiling",
+            id = "world-ceiling",
+            x = mapper.viewportWidth * 0.5,
+            y = 24,
+            width = mapper.viewportWidth - 34,
+            height = 24,
+            friction = 0.1,
+            restitution = 0.25,
+        },
+        {
+            boundary = "left",
+            id = "world-left",
+            x = 14,
+            y = mapper.viewportHeight * 0.5,
+            width = 24,
+            height = mapper.viewportHeight - 44,
+            friction = 0.1,
+            restitution = 0,
+        },
+        {
+            boundary = "right",
+            id = "world-right",
+            x = mapper.viewportWidth - 14,
+            y = mapper.viewportHeight * 0.5,
+            width = 24,
+            height = mapper.viewportHeight - 44,
+            friction = 0.1,
+            restitution = 0,
+        },
+    }
+    local runtime = { ordered = {}, byId = {} }
+    for _, definition in ipairs(definitions) do
+        if enabledBoundaries[definition.boundary] == true then
+            local boundary = createWorldBoundary(scene, mapper, definition)
+            runtime.ordered[#runtime.ordered + 1] = boundary
+            runtime.byId[boundary.id] = boundary
+        end
+    end
+    return runtime
 end
 
 function RuntimeFactory.CreateApple(scene, launcher)

@@ -1,6 +1,7 @@
 local LevelData = require("migration.LevelData")
 local CoordinateMapper = require("migration.CoordinateMapper")
 local DesignSpace = require("migration.DesignSpace")
+local PhysicsProfiles = require("migration.PhysicsProfiles")
 local Rules = require("migration.Rules")
 local RuntimeFactory = require("migration.RuntimeFactory")
 local Renderer2D = require("migration.Renderer")
@@ -11,7 +12,6 @@ local CONFIG = {
     title = "牛顿看了想打人",
     pixelsPerMeter = 100,
     matterFramesPerSecond = 60,
-    matterForceScale = 0.001,
     levelCount = 9,
     replaySampleMs = 1000 / 30,
 }
@@ -20,8 +20,6 @@ local CONFIG = {
 -- per second. These constants keep the migrated runtime on the source scale.
 CONFIG.matterVelocityToWorld = CONFIG.matterFramesPerSecond / CONFIG.pixelsPerMeter
 CONFIG.maxAppleSpeed = 25 * CONFIG.matterVelocityToWorld
-CONFIG.gravityAcceleration = CONFIG.matterForceScale
-    * (1000 / CONFIG.matterFramesPerSecond) * 1000 / CONFIG.pixelsPerMeter
 
 local LEVEL_META = {
     level_01 = { name = "第一颗苹果", objective = "让苹果进入观察皿", observation = "先观察抛物线，再谈万有引力。" },
@@ -52,9 +50,11 @@ local audio_ = nil
 ---@type table|nil
 local level_ = nil
 ---@type table|nil
+local physicsProfile_ = nil
+---@type table|nil
 local runtime_ = nil
 ---@type table|nil
-local ground_ = nil
+local laboratoryBoundaries_ = nil
 ---@type table|nil
 local apple_ = nil
 ---@type Vector2|nil
@@ -184,12 +184,12 @@ local function InitializeCards()
 end
 
 local function SetGravity()
-    if not physicsWorld_ or not level_ then return end
+    if not physicsWorld_ or not level_ or not physicsProfile_ then return end
     local base = level_.rules.initialGravity
     local gravity = Rules.GetGravity(rules_, base)
     physicsWorld_:SetGravity(Vector2(
-        gravity.x * gravity.strength * CONFIG.gravityAcceleration,
-        -gravity.y * gravity.strength * CONFIG.gravityAcceleration
+        gravity.x * gravity.strength * physicsProfile_.gravityAcceleration,
+        -gravity.y * gravity.strength * physicsProfile_.gravityAcceleration
     ))
     if apple_ and apple_.shape then
         apple_.shape.maskBits = rules_.phaseActive and (RuntimeFactory.MASK_ALL & ~RuntimeFactory.CATEGORY_PHASEABLE) or RuntimeFactory.MASK_ALL
@@ -277,6 +277,7 @@ end
 
 local function BuildLevel(index)
     level_ = LoadLevel(index)
+    physicsProfile_ = PhysicsProfiles.Resolve(level_.physicsProfile)
     failureCount_ = failureCountsByLevel_[level_.levelId] or 0
     observation_ = level_.observation or ""
     mapper_ = CoordinateMapper.New({
@@ -290,7 +291,9 @@ local function BuildLevel(index)
     audio_ = SynthAudio.New(scene_)
     SetupViewport()
     RuntimeFactory.CreateViewportBackground(scene_)
-    ground_ = RuntimeFactory.CreateGround(scene_, mapper_, LevelData.PLAYFIELD_GROUND_Y)
+    laboratoryBoundaries_ = RuntimeFactory.CreateLaboratoryBoundaries(
+        scene_, mapper_, LevelData.PLAYFIELD_GROUND_Y, physicsProfile_.boundaries
+    )
     runtime_ = RuntimeFactory.CreateLevelObjects({ scene = scene_, mapper = mapper_ }, level_)
     local launcher = LevelData.FindFirst(level_, "launcher")
     if not launcher then error("关卡缺少发射器") end

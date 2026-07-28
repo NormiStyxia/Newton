@@ -174,6 +174,7 @@ def main() -> int:
             expect(derived.with_suffix(derived.suffix + ".meta").exists(), f"audio meta missing {item['derived']}")
 
     main_lua = (MAKER_ROOT / "scripts/main.lua").read_text(encoding="utf-8")
+    profiles_lua = (MAKER_ROOT / "scripts/migration/PhysicsProfiles.lua").read_text(encoding="utf-8")
     factory_lua = (MAKER_ROOT / "scripts/migration/RuntimeFactory.lua").read_text(encoding="utf-8")
     renderer_lua = (MAKER_ROOT / "scripts/migration/Renderer.lua").read_text(encoding="utf-8")
     design_lua = (MAKER_ROOT / "scripts/migration/DesignSpace.lua").read_text(encoding="utf-8")
@@ -211,9 +212,12 @@ def main() -> int:
     expect("migration.TrajectoryPrediction" in main_lua and "TrajectoryPrediction.PredictFreeFlight" in main_lua, "source-equivalent trajectory preview is not wired")
     expect("MATTER_BASE_DELTA_MS = 1000 / 60" in trajectory_lua and "input.forceScale * MATTER_BASE_DELTA_MS * MATTER_BASE_DELTA_MS" in trajectory_lua, "trajectory integration scale differs from Phaser")
     expect("velocityX = velocityX * frictionFactor + accelerationX" in trajectory_lua and "if frame % input.sampleEvery == 0" in trajectory_lua, "trajectory integration order differs from Phaser")
-    expect("matterForceScale = 0.001" in main_lua and "matterVelocityToWorld" in main_lua, "Matter-to-Box2D velocity conversion missing")
+    expect("matterFramesPerSecond = 60" in main_lua and "matterVelocityToWorld" in main_lua, "Matter-to-Box2D velocity conversion missing")
     expect("CONFIG.maxAppleSpeed = 25 * CONFIG.matterVelocityToWorld" in main_lua and "local function CapAppleSpeed()" in main_lua, "source apple speed cap missing")
-    expect("CONFIG.gravityAcceleration = CONFIG.matterForceScale" in main_lua and "gravityAcceleration = 10" not in main_lua, "gravity scale is not converted from Matter units")
+    expect("PhysicsProfiles.Resolve" in main_lua and "physicsProfile_.gravityAcceleration" in main_lua, "gravity profile is not wired")
+    expect("STANDARD_GRAVITY_ACCELERATION" in profiles_lua and "MATTER_BASE_DELTA_MS * MATTER_BASE_DELTA_MS" in profiles_lua, "standard gravity conversion missing")
+    expect("INCIDENT_GRAVITY_ACCELERATION" in profiles_lua and "incident_codex_migration_01" in profiles_lua, "incident gravity profile missing")
+    expect("CreateLaboratoryBoundaries" in factory_lua and "world-ceiling" in factory_lua and "world-left" in factory_lua and "world-right" in factory_lua, "laboratory boundaries are incomplete")
     expect("DEFAULT_GRAVITY_MAGNITUDE = 1.05" in rules_lua and "function Rules.GetGravityMultiplier" in rules_lua, "source gravity magnitude or button multiplier missing")
     expect("APPLE_MATTER_AIR_FRICTION = 0.0015" in factory_lua and "body.linearDamping = 60 * (1 / (1 - APPLE_MATTER_AIR_FRICTION) - 1)" in factory_lua, "Matter air friction is not converted to Box2D damping")
     expect('SubscribeToEvent("PhysicsPreStep", "HandlePhysicsPreStep")' in main_lua and 'SubscribeToEvent("PhysicsPostStep", "HandlePhysicsPostStep")' in main_lua, "physics step event wiring missing")
@@ -252,7 +256,7 @@ def main() -> int:
 
     result = {
         "mode": "FAST_VALIDATE",
-        "checks": 138,
+        "checks": 141,
         "errors": errors,
         "status": "pass" if not errors else "fail",
     }
