@@ -123,7 +123,9 @@ local replaySamples_ = {}
 local replayEvents_ = {}
 local replaySavedApple_ = nil
 local replayOutcome_ = nil
-local replayModalSuppressed_ = false
+-- Replay mode is the sole owner of the replay UI, input and frozen physics
+-- lifecycle. The derived booleans remain only for the existing draw helpers.
+local replayMode_ = "none"
 local replayNextSampleMs_ = 0
 local replayPreviousSample_ = nil
 local applePhysicalContacts_ = {}
@@ -153,6 +155,26 @@ local StopReplay = nil
 local function SetStatus(value)
     status_ = value
     print("[Migration] " .. value)
+end
+
+---@param mode "none"|"playing"|"paused"|"finished"
+local function SetReplayMode(mode)
+    assert(mode == "none" or mode == "playing" or mode == "paused" or mode == "finished",
+        "unknown replay mode: " .. tostring(mode))
+    replayMode_ = mode
+    replayActive_ = mode ~= "none"
+    replayPaused_ = mode == "paused" or mode == "finished"
+    replayFinished_ = mode == "finished"
+end
+
+local function ReplayLog(event)
+    print(string.format(
+        "[Replay] %s mode=%s samples=%d duration=%.3f",
+        event,
+        replayMode_,
+        #replaySamples_,
+        (#replaySamples_ > 0 and (replaySamples_[#replaySamples_].t or 0) or 0) / 1000
+    ))
 end
 
 local function PlaySound(kind)
@@ -218,7 +240,20 @@ local function ApplyAppleCardMaterial()
 end
 
 local function RestoreAppleContactMaterial()
-    if apple_ and apple_.shape then apple_.shape.friction = MatterCalibration.APPLE_FRICTION end
+    if not apple_ or not apple_.shape then return end
+    if math.abs(apple_.shape.friction - MatterCalibration.APPLE_FRICTION) > .0001 then
+        apple_.shape.friction = MatterCalibration.APPLE_FRICTION
+        if apple_.body and apple_.body.bodyType == BT_DYNAMIC then apple_.body.awake = true end
+    end
+end
+
+local function ApplyAppleRestingContactMaterial()
+    if not apple_ or not apple_.shape then return end
+    local friction = MatterCalibration.AppleFixtureFrictionForMatterStaticContact()
+    if math.abs(apple_.shape.friction - friction) > .0001 then
+        apple_.shape.friction = friction
+        if apple_.body and apple_.body.bodyType == BT_DYNAMIC then apple_.body.awake = true end
+    end
 end
 
 local function ClearApplePhysicalContacts()
@@ -267,7 +302,6 @@ local function UpdateMatterStaticFriction()
     local gravity = physicsWorld_.gravity
     local velocity = apple_.body.linearVelocity
     local velocityScale = CurrentMatterVelocityToWorld()
-    local staticThreshold = MatterCalibration.MatterStaticFrictionThreshold()
     local hasPhysicalContact = false
     for _, contact in pairs(applePhysicalContacts_) do
         local normalX, normalY = PhysicalContactNormal(contact.node)
@@ -275,20 +309,18 @@ local function UpdateMatterStaticFriction()
             hasPhysicalContact = true
             local tangentVelocity = (-normalY * velocity.x + normalX * velocity.y) / velocityScale
             local normalAcceleration = math.abs(gravity.x * normalX + gravity.y * normalY)
-            local tangentAcceleration = math.abs(-normalY * gravity.x + normalX * gravity.y)
-            -- Matter uses its static branch only for slow tangential contact
-            -- motion. Box2D has one fixture coefficient, so use .25 only
-            -- while every active physical contact remains statically viable.
-            if math.abs(tangentVelocity) > MatterCalibration.MATTER_RESTING_TANGENT_SPEED
-                or normalAcceleration < .0001
-                or tangentAcceleration > staticThreshold * normalAcceleration + .0001 then
+            -- Matter selects its resting branch from tangential velocity; it
+            -- does not pre-emptively switch to dynamic friction just because
+            -- gravity points down a steep slope. Box2D then applies the same
+            -- .25 cap through its contact solver.
+            if not MatterCalibration.IsRestingContact(tangentVelocity, normalAcceleration) then
                 RestoreAppleContactMaterial()
                 return
             end
         end
     end
     if hasPhysicalContact then
-        apple_.shape.friction = MatterCalibration.AppleFixtureFrictionForMatterStaticContact()
+        ApplyAppleRestingContactMaterial()
     else
         RestoreAppleContactMaterial()
     end
@@ -430,16 +462,13 @@ local function BuildLevel(index)
     failed_ = false
     absorbing_ = false
     absorbElapsedMs_ = 0
-    replayActive_ = false
+    SetReplayMode("none")
     replayTime_ = 0
-    replayPaused_ = false
     replaySpeed_ = 1
-    replayFinished_ = false
     replaySamples_ = {}
     replayEvents_ = {}
     replaySavedApple_ = nil
     replayOutcome_ = nil
-    replayModalSuppressed_ = false
     cardBurns_ = {}
     cardBurnParticles_ = {}
     burningCardIds_ = {}
@@ -503,16 +532,13 @@ local function ResetExperiment(playResetSound)
     failed_ = false
     absorbing_ = false
     absorbElapsedMs_ = 0
-    replayActive_ = false
+    SetReplayMode("none")
     replayTime_ = 0
-    replayPaused_ = false
     replaySpeed_ = 1
-    replayFinished_ = false
     replaySamples_ = {}
     replayEvents_ = {}
     replaySavedApple_ = nil
     replayOutcome_ = nil
-    replayModalSuppressed_ = false
     cardBurns_ = {}
     cardBurnParticles_ = {}
     burningCardIds_ = {}
@@ -1419,7 +1445,7 @@ local function ResolveActiveCard(x, y)
 end
 
 local function IsResultOverlayVisible()
-    return not replayActive_ and not replayModalSuppressed_ and replayOutcome_ == nil and (success_ or failed_)
+    return replayMode_ == "none" and replayOutcome_ == nil and (success_ or failed_)
 end
 
 local function HandleReplayPointer(x, y, press)
@@ -1434,8 +1460,8 @@ local function HandleReplayPointer(x, y, press)
         end
         if inEndButton(38, 92) then
             replayTime_ = 0
-            replayFinished_ = false
-            replayPaused_ = false
+            SetReplayMode("playing")
+            ReplayLog("restart")
             return
         elseif inEndButton(137, 84) then
             StopReplay()
@@ -1447,9 +1473,12 @@ local function HandleReplayPointer(x, y, press)
     end
     if inButton(cx - 92, 44) then
         if replayFinished_ then
-            replayTime_ = 0; replayFinished_ = false; replayPaused_ = false
+            replayTime_ = 0
+            SetReplayMode("playing")
+            ReplayLog("restart")
         else
-            replayPaused_ = not replayPaused_
+            SetReplayMode(replayMode_ == "paused" and "playing" or "paused")
+            ReplayLog(replayMode_ == "paused" and "pause" or "resume")
         end
     elseif inButton(cx - 27, 58) then
         replaySpeed_ = .5
@@ -1657,6 +1686,7 @@ StartReplay = function()
         -- Phaser only constructs a replay from a real recorded timeline. A
         -- fabricated 33 ms record finishes on the next frame and looks frozen.
         SetStatus("REPLAY · 轨迹记录不足")
+        ReplayLog("rejected")
         return
     end
     local p, v = apple_.node.position2D, apple_.body.linearVelocity
@@ -1665,9 +1695,9 @@ StartReplay = function()
         bodyType = apple_.body.bodyType, vx = v.x, vy = v.y, angularVelocity = apple_.body.angularVelocity,
     }
     -- Keep modal suppression independent from the result state. This is the
-    -- final rendering backstop for stale completion state during the handoff.
+    -- result outcome restored when the replay exits.
     replayOutcome_ = success_ and "CLEARED" or "FAILED"
-    replayModalSuppressed_ = true
+    SetReplayMode("playing")
     success_ = false
     failed_ = false
     absorbing_ = false
@@ -1675,9 +1705,6 @@ StartReplay = function()
     ResetGoal()
     isPaused_ = false
     SetBulletTimeActive(false)
-    replayActive_ = true
-    replayPaused_ = false
-    replayFinished_ = false
     replayTime_ = 0
     replaySpeed_ = 1
     ClearCardInteraction()
@@ -1687,15 +1714,14 @@ StartReplay = function()
     ClearApplePhysicalContacts()
     SyncPhysicsUpdateEnabled()
     SetStatus("REPLAY · 轨迹回放")
+    ReplayLog("start")
 end
 
 StopReplay = function()
     if not replayActive_ or not apple_ then return end
     local saved = replaySavedApple_
     local outcome = replayOutcome_
-    replayActive_ = false
-    replayPaused_ = false
-    replayFinished_ = false
+    SetReplayMode("none")
     replayTime_ = 0
     replaySavedApple_ = nil
     replayOutcome_ = nil
@@ -1710,20 +1736,20 @@ StopReplay = function()
         apple_.body.angularVelocity = saved.angularVelocity
         apple_.body.awake = true
     end
-    replayModalSuppressed_ = false
     ClearApplePhysicalContacts()
     SyncPhysicsUpdateEnabled()
     if success_ then SetStatus("CLEARED · 观测成立")
     elseif failed_ then SetStatus("FAILED · 实验未成立")
     else SetStatus(launched_ and "FLIGHT · 规则已生效" or "READY · 等待发射") end
+    ReplayLog("exit")
 end
 
 local function UpdateReplay(dt)
-    if not replayActive_ or replayPaused_ or replayFinished_ then return end
+    if replayMode_ ~= "playing" then return end
     replayTime_ = math.min(ReplayDuration(), replayTime_ + math.max(0, dt) * 1000 * replaySpeed_)
     if replayTime_ >= ReplayDuration() then
-        replayFinished_ = true
-        replayPaused_ = true
+        SetReplayMode("finished")
+        ReplayLog("finished")
     end
 end
 
@@ -2261,7 +2287,7 @@ local function DrawCardBurnParticles()
 end
 
 local function DrawOverlay()
-    if replayActive_ or replayModalSuppressed_ then return end
+    if replayMode_ ~= "none" then return end
     if (activeCardId_ or primedCardId_ or #cardBurns_ > 0) and not isPaused_ and not success_ and not failed_ then
         painter_:RoundedRect(frame_.playfieldX + 8, frame_.playfieldY + 8, frame_.playfieldWidth - 16, frame_.playfieldHeight - 16, 5, Renderer2D.COLORS.greenSoft, Renderer2D.COLORS.primaryActive, 3, 46)
     end

@@ -236,7 +236,7 @@ def main() -> int:
     expect("input:GetMouseButtonPress(MOUSEB_RIGHT)" in main_lua and "input:GetKeyPress(KEY_ESCAPE)" in main_lua and "ToggleTacticalPause" in main_lua, "source keyboard or cancel interaction is missing")
     expect("replayNextSampleMs_" in main_lua and "while replayNextSampleMs_ <= flightMs_ + .0001 do" in main_lua, "replay no longer interpolates at the source sample cadence")
     expect("replayPreviousSample_" in main_lua and "deltaAngle = ((current.angle - previous.angle + 540) % 360) - 180" in main_lua, "replay angle interpolation differs from Phaser")
-    expect("local function IsResultOverlayVisible()" in main_lua and "if replayActive_ or replayModalSuppressed_ then return end" in main_lua, "replay does not hide the completed-result overlay")
+    expect("local function IsResultOverlayVisible()" in main_lua and 'if replayMode_ ~= "none" then return end' in main_lua, "replay does not hide the completed-result overlay")
     expect("if replayActive_ then HandleReplayPointer(x, y, press); return end" in main_lua, "replay controls do not retain pointer priority over result controls")
     expect('replayOutcome_ = success_ and "CLEARED" or "FAILED"' in main_lua and "success_ = false" in main_lua and "SyncPhysicsUpdateEnabled()" in main_lua, "replay does not take exclusive ownership of outcome UI and physics")
     expect('success_ = outcome == "CLEARED"' in main_lua and 'failed_ = outcome == "FAILED"' in main_lua, "replay exit does not restore its saved result state")

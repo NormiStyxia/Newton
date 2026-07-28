@@ -59,4 +59,16 @@ function MatterCalibration.AppleFixtureFrictionForMatterStaticContact()
     return (contactFriction * contactFriction) / MatterCalibration.STATIC_FRICTION
 end
 
+---@param tangentVelocity number Matter pixels per 60 Hz frame
+---@param normalAcceleration number world metres per second squared
+---@return boolean
+function MatterCalibration.IsRestingContact(tangentVelocity, normalAcceleration)
+    -- Matter enters its cached resting-tangent solve based on the relative
+    -- tangential velocity alone. Normal support is still required here so a
+    -- circle grazing a vertical wall cannot acquire artificial adhesion from
+    -- the Box2D approximation.
+    return math.abs(tangentVelocity) <= MatterCalibration.MATTER_RESTING_TANGENT_SPEED
+        and normalAcceleration >= .0001
+end
+
 return MatterCalibration

@@ -169,8 +169,13 @@ def main() -> int:
            "replay start does not reject an unrecorded timeline")
     expect("local function CanReplay()" in main_lua and "#replaySamples_ >= 2" in main_lua,
            "replay availability does not require a real timeline")
-    expect("replayActive_ = true" in main_lua and "replayModalSuppressed_ = true" in main_lua and "ClearCardInteraction()" in main_lua,
+    expect("local function SetReplayMode(mode)" in main_lua and 'SetReplayMode("playing")' in main_lua
+           and 'replayMode_ ~= "none"' in main_lua and "ClearCardInteraction()" in main_lua,
            "replay start does not take exclusive ownership of the result UI")
+    expect("replayModalSuppressed_" not in main_lua,
+           "replay modal visibility still depends on a second mutable flag")
+    expect("[Replay]" in main_lua and "ReplayLog(\"start\")" in main_lua and "ReplayLog(\"finished\")" in main_lua,
+           "replay lifecycle has no runtime audit markers")
 
     # Matter combines contact friction with min(a, b); Box2D uses sqrt(a*b).
     # Giving each Box2D fixture 0.1 yields the same apple/static baseline,
@@ -183,6 +188,17 @@ def main() -> int:
            "Matter static friction threshold is not 0.25")
     expect(math.isclose(math.sqrt(static_fixture * 0.1), static_contact, rel_tol=0, abs_tol=1e-12),
            "Box2D fixture does not reproduce Matter's low-speed static contact")
+    # Matter does not choose its resting tangent branch from slope angle. The
+    # Box2D adapter must keep the .25 material through low-speed slope contact
+    # and let the solver decide whether it can hold.
+    expect("MatterCalibration.IsRestingContact(tangentVelocity, normalAcceleration)" in main_lua,
+           "static friction is not gated by the Matter tangent-speed branch")
+    expect("tangentAcceleration >" not in main_lua,
+           "static friction still switches to dynamic material prematurely on slopes")
+    expect("function MatterCalibration.IsRestingContact" in calibration,
+           "Matter resting-contact calibration helper is missing")
+    expect(math.sqrt(6) > 0.25,
+           "Matter tangent resting threshold unexpectedly collapsed into the friction limit")
     expect(max(0.0, 0.0) == 0.0 and max(0.88, 0.0) == 0.88,
            "baseline and Hooke restitution do not reproduce Matter contact response")
 
