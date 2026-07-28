@@ -251,6 +251,9 @@ function RuntimeFactory.CreateApple(scene, launcher)
     -- Box2D damping is per second, so use its equivalent 60 Hz coefficient.
     body.linearDamping = MatterCalibration.Box2DLinearDamping(MatterCalibration.APPLE_FRICTION_AIR)
     body.angularDamping = 0
+    -- The source Matter scene explicitly disables sleeping. The world-level
+    -- setting is mirrored in main.lua; keep the apple explicit as well.
+    body.allowSleep = false
     body.fixedRotation = false
     body.bullet = false
     local shape = node:CreateComponent("CollisionCircle2D")

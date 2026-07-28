@@ -120,6 +120,10 @@ def main() -> int:
            "card material updates are not isolated from normal gravity setup")
     expect("1 / 3" not in main_lua and "SetBulletTimeActive" in main_lua and "bulletTimeScale = 0.05" in main_lua,
            "bullet time still uses sparse full physics steps")
+    expect("physicsWorld_:SetAllowSleeping(false)" in main_lua,
+           "Box2D world allows sleeping while the source Matter scene does not")
+    expect("body.allowSleep = false" in factory,
+           "apple body allows sleeping while the source Matter body does not")
 
     # Matter keeps a velocity normalized to its 60 Hz base delta. During
     # engine timeScale=s, the stored displacement is s times that velocity;
@@ -156,8 +160,14 @@ def main() -> int:
            "spring exit velocity is not scaled for Matter bullet time")
     expect("eventData:GetFloat(\"TimeStep\")" in main_lua and "timeStep" in calibration,
            "air damping is not calibrated to the current physics step")
-    expect("CaptureReplayFinalSample()" in main_lua and "if #replaySamples_ < 2 then return end" in main_lua,
-           "replay start does not normalize its terminal sample")
+    expect("CaptureReplayFinalSample()" in main_lua and "if #replaySamples_ < 2 then return end" not in main_lua,
+           "replay start still rejects a short terminal trajectory")
+    expect("if #replaySamples_ == 0 then" in main_lua and "replaySamples_[1] = {" in main_lua,
+           "replay start does not provide a deterministic fallback sample")
+    expect("if #replaySamples_ == 1 then" in main_lua and "replaySamples_[2] = {" in main_lua,
+           "replay start does not normalize a short terminal trajectory into a time range")
+    expect("replayActive_ = true" in main_lua and "ClearCardInteraction()" in main_lua,
+           "replay start does not take ownership of the UI state")
 
     # Matter combines contact friction with min(a, b); Box2D uses sqrt(a*b).
     # Giving each Box2D fixture 0.1 yields the same apple/static baseline,

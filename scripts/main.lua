@@ -271,6 +271,9 @@ local function CreateScene()
     physicsWorld_ = scene_:CreateComponent("PhysicsWorld2D")
     physicsWorld_:SetVelocityIterations(8)
     physicsWorld_:SetPositionIterations(10)
+    -- Phaser Matter runs this scene with sleeping disabled. Leaving Box2D's
+    -- default enabled makes low-speed slide/contact outcomes frame-dependent.
+    physicsWorld_:SetAllowSleeping(false)
     physicsWorld_:SetContinuousPhysics(true)
     physicsWorld_:SetAutoClearForces(true)
     SetGravity()
@@ -1439,19 +1442,49 @@ end
 StartReplay = function()
     if replayActive_ or not apple_ then return end
     CaptureReplayFinalSample()
-    if #replaySamples_ < 2 then return end
     local p, v = apple_.node.position2D, apple_.body.linearVelocity
+    -- A completed experiment normally has a launch sample plus a terminal
+    -- sample. Keep the replay UI recoverable when an external completion
+    -- route produced no sample instead of silently leaving the result modal
+    -- as the only visible control.
+    if #replaySamples_ == 0 then
+        replaySamples_[1] = {
+            t = 0,
+            x = p.x,
+            y = p.y,
+            vx = v.x,
+            vy = v.y,
+            angle = apple_.node.rotation2D,
+        }
+    end
+    if #replaySamples_ == 1 then
+        -- A replay UI has a time range by contract. Keep an otherwise empty
+        -- terminal record playable rather than completing on its first frame.
+        local sample = replaySamples_[1]
+        replaySamples_[2] = {
+            t = (sample.t or 0) + CONFIG.replaySampleMs,
+            x = p.x,
+            y = p.y,
+            vx = v.x,
+            vy = v.y,
+            angle = apple_.node.rotation2D,
+        }
+    end
     replaySavedApple_ = {
         x = p.x, y = p.y, angle = apple_.node.rotation2D,
         bodyType = apple_.body.bodyType, vx = v.x, vy = v.y, angularVelocity = apple_.body.angularVelocity,
     }
-    apple_.body.bodyType = BT_STATIC
-    apple_.body.linearVelocity = Vector2(0, 0)
-    apple_.body.angularVelocity = 0
+    -- Set this before mutating the body. Rendering and input now both route
+    -- through the replay controller in the same frame as the button press.
     replayActive_ = true
     replayPaused_ = false
     replayFinished_ = false
     replayTime_ = 0
+    replaySpeed_ = 1
+    ClearCardInteraction()
+    apple_.body.bodyType = BT_STATIC
+    apple_.body.linearVelocity = Vector2(0, 0)
+    apple_.body.angularVelocity = 0
     SetStatus("REPLAY · 轨迹回放")
 end
 
@@ -2118,7 +2151,7 @@ function HandleUpdate(_eventType, eventData)
 end
 
 ---@param _eventType string
----@param _eventData PhysicsPreStepEventData
+---@param eventData PhysicsPreStepEventData
 function HandlePhysicsPreStep(_eventType, eventData)
     if not apple_ or not launched_ or replayActive_ or apple_.body.bodyType ~= BT_DYNAMIC then
         applePreSolveVelocity_ = nil
