@@ -1973,40 +1973,102 @@ end
 function DrawReplay()
     local state = ReplayStateAt(replayTime_)
     if not state then return end
-    local samples = replaySamples_
-    if #samples > 1 then
-        nvgStrokeWidth(painter_.vg, 2)
-        nvgStrokeColor(painter_.vg, nvgRGBA(95, 143, 104, 64))
-        nvgBeginPath(painter_.vg)
-        for i, sample in ipairs(samples) do
-            local x, y = design_:WorldToLogical(sample.x, sample.y)
-            if i == 1 then nvgMoveTo(painter_.vg, x, y) else nvgLineTo(painter_.vg, x, y) end
+    local samples = {}
+    for _, sample in ipairs(replaySamples_) do
+        if sample.t > replayTime_ + .001 then break end
+        samples[#samples + 1] = sample
+    end
+    local lastSample = samples[#samples]
+    if not lastSample or math.abs(lastSample.t - replayTime_) > .001 then
+        samples[#samples + 1] = {
+            t = replayTime_, x = state.x, y = state.y,
+            vx = state.vx, vy = state.vy, angle = state.angle,
+        }
+    end
+    if #samples > 0 then
+        for i = 2, #samples do
+            local from, to = samples[i - 1], samples[i]
+            local fromX, fromY = design_:WorldToLogical(from.x, from.y)
+            local toX, toY = design_:WorldToLogical(to.x, to.y)
+            local recent = replayTime_ - to.t <= 1300
+            nvgStrokeWidth(painter_.vg, recent and 4 or 2)
+            nvgStrokeColor(painter_.vg, nvgRGBA(95, 143, 104, recent and 204 or 64))
+            nvgBeginPath(painter_.vg)
+            nvgMoveTo(painter_.vg, fromX, fromY)
+            nvgLineTo(painter_.vg, toX, toY)
+            nvgStroke(painter_.vg)
         end
-        nvgStroke(painter_.vg)
-        nvgStrokeWidth(painter_.vg, 4)
-        nvgStrokeColor(painter_.vg, nvgRGBA(95, 143, 104, 204))
-        nvgBeginPath(painter_.vg)
-        for i, sample in ipairs(samples) do
-            if sample.t > replayTime_ then break end
-            local x, y = design_:WorldToLogical(sample.x, sample.y)
-            if i == 1 then nvgMoveTo(painter_.vg, x, y) else nvgLineTo(painter_.vg, x, y) end
+
+        local startX, startY = design_:WorldToLogical(samples[1].x, samples[1].y)
+        painter_:Circle(startX, startY, 10, nil, Renderer2D.COLORS.darkPrimary, 3, 209)
+
+        local traversed, nextArrow = 0, 110
+        for i = 2, #samples do
+            local from, to = samples[i - 1], samples[i]
+            local fromX, fromY = design_:WorldToLogical(from.x, from.y)
+            local toX, toY = design_:WorldToLogical(to.x, to.y)
+            local dx, dy = toX - fromX, toY - fromY
+            local length = math.sqrt(dx * dx + dy * dy)
+            if length >= .001 then
+                while traversed + length >= nextArrow do
+                    local progress = (nextArrow - traversed) / length
+                    local x, y = fromX + dx * progress, fromY + dy * progress
+                    local ux, uy = dx / length, dy / length
+                    local normalX, normalY = -uy, ux
+                    local arrowTime = from.t + (to.t - from.t) * progress
+                    local recent = replayTime_ - arrowTime <= 1300
+                    nvgFillColor(painter_.vg, nvgRGBA(82, 117, 93, recent and 209 or 117))
+                    nvgBeginPath(painter_.vg)
+                    nvgMoveTo(painter_.vg, x + ux * 8, y + uy * 8)
+                    nvgLineTo(painter_.vg, x - ux * 5 + normalX * 5, y - uy * 5 + normalY * 5)
+                    nvgLineTo(painter_.vg, x - ux * 5 - normalX * 5, y - uy * 5 - normalY * 5)
+                    nvgClosePath(painter_.vg)
+                    nvgFill(painter_.vg)
+                    nextArrow = nextArrow + 110
+                end
+                traversed = traversed + length
+            end
         end
-        local currentX, currentY = design_:WorldToLogical(state.x, state.y)
-        nvgLineTo(painter_.vg, currentX, currentY); nvgStroke(painter_.vg)
+
+        if replayFinished_ then
+            local finishSample = samples[#samples]
+            local endX, endY = design_:WorldToLogical(finishSample.x, finishSample.y)
+            painter_:Circle(endX, endY, 7, Renderer2D.COLORS.darkPrimary, nil, nil, 230)
+            nvgStrokeColor(painter_.vg, nvgRGBA(47, 73, 56, 230))
+            nvgStrokeWidth(painter_.vg, 2)
+            nvgBeginPath(painter_.vg)
+            nvgMoveTo(painter_.vg, endX + 10, endY + 9)
+            nvgLineTo(painter_.vg, endX + 10, endY - 18)
+            nvgStroke(painter_.vg)
+            nvgFillColor(painter_.vg, nvgRGBA(117, 180, 110, 242))
+            nvgBeginPath(painter_.vg)
+            nvgMoveTo(painter_.vg, endX + 10, endY - 18)
+            nvgLineTo(painter_.vg, endX + 31, endY - 12)
+            nvgLineTo(painter_.vg, endX + 10, endY - 6)
+            nvgClosePath(painter_.vg)
+            nvgFill(painter_.vg)
+        end
     end
 
+    local sequence = 0
     for _, event in ipairs(replayEvents_) do
+        if event.type == "CARD_PLAYED" or event.type == "NEWTON_PUNCH" then
+            sequence = sequence + 1
+        end
         if event.t <= replayTime_ and (event.type == "CARD_PLAYED" or event.type == "NEWTON_PUNCH") then
             local x, y = design_:WorldToLogical(event.x, event.y)
             local card = event.cardId and Rules.CARDS[event.cardId] or nil
             local accent = card and card.accent or Renderer2D.COLORS.warning
             painter_:Circle(x, y, 15, Renderer2D.COLORS.panel, accent, 2, 245)
             painter_:Text(x, y - 7, card and card.symbol or "N", 13, card and Renderer2D.COLORS.text or Renderer2D.COLORS.warning, NVG_ALIGN_CENTER + NVG_ALIGN_TOP, "maker-display")
+            painter_:Circle(x + 11, y - 11, 8, Renderer2D.COLORS.dark, nil, nil, 255)
+            painter_:Text(x + 11, y - 15, tostring(sequence), 9, Renderer2D.COLORS.white, NVG_ALIGN_CENTER + NVG_ALIGN_TOP, "maker-display")
         end
     end
 
     local appleX, appleY = design_:WorldToLogical(state.x, state.y)
-    painter_:Circle(appleX, appleY, 37, Renderer2D.COLORS.primaryActive, Renderer2D.COLORS.primaryActive, 2, 48)
+    painter_:Circle(appleX, appleY, 37, Renderer2D.COLORS.primaryActive, nil, nil, 48)
+    painter_:Circle(appleX, appleY, 37, nil, Renderer2D.COLORS.primaryActive, 2, 122)
     painter_:Image(painter_.images.apple, appleX, appleY, 64, 64, 1, math.rad(state.angle or 0))
 
     local cx, cy = frame_.playfieldX + frame_.playfieldWidth * .5, frame_.playfieldY + 34
@@ -2348,7 +2410,7 @@ function DrawCardBurnParticles()
     end
 end
 
-function DrawOverlay()
+function DrawPlayfieldOverlay()
     if replayMode_ ~= "none" then return end
     if (activeCardId_ or primedCardId_ or #cardBurns_ > 0) and not isPaused_ and not success_ and not failed_ then
         painter_:RoundedRect(frame_.playfieldX + 8, frame_.playfieldY + 8, frame_.playfieldWidth - 16, frame_.playfieldHeight - 16, 5, Renderer2D.COLORS.greenSoft, nil, nil, 46)
@@ -2358,6 +2420,10 @@ function DrawOverlay()
         painter_:FillRect(frame_.playfieldX, frame_.playfieldY, frame_.playfieldWidth, frame_.playfieldHeight, { 0, 0, 0, 255 }, 66)
         painter_:Text(frame_.playfieldX + frame_.playfieldWidth - 24, frame_.playfieldY + 18, "实验暂停 · 规则卡可操作", 13, Renderer2D.COLORS.text, NVG_ALIGN_RIGHT + NVG_ALIGN_TOP)
     end
+end
+
+function DrawResultOverlay()
+    if replayMode_ ~= "none" then return end
     if IsResultOverlayVisible() then
         painter_:FillRect(0, 0, frame_.logicalWidth, frame_.logicalHeight, Renderer2D.COLORS.background, 199)
         local cx, cy = frame_.playfieldX + frame_.playfieldWidth * .5, frame_.playfieldY + frame_.playfieldHeight * .5
@@ -2670,6 +2736,7 @@ function HandleRender()
         painter_:DrawApple(frame_, apple_, 1 - absorbProgress * .65, 1 - absorbProgress * .65)
         DrawVelocityArrow()
         DrawRulePulse()
+        DrawPlayfieldOverlay()
     end
     DrawHUD()
     DrawCards()
@@ -2677,6 +2744,6 @@ function HandleRender()
     DrawCardBurns()
     DrawCardBurnParticles()
     DrawRuleFlash()
-    DrawOverlay()
+    DrawResultOverlay()
     painter_:Finish()
 end
