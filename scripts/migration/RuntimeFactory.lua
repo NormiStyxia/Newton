@@ -1,11 +1,11 @@
 local RuntimeFactory = {}
+local MatterCalibration = require("migration.MatterCalibration")
 
 local CATEGORY_APPLE = 0x0001
 local CATEGORY_WORLD = 0x0002
 local CATEGORY_SENSOR = 0x0004
 local CATEGORY_PHASEABLE = 0x0008
 local MASK_ALL = 0xFFFF
-local APPLE_MATTER_AIR_FRICTION = 0.0015
 
 local function levelTransform(mapper, transform)
     local x, y = mapper:LevelToWorld(transform.x, transform.y)
@@ -26,6 +26,8 @@ local function createBox(context, data, category, mask, trigger)
     shape.categoryBits = category
     shape.maskBits = mask
     shape.trigger = trigger == true
+    shape.friction = MatterCalibration.STATIC_FRICTION
+    shape.restitution = MatterCalibration.STATIC_RESTITUTION
     return {
         id = data.id,
         type = data.type,
@@ -49,8 +51,10 @@ FACTORIES.wall = function(context, data)
     local runtime = createBox(context, data, category, MASK_ALL, false)
     runtime.phaseable = phaseable
     runtime.collisionEnabled = props.collisionEnabled ~= false
-    runtime.baseFriction = props.friction or 0.62
-    runtime.baseRestitution = props.restitution or 0.32
+    -- SetBody + setStatic reset Phaser's declared wall material. Keep the
+    -- runtime-effective values here, while preserving source values in JSON.
+    runtime.baseFriction = MatterCalibration.STATIC_FRICTION
+    runtime.baseRestitution = MatterCalibration.STATIC_RESTITUTION
     runtime.shape.friction = runtime.baseFriction
     runtime.shape.restitution = runtime.baseRestitution
     runtime.shape.trigger = not runtime.collisionEnabled
@@ -100,8 +104,8 @@ FACTORIES.spring = function(context, data)
     runtime.enabled = props.enabled ~= false
     runtime.enabledChannel = props.enabledChannel or ""
     runtime.channelEnabled = true
-    runtime.shape.friction = 0.1
-    runtime.shape.restitution = 0.5
+    runtime.shape.friction = MatterCalibration.STATIC_FRICTION
+    runtime.shape.restitution = MatterCalibration.STATIC_RESTITUTION
     return runtime
 end
 
@@ -133,8 +137,8 @@ FACTORIES.door = function(context, data)
     runtime.duration = props.duration or 420
     runtime.closeDelay = props.closeDelay or 180
     runtime.antiCrush = props.antiCrush ~= false
-    runtime.shape.friction = 0.3
-    runtime.shape.restitution = 0.1
+    runtime.shape.friction = MatterCalibration.STATIC_FRICTION
+    runtime.shape.restitution = MatterCalibration.STATIC_RESTITUTION
     return runtime
 end
 
@@ -155,8 +159,10 @@ local function createWorldBoundary(scene, mapper, definition)
     body.bodyType = BT_STATIC
     local shape = node:CreateComponent("CollisionBox2D")
     shape:SetSize(bodyWidth, bodyHeight)
-    shape.friction = definition.friction
-    shape.restitution = definition.restitution
+    -- Matter Body.setStatic makes all laboratory boundaries use its default
+    -- material, despite the constructor options in PlayScene.ts.
+    shape.friction = MatterCalibration.STATIC_FRICTION
+    shape.restitution = MatterCalibration.STATIC_RESTITUTION
     shape.categoryBits = CATEGORY_WORLD
     shape.maskBits = MASK_ALL
     return {
@@ -241,17 +247,17 @@ function RuntimeFactory.CreateApple(scene, launcher)
     body.bodyType = BT_STATIC
     body.useFixtureMass = false
     body.mass = 1
-    -- Matter's frictionAir=0.0015 is applied once per 60 Hz frame. Box2D
-    -- damping is per second, so use the equivalent exponential coefficient.
-    body.linearDamping = 60 * (1 / (1 - APPLE_MATTER_AIR_FRICTION) - 1)
+    -- The source's setCircle call resets frictionAir to Matter's .01 default.
+    -- Box2D damping is per second, so use its equivalent 60 Hz coefficient.
+    body.linearDamping = MatterCalibration.Box2DLinearDamping(MatterCalibration.APPLE_FRICTION_AIR)
     body.angularDamping = 0
     body.fixedRotation = false
     body.bullet = false
     local shape = node:CreateComponent("CollisionCircle2D")
     shape.radius = 0.27
     shape.density = 1 / (math.pi * 0.27 * 0.27)
-    shape.friction = 0.002
-    shape.restitution = 0.36
+    shape.friction = MatterCalibration.APPLE_FRICTION
+    shape.restitution = MatterCalibration.APPLE_INITIAL_RESTITUTION
     shape.categoryBits = CATEGORY_APPLE
     shape.maskBits = MASK_ALL
     return {
@@ -261,7 +267,8 @@ function RuntimeFactory.CreateApple(scene, launcher)
         body = body,
         shape = shape,
         radius = 0.27,
-        baseRestitution = 0.36,
+        baseRestitution = MatterCalibration.APPLE_INITIAL_RESTITUTION,
+        baseFrictionAir = MatterCalibration.APPLE_FRICTION_AIR,
         displayRadius = 32,
         launcher = launcher,
         phaseActive = false,

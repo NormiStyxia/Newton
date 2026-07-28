@@ -22,6 +22,7 @@ def main() -> int:
     profiles = (ROOT / "scripts/migration/PhysicsProfiles.lua").read_text(encoding="utf-8")
     main_lua = (ROOT / "scripts/main.lua").read_text(encoding="utf-8")
     factory = (ROOT / "scripts/migration/RuntimeFactory.lua").read_text(encoding="utf-8")
+    calibration = (ROOT / "scripts/migration/MatterCalibration.lua").read_text(encoding="utf-8")
     level_data = (ROOT / "scripts/migration/LevelData.lua").read_text(encoding="utf-8")
 
     standard_id = "standard"
@@ -103,6 +104,58 @@ def main() -> int:
         path.read_text(encoding="utf-8") for path in production_levels
     ), "incident profile leaked into a production level")
     expect(main_lua.count(incident_id) == 0, "main runtime hard-codes the incident profile")
+
+    # The source's SetBody/Body.setStatic calls replace constructor material
+    # values. These assertions lock the migration to the observed runtime
+    # values rather than the misleading declarative options.
+    expect("APPLE_FRICTION = 0.1" in calibration, "apple effective friction is not calibrated")
+    expect("APPLE_FRICTION_AIR = 0.01" in calibration, "apple effective air friction is not calibrated")
+    expect("APPLE_INITIAL_RESTITUTION = 0" in calibration, "apple initial restitution is not calibrated")
+    expect("STATIC_FRICTION = 0.1" in calibration and "STATIC_RESTITUTION = 0" in calibration,
+           "static Matter material is not calibrated")
+    expect("CARD_RESTITUTION_BASE = 0.36" in calibration, "card restitution baseline is not preserved")
+    expect("MatterCalibration.APPLE_FRICTION" in factory and "MatterCalibration.STATIC_FRICTION" in factory,
+           "RuntimeFactory does not use calibrated Matter materials")
+    expect("MatterCalibration.CardRestitution" in main_lua and "ApplyAppleCardMaterial" in main_lua,
+           "card material updates are not isolated from normal gravity setup")
+    expect("1 / 3" not in main_lua and "SetBulletTimeActive" in main_lua and "bulletTimeScale = 0.05" in main_lua,
+           "bullet time still uses sparse full physics steps")
+
+    # Matter keeps a velocity normalized to its 60 Hz base delta. During
+    # engine timeScale=s, the stored displacement is s times that velocity;
+    # Box2D instead integrates metres/second over an unscaled 1/60 second.
+    # These identities verify the adapter used by SetBulletTimeActive and
+    # SetGravity for normal and card-induced 0.05 time.
+    air_friction = 0.01
+    velocity_to_world = 60 / pixels_per_meter
+    source_velocity = 13.7
+    source_frame_acceleration = 0.73
+    source_gravity = source_frame_acceleration * 60**2 / pixels_per_meter
+    for time_scale in (1.0, 0.05):
+        retention = 1 - air_friction * time_scale
+        box2d_damping = 60 * (1 / retention - 1)
+        maker_before = source_velocity * velocity_to_world * time_scale
+        maker_after = maker_before / (1 + box2d_damping / 60) + source_gravity * time_scale**2 / 60
+        matter_reported_after = source_velocity * retention + source_frame_acceleration * time_scale
+        expected_maker_after = matter_reported_after * velocity_to_world * time_scale
+        expect(math.isclose(maker_after, expected_maker_after, rel_tol=0, abs_tol=1e-12),
+               f"Box2D bullet-time adapter diverges at scale {time_scale}")
+    expect(math.isclose(
+        source_velocity * velocity_to_world * 0.05 / 0.05,
+        source_velocity * velocity_to_world,
+        rel_tol=0,
+        abs_tol=1e-12,
+    ), "bullet-time exit does not restore the Matter-normalized velocity")
+    expect("velocity.x * scaleRatio" in main_lua and "timeScale * timeScale" in main_lua,
+           "runtime does not apply the verified velocity/gravity time-scale mapping")
+
+    # Matter combines contact friction with min(a, b); Box2D uses sqrt(a*b).
+    # Giving each Box2D fixture 0.1 yields the same apple/static baseline,
+    # while restitution keeps the source's max(a, b) behavior.
+    expect(math.isclose(math.sqrt(0.1 * 0.1), min(0.1, 1.0), rel_tol=0, abs_tol=1e-12),
+           "Box2D fixture friction does not reproduce Matter apple/static friction")
+    expect(max(0.0, 0.0) == 0.0 and max(0.88, 0.0) == 0.88,
+           "baseline and Hooke restitution do not reproduce Matter contact response")
 
     result = {
         "mode": "PHYSICS_PROFILE_VALIDATE",

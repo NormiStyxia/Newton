@@ -174,6 +174,7 @@ def main() -> int:
             expect(derived.with_suffix(derived.suffix + ".meta").exists(), f"audio meta missing {item['derived']}")
 
     main_lua = (MAKER_ROOT / "scripts/main.lua").read_text(encoding="utf-8")
+    calibration_lua = (MAKER_ROOT / "scripts/migration/MatterCalibration.lua").read_text(encoding="utf-8")
     profiles_lua = (MAKER_ROOT / "scripts/migration/PhysicsProfiles.lua").read_text(encoding="utf-8")
     factory_lua = (MAKER_ROOT / "scripts/migration/RuntimeFactory.lua").read_text(encoding="utf-8")
     renderer_lua = (MAKER_ROOT / "scripts/migration/Renderer.lua").read_text(encoding="utf-8")
@@ -197,8 +198,10 @@ def main() -> int:
     expect("graphics:GetDPR" in design_lua and "renderScale" in design_lua, "DPR-aware design scaling missing")
     expect("source-svg" not in all_lua, "runtime reads original SVG files")
     expect("NoTextureUnlit.xml" not in all_lua and "StaticModel" not in all_lua, "obsolete geometry renderer remains")
-    expect("QueueCardResolution" in main_lua and "duration = 690" in main_lua, "card burn timing missing")
-    expect("UpdateBulletTime" in main_lua and "StartReplay" in main_lua, "card bullet time or replay missing")
+    expect("QueueCardResolution" in main_lua and "delay = 55" in main_lua and "duration = 690" in main_lua and "totalDuration = 745" in main_lua, "card burn timeline differs from Phaser")
+    expect("BurnProgress" in main_lua and "1 - math.cos(linear * math.pi * .5)" in main_lua and "DrawCardBurnParticles" in main_lua, "card burn easing or particles are missing")
+    expect("MoveCardToHandSlot" in main_lua and "duration = .16" in main_lua and "UpdateCardHomeMotions" in main_lua, "live hand reordering tween differs from Phaser")
+    expect("SetBulletTimeActive" in main_lua and "CurrentPhysicsTimeScale" in main_lua and "StartReplay" in main_lua, "continuous card bullet time or replay missing")
     expect("migration.SynthAudio" in main_lua and "PlaySound(\"launch\")" in main_lua, "launch audio wiring missing")
     expect("PlaySound(\"card\")" in main_lua and "PlaySound(\"impact\")" in main_lua, "card or impact audio wiring missing")
     expect("PlaySound(\"punch\")" in main_lua and "PlaySound(\"success\")" in main_lua, "punch or success audio wiring missing")
@@ -219,11 +222,13 @@ def main() -> int:
     expect("INCIDENT_GRAVITY_ACCELERATION" in profiles_lua and "incident_codex_migration_01" in profiles_lua, "incident gravity profile missing")
     expect("CreateLaboratoryBoundaries" in factory_lua and "world-ceiling" in factory_lua and "world-left" in factory_lua and "world-right" in factory_lua, "laboratory boundaries are incomplete")
     expect("DEFAULT_GRAVITY_MAGNITUDE = 1.05" in rules_lua and "function Rules.GetGravityMultiplier" in rules_lua, "source gravity magnitude or button multiplier missing")
-    expect("APPLE_MATTER_AIR_FRICTION = 0.0015" in factory_lua and "body.linearDamping = 60 * (1 / (1 - APPLE_MATTER_AIR_FRICTION) - 1)" in factory_lua, "Matter air friction is not converted to Box2D damping")
+    expect("APPLE_FRICTION_AIR = 0.01" in calibration_lua and "Box2DLinearDamping" in calibration_lua, "effective Matter air friction is not calibrated")
+    expect("MatterCalibration.APPLE_FRICTION" in factory_lua and "MatterCalibration.STATIC_RESTITUTION" in factory_lua, "effective Matter fixture materials are not calibrated")
     expect('SubscribeToEvent("PhysicsPreStep", "HandlePhysicsPreStep")' in main_lua and 'SubscribeToEvent("PhysicsPostStep", "HandlePhysicsPostStep")' in main_lua, "physics step event wiring missing")
     expect("applePreSolveVelocity_" in main_lua and "local v = applePreSolveVelocity_ or apple_.body.linearVelocity" in main_lua, "spring does not retain pre-solve velocity")
     expect("object.impulseStrength * Rules.GetRestitutionMultiplier(rules_) * CONFIG.matterVelocityToWorld" in main_lua, "spring impulse unit conversion missing")
-    expect("UpdateSpringExits()\n    UpdateExperiment(eventData:GetFloat(\"TimeStep\"))\n    CapAppleSpeed()" in main_lua, "physics post-step ordering differs from source")
+    expect("CapAppleSpeed()\n    local velocity = apple_.body.linearVelocity" in main_lua, "speed cap is not applied before the physics pass")
+    expect("UpdateSpringExits()\n    UpdateExperiment(eventData:GetFloat(\"TimeStep\") * CurrentPhysicsTimeScale())" in main_lua, "physics post-step timing differs from source bullet time")
     expect("uiElapsed_ * 1000 - object.triggeredAt" in main_lua and "uiElapsed_ * 1000 >= object.closeAt" in main_lua, "scene-time cooldown or door delay differs from source")
     expect("if #trail_ > 18" in main_lua and "flightMs_ - lastTrailAt_ > 55" in main_lua and "DrawVelocityArrow" in main_lua, "trail or velocity visualization differs from Phaser")
     expect("input:GetMouseButtonPress(MOUSEB_RIGHT)" in main_lua and "input:GetKeyPress(KEY_ESCAPE)" in main_lua and "ToggleTacticalPause" in main_lua, "source keyboard or cancel interaction is missing")
@@ -256,7 +261,7 @@ def main() -> int:
 
     result = {
         "mode": "FAST_VALIDATE",
-        "checks": 141,
+        "checks": 142,
         "errors": errors,
         "status": "pass" if not errors else "fail",
     }
