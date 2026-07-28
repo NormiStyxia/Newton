@@ -28,6 +28,8 @@
 
 原 Phaser SVG 仅被只读渲染。Maker 使用独立派生 PNG，来源、SHA-256 与尺寸记录在 `phase1_asset_manifest.json`。源 `level_01.json` 与 Maker 副本 SHA-256 完全一致。
 
+构建兼容性说明：Maker 能识别 `solid.png` 的资源 UUID，但连续两次没有把对应哈希 PNG 写入运行包。第一阶段运行时已取消对该文件的依赖，背景改由 `Zone.fogColor` 提供，地面 Box2D 碰撞保持不变；`solid.png` 仅作为派生过程证据保留。
+
 ## FAST_VALIDATE
 
 验证范围：

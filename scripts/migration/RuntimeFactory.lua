@@ -10,7 +10,6 @@ local APPLE_DISPLAY_DIAMETER = 64 / 100
 local APPLE_MASS = 1
 
 local ASSETS = {
-    solid = "image/phase1/solid.png",
     apple = "image/phase1/apple.png",
     launcher = "image/phase1/launcher.png",
     goal = "image/phase1/goal-ring.png",
@@ -46,13 +45,13 @@ end
 ---@return Node
 function RuntimeFactory.CreateViewportBackground(scene, width, height)
     local node = scene:CreateChild("GameplayViewportBackground")
-    AddSprite(
-        node,
-        ASSETS.solid,
-        Rect(-width * 0.5, -height * 0.5, width * 0.5, height * 0.5),
-        -100,
-        Color(0.035, 0.075, 0.068, 1)
-    )
+    local zone = node:CreateComponent("Zone")
+    ---@cast zone Zone
+    zone.boundingBox = BoundingBox(-1000.0, 1000.0)
+    zone.ambientColor = Color(0.035, 0.075, 0.068, 1)
+    zone.fogColor = Color(0.035, 0.075, 0.068, 1)
+    zone.fogStart = 1000.0
+    zone.fogEnd = 1001.0
     return node
 end
 
@@ -88,14 +87,9 @@ function RuntimeFactory.CreateGround(scene, mapper, groundLevelY)
     shape.categoryBits = CATEGORY_WORLD
     shape.maskBits = MASK_ALL
 
-    local visualY = bodyHeight * 0.25
-    AddSprite(
-        node,
-        ASSETS.solid,
-        Rect(-bodyWidth * 0.5, visualY - 0.07, bodyWidth * 0.5, visualY + 0.07),
-        2,
-        Color(0.18, 0.31, 0.25, 1)
-    )
+    -- The ground remains a fully functional Box2D body. Its former solid PNG
+    -- visual is intentionally omitted because Maker recognized the asset UUID
+    -- but repeatedly failed to materialize the hashed PNG in the runtime pack.
     return { id = "world-floor", type = "ground", node = node, body = body, shape = shape }
 end
 

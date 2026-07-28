@@ -33,7 +33,8 @@
       "derived": "assets/image/phase1/solid.png",
       "derivedSha256": "8C5A6579494F648FD292A65B0B09CE7985AB5AE2257110A2DF88666D8678B6E5",
       "size": "64x64",
-      "note": "64px non-uniform RGB texture avoids remote packaging dropping the former 8px/106-byte placeholder."
+      "runtimeUsage": false,
+      "note": "Retained as derivation evidence only. Runtime uses Zone.fogColor because Maker repeatedly omitted this UUID's hashed PNG from the runtime pack."
     }
   ]
 }
