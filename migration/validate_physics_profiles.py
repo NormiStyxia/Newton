@@ -119,10 +119,10 @@ def main() -> int:
            "RuntimeFactory does not use calibrated Matter materials")
     expect("MatterCalibration.CardRestitution" in main_lua and "ApplyAppleCardMaterial" in main_lua,
            "card material updates are not isolated from normal gravity setup")
-    expect("UpdateMatterStaticFriction" in main_lua and "TrackApplePhysicalContact" in main_lua,
-           "Box2D does not adapt low-speed static friction to Matter's model")
-    expect("MatterStaticFrictionThreshold" in calibration and "AppleFixtureFrictionForMatterStaticContact" in calibration,
-           "Matter static-friction contact coefficient is not converted through Box2D friction mixing")
+    expect("UpdateMatterStaticFriction" not in main_lua and "TrackApplePhysicalContact" not in main_lua,
+           "Box2D still applies a global fixture mutation for Matter static friction")
+    expect("AppleFixtureFrictionForMatterStaticContact" not in calibration,
+           "calibration still models Matter's pair cache as a Box2D fixture material")
     expect("1 / 3" not in main_lua and "SetBulletTimeActive" in main_lua and "bulletTimeScale = 0.05" in main_lua,
            "bullet time still uses sparse full physics steps")
     expect("physicsWorld_:SetAllowSleeping(false)" in main_lua,
@@ -165,6 +165,9 @@ def main() -> int:
            "spring exit velocity is not scaled for Matter bullet time")
     expect("eventData:GetFloat(\"TimeStep\")" in main_lua and "timeStep" in calibration,
            "air damping is not calibrated to the current physics step")
+    expect("apple_.body.angularDamping = MatterCalibration.Box2DLinearDamping" in main_lua
+           and "body.angularDamping = MatterCalibration.Box2DLinearDamping" in factory,
+           "Matter frictionAir is not applied to the apple's angular motion")
     expect("CaptureReplayFinalSample()" in main_lua and "if not CanReplay() then" in main_lua,
            "replay start does not reject an unrecorded timeline")
     expect("local function CanReplay()" in main_lua and "#replaySamples_ >= 2" in main_lua,
@@ -172,8 +175,10 @@ def main() -> int:
     expect("local function SetReplayMode(mode)" in main_lua and 'SetReplayMode("playing")' in main_lua
            and 'replayMode_ ~= "none"' in main_lua and "ClearCardInteraction()" in main_lua,
            "replay start does not take exclusive ownership of the result UI")
-    expect("replayModalSuppressed_" not in main_lua,
-           "replay modal visibility still depends on a second mutable flag")
+    expect("level_.resultOverlayVisible = false" in main_lua
+           and "level_.resultOverlayVisible = success_ or failed_" in main_lua
+           and "return level_ and level_.resultOverlayVisible == true" in main_lua,
+           "replay does not explicitly hide and restore the result overlay")
     expect("[Replay]" in main_lua and "ReplayLog(\"start\")" in main_lua and "ReplayLog(\"finished\")" in main_lua,
            "replay lifecycle has no runtime audit markers")
 
@@ -183,22 +188,12 @@ def main() -> int:
     expect(math.isclose(math.sqrt(0.1 * 0.1), min(0.1, 1.0), rel_tol=0, abs_tol=1e-12),
            "Box2D fixture friction does not reproduce Matter apple/static friction")
     static_contact = 0.1 * 0.5 * 5
-    static_fixture = static_contact**2 / 0.1
     expect(math.isclose(static_contact, 0.25, rel_tol=0, abs_tol=1e-12),
            "Matter static friction threshold is not 0.25")
-    expect(math.isclose(math.sqrt(static_fixture * 0.1), static_contact, rel_tol=0, abs_tol=1e-12),
-           "Box2D fixture does not reproduce Matter's low-speed static contact")
-    # Matter does not choose its resting tangent branch from slope angle. The
-    # Box2D adapter must keep the .25 material through low-speed slope contact
-    # and let the solver decide whether it can hold.
-    expect("MatterCalibration.IsRestingContact(tangentVelocity, normalAcceleration)" in main_lua,
-           "static friction is not gated by the Matter tangent-speed branch")
-    expect("tangentAcceleration >" not in main_lua,
-           "static friction still switches to dynamic material prematurely on slopes")
-    expect("function MatterCalibration.IsRestingContact" in calibration,
-           "Matter resting-contact calibration helper is missing")
+    expect("global fixture swap" in calibration and "AppleFixtureFrictionForMatterStaticContact" not in calibration,
+           "Matter static-friction cache limitation is not documented")
     expect(math.sqrt(6) > 0.25,
-           "Matter tangent resting threshold unexpectedly collapsed into the friction limit")
+           "Matter tangent resting threshold unexpectedly collapsed into its friction threshold")
     expect(max(0.0, 0.0) == 0.0 and max(0.88, 0.0) == 0.88,
            "baseline and Hooke restitution do not reproduce Matter contact response")
 

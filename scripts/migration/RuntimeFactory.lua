@@ -250,7 +250,8 @@ function RuntimeFactory.CreateApple(scene, launcher)
     -- The source's setCircle call resets frictionAir to Matter's .01 default.
     -- Box2D damping is per second, so use its equivalent 60 Hz coefficient.
     body.linearDamping = MatterCalibration.Box2DLinearDamping(MatterCalibration.APPLE_FRICTION_AIR)
-    body.angularDamping = 0
+    -- Matter Body.update applies frictionAir to both position and angle.
+    body.angularDamping = MatterCalibration.Box2DLinearDamping(MatterCalibration.APPLE_FRICTION_AIR)
     -- The source Matter scene explicitly disables sleeping. The world-level
     -- setting is mirrored in main.lua; keep the apple explicit as well.
     body.allowSleep = false

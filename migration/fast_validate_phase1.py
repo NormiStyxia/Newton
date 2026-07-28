@@ -225,11 +225,12 @@ def main() -> int:
     expect("APPLE_FRICTION_AIR = 0.01" in calibration_lua and "Box2DLinearDamping" in calibration_lua, "effective Matter air friction is not calibrated")
     expect("APPLE_FRICTION_STATIC = 0.5" in calibration_lua and "MATTER_FRICTION_NORMAL_MULTIPLIER = 5" in calibration_lua and "MATTER_RESTING_TANGENT_SPEED" in calibration_lua, "Matter static-friction thresholds are not calibrated")
     expect("MatterCalibration.APPLE_FRICTION" in factory_lua and "MatterCalibration.STATIC_RESTITUTION" in factory_lua, "effective Matter fixture materials are not calibrated")
-    expect("UpdateMatterStaticFriction" in main_lua and "TrackApplePhysicalContact" in main_lua and "AppleFixtureFrictionForMatterStaticContact" in main_lua, "low-speed Matter friction is not adapted for Box2D")
+    expect("UpdateMatterStaticFriction" not in main_lua and "TrackApplePhysicalContact" not in main_lua and "AppleFixtureFrictionForMatterStaticContact" not in main_lua, "Box2D still mutates the apple fixture to fake Matter static friction")
+    expect("apple_.body.angularDamping = MatterCalibration.Box2DLinearDamping" in main_lua, "Matter frictionAir is not applied to angular motion")
     expect('SubscribeToEvent("PhysicsPreStep", "HandlePhysicsPreStep")' in main_lua and 'SubscribeToEvent("PhysicsPostStep", "HandlePhysicsPostStep")' in main_lua, "physics step event wiring missing")
     expect("applePreSolveVelocity_" in main_lua and "local v = applePreSolveVelocity_ or apple_.body.linearVelocity" in main_lua, "spring does not retain pre-solve velocity")
     expect("object.impulseStrength * Rules.GetRestitutionMultiplier(rules_)" in main_lua and "* CurrentMatterVelocityToWorld()" in main_lua, "spring impulse time-scale conversion missing")
-    expect("CapAppleSpeed()\n    UpdateMatterStaticFriction()\n    apple_.body.linearDamping" in main_lua, "speed cap or Matter static-friction adaptation is not applied before the physics pass")
+    expect("CapAppleSpeed()\n    apple_.body.linearDamping" in main_lua, "speed cap is not applied before the physics pass")
     expect("UpdateSpringExits()\n    UpdateExperiment(eventData:GetFloat(\"TimeStep\") * CurrentPhysicsTimeScale())" in main_lua, "physics post-step timing differs from source bullet time")
     expect("uiElapsed_ * 1000 - object.triggeredAt" in main_lua and "uiElapsed_ * 1000 >= object.closeAt" in main_lua, "scene-time cooldown or door delay differs from source")
     expect("if #trail_ > 18" in main_lua and "flightMs_ - lastTrailAt_ > 55" in main_lua and "DrawVelocityArrow" in main_lua, "trail or velocity visualization differs from Phaser")
@@ -238,8 +239,10 @@ def main() -> int:
     expect("replayPreviousSample_" in main_lua and "deltaAngle = ((current.angle - previous.angle + 540) % 360) - 180" in main_lua, "replay angle interpolation differs from Phaser")
     expect("local function IsResultOverlayVisible()" in main_lua and 'if replayMode_ ~= "none" then return end' in main_lua, "replay does not hide the completed-result overlay")
     expect("if replayActive_ then HandleReplayPointer(x, y, press); return end" in main_lua, "replay controls do not retain pointer priority over result controls")
-    expect('replayOutcome_ = success_ and "CLEARED" or "FAILED"' in main_lua and "success_ = false" in main_lua and "SyncPhysicsUpdateEnabled()" in main_lua, "replay does not take exclusive ownership of outcome UI and physics")
-    expect('success_ = outcome == "CLEARED"' in main_lua and 'failed_ = outcome == "FAILED"' in main_lua, "replay exit does not restore its saved result state")
+    expect("SetReplayMode(\"playing\")" in main_lua and "level_.resultOverlayVisible = false" in main_lua and "SyncPhysicsUpdateEnabled()" in main_lua, "replay does not take exclusive ownership of outcome UI and physics")
+    replay_start = main_lua.split("StartReplay = function()", 1)[1].split("StopReplay = function()", 1)[0]
+    expect("replayOutcome_" not in main_lua and "success_ = false" not in replay_start and "failed_ = false" not in replay_start,
+           "replay must retain the completed result while its mode suppresses the overlay")
 
     # Card interactions must use the same visual transform for painting and
     # hit testing. Parameter cards resolve at their settled anchor, not where

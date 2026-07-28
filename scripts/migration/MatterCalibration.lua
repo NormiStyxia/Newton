@@ -39,36 +39,9 @@ function MatterCalibration.CardRestitution(multiplier)
     return math.max(0, math.min(0.98, MatterCalibration.CARD_RESTITUTION_BASE * multiplier))
 end
 
----@return number
-function MatterCalibration.MatterStaticFrictionThreshold()
-    -- Resolver.solveVelocity compares tangential velocity against
-    -- pair.friction * pair.frictionStatic * _frictionNormalMultiplier.
-    -- Keep this source fact available for telemetry; do not mutate Box2D
-    -- fixtures in an attempt to emulate Matter's internal solver branch.
-    return MatterCalibration.APPLE_FRICTION
-        * MatterCalibration.APPLE_FRICTION_STATIC
-        * MatterCalibration.MATTER_FRICTION_NORMAL_MULTIPLIER
-end
-
----@return number
-function MatterCalibration.AppleFixtureFrictionForMatterStaticContact()
-    -- Box2D mixes fixture friction with sqrt(a * b). Static laboratory
-    -- fixtures remain at 0.1, so set the apple fixture to produce Matter's
-    -- .25 low-speed static contact coefficient: sqrt(.625 * .1) == .25.
-    local contactFriction = MatterCalibration.MatterStaticFrictionThreshold()
-    return (contactFriction * contactFriction) / MatterCalibration.STATIC_FRICTION
-end
-
----@param tangentVelocity number Matter pixels per 60 Hz frame
----@param normalAcceleration number world metres per second squared
----@return boolean
-function MatterCalibration.IsRestingContact(tangentVelocity, normalAcceleration)
-    -- Matter enters its cached resting-tangent solve based on the relative
-    -- tangential velocity alone. Normal support is still required here so a
-    -- circle grazing a vertical wall cannot acquire artificial adhesion from
-    -- the Box2D approximation.
-    return math.abs(tangentVelocity) <= MatterCalibration.MATTER_RESTING_TANGENT_SPEED
-        and normalAcceleration >= .0001
-end
+-- Matter's frictionStatic branch is a per-pair cached tangent impulse, not a
+-- material coefficient. Box2D exposes no equivalent pair cache, so the
+-- production adapter keeps both fixtures at their observed .1 material. A
+-- global fixture swap would corrupt corners, rolling contacts and springs.
 
 return MatterCalibration
