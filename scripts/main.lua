@@ -5,14 +5,23 @@ local Rules = require("migration.Rules")
 local RuntimeFactory = require("migration.RuntimeFactory")
 local Renderer2D = require("migration.Renderer")
 local SynthAudio = require("migration.SynthAudio")
+local TrajectoryPrediction = require("migration.TrajectoryPrediction")
 
 local CONFIG = {
     title = "牛顿看了想打人",
     pixelsPerMeter = 100,
-    gravityAcceleration = 10,
+    matterFramesPerSecond = 60,
+    matterForceScale = 0.001,
     levelCount = 9,
     replaySampleMs = 1000 / 30,
 }
+
+-- Matter stores velocity in pixels per 60 Hz frame, while Box2D uses metres
+-- per second. These constants keep the migrated runtime on the source scale.
+CONFIG.matterVelocityToWorld = CONFIG.matterFramesPerSecond / CONFIG.pixelsPerMeter
+CONFIG.maxAppleSpeed = 25 * CONFIG.matterVelocityToWorld
+CONFIG.gravityAcceleration = CONFIG.matterForceScale
+    * (1000 / CONFIG.matterFramesPerSecond) * 1000 / CONFIG.pixelsPerMeter
 
 local LEVEL_META = {
     level_01 = { name = "第一颗苹果", objective = "让苹果进入观察皿", observation = "先观察抛物线，再谈万有引力。" },
@@ -48,6 +57,8 @@ local runtime_ = nil
 local ground_ = nil
 ---@type table|nil
 local apple_ = nil
+---@type Vector2|nil
+local applePreSolveVelocity_ = nil
 ---@type table|nil
 local mapper_ = nil
 local frame_ = nil
@@ -61,13 +72,27 @@ local activeCardDragged_ = false
 local activeCardDeploying_ = false
 local primedCardId_ = nil
 local cardParameterStart_ = nil
-local cardPointerLast_ = nil
-local cardPointerStillMs_ = 0
+local cardDeployEnteredMs_ = nil
+local cardLastMotionAtMs_ = nil
+local cardPointerSamples_ = {}
 local cardCandidate_ = nil
 local cardGestureDistance_ = 0
+local hoveredCardId_ = nil
+local cardHoverStates_ = {}
+local hoveredLevelIndex_ = nil
+local hoveredNavigation_ = nil
+local punchHovered_ = false
+local pointer_ = {
+    activeTouchId = nil,
+    touchX = 0,
+    touchY = 0,
+    touchPressed = false,
+    touchReleased = false,
+}
 local launched_ = false
 local goalContact_ = false
 local goalContactMs_ = 0
+local goalPulseElapsedMs_ = nil
 local outsideMs_ = 0
 local flightMs_ = 0
 local status_ = "READY · 等待发射"
@@ -78,7 +103,11 @@ local bulletTimeStepOpen_ = false
 local debugDraw_ = false
 local success_ = false
 local failed_ = false
+local absorbing_ = false
+local absorbElapsedMs_ = 0
 local failureCount_ = 0
+local failureCountsByLevel_ = {}
+local observation_ = ""
 local replayActive_ = false
 local replayTime_ = 0
 local replayPaused_ = false
@@ -87,8 +116,10 @@ local replayFinished_ = false
 local replaySamples_ = {}
 local replayEvents_ = {}
 local replaySavedApple_ = nil
-local replaySampleAccumulator_ = 0
+local replayNextSampleMs_ = 0
+local replayPreviousSample_ = nil
 local trail_ = {}
+local lastTrailAt_ = 0
 local sensorAngle_ = 0
 local uiElapsed_ = 0
 local anger_ = 0
@@ -135,6 +166,8 @@ local function InitializeCards()
     cardStates_ = {}
     cardDeckById_ = {}
     handOrder_ = {}
+    hoveredCardId_ = nil
+    cardHoverStates_ = {}
     if not level_ or not level_.cardDeck then return end
     local ordered = {}
     for _, card in ipairs(level_.cardDeck.cards or {}) do
@@ -244,6 +277,8 @@ end
 
 local function BuildLevel(index)
     level_ = LoadLevel(index)
+    failureCount_ = failureCountsByLevel_[level_.levelId] or 0
+    observation_ = level_.observation or ""
     mapper_ = CoordinateMapper.New({
         levelWidth = level_.playfield.width,
         levelHeight = level_.playfield.height,
@@ -272,8 +307,9 @@ local function BuildLevel(index)
     activeCardDragged_ = false
     activeCardDeploying_ = false
     cardParameterStart_ = nil
-    cardPointerLast_ = nil
-    cardPointerStillMs_ = 0
+    cardDeployEnteredMs_ = nil
+    cardLastMotionAtMs_ = nil
+    cardPointerSamples_ = {}
     cardCandidate_ = nil
     cardGestureDistance_ = 0
     bulletTimeActive_ = false
@@ -282,12 +318,15 @@ local function BuildLevel(index)
     launched_ = false
     goalContact_ = false
     goalContactMs_ = 0
+    goalPulseElapsedMs_ = nil
     outsideMs_ = 0
     flightMs_ = 0
     stalledMs_ = 0
     phaseTraversing_ = false
     success_ = false
     failed_ = false
+    absorbing_ = false
+    absorbElapsedMs_ = 0
     replayActive_ = false
     replayTime_ = 0
     replayPaused_ = false
@@ -299,15 +338,17 @@ local function BuildLevel(index)
     cardBurns_ = {}
     burningCardIds_ = {}
     ruleDeployCount_ = 0
-    replaySampleAccumulator_ = 0
+    replayNextSampleMs_ = 0
+    replayPreviousSample_ = nil
     trail_ = {}
+    lastTrailAt_ = 0
     sensorAngle_ = 0
     uiElapsed_ = 0
     anger_ = 0
     if InitializeMechanisms then InitializeMechanisms() end
     SetGravity()
     SyncPhysicsUpdateEnabled()
-    SetStatus(string.format("READY · 实验 %02d · %s", index, level_.name))
+    SetStatus("READY · 等待发射")
 end
 
 local function ResetExperiment(playResetSound)
@@ -315,6 +356,7 @@ local function ResetExperiment(playResetSound)
     if playResetSound ~= false then PlaySound("reset") end
     rules_ = Rules.NewState()
     InitializeCards()
+    observation_ = level_.observation or ""
     isPaused_ = false
     bulletTimeActive_ = false
     bulletTimeAccumulator_ = 0
@@ -325,6 +367,7 @@ local function ResetExperiment(playResetSound)
     apple_.node:SetPosition2D(apple_.launcher.spawnWorldX, apple_.launcher.spawnWorldY)
     apple_.node:SetRotation2D(0)
     apple_.body.awake = true
+    applePreSolveVelocity_ = nil
     apple_.shape.trigger = false
     launched_ = false
     draggedApple_ = false
@@ -335,18 +378,22 @@ local function ResetExperiment(playResetSound)
     activeCardDragged_ = false
     activeCardDeploying_ = false
     cardParameterStart_ = nil
-    cardPointerLast_ = nil
-    cardPointerStillMs_ = 0
+    cardDeployEnteredMs_ = nil
+    cardLastMotionAtMs_ = nil
+    cardPointerSamples_ = {}
     cardCandidate_ = nil
     cardGestureDistance_ = 0
     goalContact_ = false
     goalContactMs_ = 0
+    goalPulseElapsedMs_ = nil
     outsideMs_ = 0
     flightMs_ = 0
     stalledMs_ = 0
     phaseTraversing_ = false
     success_ = false
     failed_ = false
+    absorbing_ = false
+    absorbElapsedMs_ = 0
     replayActive_ = false
     replayTime_ = 0
     replayPaused_ = false
@@ -358,8 +405,10 @@ local function ResetExperiment(playResetSound)
     cardBurns_ = {}
     burningCardIds_ = {}
     ruleDeployCount_ = 0
-    replaySampleAccumulator_ = 0
+    replayNextSampleMs_ = 0
+    replayPreviousSample_ = nil
     trail_ = {}
+    lastTrailAt_ = 0
     anger_ = 0
     if runtime_ then
         for _, object in ipairs(runtime_.ordered) do
@@ -371,6 +420,7 @@ local function ResetExperiment(playResetSound)
                 object.spent = false
                 object.triggeredAt = -math.huge
                 object.pendingExitVelocity = nil
+                object.pulseElapsedMs = nil
             end
         end
     end
@@ -380,10 +430,33 @@ local function ResetExperiment(playResetSound)
     SetStatus("READY · 等待发射")
 end
 
-local function DesignPointer()
-    local mouse = input.mousePosition
-    local x, y = design_:ScreenToLogical(mouse.x, mouse.y)
+local function DesignPointer(screenX, screenY)
+    if screenX == nil or screenY == nil then
+        local mouse = input.mousePosition
+        screenX, screenY = mouse.x, mouse.y
+    end
+    local x, y = design_:ScreenToLogical(screenX, screenY)
     return x, y
+end
+
+-- Touch events carry physical screen coordinates, the same coordinate space as
+-- input.mousePosition. A single active touch keeps a gesture from triggering
+-- more than one game action on mobile devices.
+local function PointerState()
+    if pointer_.activeTouchId ~= nil or pointer_.touchPressed or pointer_.touchReleased then
+        local x, y = DesignPointer(pointer_.touchX, pointer_.touchY)
+        local down = pointer_.activeTouchId ~= nil
+        local press = pointer_.touchPressed
+        local release = pointer_.touchReleased
+        pointer_.touchPressed = false
+        pointer_.touchReleased = false
+        return x, y, down, press, release
+    end
+    local x, y = DesignPointer()
+    return x, y,
+        input:GetMouseButtonDown(MOUSEB_LEFT),
+        input:GetMouseButtonPress(MOUSEB_LEFT),
+        input:GetMouseButtonRelease(MOUSEB_LEFT)
 end
 
 local function PointerInPlayfield(x, y)
@@ -448,10 +521,28 @@ local function LaunchApple()
         },
     }
     replayEvents_ = {}
-    replaySampleAccumulator_ = 0
+    replayNextSampleMs_ = CONFIG.replaySampleMs
+    replayPreviousSample_ = replaySamples_[1]
     SetGravity()
     SetStatus("FLIGHT · 规则已生效")
     PlaySound("launch")
+end
+
+local function CancelAppleDrag()
+    if not draggedApple_ or launched_ or not apple_ then return end
+    draggedApple_ = false
+    apple_.node:SetPosition2D(apple_.launcher.spawnWorldX, apple_.launcher.spawnWorldY)
+end
+
+local function ToggleTacticalPause()
+    if success_ or failed_ or absorbing_ then return end
+    if not isPaused_ then CancelAppleDrag() end
+    isPaused_ = not isPaused_
+    if isPaused_ then
+        SetStatus("TACTICAL PAUSE 路 规则卡仍可操作")
+    else
+        SetStatus(launched_ and "RUNNING 路 实验进行中" or "READY 路 等待发射")
+    end
 end
 
 local function IsAppleGoalPair(nodeA, nodeB)
@@ -487,7 +578,7 @@ end
 
 local function SetDoorTarget(object, open)
     object.targetOpen = open
-    if not open then object.closeAt = flightMs_ + object.closeDelay end
+    if not open then object.closeAt = uiElapsed_ * 1000 + object.closeDelay end
 end
 
 local function ApplyDoorSignal(object, active)
@@ -514,10 +605,10 @@ local function EmitChannelSignal(channelId, active, sourceId)
 end
 
 local function EvaluateButton(object)
-    local gravity = Rules.GetGravity(rules_, level_.rules.initialGravity)
-    local conditionSatisfied = object.contactCount > 0 and gravity.strength >= object.gravityThreshold
+    local gravityMultiplier = Rules.GetGravityMultiplier(rules_, level_.rules.initialGravity)
+    local conditionSatisfied = object.contactCount > 0 and gravityMultiplier >= object.gravityThreshold
     local activationEdge = not object.conditionSatisfied and conditionSatisfied
-    local canActivate = flightMs_ - object.lastActivationAt >= object.debounceTime
+    local canActivate = uiElapsed_ * 1000 - object.lastActivationAt >= object.debounceTime
     local nextActive = object.active
     if object.mode == "HOLD" then
         nextActive = conditionSatisfied
@@ -528,7 +619,7 @@ local function EvaluateButton(object)
     local outputChanged = nextActive ~= object.active
     object.active = nextActive
     if (activationEdge and canActivate) or (object.mode == "HOLD" and outputChanged and nextActive) then
-        object.lastActivationAt = flightMs_
+        object.lastActivationAt = uiElapsed_ * 1000
     end
     if outputChanged then EmitChannelSignal(object.channelId, object.active, object.id) end
 end
@@ -573,7 +664,7 @@ local function UpdateDoors(dt)
                 object.state = "OPENING"
                 object.openness = math.min(target, object.openness + delta)
                 if object.openness == 1 then object.state = "OPEN" end
-            elseif object.openness > target and flightMs_ >= object.closeAt then
+            elseif object.openness > target and uiElapsed_ * 1000 >= object.closeAt then
                 if not object.antiCrush or not DoorBlockedByApple(object) then
                     object.state = "CLOSING"
                     object.openness = math.max(target, object.openness - delta)
@@ -595,6 +686,26 @@ local function UpdateSpringExits()
             object.pendingExitVelocity = nil
         end
     end
+end
+
+local function UpdateSpringVisuals(dt)
+    if not runtime_ then return end
+    for _, object in ipairs(runtime_.ordered) do
+        if object.type == "spring" and object.pulseElapsedMs ~= nil then
+            object.pulseElapsedMs = object.pulseElapsedMs + math.max(0, dt) * 1000
+            if object.pulseElapsedMs >= 140 then object.pulseElapsedMs = nil end
+        end
+    end
+end
+
+local function CapAppleSpeed()
+    if not launched_ or not apple_ or apple_.body.bodyType ~= BT_DYNAMIC then return end
+    local velocity = apple_.body.linearVelocity
+    local speed = math.sqrt(velocity.x * velocity.x + velocity.y * velocity.y)
+    if speed <= CONFIG.maxAppleSpeed then return end
+    local scale = CONFIG.maxAppleSpeed / speed
+    apple_.body.linearVelocity = Vector2(velocity.x * scale, velocity.y * scale)
+    apple_.body.awake = true
 end
 
 local function IsInsidePhaseableWall(worldX, worldY)
@@ -722,29 +833,109 @@ local function CardHomePose(id)
     return nil
 end
 
-local function TryCardPress(x, y)
+local function UpdateCardHoverStates(dt)
+    for _, card in ipairs(CardEntries()) do
+        local state = cardHoverStates_[card.cardId]
+        if state then
+            state.elapsed = math.min(state.duration, state.elapsed + dt)
+            local t = state.duration > 0 and state.elapsed / state.duration or 1
+            local eased = 1 - (1 - t) ^ 3
+            state.value = state.from + (state.target - state.from) * eased
+        end
+    end
+end
+
+local function SetHoveredCard(id)
+    if hoveredCardId_ == id then return end
+    hoveredCardId_ = id
+    for _, card in ipairs(CardEntries()) do
+        local state = cardHoverStates_[card.cardId] or { value = 0, from = 0, target = 0, elapsed = 0, duration = .11 }
+        local target = card.cardId == id and 1 or 0
+        if state.target ~= target then
+            state.from = state.value
+            state.target = target
+            state.elapsed = 0
+            state.duration = .11
+        end
+        cardHoverStates_[card.cardId] = state
+    end
+end
+
+local function CardHoverProgress(id)
+    local state = cardHoverStates_[id]
+    return state and state.value or 0
+end
+
+local function FindTopCardAt(x, y)
     local entries = CardEntries()
     local poses = Rules.CardHand(#entries, frame_.playfieldX + frame_.playfieldWidth / 2, frame_.cardHandY, frame_.playfieldWidth)
+    local found, foundDepth, foundIndex = nil, -math.huge, -math.huge
     for i, card in ipairs(entries) do
         local pose = poses[i]
         if pose and not burningCardIds_[card.cardId]
-            and x >= pose.x - 72 and x <= pose.x + 72 and y >= pose.y - 101 and y <= pose.y + 101 then
-            if primedCardId_ and primedCardId_ ~= card.cardId then primedCardId_ = nil end
-            activeCardId_ = card.cardId
-            activeCardStart_ = { x = x, y = y }
-            activeCardPointer_ = { x = x, y = y }
-            activeCardDragged_ = false
-            activeCardDeploying_ = false
-            cardParameterStart_ = nil
-            cardPointerLast_ = { x = x, y = y }
-            cardPointerStillMs_ = 0
-            cardCandidate_ = nil
-            cardGestureDistance_ = 0
-            SetStatus("CARD · 按住拖动或再次点击预备")
-            return true
+            and x >= pose.x - 72 and x <= pose.x + 72 and y >= pose.y - 101 and y <= pose.y + 101
+            and (pose.depth > foundDepth or (pose.depth == foundDepth and i > foundIndex)) then
+            found, foundDepth, foundIndex = card, pose.depth, i
         end
     end
-    return false
+    return found
+end
+
+local function UpdateHoverState(x, y)
+    hoveredNavigation_ = nil
+    hoveredLevelIndex_ = nil
+    punchHovered_ = false
+    if replayActive_ or success_ or failed_ then
+        SetHoveredCard(nil)
+        return
+    end
+
+    local titleX = frame_.workspaceX - 37
+    if x >= titleX + 255 and x <= titleX + 301 and y >= 23 and y <= 69 then
+        hoveredNavigation_ = "back"
+    elseif x >= titleX + 315 and x <= titleX + 361 and y >= 23 and y <= 69 then
+        hoveredNavigation_ = "reset"
+    elseif not isPaused_ and x >= titleX + 375 and x <= titleX + 421 and y >= 23 and y <= 69 then
+        hoveredNavigation_ = "pause"
+    end
+
+    local tabStartX = frame_.playfieldX + frame_.playfieldWidth - 290
+    for index = 1, CONFIG.levelCount do
+        local dx, dy = x - (tabStartX + (index - 1) * 27), y - 46
+        if dx * dx + dy * dy <= 10 * 10 then
+            hoveredLevelIndex_ = index
+            break
+        end
+    end
+
+    local punchX, punchY = frame_.playfieldX + frame_.playfieldWidth - 58, frame_.cardHandY + 23
+    punchHovered_ = x >= punchX - 40 and x <= punchX + 40 and y >= punchY - 40 and y <= punchY + 40
+    if activeCardId_ or #cardBurns_ > 0 or isPaused_ then
+        SetHoveredCard(nil)
+    else
+        local card = FindTopCardAt(x, y)
+        SetHoveredCard(card and card.cardId or nil)
+    end
+end
+
+local function TryCardPress(x, y)
+    local card = FindTopCardAt(x, y)
+    if not card then return false end
+    if primedCardId_ and primedCardId_ ~= card.cardId then primedCardId_ = nil end
+    activeCardId_ = card.cardId
+    activeCardStart_ = { x = x, y = y }
+    activeCardPointer_ = { x = x, y = y }
+    activeCardDragged_ = false
+    activeCardDeploying_ = false
+    cardParameterStart_ = nil
+    cardDeployEnteredMs_ = nil
+    cardLastMotionAtMs_ = nil
+    cardPointerSamples_ = {}
+    cardCandidate_ = nil
+    cardGestureDistance_ = 0
+    SetHoveredCard(nil)
+    SetStatus("CARD · 按住拖动或再次点击预备")
+    return true
 end
 
 local function ClearCardInteraction()
@@ -753,8 +944,9 @@ local function ClearCardInteraction()
     activeCardDragged_ = false
     activeCardDeploying_ = false
     cardParameterStart_ = nil
-    cardPointerLast_ = nil
-    cardPointerStillMs_ = 0
+    cardDeployEnteredMs_ = nil
+    cardLastMotionAtMs_ = nil
+    cardPointerSamples_ = {}
     cardCandidate_ = nil
     cardGestureDistance_ = 0
 end
@@ -765,18 +957,37 @@ local function UpdateCardParameter(dt)
     local pointer = activeCardPointer_
     if not PointerInPlayfield(pointer.x, pointer.y) then
         cardParameterStart_ = nil
-        cardPointerStillMs_ = 0
+        cardDeployEnteredMs_ = nil
+        cardLastMotionAtMs_ = nil
+        cardPointerSamples_ = {}
         cardCandidate_ = nil
         cardGestureDistance_ = 0
-        cardPointerLast_ = { x = pointer.x, y = pointer.y }
         return
     end
     if not cardParameterStart_ then
-        local last = cardPointerLast_ or pointer
-        local dx, dy = pointer.x - last.x, pointer.y - last.y
-        if dx * dx + dy * dy <= 16 then cardPointerStillMs_ = cardPointerStillMs_ + dt * 1000 else cardPointerStillMs_ = 0 end
-        cardPointerLast_ = { x = pointer.x, y = pointer.y }
-        if cardPointerStillMs_ >= 140 then
+        local now = uiElapsed_ * 1000
+        if not cardDeployEnteredMs_ then
+            cardDeployEnteredMs_ = now
+            cardLastMotionAtMs_ = now
+            cardPointerSamples_ = { { x = pointer.x, y = pointer.y, at = now } }
+            return
+        end
+        local previous = cardPointerSamples_[#cardPointerSamples_]
+        local elapsed = math.max(1, now - previous.at)
+        local stepX, stepY = pointer.x - previous.x, pointer.y - previous.y
+        if math.sqrt(stepX * stepX + stepY * stepY) / elapsed > .08 then cardLastMotionAtMs_ = now end
+        cardPointerSamples_[#cardPointerSamples_ + 1] = { x = pointer.x, y = pointer.y, at = now }
+        local cutoff = now - 140
+        while #cardPointerSamples_ > 2 and cardPointerSamples_[2].at < cutoff do table.remove(cardPointerSamples_, 1) end
+        local recentDistance = 0
+        for i = 2, #cardPointerSamples_ do
+            local from, to = cardPointerSamples_[i - 1], cardPointerSamples_[i]
+            local dx, dy = to.x - from.x, to.y - from.y
+            recentDistance = recentDistance + math.sqrt(dx * dx + dy * dy)
+        end
+        local sampleSpan = now - cardPointerSamples_[1].at
+        if now - cardDeployEnteredMs_ >= 100 and sampleSpan >= 112
+            and recentDistance <= 8 and now - cardLastMotionAtMs_ >= 150 then
             cardParameterStart_ = { x = pointer.x, y = pointer.y }
             cardCandidate_ = nil
             cardGestureDistance_ = 0
@@ -786,12 +997,16 @@ local function UpdateCardParameter(dt)
     end
     local dx, dy = pointer.x - cardParameterStart_.x, pointer.y - cardParameterStart_.y
     cardGestureDistance_ = math.sqrt(dx * dx + dy * dy)
-    if cardGestureDistance_ < 24 then
+    if cardGestureDistance_ < 28 then
         cardCandidate_ = nil
     elseif activeCardId_ == "side-gravity" then
-        if math.abs(dx) >= math.abs(dy) then cardCandidate_ = dx >= 0 and "RIGHT" or "LEFT" else cardCandidate_ = dy >= 0 and "DOWN" or "UP" end
+        local horizontal = cardCandidate_ and math.abs(math.abs(dx) - math.abs(dy)) < 8
+            and (cardCandidate_ == "LEFT" or cardCandidate_ == "RIGHT") or math.abs(dx) >= math.abs(dy)
+        if horizontal then cardCandidate_ = dx >= 0 and "RIGHT" or "LEFT" else cardCandidate_ = dy >= 0 and "DOWN" or "UP" end
     else
-        cardCandidate_ = math.abs(dx) >= math.abs(dy) and "HORIZONTAL" or "VERTICAL"
+        if not (cardCandidate_ and math.abs(math.abs(dx) - math.abs(dy)) < 8) then
+            cardCandidate_ = math.abs(dx) >= math.abs(dy) and "HORIZONTAL" or "VERTICAL"
+        end
     end
 end
 
@@ -866,8 +1081,8 @@ local function ResolveActiveCard(x, y)
     ClearCardInteraction()
 end
 
-local function HandleReplayPointer(x, y)
-    if not input:GetMouseButtonPress(MOUSEB_LEFT) then return end
+local function HandleReplayPointer(x, y, press)
+    if not press then return end
     local cx, cy = frame_.playfieldX + frame_.playfieldWidth * .5, frame_.playfieldY + 34
     local function inButton(buttonX, width)
         return x >= buttonX - width * .5 and x <= buttonX + width * .5 and y >= cy - 17 and y <= cy + 17
@@ -891,11 +1106,9 @@ end
 
 local function HandlePointer()
     if not frame_ or not apple_ then return end
-    local x, y = DesignPointer()
-    if replayActive_ then HandleReplayPointer(x, y); return end
-    local down = input:GetMouseButtonDown(MOUSEB_LEFT)
-    local press = input:GetMouseButtonPress(MOUSEB_LEFT)
-    local release = input:GetMouseButtonRelease(MOUSEB_LEFT)
+    local x, y, down, press, release = PointerState()
+    UpdateHoverState(x, y)
+    if replayActive_ then HandleReplayPointer(x, y, press); return end
     if success_ or failed_ then
         if press then
             local cx, cy = frame_.playfieldX + frame_.playfieldWidth * .5, frame_.playfieldY + frame_.playfieldHeight * .5
@@ -918,13 +1131,25 @@ local function HandlePointer()
     end
     if press then
         local titleX = frame_.workspaceX - 37
+        local tabStartX = frame_.playfieldX + frame_.playfieldWidth - 290
+        for index = 1, CONFIG.levelCount do
+            local tabX = tabStartX + (index - 1) * 27
+            local dx, dy = x - tabX, y - 46
+            if dx * dx + dy * dy <= 10 * 10 then
+                BuildLevel(index)
+                return
+            end
+        end
         if x >= titleX + 255 and x <= titleX + 301 and y >= 23 and y <= 69 then
-            BuildLevel(levelIndex_ - 1)
+            -- Phaser's back action falls back to restarting this level when
+            -- browser history is unavailable, which is the Maker runtime case.
+            ResetExperiment()
         elseif x >= titleX + 315 and x <= titleX + 361 and y >= 23 and y <= 69 then
             ResetExperiment()
         elseif x >= titleX + 375 and x <= titleX + 421 and y >= 23 and y <= 69 then
-            isPaused_ = not isPaused_
-        elseif x >= frame_.playfieldX + frame_.playfieldWidth - 100 and x <= frame_.playfieldX + frame_.playfieldWidth and math.abs(y - (frame_.cardHandY + 23)) < 48 then
+            ToggleTacticalPause()
+        elseif x >= frame_.playfieldX + frame_.playfieldWidth - 98 and x <= frame_.playfieldX + frame_.playfieldWidth - 18
+            and y >= frame_.cardHandY - 17 and y <= frame_.cardHandY + 63 then
             if Rules.Punch(rules_) then
                 phaseTraversing_ = false
                 SetGravity()
@@ -933,9 +1158,9 @@ local function HandlePointer()
                 SetStatus("NEWTON · 修正拳已出手")
                 PlaySound("punch")
             end
-        elseif not launched_ and IsNearApple(x, y) then
+        elseif not isPaused_ and not launched_ and IsNearApple(x, y) then
             draggedApple_ = true
-        elseif not isPaused_ then
+        else
             TryCardPress(x, y)
         end
     end
@@ -968,12 +1193,9 @@ end
 
 local function RecordReplay(dt)
     if not launched_ or replayActive_ or not apple_ then return end
-    replaySampleAccumulator_ = replaySampleAccumulator_ + dt * 1000
-    if replaySampleAccumulator_ < CONFIG.replaySampleMs then return end
-    replaySampleAccumulator_ = 0
     local p = apple_.node.position2D
     local v = apple_.body.linearVelocity
-    replaySamples_[#replaySamples_ + 1] = {
+    local current = {
         t = flightMs_,
         x = p.x,
         y = p.y,
@@ -981,6 +1203,23 @@ local function RecordReplay(dt)
         vy = v.y,
         angle = apple_.node.rotation2D,
     }
+    local previous = replayPreviousSample_ or current
+    local simulationDelta = math.max(0, dt * 1000)
+    local frameStart = flightMs_ - simulationDelta
+    while replayNextSampleMs_ <= flightMs_ + .0001 do
+        local progress = simulationDelta > 0 and math.max(0, math.min(1, (replayNextSampleMs_ - frameStart) / simulationDelta)) or 1
+        local deltaAngle = ((current.angle - previous.angle + 540) % 360) - 180
+        replaySamples_[#replaySamples_ + 1] = {
+            t = replayNextSampleMs_,
+            x = previous.x + (current.x - previous.x) * progress,
+            y = previous.y + (current.y - previous.y) * progress,
+            vx = previous.vx + (current.vx - previous.vx) * progress,
+            vy = previous.vy + (current.vy - previous.vy) * progress,
+            angle = previous.angle + deltaAngle * progress,
+        }
+        replayNextSampleMs_ = replayNextSampleMs_ + CONFIG.replaySampleMs
+    end
+    replayPreviousSample_ = current
 end
 
 local function CaptureReplayFinalSample()
@@ -991,6 +1230,7 @@ local function CaptureReplayFinalSample()
     replaySamples_[#replaySamples_ + 1] = {
         t = flightMs_, x = p.x, y = p.y, vx = v.x, vy = v.y, angle = apple_.node.rotation2D,
     }
+    replayPreviousSample_ = replaySamples_[#replaySamples_]
 end
 
 RecordReplayEvent = function(kind, cardId)
@@ -1058,7 +1298,7 @@ StopReplay = function()
         apple_.body.angularVelocity = saved.angularVelocity
         apple_.body.awake = true
     end
-    if success_ then SetStatus("COMPLETE · 观察成功")
+    if success_ then SetStatus("CLEARED · 观测成立")
     elseif failed_ then SetStatus("FAILED · 实验未成立")
     else SetStatus(launched_ and "FLIGHT · 规则已生效" or "READY · 等待发射") end
 end
@@ -1072,16 +1312,39 @@ local function UpdateReplay(dt)
     end
 end
 
+local function RegisterFailure()
+    failureCount_ = failureCount_ + 1
+    if level_ then failureCountsByLevel_[level_.levelId] = failureCount_ end
+    observation_ = "轨迹停止。重置后再次发射。"
+    SetStatus("FAILED · 实验未成立")
+end
+
 local function UpdateExperiment(dt)
-    if not launched_ or replayActive_ then return end
+    if replayActive_ then return end
+    if absorbing_ then
+        if goalPulseElapsedMs_ ~= nil then
+            goalPulseElapsedMs_ = goalPulseElapsedMs_ + math.max(0, dt) * 1000
+            if goalPulseElapsedMs_ >= 460 then goalPulseElapsedMs_ = nil end
+        end
+        absorbElapsedMs_ = math.min(520, absorbElapsedMs_ + math.max(0, dt) * 1000)
+        if absorbElapsedMs_ >= 520 then
+            absorbing_ = false
+            success_ = true
+            SetStatus("CLEARED · 观测成立")
+        end
+        return
+    end
+    if not launched_ then return end
     flightMs_ = flightMs_ + dt * 1000
     RecordReplay(dt)
-    UpdateSpringExits()
     UpdatePhaseTraversal()
     local p = apple_.node.position2D
     local screenX, screenY = design_:WorldToLogical(p.x, p.y)
-    trail_[#trail_ + 1] = { x = screenX, y = screenY }
-    if #trail_ > 70 then table.remove(trail_, 1) end
+    if flightMs_ - lastTrailAt_ > 55 then
+        trail_[#trail_ + 1] = { x = screenX, y = screenY }
+        if #trail_ > 18 then table.remove(trail_, 1) end
+        lastTrailAt_ = flightMs_
+    end
     if goalContact_ then
         goalContactMs_ = goalContactMs_ + dt * 1000
         local goal = LevelData.FindFirst(level_, "goal_sensor")
@@ -1096,11 +1359,18 @@ local function UpdateExperiment(dt)
         local matterSpeed = math.sqrt(velocity.x * velocity.x + velocity.y * velocity.y) * CONFIG.pixelsPerMeter / 60
         if goalContactMs_ >= requiredStayTime and matterSpeed <= 4.8 then
             CaptureReplayFinalSample()
-            success_ = true
+            absorbing_ = true
+            absorbElapsedMs_ = 0
+            goalPulseElapsedMs_ = 0
             launched_ = false
             apple_.body.bodyType = BT_STATIC
+            apple_.body.linearVelocity = Vector2(0, 0)
             apple_.shape.trigger = true
-            SetStatus("COMPLETE · 观察成功")
+            activeCardId_ = nil
+            primedCardId_ = nil
+            ClearCardInteraction()
+            observation_ = "苹果已在爱因斯坦观察窗内稳定停留。"
+            SetStatus("CLEARED · 观察成立")
             PlaySound("success")
         end
     else goalContactMs_ = 0 end
@@ -1108,10 +1378,9 @@ local function UpdateExperiment(dt)
         or screenY < frame_.playfieldY - 140 or screenY > frame_.playfieldY + frame_.playfieldHeight + 140 then
         CaptureReplayFinalSample()
         failed_ = true
-        failureCount_ = failureCount_ + 1
         launched_ = false
         apple_.body.bodyType = BT_STATIC
-        SetStatus("FAILED · 苹果离开实验区域")
+        RegisterFailure()
     else
         local velocity = apple_.body.linearVelocity
         local matterSpeed = math.sqrt(velocity.x * velocity.x + velocity.y * velocity.y) * CONFIG.pixelsPerMeter / 60
@@ -1119,35 +1388,82 @@ local function UpdateExperiment(dt)
         if stalledMs_ > 5200 then
             CaptureReplayFinalSample()
             failed_ = true
-            failureCount_ = failureCount_ + 1
             launched_ = false
             apple_.body.bodyType = BT_STATIC
-            SetStatus("FAILED · 苹果静止过久")
+            RegisterFailure()
         end
     end
     if math.abs(p.x) > 7.5 or math.abs(p.y) > 5 then anger_ = math.min(100, anger_ + dt * 2) end
     UpdateDoors(dt)
 end
 
+local function DrawPrediction(direction, alpha, x, y, velocityX, velocityY)
+    if not apple_ or not level_ then return end
+    if x == nil or y == nil then x, y = AppleScreenPosition() end
+    if velocityX == nil or velocityY == nil then
+        local velocity = apple_.body.linearVelocity
+        velocityX = velocity.x * CONFIG.pixelsPerMeter / 60
+        velocityY = -velocity.y * CONFIG.pixelsPerMeter / 60
+    end
+    local gravity = Rules.GetGravity(rules_, level_.rules.initialGravity)
+    local gravityX, gravityY = gravity.x * gravity.strength, gravity.y * gravity.strength
+    if direction then
+        gravityX, gravityY = 0, 0
+        if direction == "LEFT" then gravityX = -gravity.strength
+        elseif direction == "RIGHT" then gravityX = gravity.strength
+        elseif direction == "UP" then gravityY = -gravity.strength
+        else gravityY = gravity.strength end
+    end
+    local points = TrajectoryPrediction.PredictFreeFlight({
+        x = x,
+        y = y,
+        velocityX = velocityX,
+        velocityY = velocityY,
+        gravityX = gravityX,
+        gravityY = gravityY,
+        frictionAir = 0.0015,
+        forceScale = 0.001,
+        maxSpeed = 25,
+        steps = 30,
+        sampleEvery = 3,
+    })
+    for _, point in ipairs(points) do
+        if point.x < frame_.playfieldX or point.x > frame_.playfieldX + frame_.playfieldWidth
+            or point.y < frame_.playfieldY or point.y > frame_.playfieldY + frame_.playfieldHeight then break end
+        local pointAlpha = math.max(0.18, math.min(alpha, alpha - point.frame / 75))
+        painter_:Circle(point.x, point.y, point.frame % 6 == 0 and 3.5 or 2, Renderer2D.COLORS.primary, nil, nil, math.floor(pointAlpha * 255))
+    end
+end
+
 local function DrawAim()
     if not draggedApple_ or not apple_ then return end
     local x, y = AppleScreenPosition()
     local lx, ly = design_:LevelToLogical(apple_.launcher.spawnLevelX, apple_.launcher.spawnLevelY)
-    nvgStrokeColor(painter_.vg, nvgRGBA(168, 85, 73, 220)); nvgStrokeWidth(painter_.vg, 2)
-    nvgBeginPath(painter_.vg); nvgMoveTo(painter_.vg, lx, ly); nvgLineTo(painter_.vg, x, y); nvgStroke(painter_.vg)
-    nvgStrokeColor(painter_.vg, nvgRGBA(95, 143, 104, 130)); nvgStrokeWidth(painter_.vg, 1)
+    nvgStrokeColor(painter_.vg, nvgRGBA(95, 143, 104, 224)); nvgStrokeWidth(painter_.vg, 6)
     nvgBeginPath(painter_.vg)
-    for i = 0, 20 do
-        local t = i / 20
-        local px = lx + (x - lx) * t
-        local py = ly + (y - ly) * t + 60 * t * t
-        if i == 0 then nvgMoveTo(painter_.vg, px, py) else nvgLineTo(painter_.vg, px, py) end
-    end
+    nvgMoveTo(painter_.vg, lx - 18, ly + 4)
+    nvgLineTo(painter_.vg, x, y)
+    nvgLineTo(painter_.vg, lx + 18, ly + 4)
     nvgStroke(painter_.vg)
+    DrawPrediction(nil, 0.55, x, y, -(x - lx) * .165, -(y - ly) * .165)
+end
+
+local function DrawCardPrediction()
+    if not activeCardId_ or not cardParameterStart_ or not cardCandidate_ then return end
+    local x, y = AppleScreenPosition()
+    if activeCardId_ == "side-gravity" then
+        DrawPrediction(cardCandidate_, 0.88, x, y)
+    elseif activeCardId_ == "mirror-motion" then
+        local velocity = apple_.body.linearVelocity
+        local vx = velocity.x * CONFIG.pixelsPerMeter / 60
+        local vy = -velocity.y * CONFIG.pixelsPerMeter / 60
+        if cardCandidate_ == "HORIZONTAL" then vx = -vx else vy = -vy end
+        DrawPrediction(nil, 0.88, x, y, vx, vy)
+    end
 end
 
 local function DrawLaunchHint()
-    if launched_ or draggedApple_ or success_ or failed_ or not apple_ then return end
+    if launched_ or draggedApple_ or absorbing_ or success_ or failed_ or not apple_ then return end
     local launcher = apple_.launcher
     local lx, ly = design_:LevelToLogical(launcher.spawnLevelX, launcher.spawnLevelY)
     local hintX, hintY = lx + 76, ly - 60
@@ -1158,11 +1474,29 @@ local function DrawLaunchHint()
 end
 
 local function DrawTrail()
-    if #trail_ < 2 then return end
-    nvgStrokeColor(painter_.vg, nvgRGBA(95, 143, 104, 120)); nvgStrokeWidth(painter_.vg, 2)
-    nvgBeginPath(painter_.vg)
-    for i, p in ipairs(trail_) do if i == 1 then nvgMoveTo(painter_.vg, p.x, p.y) else nvgLineTo(painter_.vg, p.x, p.y) end end
-    nvgStroke(painter_.vg)
+    for i, point in ipairs(trail_) do
+        local progress = i / #trail_
+        painter_:Circle(point.x, point.y, 1.5 + progress * 3, Renderer2D.COLORS.primary, nil, nil, math.floor(progress * .32 * 255))
+    end
+end
+
+local function DrawVelocityArrow()
+    if not apple_ then return end
+    local x, y = AppleScreenPosition()
+    local velocity = apple_.body.linearVelocity
+    local vx = velocity.x * CONFIG.pixelsPerMeter / 60
+    local vy = -velocity.y * CONFIG.pixelsPerMeter / 60
+    local length = math.min(58, math.sqrt(vx * vx + vy * vy) * 3.4)
+    if length < 8 then return end
+    local angle = math.atan(vy, vx)
+    local endX, endY = x + math.cos(angle) * length, y + math.sin(angle) * length
+    nvgStrokeColor(painter_.vg, nvgRGBA(95, 143, 104, 184)); nvgStrokeWidth(painter_.vg, 3)
+    nvgBeginPath(painter_.vg); nvgMoveTo(painter_.vg, x, y); nvgLineTo(painter_.vg, endX, endY); nvgStroke(painter_.vg)
+    nvgFillColor(painter_.vg, nvgRGBA(95, 143, 104, 204)); nvgBeginPath(painter_.vg)
+    nvgMoveTo(painter_.vg, endX, endY)
+    nvgLineTo(painter_.vg, endX - math.cos(angle - .55) * 10, endY - math.sin(angle - .55) * 10)
+    nvgLineTo(painter_.vg, endX - math.cos(angle + .55) * 10, endY - math.sin(angle + .55) * 10)
+    nvgClosePath(painter_.vg); nvgFill(painter_.vg)
 end
 
 local function DrawReplay()
@@ -1243,12 +1577,15 @@ local function DrawHUD()
     local titleX = f.workspaceX - 37
     painter_:Text(titleX + 36, 19, "牛顿看了想打人", 29, Renderer2D.COLORS.white, NVG_ALIGN_LEFT + NVG_ALIGN_TOP, "maker-display")
     painter_:Text(titleX + 36, 57, string.format("实验 %02d · %s", levelIndex_, level_.name or ""), 13, Renderer2D.COLORS.greenSecondary)
-    painter_:RoundedRect(titleX + 255, 23, 46, 46, 5, Renderer2D.COLORS.dark, Renderer2D.COLORS.white, 2, 110)
-    painter_:Text(titleX + 278, 32, "←", 27, Renderer2D.COLORS.white, NVG_ALIGN_CENTER + NVG_ALIGN_TOP)
-    painter_:RoundedRect(titleX + 315, 23, 46, 46, 5, Renderer2D.COLORS.dark, Renderer2D.COLORS.white, 2, 110)
-    painter_:Text(titleX + 338, 32, "↻", 27, Renderer2D.COLORS.white, NVG_ALIGN_CENTER + NVG_ALIGN_TOP)
-    painter_:RoundedRect(titleX + 375, 23, 46, 46, 5, Renderer2D.COLORS.dark, Renderer2D.COLORS.white, 2, 110)
-    painter_:Text(titleX + 398, 34, isPaused_ and "▶" or "Ⅱ", 21, Renderer2D.COLORS.white, NVG_ALIGN_CENTER + NVG_ALIGN_TOP)
+    local function DrawNavigationButton(x, symbol, key, symbolY, size)
+        local hovered = hoveredNavigation_ == key
+        painter_:FillRect(x, 23, 46, 46, hovered and Renderer2D.COLORS.darkSecondary or Renderer2D.COLORS.dark, hovered and 255 or 107)
+        painter_:StrokeRect(x, 23, 46, 46, hovered and Renderer2D.COLORS.greenLight or Renderer2D.COLORS.background, 2, hovered and 230 or 115)
+        painter_:Text(x + 23, symbolY, symbol, size, Renderer2D.COLORS.background, NVG_ALIGN_CENTER + NVG_ALIGN_TOP)
+    end
+    DrawNavigationButton(titleX + 255, "←", "back", 32, 27)
+    DrawNavigationButton(titleX + 315, "↻", "reset", 32, 27)
+    DrawNavigationButton(titleX + 375, isPaused_ and "▶" or "Ⅱ", "pause", 34, 21)
     painter_:Text(f.playfieldX + 180, 17, "当前实验状态", 12, Renderer2D.COLORS.secondary)
     painter_:Text(f.playfieldX + 180, 42, status_, 17, Renderer2D.COLORS.text, NVG_ALIGN_LEFT + NVG_ALIGN_TOP, "maker-display")
     painter_:Text(f.playfieldX + 585, 17, "当前场地规则", 12, Renderer2D.COLORS.secondary)
@@ -1258,30 +1595,44 @@ local function DrawHUD()
     painter_:Text(f.playfieldX + f.playfieldWidth - 290, 17, "关卡", 12, Renderer2D.COLORS.secondary)
     for i = 1, CONFIG.levelCount do
         local x = f.playfieldX + f.playfieldWidth - 290 + (i - 1) * 27
-        painter_:Circle(x, 52, 10, i == levelIndex_ and Renderer2D.COLORS.greenStrong or Renderer2D.COLORS.panelSecondary, Renderer2D.COLORS.greenLight, 1)
-        painter_:Text(x, 46, tostring(i), 10, i == levelIndex_ and Renderer2D.COLORS.white or Renderer2D.COLORS.secondary, NVG_ALIGN_CENTER + NVG_ALIGN_TOP)
+        local scale = hoveredLevelIndex_ == i and 1.14 or 1
+        painter_:Circle(x, 46, 10 * scale, i == levelIndex_ and Renderer2D.COLORS.greenStrong or Renderer2D.COLORS.panelSecondary, i == levelIndex_ and Renderer2D.COLORS.primaryActive or Renderer2D.COLORS.greenLight, 1)
+        painter_:Text(x, 46, tostring(i), 10 * scale, i == levelIndex_ and Renderer2D.COLORS.white or Renderer2D.COLORS.secondary, NVG_ALIGN_CENTER + NVG_ALIGN_MIDDLE)
     end
 end
 
 local function DrawCards()
     local entries = CardEntries()
     local poses = Rules.CardHand(#entries, frame_.playfieldX + frame_.playfieldWidth / 2, frame_.cardHandY, frame_.playfieldWidth)
+    local drawEntries = {}
     for i, card in ipairs(entries) do
-        if not burningCardIds_[card.cardId] then
-            local pose = poses[i]
+        if not burningCardIds_[card.cardId] then drawEntries[#drawEntries + 1] = { card = card, pose = poses[i], index = i } end
+    end
+    table.sort(drawEntries, function(a, b)
+        if a.pose.depth == b.pose.depth then return a.index < b.index end
+        return a.pose.depth < b.pose.depth
+    end)
+    for _, entry in ipairs(drawEntries) do
+            local card, pose = entry.card, entry.pose
             local def = Rules.CARDS[card.cardId]
             local active = activeCardId_ == card.cardId or primedCardId_ == card.cardId
+            local hoverProgress = active and 0 or CardHoverProgress(card.cardId)
+            local hovered = hoveredCardId_ == card.cardId and not active
             local field = def.kind == "field"
-            local fill = card.cardId == "quantum-phase" and Renderer2D.COLORS.quantumSoft or (field and Renderer2D.COLORS.greenSecondary or Renderer2D.COLORS.instantSoft)
-            local edge = card.cardId == "quantum-phase" and Renderer2D.COLORS.quantum or (field and Renderer2D.COLORS.greenStrong or Renderer2D.COLORS.instant)
-            local cardX, cardY = pose.x, pose.y - (active and 18 or 0)
+            local fill = card.cardId == "quantum-phase" and (hovered and Renderer2D.COLORS.quantumCardSurfaceHover or Renderer2D.COLORS.quantumSoft)
+                or (field and (hovered and Renderer2D.COLORS.fieldCardSurfaceHover or Renderer2D.COLORS.fieldCardSurface)
+                    or (hovered and Renderer2D.COLORS.decisionCardSurfaceHover or Renderer2D.COLORS.decisionCardSurface))
+            local edge = card.cardId == "quantum-phase" and Renderer2D.COLORS.quantum or (field and Renderer2D.COLORS.fieldCardBorder or Renderer2D.COLORS.decisionCardBorder)
+            local titleColor = field and Renderer2D.COLORS.text or Renderer2D.COLORS.decisionCardText
+            local bodyColor = field and Renderer2D.COLORS.body or Renderer2D.COLORS.decisionCardBody
+            local cardX, cardY = pose.x, pose.y - (active and 18 or 18 * hoverProgress)
             if activeCardId_ == card.cardId and activeCardDragged_ and activeCardPointer_ then cardX, cardY = activeCardPointer_.x, activeCardPointer_.y end
             if activeCardId_ == card.cardId and cardParameterStart_ then cardX, cardY = cardParameterStart_.x, cardParameterStart_.y end
-            nvgSave(painter_.vg); nvgTranslate(painter_.vg, cardX, cardY); nvgRotate(painter_.vg, math.rad(active and 0 or pose.angle))
+            nvgSave(painter_.vg); nvgTranslate(painter_.vg, cardX, cardY); nvgRotate(painter_.vg, math.rad((active or hoverProgress > .001) and 0 or pose.angle)); nvgScale(painter_.vg, 1 + hoverProgress * .05, 1 + hoverProgress * .05)
             local cardState = cardStates_[card.cardId]
             local usage = cardState and cardState.usageMode or card.usageMode
             local remaining = cardState and cardState.remainingUses or card.count
-            painter_:RoundedRect(-70, -96, 144, 202, 8, Renderer2D.COLORS.dark, nil, nil, 26)
+            painter_:RoundedRect(-70, -96, 144, 202, 8, Renderer2D.COLORS.dark, nil, nil, hovered and 41 or 26)
             painter_:RoundedRect(-72, -101, 144, 202, 8, edge)
             painter_:RoundedRect(-66, -95, 132, 190, 6, fill)
             painter_:RoundedRect(-66, -95, 132, 24, 6, edge, nil, nil, 36)
@@ -1289,19 +1640,36 @@ local function DrawCards()
             painter_:StrokeRect(-57, 59, 114, 0, edge, 1, 133)
             painter_:RoundedRect(-72, -101, 144, 202, 8, nil, active and Renderer2D.COLORS.primaryActive or edge, active and 3 or 2)
             painter_:Text(-58, -85, (field and "场地 · " or "决策 · ") .. (usage == "REUSABLE" and "可重复" or (tostring(remaining) .. " 次")), 9, edge)
-            painter_:Text(0, -58, def.name, 16, field and Renderer2D.COLORS.text or Renderer2D.COLORS.body, NVG_ALIGN_CENTER + NVG_ALIGN_TOP, "maker-display")
-            painter_:Text(0, 8, def.symbol, 42, field and Renderer2D.COLORS.text or Renderer2D.COLORS.body, NVG_ALIGN_CENTER + NVG_ALIGN_MIDDLE, "maker-display")
-            painter_:TextBox(-51, 69, 102, def.description, 10, field and Renderer2D.COLORS.body or Renderer2D.COLORS.secondary, NVG_ALIGN_CENTER + NVG_ALIGN_TOP)
+            painter_:Text(0, -58, def.name, 16, titleColor, NVG_ALIGN_CENTER + NVG_ALIGN_TOP, "maker-display")
+            painter_:Text(0, 8, def.symbol, 42, titleColor, NVG_ALIGN_CENTER + NVG_ALIGN_MIDDLE, "maker-display")
+            painter_:TextBox(-51, 69, 102, def.description, 10, bodyColor, NVG_ALIGN_CENTER + NVG_ALIGN_TOP)
             painter_:RoundedRect(39, -94, 25, 20, 4, edge)
             painter_:Text(51, -91, usage == "REUSABLE" and "∞" or tostring(remaining), 10, Renderer2D.COLORS.white, NVG_ALIGN_CENTER + NVG_ALIGN_TOP)
             nvgRestore(painter_.vg)
-        end
     end
     local cx = frame_.playfieldX + frame_.playfieldWidth - 58
     local cy = frame_.cardHandY + 23
-    painter_:Circle(cx, cy, 40, Renderer2D.COLORS.dark, Renderer2D.COLORS.warningLow, 2, 240)
-    painter_:Text(cx, cy - 16, "✊", 28, Renderer2D.COLORS.warningLow, NVG_ALIGN_CENTER + NVG_ALIGN_TOP, "maker-display")
-    painter_:Text(cx, cy + 16, "修正拳", 10, Renderer2D.COLORS.white, NVG_ALIGN_CENTER + NVG_ALIGN_TOP)
+    -- Phaser-equivalent ability face with the original fist.svg path rendered
+    -- directly by NanoVG rather than a fallback glyph or geometry substitute.
+    painter_:Circle(cx, cy, 42, Renderer2D.COLORS.background)
+    local punchReady = Rules.CanPunch(rules_) and not success_ and not failed_ and not replayActive_
+    local punchAlpha = punchReady and 255 or math.floor(255 * .62)
+    local punchColor = punchReady and Renderer2D.COLORS.warningActive or Renderer2D.COLORS.warning
+    painter_:Circle(cx + 2, cy + 3, 40, Renderer2D.COLORS.darkPrimary, nil, nil, math.floor(punchAlpha * .12))
+    painter_:Circle(cx, cy, 35, punchReady and punchHovered_ and Renderer2D.COLORS.warningSoft or Renderer2D.COLORS.playfield, nil, nil, punchAlpha)
+    painter_:Circle(cx, cy, 37.5, nil, Renderer2D.COLORS.warningLow, 5, math.floor(punchAlpha * .42))
+    if anger_ > 0 then
+        local progress = math.max(0, math.min(1, anger_ / 100))
+        nvgStrokeColor(painter_.vg, nvgRGBA(Renderer2D.COLORS.warningActive[1], Renderer2D.COLORS.warningActive[2], Renderer2D.COLORS.warningActive[3], math.floor(punchAlpha * (punchReady and 1 or .72))))
+        nvgStrokeWidth(painter_.vg, 5)
+        nvgBeginPath(painter_.vg)
+        nvgArc(painter_.vg, cx, cy, 37.5, -math.pi * .5, -math.pi * .5 + math.pi * 2 * progress, NVG_CW)
+        nvgStroke(painter_.vg)
+    end
+    painter_:Circle(cx, cy, 32, nil, punchReady and Renderer2D.COLORS.warningActive or Renderer2D.COLORS.warningLow, punchReady and 2 or 1, punchAlpha)
+    painter_:DrawFist(cx, cy - 5, 46, punchColor, punchAlpha)
+    local punchStatus = punchReady and "可修正" or (rules_.punchUsed and "已使用" or "未就绪")
+    painter_:Text(cx, cy + 42, punchStatus, 10, punchColor, NVG_ALIGN_CENTER + NVG_ALIGN_TOP, "maker-display", punchAlpha)
 end
 
 local function DrawSelectorArrow(x, y, direction, active)
@@ -1414,6 +1782,11 @@ function Start()
     BuildLevel(1)
     SubscribeToEvent("Update", "HandleUpdate")
     SubscribeToEvent("ScreenMode", "HandleScreenMode")
+    SubscribeToEvent("TouchBegin", "HandleTouchBegin")
+    SubscribeToEvent("TouchMove", "HandleTouchMove")
+    SubscribeToEvent("TouchEnd", "HandleTouchEnd")
+    SubscribeToEvent("PhysicsPreStep", "HandlePhysicsPreStep")
+    SubscribeToEvent("PhysicsPostStep", "HandlePhysicsPostStep")
     SubscribeToEvent("PhysicsBeginContact2D", "HandleCollisionBegin")
     SubscribeToEvent("PhysicsEndContact2D", "HandleCollisionEnd")
     SubscribeToEvent(painter_.vg, "NanoVGRender", "HandleRender")
@@ -1430,6 +1803,8 @@ function HandleUpdate(_eventType, eventData)
     local dt = eventData:GetFloat("TimeStep")
     if audio_ then audio_:Update(dt) end
     uiElapsed_ = uiElapsed_ + dt
+    UpdateCardHoverStates(dt)
+    UpdateSpringVisuals(dt)
     sensorAngle_ = sensorAngle_ + dt * (goalContact_ and (math.pi * 2 / 7.2) or (math.pi * 2 / 10))
     for i = #cardBurns_, 1, -1 do
         local burn = cardBurns_[i]
@@ -1453,27 +1828,76 @@ function HandleUpdate(_eventType, eventData)
     HandlePointer()
     UpdateCardParameter(dt)
     if input:GetKeyPress(KEY_R) then ResetExperiment() end
-    if input:GetKeyPress(KEY_P) or input:GetKeyPress(KEY_SPACE) then
-        isPaused_ = not isPaused_
+    if input:GetMouseButtonPress(MOUSEB_RIGHT) and activeCardId_ then
+        activeCardId_ = nil
+        primedCardId_ = nil
+        ClearCardInteraction()
     end
-    if input:GetKeyPress(KEY_Z) then debugDraw_ = not debugDraw_ end
-    if input:GetKeyPress(KEY_V) and #replaySamples_ > 1 then
-        if replayActive_ then StopReplay() else StartReplay() end
+    if input:GetKeyPress(KEY_ESCAPE) then
+        if replayActive_ then StopReplay() else ToggleTacticalPause() end
     end
-    if input:GetKeyPress(KEY_LEFT) and levelIndex_ > 1 then BuildLevel(levelIndex_ - 1) end
-    if input:GetKeyPress(KEY_RIGHT) and levelIndex_ < CONFIG.levelCount then BuildLevel(levelIndex_ + 1) end
     SyncPhysicsUpdateEnabled()
     UpdateBulletTime(dt)
     if replayActive_ then
         UpdateReplay(dt)
-    elseif not isPaused_ then
+    elseif not isPaused_ and absorbing_ then
         UpdateExperiment(dt)
     end
     if debugDraw_ and physicsWorld_ then physicsWorld_:DrawDebugGeometry() end
 end
 
+---@param _eventType string
+---@param _eventData PhysicsPreStepEventData
+function HandlePhysicsPreStep(_eventType, _eventData)
+    if not apple_ or not launched_ or replayActive_ or apple_.body.bodyType ~= BT_DYNAMIC then
+        applePreSolveVelocity_ = nil
+        return
+    end
+    local velocity = apple_.body.linearVelocity
+    applePreSolveVelocity_ = Vector2(velocity.x, velocity.y)
+end
+
+---@param _eventType string
+---@param eventData PhysicsPostStepEventData
+function HandlePhysicsPostStep(_eventType, eventData)
+    if not launched_ or replayActive_ or isPaused_ then return end
+    -- The original applies a spring's pre-solve exit velocity after Matter's
+    -- collision resolution, then advances runtime mechanisms in physics time.
+    UpdateSpringExits()
+    UpdateExperiment(eventData:GetFloat("TimeStep"))
+    CapAppleSpeed()
+end
+
 function HandleScreenMode()
     frame_ = design_:Frame()
+end
+
+---@param _eventType string
+---@param eventData TouchBeginEventData
+function HandleTouchBegin(_eventType, eventData)
+    if pointer_.activeTouchId ~= nil then return end
+    pointer_.activeTouchId = eventData:GetInt("TouchID")
+    pointer_.touchX = eventData:GetInt("X")
+    pointer_.touchY = eventData:GetInt("Y")
+    pointer_.touchPressed = true
+end
+
+---@param _eventType string
+---@param eventData TouchMoveEventData
+function HandleTouchMove(_eventType, eventData)
+    if eventData:GetInt("TouchID") ~= pointer_.activeTouchId then return end
+    pointer_.touchX = eventData:GetInt("X")
+    pointer_.touchY = eventData:GetInt("Y")
+end
+
+---@param _eventType string
+---@param eventData TouchEndEventData
+function HandleTouchEnd(_eventType, eventData)
+    if eventData:GetInt("TouchID") ~= pointer_.activeTouchId then return end
+    pointer_.touchX = eventData:GetInt("X")
+    pointer_.touchY = eventData:GetInt("Y")
+    pointer_.activeTouchId = nil
+    pointer_.touchReleased = true
 end
 
 ---@param _eventType string
@@ -1495,15 +1919,17 @@ function HandleCollisionBegin(_eventType, eventData)
     local object = runtime_.byId[other.name]
     if launched_ and not replayActive_ then PlaySound("impact") end
     if not object then return end
-    if object.type == "spring" and object.enabled and object.channelEnabled and not object.spent and flightMs_ - object.triggeredAt >= object.cooldown then
-        local v = apple_.body.linearVelocity
+    if object.type == "spring" and object.enabled and object.channelEnabled and not object.spent
+        and uiElapsed_ * 1000 - object.triggeredAt >= object.cooldown then
+        local v = applePreSolveVelocity_ or apple_.body.linearVelocity
         local direction = object.direction
         local ix, iy = 0, 0
         if direction == "UP" then iy = 1 elseif direction == "DOWN" then iy = -1 elseif direction == "LEFT" then ix = -1 else ix = 1 end
-        local impulse = object.impulseStrength * Rules.GetRestitutionMultiplier(rules_)
+        local impulse = object.impulseStrength * Rules.GetRestitutionMultiplier(rules_) * CONFIG.matterVelocityToWorld
         object.pendingExitVelocity = Vector2(v.x + ix * impulse, v.y + iy * impulse)
-        object.triggeredAt = flightMs_
+        object.triggeredAt = uiElapsed_ * 1000
         object.spent = object.oneShot
+        object.pulseElapsedMs = 0
     elseif object.type == "button" then
         object.contactCount = object.contactCount + 1
         EvaluateButton(object)
@@ -1535,16 +1961,20 @@ function HandleRender()
     if not painter_ or not frame_ or not level_ then return end
     painter_:Begin(frame_)
     painter_:DrawBackground(frame_)
-    painter_:DrawNewton(frame_, level_, anger_)
+    painter_:DrawNewton(frame_, level_, anger_, observation_)
     painter_:DrawGround(frame_)
-    if runtime_ then for _, object in ipairs(runtime_.ordered) do painter_:DrawObject(frame_, object, { sensorAngle = sensorAngle_, success = success_ }) end end
+    local goalPulseProgress = goalPulseElapsedMs_ and math.max(0, math.min(1, goalPulseElapsedMs_ / 460)) or nil
+    if runtime_ then for _, object in ipairs(runtime_.ordered) do painter_:DrawObject(frame_, object, { sensorAngle = sensorAngle_, success = success_, goalPulseProgress = goalPulseProgress }) end end
     if replayActive_ then
         DrawReplay()
     else
         DrawTrail()
         DrawAim()
+        DrawCardPrediction()
         DrawLaunchHint()
-        painter_:DrawApple(frame_, apple_)
+        local absorbProgress = absorbing_ and math.max(0, math.min(1, absorbElapsedMs_ / 520)) or 0
+        painter_:DrawApple(frame_, apple_, 1 - absorbProgress * .65, 1 - absorbProgress * .65)
+        DrawVelocityArrow()
     end
     DrawHUD()
     DrawCards()

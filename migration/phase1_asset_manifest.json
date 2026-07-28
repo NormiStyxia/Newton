@@ -37,5 +37,12 @@
       "derivedSha256": "ED5560631BF2943D0FF8870AD2FBE85F3400D272682639689E6CD7004372887B",
       "size": "598x1028"
     }
+  ],
+  "vectorSources": [
+    {
+      "source": "D:/System Files/Download/牛顿/牛顿/public/assets/fist.svg",
+      "sourceSha256": "02A0A2B5F1C4A525C342782B82B0DB57303ABE8CC1352C88B4DFD882E4184CF8",
+      "runtime": "scripts/migration/Renderer.lua:Renderer:DrawFist"
+    }
   ]
 }

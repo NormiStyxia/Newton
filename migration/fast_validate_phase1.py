@@ -145,6 +145,11 @@ def main() -> int:
         expect(signature[:8] == bytes.fromhex("89504E470D0A1A0A"), f"not PNG: {item['derived']}")
         width, height = struct.unpack(">II", signature[16:24])
         expect(f"{width}x{height}" == item["size"], f"PNG size mismatch {item['derived']}")
+    for item in manifest.get("vectorSources", []):
+        source = Path(item["source"])
+        expect(source.exists(), f"missing vector source {item['source']}")
+        if source.exists():
+            expect(sha256(source) == item["sourceSha256"], f"vector source changed {item['source']}")
 
     audio_manifest_path = MAKER_ROOT / "migration/phase1_audio_manifest.json"
     expect(audio_manifest_path.exists(), "audio manifest missing")
@@ -173,6 +178,8 @@ def main() -> int:
     renderer_lua = (MAKER_ROOT / "scripts/migration/Renderer.lua").read_text(encoding="utf-8")
     design_lua = (MAKER_ROOT / "scripts/migration/DesignSpace.lua").read_text(encoding="utf-8")
     synth_audio_lua = (MAKER_ROOT / "scripts/migration/SynthAudio.lua").read_text(encoding="utf-8")
+    trajectory_lua = (MAKER_ROOT / "scripts/migration/TrajectoryPrediction.lua").read_text(encoding="utf-8")
+    rules_lua = (MAKER_ROOT / "scripts/migration/Rules.lua").read_text(encoding="utf-8")
     all_lua = "\n".join(path.read_text(encoding="utf-8") for path in (MAKER_ROOT / "scripts").rglob("*.lua"))
     portrait_source = PHASER_ROOT / "public/assets/newton-portrait.png"
     portrait_copy = MAKER_ROOT / "assets/image/newton-portrait.png"
@@ -197,10 +204,55 @@ def main() -> int:
     expect("audio/phase1/launch.wav" in synth_audio_lua and "self.elapsedMs - self.lastImpactMs < 80" in synth_audio_lua, "SynthAudio playback or impact gate missing")
     expect("apple_.shape.trigger = false" in main_lua and "object.contactProgress = 0" in main_lua, "success retry does not restore collision state")
     expect("isEditor_" not in main_lua and "EditorController" not in all_lua, "runtime editor remains in Maker build")
+    expect("local function PointerState()" in main_lua and "local x, y, down, press, release = PointerState()" in main_lua, "input state is not unified")
+    expect('SubscribeToEvent("TouchBegin", "HandleTouchBegin")' in main_lua and 'SubscribeToEvent("TouchMove", "HandleTouchMove")' in main_lua and 'SubscribeToEvent("TouchEnd", "HandleTouchEnd")' in main_lua, "touch events are not wired")
+    expect("function HandleTouchBegin" in main_lua and "function HandleTouchMove" in main_lua and "function HandleTouchEnd" in main_lua, "touch event handlers are missing")
+    expect("activeTouchId" in main_lua and 'eventData:GetInt("TouchID")' in main_lua, "single-touch ownership is missing")
+    expect("migration.TrajectoryPrediction" in main_lua and "TrajectoryPrediction.PredictFreeFlight" in main_lua, "source-equivalent trajectory preview is not wired")
+    expect("MATTER_BASE_DELTA_MS = 1000 / 60" in trajectory_lua and "input.forceScale * MATTER_BASE_DELTA_MS * MATTER_BASE_DELTA_MS" in trajectory_lua, "trajectory integration scale differs from Phaser")
+    expect("velocityX = velocityX * frictionFactor + accelerationX" in trajectory_lua and "if frame % input.sampleEvery == 0" in trajectory_lua, "trajectory integration order differs from Phaser")
+    expect("matterForceScale = 0.001" in main_lua and "matterVelocityToWorld" in main_lua, "Matter-to-Box2D velocity conversion missing")
+    expect("CONFIG.maxAppleSpeed = 25 * CONFIG.matterVelocityToWorld" in main_lua and "local function CapAppleSpeed()" in main_lua, "source apple speed cap missing")
+    expect("CONFIG.gravityAcceleration = CONFIG.matterForceScale" in main_lua and "gravityAcceleration = 10" not in main_lua, "gravity scale is not converted from Matter units")
+    expect("DEFAULT_GRAVITY_MAGNITUDE = 1.05" in rules_lua and "function Rules.GetGravityMultiplier" in rules_lua, "source gravity magnitude or button multiplier missing")
+    expect("APPLE_MATTER_AIR_FRICTION = 0.0015" in factory_lua and "body.linearDamping = 60 * (1 / (1 - APPLE_MATTER_AIR_FRICTION) - 1)" in factory_lua, "Matter air friction is not converted to Box2D damping")
+    expect('SubscribeToEvent("PhysicsPreStep", "HandlePhysicsPreStep")' in main_lua and 'SubscribeToEvent("PhysicsPostStep", "HandlePhysicsPostStep")' in main_lua, "physics step event wiring missing")
+    expect("applePreSolveVelocity_" in main_lua and "local v = applePreSolveVelocity_ or apple_.body.linearVelocity" in main_lua, "spring does not retain pre-solve velocity")
+    expect("object.impulseStrength * Rules.GetRestitutionMultiplier(rules_) * CONFIG.matterVelocityToWorld" in main_lua, "spring impulse unit conversion missing")
+    expect("UpdateSpringExits()\n    UpdateExperiment(eventData:GetFloat(\"TimeStep\"))\n    CapAppleSpeed()" in main_lua, "physics post-step ordering differs from source")
+    expect("uiElapsed_ * 1000 - object.triggeredAt" in main_lua and "uiElapsed_ * 1000 >= object.closeAt" in main_lua, "scene-time cooldown or door delay differs from source")
+    expect("if #trail_ > 18" in main_lua and "flightMs_ - lastTrailAt_ > 55" in main_lua and "DrawVelocityArrow" in main_lua, "trail or velocity visualization differs from Phaser")
+    expect("input:GetMouseButtonPress(MOUSEB_RIGHT)" in main_lua and "input:GetKeyPress(KEY_ESCAPE)" in main_lua and "ToggleTacticalPause" in main_lua, "source keyboard or cancel interaction is missing")
+    expect("replayNextSampleMs_" in main_lua and "while replayNextSampleMs_ <= flightMs_ + .0001 do" in main_lua, "replay no longer interpolates at the source sample cadence")
+    expect("replayPreviousSample_" in main_lua and "deltaAngle = ((current.angle - previous.angle + 540) % 360) - 180" in main_lua, "replay angle interpolation differs from Phaser")
+    expect("absorbing_" in main_lua and "absorbElapsedMs_ = math.min(520" in main_lua and "absorbElapsedMs_ >= 520" in main_lua, "success absorption timing differs from Phaser")
+    expect("function Renderer:DrawApple(frame, apple, scale, alpha)" in renderer_lua and "1 - absorbProgress * .65" in main_lua, "success absorption visual differs from Phaser")
+    expect("goalPulseElapsedMs_" in main_lua and "goalPulseElapsedMs_ / 460" in main_lua, "goal pulse timing differs from Phaser")
+    expect("state.goalPulseProgress" in renderer_lua and "1 + progress * .22" in renderer_lua, "goal pulse expansion differs from Phaser")
+    expect("glass = { 216, 214, 232, 255 }" in renderer_lua and "glassEdge = { 128, 118, 181, 255 }" in renderer_lua, "phase wall palette differs from LightLabTheme")
+    expect("object.phaseable and COLORS.glass" in renderer_lua and "object.phaseable and COLORS.glassEdge" in renderer_lua, "phase wall does not use the source glass palette")
+    expect("darkPrimary = { 47, 73, 56, 255 }" in renderer_lua, "darkPrimary palette differs from LightLabTheme")
+    expect("COLORS.darkPrimary, 4" in renderer_lua and "f[7] and COLORS.darkPrimary" in renderer_lua, "playfield or formula strong color differs from LightLabTheme")
+    expect("fieldCardBorder = { 142, 175, 114, 255 }" in renderer_lua, "field card border differs from LightLabTheme")
+    expect("decisionCardSurface = { 249, 222, 121, 255 }" in renderer_lua and "decisionCardBorder = { 208, 181, 86, 255 }" in renderer_lua, "decision card palette differs from LightLabTheme")
+    expect("decisionCardText = { 73, 63, 39, 255 }" in renderer_lua and "decisionCardBody = { 101, 90, 52, 255 }" in renderer_lua, "decision card typography palette differs from LightLabTheme")
+    expect("Renderer2D.COLORS.fieldCardSurface" in main_lua and "Renderer2D.COLORS.decisionCardSurface" in main_lua, "rule cards do not use source-specific surfaces")
+    expect("function Renderer:DrawFist" in renderer_lua and "nvgBezierTo(self.vg, 102, 41, 115, 48, 110, 58)" in renderer_lua, "fist.svg vector path is not reproduced")
+    expect("painter_:DrawFist(cx, cy - 5, 46" in main_lua, "Newton ability does not render the source fist.svg")
+    expect("painter_:Text(cx, cy - 16" not in main_lua and "tabStartX = frame_.playfieldX + frame_.playfieldWidth - 290" in main_lua, "obsolete fist placeholder or level-tab input remains")
+    expect("object.pulseElapsedMs = 0" in main_lua and "UpdateSpringVisuals(dt)" in main_lua, "spring trigger animation is missing")
+    expect("nvgScale(self.vg, 1 - compression * .12, 1 - compression * .28)" in renderer_lua, "spring compression visual differs from Phaser")
+    expect("function Rules.CanPunch(state)" in rules_lua and "if not Rules.CanPunch(state) then return false end" in rules_lua, "Newton ability eligibility differs from the Phaser runtime")
+    expect(any(item.get("source", "").endswith("fist.svg") for item in manifest.get("vectorSources", [])), "fist.svg source hash is not recorded")
+    expect("frame_.playfieldWidth - 98" in main_lua and "frame_.cardHandY - 17" in main_lua, "Newton ability hit target differs from the original 80px container")
+    expect("depth = 54 + (1 - normalized) * 4" in rules_lua, "card hand depth differs from CardHandLayout")
+    expect("local function UpdateCardHoverStates(dt)" in main_lua and "local function FindTopCardAt(x, y)" in main_lua, "card hover or depth-aware hit testing is missing")
+    expect("failureCountsByLevel_" in main_lua and "local function RegisterFailure()" in main_lua, "failure counts are not isolated per level")
+    expect("observation_ = \"苹果已在爱因斯坦观察窗内稳定停留。\"" in main_lua and "function Renderer:DrawNewton(frame, level, anger, observation)" in renderer_lua, "runtime observation state differs from Phaser")
 
     result = {
         "mode": "FAST_VALIDATE",
-        "checks": 93,
+        "checks": 138,
         "errors": errors,
         "status": "pass" if not errors else "fail",
     }

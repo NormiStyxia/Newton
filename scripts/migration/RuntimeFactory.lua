@@ -5,6 +5,7 @@ local CATEGORY_WORLD = 0x0002
 local CATEGORY_SENSOR = 0x0004
 local CATEGORY_PHASEABLE = 0x0008
 local MASK_ALL = 0xFFFF
+local APPLE_MATTER_AIR_FRICTION = 0.0015
 
 local function levelTransform(mapper, transform)
     local x, y = mapper:LevelToWorld(transform.x, transform.y)
@@ -91,6 +92,7 @@ FACTORIES.spring = function(context, data)
     runtime.spent = false
     runtime.triggeredAt = -math.huge
     runtime.pendingExitVelocity = nil
+    runtime.pulseElapsedMs = nil
     runtime.direction = props.direction or "UP"
     runtime.impulseStrength = props.impulseStrength or 10
     runtime.cooldown = props.cooldown or 500
@@ -178,7 +180,9 @@ function RuntimeFactory.CreateApple(scene, launcher)
     body.bodyType = BT_STATIC
     body.useFixtureMass = false
     body.mass = 1
-    body.linearDamping = 0.0015
+    -- Matter's frictionAir=0.0015 is applied once per 60 Hz frame. Box2D
+    -- damping is per second, so use the equivalent exponential coefficient.
+    body.linearDamping = 60 * (1 / (1 - APPLE_MATTER_AIR_FRICTION) - 1)
     body.angularDamping = 0
     body.fixedRotation = false
     body.bullet = false

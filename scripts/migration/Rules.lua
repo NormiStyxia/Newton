@@ -1,4 +1,5 @@
 local Rules = {}
+local DEFAULT_GRAVITY_MAGNITUDE = 1.05
 
 ---@class CardHandOffset
 ---@field x number
@@ -69,8 +70,7 @@ function Rules.UseDecision(state, id, allowRepeat)
 end
 
 function Rules.Punch(state)
-    if state.punchUsed then return false end
-    if not state.launched and next(state.activeFields) == nil and not state.phaseActive then return false end
+    if not Rules.CanPunch(state) then return false end
     state.punchUsed = true
     state.activeFields = {}
     state.phaseActive = false
@@ -79,15 +79,29 @@ function Rules.Punch(state)
     return true
 end
 
+function Rules.CanPunch(state)
+    return not state.punchUsed and (next(state.activeFields) ~= nil or state.phaseActive)
+end
+
 function Rules.GetRestitutionMultiplier(state)
     return state.restitutionMultiplier or 1
 end
 
 function Rules.GetGravity(state, base)
-    local gravity = { x = base.x, y = base.y, strength = base.strength }
+    local gravity = {
+        x = base.x,
+        y = base.y,
+        strength = (base.strength or 1) * DEFAULT_GRAVITY_MAGNITUDE,
+    }
     if state.activeFields["feather-gravity"] then gravity.strength = gravity.strength * 0.55 end
     if state.activeFields["side-gravity"] then gravity.x = state.sideGravity.x; gravity.y = state.sideGravity.y end
     return gravity
+end
+
+function Rules.GetGravityMultiplier(state, base)
+    local multiplier = base.strength or 1
+    if state.activeFields["feather-gravity"] then multiplier = multiplier * 0.55 end
+    return multiplier
 end
 
 function Rules.CardHand(count, centerX, centerY, playfieldWidth)
@@ -104,8 +118,15 @@ function Rules.CardHand(count, centerX, centerY, playfieldWidth)
     count = math.max(0, math.min(10, math.floor(count)))
     if count == 0 then return result end
     if count <= 6 then
+        local center = (count - 1) * .5
         for i, pose in ipairs(presets[count]) do
-            result[i] = { x = centerX + pose.x, y = centerY + pose.y, angle = pose.angle, depth = 54 + i }
+            local normalized = math.abs(i - 1 - center) / math.max(center, 1)
+            result[i] = {
+                x = centerX + pose.x,
+                y = centerY + pose.y,
+                angle = pose.angle,
+                depth = 54 + (1 - normalized) * 4,
+            }
         end
         return result
     end

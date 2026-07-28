@@ -13,6 +13,7 @@ local COLORS = {
     playfield = { 255, 242, 199, 255 },
     playfieldAccent = { 249, 222, 121, 255 },
     floor = { 47, 73, 56, 255 },
+    darkPrimary = { 47, 73, 56, 255 },
     dark = { 32, 55, 44, 255 },
     darkSecondary = { 82, 117, 93, 255 },
     greenSoft = { 232, 241, 222, 255 },
@@ -31,8 +32,19 @@ local COLORS = {
     warningLow = { 217, 170, 161, 255 },
     quantum = { 128, 118, 181, 255 },
     quantumSoft = { 232, 227, 244, 255 },
+    glass = { 216, 214, 232, 255 },
+    glassEdge = { 128, 118, 181, 255 },
     instant = { 180, 147, 69, 255 },
     instantSoft = { 249, 231, 168, 255 },
+    fieldCardSurface = { 208, 221, 151, 255 },
+    fieldCardSurfaceHover = { 219, 230, 171, 255 },
+    fieldCardBorder = { 142, 175, 114, 255 },
+    decisionCardSurface = { 249, 222, 121, 255 },
+    decisionCardSurfaceHover = { 252, 233, 155, 255 },
+    decisionCardBorder = { 208, 181, 86, 255 },
+    decisionCardText = { 73, 63, 39, 255 },
+    decisionCardBody = { 101, 90, 52, 255 },
+    quantumCardSurfaceHover = { 240, 236, 248, 255 },
     wall = { 175, 196, 157, 255 },
     wallEdge = { 82, 117, 93, 255 },
 }
@@ -41,6 +53,15 @@ Renderer.COLORS = COLORS
 
 local function color(c, alpha)
     return nvgRGBA(c[1], c[2], c[3], alpha or c[4] or 255)
+end
+
+local function tint(c, tintColor)
+    return {
+        math.floor(c[1] * tintColor[1] / 255 + .5),
+        math.floor(c[2] * tintColor[2] / 255 + .5),
+        math.floor(c[3] * tintColor[3] / 255 + .5),
+        255,
+    }
 end
 
 local function hex(value, alpha)
@@ -147,10 +168,10 @@ function Renderer:DrawBackground(frame)
     self:FillRect(0, 0, frame.logicalWidth, frame.logicalHeight, COLORS.background)
     self:FillRect(0, 0, frame.logicalWidth, 94, COLORS.panel, 250)
     self:FillRect(0, 92, frame.logicalWidth, 2, COLORS.greenLight, 230)
-    self:RoundedRect(frame.workspaceX - 55, -18, 448, 112, 20, COLORS.dark)
+    self:RoundedRect(frame.workspaceX - 55, -18, 448, 112, 20, COLORS.darkPrimary)
     self:RoundedRect(frame.newtonX + 6, frame.newtonY + 6, frame.newtonWidth, frame.newtonHeight, 7, COLORS.floor, nil, nil, 20)
     self:RoundedRect(frame.playfieldX + 7, frame.playfieldY + 9, frame.playfieldWidth, frame.playfieldHeight, 7, COLORS.floor, nil, nil, 20)
-    self:RoundedRect(frame.playfieldX, frame.playfieldY, frame.playfieldWidth, frame.playfieldHeight, 7, COLORS.playfield, COLORS.dark, 4)
+    self:RoundedRect(frame.playfieldX, frame.playfieldY, frame.playfieldWidth, frame.playfieldHeight, 7, COLORS.playfield, COLORS.darkPrimary, 4)
     self:RoundedRect(frame.playfieldX + 8, frame.playfieldY + 8, frame.playfieldWidth - 16, frame.playfieldHeight - 16, 5, nil, COLORS.greenLight, 2)
     self:DrawGrid(frame)
     self:DrawFormulas(frame)
@@ -165,7 +186,7 @@ function Renderer:DrawGrid(frame)
     for py = y + 38, y + h - 10, 42 do
         nvgBeginPath(self.vg); nvgMoveTo(self.vg, x + 10, py); nvgLineTo(self.vg, x + w - 10, py); nvgStroke(self.vg)
     end
-    nvgStrokeColor(self.vg, color(COLORS.dark, 33)); nvgStrokeWidth(self.vg, 1)
+    nvgStrokeColor(self.vg, color(COLORS.darkPrimary, 33)); nvgStrokeWidth(self.vg, 1)
     for px = x + 136, x + w - 10, 192 do
         nvgBeginPath(self.vg); nvgMoveTo(self.vg, px, y + 10); nvgLineTo(self.vg, px, y + h - 10); nvgStroke(self.vg)
     end
@@ -255,12 +276,12 @@ function Renderer:DrawFormulas(frame)
         nvgSave(self.vg)
         nvgTranslate(self.vg, x, y)
         nvgRotate(self.vg, f[5])
-        self:Text(0, 0, f[1], f[4], f[7] and COLORS.dark or c, NVG_ALIGN_CENTER + NVG_ALIGN_MIDDLE, "maker-display", math.floor(f[6] * 255))
+        self:Text(0, 0, f[1], f[4], f[7] and COLORS.darkPrimary or c, NVG_ALIGN_CENTER + NVG_ALIGN_MIDDLE, "maker-display", math.floor(f[6] * 255))
         nvgRestore(self.vg)
     end
 end
 
-function Renderer:DrawNewton(frame, level, anger)
+function Renderer:DrawNewton(frame, level, anger, observation)
     local x, y, w, h = frame.newtonX, frame.newtonY, frame.newtonWidth, frame.newtonHeight
     self:RoundedRect(x, y, w, h, 7, COLORS.panel, COLORS.greenLight, 2)
     self:RoundedRect(x + 8, y + 8, w - 16, h - 16, 5, nil, COLORS.panelSecondary, 1)
@@ -278,7 +299,7 @@ function Renderer:DrawNewton(frame, level, anger)
     end
     nvgStrokeColor(self.vg, color(COLORS.warningLow, 180)); nvgStrokeWidth(self.vg, 3)
     nvgBeginPath(self.vg); nvgMoveTo(self.vg, x + 22, y + 90); nvgLineTo(self.vg, x + 22, y + 140); nvgStroke(self.vg)
-    self:TextBox(x + 36, y + 95, w - 66, "“" .. ((level and level.observation) or "先观察抛物线，再谈万有引力。") .. "”", 13, COLORS.body)
+    self:TextBox(x + 36, y + 95, w - 66, "“" .. (observation or (level and level.observation) or "先观察抛物线，再谈万有引力。") .. "”", 13, COLORS.body)
     nvgStrokeColor(self.vg, color(COLORS.greenLight, 163)); nvgStrokeWidth(self.vg, 2)
     nvgBeginPath(self.vg); nvgMoveTo(self.vg, x + 34, y + 472); nvgLineTo(self.vg, x + w - 34, y + 472); nvgStroke(self.vg)
     self:Text(x + 24, y + h - 112, "牛顿怒气", 12, COLORS.secondary)
@@ -357,7 +378,10 @@ function Renderer:DrawGoalSensor(x, y, w, h, state)
     self:DrawGoalFallbackPortrait(x, y, portraitRadius, active, progress)
     self:Circle(x, y, portraitRadius + 1, nil, COLORS.darkSecondary, 2, active and 224 or 189)
     self:Circle(x, y, portraitRadius - 3, nil, COLORS.greenLight, 1, active and 173 or 135)
-    if state.success then self:Circle(x, y, outerRadius * .88 * 1.22, nil, COLORS.primaryActive, 2, 199) end
+    if state.goalPulseProgress ~= nil then
+        local progress = math.max(0, math.min(1, state.goalPulseProgress))
+        self:Circle(x, y, outerRadius * .88 * (1 + progress * .22), nil, COLORS.primaryActive, 2, math.floor(.78 * (1 - progress) * 255))
+    end
 end
 
 function Renderer:DrawObject(frame, object, state)
@@ -371,14 +395,14 @@ function Renderer:DrawObject(frame, object, state)
     local h = t.height * scale
     local rotation = object.node and math.rad(object.node.rotation2D) or math.rad(-(t.rotation or 0))
     if object.type == "wall" then
-        local fill = object.phaseable and COLORS.quantumSoft or COLORS.wall
-        local edge = object.phaseable and COLORS.quantum or COLORS.wallEdge
+        local fill = object.phaseable and COLORS.glass or COLORS.wall
+        local edge = object.phaseable and COLORS.glassEdge or COLORS.wallEdge
         nvgSave(self.vg)
         nvgTranslate(self.vg, x, y)
         nvgRotate(self.vg, rotation)
         self:FillRect(-w * .5, -h * .5, w, h, fill, object.phaseable and 173 or 255)
         self:StrokeRect(-w * .5, -h * .5, w, h, edge, 3, 240)
-        self:FillRect(-w * .28 - 2, -math.max(12, h - 16) * .5, 4, math.max(12, h - 16), object.phaseable and COLORS.quantumSoft or COLORS.panel, 97)
+        self:FillRect(-w * .28 - 2, -math.max(12, h - 16) * .5, 4, math.max(12, h - 16), object.phaseable and COLORS.glass or COLORS.panel, 97)
         nvgRestore(self.vg)
     elseif object.type == "door" then
         local alpha = object.openness == 1 and 51 or 255
@@ -386,14 +410,20 @@ function Renderer:DrawObject(frame, object, state)
         nvgTranslate(self.vg, x, y)
         nvgRotate(self.vg, rotation)
         self:FillRect(-w * .5, -h * .5, w, h, COLORS.darkSecondary, alpha)
-        self:StrokeRect(-w * .5, -h * .5, w, h, COLORS.dark, 3, alpha)
+        self:StrokeRect(-w * .5, -h * .5, w, h, COLORS.darkPrimary, 3, alpha)
         nvgRestore(self.vg)
     elseif object.type == "launcher" then
         self:Image(self.images.launcher, x, y, w, w * 190 / 150, 1, rotation, .5, 36 / 190)
     elseif object.type == "goal_sensor" then
-        self:DrawGoalSensor(x, y, w, h, { active = object.active, contactProgress = object.contactProgress, sensorAngle = state.sensorAngle, success = state.success })
+        self:DrawGoalSensor(x, y, w, h, { active = object.active, contactProgress = object.contactProgress, sensorAngle = state.sensorAngle, goalPulseProgress = state.goalPulseProgress })
     elseif object.type == "spring" then
         nvgSave(self.vg); nvgTranslate(self.vg, x, y); nvgRotate(self.vg, rotation)
+        if object.pulseElapsedMs ~= nil then
+            local phase = math.max(0, math.min(1, object.pulseElapsedMs / 70))
+            if object.pulseElapsedMs > 70 then phase = math.max(0, math.min(1, (140 - object.pulseElapsedMs) / 70)) end
+            local compression = math.sin(phase * math.pi * .5)
+            nvgScale(self.vg, 1 - compression * .12, 1 - compression * .28)
+        end
         nvgStrokeColor(self.vg, color(COLORS.warningActive)); nvgStrokeWidth(self.vg, 4); nvgBeginPath(self.vg)
         for i = 0, 8 do
             local px = -w / 2 + w * i / 8
@@ -402,12 +432,12 @@ function Renderer:DrawObject(frame, object, state)
             if i == 0 then nvgMoveTo(self.vg, px, py) else nvgLineTo(self.vg, px, py) end
         end
         nvgStroke(self.vg)
-        nvgStrokeColor(self.vg, color(COLORS.dark)); nvgStrokeWidth(self.vg, 3); nvgBeginPath(self.vg); nvgMoveTo(self.vg, -w * .5, h * .5); nvgLineTo(self.vg, w * .5, h * .5); nvgStroke(self.vg)
+        nvgStrokeColor(self.vg, color(COLORS.darkPrimary)); nvgStrokeWidth(self.vg, 3); nvgBeginPath(self.vg); nvgMoveTo(self.vg, -w * .5, h * .5); nvgLineTo(self.vg, w * .5, h * .5); nvgStroke(self.vg)
         nvgRestore(self.vg)
     elseif object.type == "button" then
         local visualState = object.active and "ACTIVE" or (object.contactCount > 0 and not object.conditionSatisfied and "CONTACT_INVALID" or "IDLE")
         nvgSave(self.vg); nvgTranslate(self.vg, x, y); nvgRotate(self.vg, rotation)
-        self:FillRect(-w * .5, -h * .5, w, h, COLORS.dark)
+        self:FillRect(-w * .5, -h * .5, w, h, COLORS.darkPrimary)
         self:StrokeRect(-w * .5, -h * .5, w, h, COLORS.darkSecondary, 2)
         local plateY = object.active and 1 or -h * .18
         local plate = visualState == "ACTIVE" and COLORS.primaryActive or (visualState == "CONTACT_INVALID" and COLORS.playfieldAccent or COLORS.warningActive)
@@ -417,13 +447,62 @@ function Renderer:DrawObject(frame, object, state)
     end
 end
 
-function Renderer:DrawApple(frame, apple)
+function Renderer:DrawApple(frame, apple, scale, alpha)
     if not apple or not apple.node then return end
     local p = apple.node.position2D
     local x, y = frame.playfieldX + frame.playfieldWidth * .5 + p.x * 100, frame.playfieldY + frame.playfieldHeight * .5 - p.y * 100
-    local r = apple.displayRadius or 32
+    local r = (apple.displayRadius or 32) * (scale or 1)
     local angle = apple.node.rotation2D and math.rad(apple.node.rotation2D) or 0
-    if self.images.apple and self.images.apple >= 0 then self:Image(self.images.apple, x, y, r * 2, r * 2, 1, angle) else self:Circle(x, y, r, COLORS.warningActive, COLORS.warning) end
+    if self.images.apple and self.images.apple >= 0 then self:Image(self.images.apple, x, y, r * 2, r * 2, alpha or 1, angle) else self:Circle(x, y, r, COLORS.warningActive, COLORS.warning, nil, math.floor((alpha or 1) * 255)) end
+end
+
+-- Original fist.svg is a two-path, self-contained vector. Keep the source SVG
+-- read-only and reproduce its viewBox paths at the same 128-unit scale here.
+function Renderer:DrawFist(x, y, size, tintColor, alpha)
+    local scale = size / 128
+    local opacity = alpha or 255
+    nvgSave(self.vg)
+    nvgTranslate(self.vg, x - size * .5, y - size * .5)
+    nvgScale(self.vg, scale, scale)
+    nvgLineJoin(self.vg, NVG_ROUND)
+    nvgBeginPath(self.vg)
+    nvgMoveTo(self.vg, 29, 56)
+    nvgLineTo(self.vg, 29, 34)
+    nvgBezierTo(self.vg, 29, 26, 42, 25, 44, 33)
+    nvgLineTo(self.vg, 44, 22)
+    nvgBezierTo(self.vg, 44, 13, 58, 13, 59, 22)
+    nvgLineTo(self.vg, 59, 32)
+    nvgLineTo(self.vg, 59, 17)
+    nvgBezierTo(self.vg, 59, 8, 73, 8, 74, 17)
+    nvgLineTo(self.vg, 74, 34)
+    nvgLineTo(self.vg, 74, 23)
+    nvgBezierTo(self.vg, 74, 14, 88, 14, 89, 23)
+    nvgLineTo(self.vg, 89, 60)
+    nvgLineTo(self.vg, 96, 50)
+    nvgBezierTo(self.vg, 102, 41, 115, 48, 110, 58)
+    nvgLineTo(self.vg, 86, 92)
+    nvgBezierTo(self.vg, 80, 104, 70, 112, 56, 112)
+    nvgLineTo(self.vg, 43, 112)
+    nvgBezierTo(self.vg, 25, 112, 14, 100, 14, 83)
+    nvgLineTo(self.vg, 14, 62)
+    nvgBezierTo(self.vg, 14, 52, 29, 51, 29, 61)
+    nvgClosePath(self.vg)
+    nvgFillColor(self.vg, color(tint({ 241, 223, 189, 255 }, tintColor), opacity))
+    nvgFill(self.vg)
+    nvgStrokeColor(self.vg, color(tint({ 24, 33, 30, 255 }, tintColor), opacity))
+    nvgStrokeWidth(self.vg, 7)
+    nvgStroke(self.vg)
+    nvgLineCap(self.vg, NVG_ROUND)
+    nvgBeginPath(self.vg)
+    nvgMoveTo(self.vg, 29, 56); nvgLineTo(self.vg, 29, 74)
+    nvgMoveTo(self.vg, 44, 32); nvgLineTo(self.vg, 44, 63)
+    nvgMoveTo(self.vg, 59, 32); nvgLineTo(self.vg, 59, 63)
+    nvgMoveTo(self.vg, 74, 34); nvgLineTo(self.vg, 74, 63)
+    nvgMoveTo(self.vg, 31, 77); nvgLineTo(self.vg, 74, 77)
+    nvgStrokeColor(self.vg, color(tint({ 142, 96, 72, 255 }, tintColor), opacity))
+    nvgStrokeWidth(self.vg, 5)
+    nvgStroke(self.vg)
+    nvgRestore(self.vg)
 end
 
 return Renderer
