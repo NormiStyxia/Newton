@@ -1,0 +1,185 @@
+{
+  "schemaVersion": 1,
+  "levelId": "level_04",
+  "name": "半空中的推手",
+  "playfield": {
+    "width": 1400,
+    "height": 700
+  },
+  "objects": [
+    {
+      "id": "launcher_main",
+      "type": "launcher",
+      "name": "苹果发射器",
+      "transform": {
+        "x": 134.43708609271525,
+        "y": 467,
+        "width": 110,
+        "height": 96,
+        "rotation": 0
+      },
+      "properties": {
+        "launchAngle": 0,
+        "launchPower": 1,
+        "appleSpawnOffsetX": 0,
+        "appleSpawnOffsetY": 0
+      }
+    },
+    {
+      "id": "goal_main",
+      "type": "goal_sensor",
+      "name": "爱因斯坦观察窗",
+      "transform": {
+        "x": 526.8219348332159,
+        "y": 306.8884330267753,
+        "width": 180,
+        "height": 169.42754919499103,
+        "rotation": 0
+      },
+      "properties": {
+        "requiredStayTime": 700,
+        "targetTag": "apple"
+      }
+    },
+    {
+      "id": "wall_02",
+      "type": "wall",
+      "name": "普通墙体",
+      "transform": {
+        "x": 615.4852239239914,
+        "y": 140.78476333386922,
+        "width": 677.8859299562228,
+        "height": 20,
+        "rotation": 0
+      },
+      "properties": {
+        "collisionEnabled": true,
+        "friction": 0.62,
+        "restitution": 0.32,
+        "isPhaseable": false
+      }
+    },
+    {
+      "id": "wall_03",
+      "type": "wall",
+      "name": "普通墙体 副本 副本",
+      "transform": {
+        "x": 378.6988833619752,
+        "y": 301.408336722934,
+        "width": 291.28274165050635,
+        "height": 20,
+        "rotation": 90
+      },
+      "properties": {
+        "collisionEnabled": true,
+        "friction": 0.62,
+        "restitution": 0.32,
+        "isPhaseable": false
+      }
+    },
+    {
+      "id": "wall_04",
+      "type": "wall",
+      "name": "普通墙体 副本",
+      "transform": {
+        "x": 617.5827013185112,
+        "y": 406.73007212649344,
+        "width": 677.8859299562228,
+        "height": 20,
+        "rotation": 0
+      },
+      "properties": {
+        "collisionEnabled": true,
+        "friction": 0.62,
+        "restitution": 0.32,
+        "isPhaseable": false
+      }
+    },
+    {
+      "id": "wall_01",
+      "type": "wall",
+      "name": "普通墙体 副本 副本 副本",
+      "transform": {
+        "x": 406.6988833619752,
+        "y": 329.408336722934,
+        "width": 291.28274165050635,
+        "height": 20,
+        "rotation": 90
+      },
+      "properties": {
+        "collisionEnabled": true,
+        "friction": 0.62,
+        "restitution": 0.32,
+        "isPhaseable": false
+      }
+    },
+    {
+      "id": "wall_05",
+      "type": "wall",
+      "name": "普通墙体 副本 副本",
+      "transform": {
+        "x": 639.1070706671412,
+        "y": 454.28722079438046,
+        "width": 677.8859299562228,
+        "height": 20,
+        "rotation": 0
+      },
+      "properties": {
+        "collisionEnabled": true,
+        "friction": 0.62,
+        "restitution": 0.32,
+        "isPhaseable": false
+      }
+    },
+    {
+      "id": "wall_06",
+      "type": "wall",
+      "name": "普通墙体 副本 副本 副本 副本",
+      "transform": {
+        "x": 438.58426175279726,
+        "y": 363.9273862788963,
+        "width": 291.28274165050635,
+        "height": 20,
+        "rotation": 90
+      },
+      "properties": {
+        "collisionEnabled": true,
+        "friction": 0.62,
+        "restitution": 0.32,
+        "isPhaseable": false
+      }
+    }
+  ],
+  "cardDeck": {
+    "cards": [
+      {
+        "cardId": "up-impulse",
+        "count": 1,
+        "order": 0,
+        "enabled": false,
+        "usageMode": "SINGLE_USE"
+      },
+      {
+        "cardId": "feather-gravity",
+        "count": 1,
+        "order": 0,
+        "enabled": false,
+        "usageMode": "SINGLE_USE"
+      },
+      {
+        "cardId": "side-gravity",
+        "count": 4,
+        "order": 1,
+        "enabled": true,
+        "usageMode": "SINGLE_USE"
+      }
+    ]
+  },
+  "rules": {
+    "initialGravity": {
+      "x": 0,
+      "y": 1,
+      "strength": 1
+    }
+  }
+}

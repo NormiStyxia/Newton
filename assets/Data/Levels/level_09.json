@@ -1,0 +1,134 @@
+{
+  "schemaVersion": 1,
+  "levelId": "level_09",
+  "name": "两条路",
+  "playfield": {
+    "width": 1400,
+    "height": 700
+  },
+  "objects": [
+    {
+      "id": "launcher_main",
+      "type": "launcher",
+      "name": "苹果发射器",
+      "transform": {
+        "x": 134.43708609271525,
+        "y": 467,
+        "width": 110,
+        "height": 96,
+        "rotation": 0
+      },
+      "properties": {
+        "launchAngle": 0,
+        "launchPower": 1,
+        "appleSpawnOffsetX": 0,
+        "appleSpawnOffsetY": 0
+      }
+    },
+    {
+      "id": "goal_main",
+      "type": "goal_sensor",
+      "name": "爱因斯坦观察窗",
+      "transform": {
+        "x": 1148,
+        "y": 487.0214669051878,
+        "width": 180,
+        "height": 185.95706618962436,
+        "rotation": 0
+      },
+      "properties": {
+        "requiredStayTime": 700,
+        "targetTag": "apple"
+      }
+    },
+    {
+      "id": "wall_01",
+      "type": "wall",
+      "name": "普通墙体",
+      "transform": {
+        "x": 616.5562913907285,
+        "y": 448.51520572450806,
+        "width": 66.75496688741723,
+        "height": 262.96958855098393,
+        "rotation": 0
+      },
+      "properties": {
+        "collisionEnabled": true,
+        "friction": 0.62,
+        "restitution": 0.32,
+        "isPhaseable": false
+      }
+    },
+    {
+      "id": "wall_02",
+      "type": "wall",
+      "name": "普通墙体",
+      "transform": {
+        "x": 616.5562913907285,
+        "y": 115.18717038558623,
+        "width": 66.75496688741723,
+        "height": 212.88014311270126,
+        "rotation": 0
+      },
+      "properties": {
+        "collisionEnabled": true,
+        "friction": 0.62,
+        "restitution": 0.32,
+        "isPhaseable": false
+      }
+    }
+  ],
+  "cardDeck": {
+    "cards": [
+      {
+        "cardId": "feather-gravity",
+        "count": 1,
+        "order": 0,
+        "enabled": true,
+        "usageMode": "REUSABLE"
+      },
+      {
+        "cardId": "mirror-motion",
+        "count": 1,
+        "order": 1,
+        "enabled": true,
+        "usageMode": "SINGLE_USE"
+      },
+      {
+        "cardId": "quantum-phase",
+        "count": 1,
+        "order": 2,
+        "enabled": true,
+        "usageMode": "SINGLE_USE"
+      },
+      {
+        "cardId": "side-gravity",
+        "count": 1,
+        "order": 1,
+        "enabled": true,
+        "usageMode": "REUSABLE"
+      },
+      {
+        "cardId": "hooke-bounce",
+        "count": 1,
+        "order": 2,
+        "enabled": true,
+        "usageMode": "REUSABLE"
+      },
+      {
+        "cardId": "up-impulse",
+        "count": 1,
+        "order": 3,
+        "enabled": true,
+        "usageMode": "SINGLE_USE"
+      }
+    ]
+  },
+  "rules": {
+    "initialGravity": {
+      "x": 0,
+      "y": 1,
+      "strength": 1
+    }
+  }
+}

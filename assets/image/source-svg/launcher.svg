@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 150 190" preserveAspectRatio="xMidYMid meet" stroke-linecap="round" stroke-linejoin="round">
+  <defs>
+    <style>
+      .outline { stroke: #2f4938; stroke-width: 4; stroke-linecap: round; stroke-linejoin: round; }
+      .fine { stroke: #2f4938; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+      .highlight { stroke: #f8fae4; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; opacity: 0.3; }
+    </style>
+  </defs>
+
+  <g id="base-feet">
+    <rect class="outline" x="4" y="176" width="43" height="11" rx="5" fill="#829b72"/>
+    <rect class="outline" x="103" y="176" width="43" height="11" rx="5" fill="#829b72"/>
+  </g>
+
+  <g id="bottom-brace">
+    <rect class="outline" x="22" y="169" width="106" height="10" rx="5" fill="#829b72"/>
+    <path class="highlight" d="M43 172h64"/>
+  </g>
+
+  <g id="support-legs">
+    <path class="outline" d="M37 61 Q38 58 42 58 H50 Q53 58 54 62 L43 176 Q42 180 38 180 H16 Q12 180 13 176 Z" fill="#a5b98d"/>
+    <path class="outline" d="M113 61 Q112 58 108 58 H100 Q97 58 96 62 L107 176 Q108 180 112 180 H134 Q138 180 137 176 Z" fill="#a5b98d"/>
+    <path class="highlight" d="M46 74 27 169"/>
+    <path class="highlight" d="M104 74 123 169"/>
+    <circle class="fine" cx="27" cy="170" r="3.7" fill="#829b72"/>
+    <circle class="fine" cx="123" cy="170" r="3.7" fill="#829b72"/>
+  </g>
+
+  <g id="middle-brace">
+    <rect class="fine" x="32" y="122" width="86" height="9" rx="4.5" fill="#d0dd97"/>
+    <path class="highlight" d="M40 125.5h70"/>
+  </g>
+
+  <g id="apple-cradle">
+    <path class="outline" d="M32 35 Q32 10 44 10 Q56 10 56 35 C56 60 68 78 75 78 C82 78 94 60 94 35 Q94 10 106 10 Q118 10 118 35 C118 76 101 96 75 96 C49 96 32 76 32 35 Z" fill="#d0dd97"/>
+    <path class="highlight" d="M38 35 C38 67 55 88 75 88" fill="none"/>
+  </g>
+
+  <g id="pivot-joints">
+    <circle class="outline" cx="43" cy="62" r="10.5" fill="#829b72"/>
+    <circle class="outline" cx="107" cy="62" r="10.5" fill="#829b72"/>
+    <circle cx="43" cy="62" r="4" fill="#52755d"/>
+    <circle cx="107" cy="62" r="4" fill="#52755d"/>
+  </g>
+
+  <g id="highlights">
+    <path class="highlight" d="M40 125.5h28"/>
+    <path class="highlight" d="M82 125.5h28"/>
+  </g>
+</svg>

@@ -1,0 +1,110 @@
+{
+  "schemaVersion": 1,
+  "levelId": "level_05",
+  "name": "让世界归位",
+  "playfield": {
+    "width": 1400,
+    "height": 700
+  },
+  "objects": [
+    {
+      "id": "launcher_main",
+      "type": "launcher",
+      "name": "苹果发射器",
+      "transform": {
+        "x": 134.43708609271525,
+        "y": 467,
+        "width": 110,
+        "height": 96,
+        "rotation": 0
+      },
+      "properties": {
+        "launchAngle": 0,
+        "launchPower": 1,
+        "appleSpawnOffsetX": 0,
+        "appleSpawnOffsetY": 0
+      }
+    },
+    {
+      "id": "goal_main",
+      "type": "goal_sensor",
+      "name": "爱因斯坦观察窗",
+      "transform": {
+        "x": 1148,
+        "y": 493.2200357781753,
+        "width": 180,
+        "height": 173.55992844364937,
+        "rotation": 0
+      },
+      "properties": {
+        "requiredStayTime": 700,
+        "targetTag": "apple"
+      }
+    },
+    {
+      "id": "wall_01",
+      "type": "wall",
+      "name": "黄铜墙",
+      "transform": {
+        "x": 618.7800466996554,
+        "y": 385.90339892665477,
+        "width": 76.02649006622516,
+        "height": 388.1932021466905,
+        "rotation": 0
+      },
+      "properties": {
+        "collisionEnabled": true,
+        "friction": 0.62,
+        "restitution": 0.32,
+        "isPhaseable": false
+      }
+    },
+    {
+      "id": "wall_02",
+      "type": "wall",
+      "name": "黄铜墙 副本",
+      "transform": {
+        "x": 616.239719263503,
+        "y": 50.2593688400284,
+        "width": 76.02649006622516,
+        "height": 80,
+        "rotation": 0
+      },
+      "properties": {
+        "collisionEnabled": true,
+        "friction": 0.62,
+        "restitution": 0.32,
+        "isPhaseable": false
+      }
+    }
+  ],
+  "cardDeck": {
+    "cards": [
+      {
+        "cardId": "feather-gravity",
+        "count": 1,
+        "order": 0,
+        "enabled": false
+      },
+      {
+        "cardId": "up-impulse",
+        "count": 1,
+        "order": 1,
+        "enabled": false
+      },
+      {
+        "cardId": "side-gravity",
+        "count": 1,
+        "order": 1,
+        "enabled": true
+      }
+    ]
+  },
+  "rules": {
+    "initialGravity": {
+      "x": 0,
+      "y": 1,
+      "strength": 1
+    }
+  }
+}

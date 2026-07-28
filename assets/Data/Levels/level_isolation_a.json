@@ -1,0 +1,103 @@
+{
+  "schemaVersion": 1,
+  "levelId": "level_isolation_a",
+  "name": "???? A",
+  "playfield": {
+    "width": 1400,
+    "height": 700
+  },
+  "objects": [
+    {
+      "id": "launcher_main",
+      "type": "launcher",
+      "name": "?????",
+      "transform": {
+        "x": 150,
+        "y": 550,
+        "width": 110,
+        "height": 96,
+        "rotation": 0
+      },
+      "properties": {
+        "launchAngle": 0,
+        "launchPower": 1,
+        "appleSpawnOffsetX": 0,
+        "appleSpawnOffsetY": 0
+      }
+    },
+    {
+      "id": "goal_main",
+      "type": "goal_sensor",
+      "name": "?? Sensor",
+      "transform": {
+        "x": 1190,
+        "y": 550,
+        "width": 190,
+        "height": 150,
+        "rotation": 0
+      },
+      "properties": {
+        "requiredStayTime": 700,
+        "targetTag": "apple"
+      }
+    },
+    {
+      "id": "button_01",
+      "type": "button",
+      "name": "route_A ??",
+      "transform": {
+        "x": 520,
+        "y": 590,
+        "width": 100,
+        "height": 28,
+        "rotation": 0
+      },
+      "properties": {
+        "mode": "HOLD",
+        "channelId": "route_A",
+        "activationType": "apple",
+        "initialState": false,
+        "debounceTime": 180
+      }
+    },
+    {
+      "id": "door_01",
+      "type": "door",
+      "name": "route_A ?",
+      "transform": {
+        "x": 760,
+        "y": 500,
+        "width": 70,
+        "height": 210,
+        "rotation": 0
+      },
+      "properties": {
+        "channelId": "route_A",
+        "response": "OPEN",
+        "initialState": "CLOSED",
+        "openDirection": "UP",
+        "openDistance": 190,
+        "duration": 420,
+        "closeDelay": 180,
+        "antiCrush": true
+      }
+    }
+  ],
+  "cardDeck": {
+    "cards": [
+      {
+        "cardId": "side-gravity",
+        "count": 1,
+        "order": 0,
+        "enabled": true
+      }
+    ]
+  },
+  "rules": {
+    "initialGravity": {
+      "x": 0,
+      "y": 1,
+      "strength": 1
+    }
+  }
+}

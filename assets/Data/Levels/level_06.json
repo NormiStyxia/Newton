@@ -1,0 +1,90 @@
+{
+  "schemaVersion": 1,
+  "levelId": "level_06",
+  "name": "墙不存在",
+  "playfield": {
+    "width": 1400,
+    "height": 700
+  },
+  "objects": [
+    {
+      "id": "launcher_main",
+      "type": "launcher",
+      "name": "苹果发射器",
+      "transform": {
+        "x": 134.43708609271525,
+        "y": 467,
+        "width": 110,
+        "height": 96,
+        "rotation": 0
+      },
+      "properties": {
+        "launchAngle": 0,
+        "launchPower": 1,
+        "appleSpawnOffsetX": 0,
+        "appleSpawnOffsetY": 0
+      }
+    },
+    {
+      "id": "goal_main",
+      "type": "goal_sensor",
+      "name": "爱因斯坦观察窗",
+      "transform": {
+        "x": 1148,
+        "y": 493.2200357781753,
+        "width": 180,
+        "height": 173.55992844364937,
+        "rotation": 0
+      },
+      "properties": {
+        "requiredStayTime": 700,
+        "targetTag": "apple"
+      }
+    },
+    {
+      "id": "button_01",
+      "type": "button",
+      "name": "普通按钮",
+      "transform": {
+        "x": 674.73465402736,
+        "y": 550.7395685038302,
+        "width": 100,
+        "height": 28,
+        "rotation": 0
+      },
+      "properties": {
+        "mode": "HOLD",
+        "gravityThreshold": 1,
+        "channelId": "route_A",
+        "activationType": "apple",
+        "initialState": false,
+        "debounceTime": 180
+      }
+    }
+  ],
+  "cardDeck": {
+    "cards": [
+      {
+        "cardId": "quantum-phase",
+        "count": 1,
+        "order": 0,
+        "enabled": true,
+        "usageMode": "SINGLE_USE"
+      },
+      {
+        "cardId": "feather-gravity",
+        "count": 1,
+        "order": 0,
+        "enabled": true,
+        "usageMode": "SINGLE_USE"
+      }
+    ]
+  },
+  "rules": {
+    "initialGravity": {
+      "x": 0,
+      "y": 1,
+      "strength": 1
+    }
+  }
+}

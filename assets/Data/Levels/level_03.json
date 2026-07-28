@@ -1,0 +1,88 @@
+{
+  "schemaVersion": 1,
+  "levelId": "level_03",
+  "name": "世界向右落",
+  "playfield": {
+    "width": 1400,
+    "height": 700
+  },
+  "objects": [
+    {
+      "id": "launcher_main",
+      "type": "launcher",
+      "name": "苹果发射器",
+      "transform": {
+        "x": 134.43708609271525,
+        "y": 467,
+        "width": 110,
+        "height": 96,
+        "rotation": 0
+      },
+      "properties": {
+        "launchAngle": 0,
+        "launchPower": 1,
+        "appleSpawnOffsetX": 0,
+        "appleSpawnOffsetY": 0
+      }
+    },
+    {
+      "id": "goal_main",
+      "type": "goal_sensor",
+      "name": "爱因斯坦观察窗",
+      "transform": {
+        "x": 1310,
+        "y": 111.50373203096021,
+        "width": 180,
+        "height": 169.42754919499103,
+        "rotation": 0
+      },
+      "properties": {
+        "requiredStayTime": 700,
+        "targetTag": "apple"
+      }
+    },
+    {
+      "id": "wall_01",
+      "type": "wall",
+      "name": "黄铜墙",
+      "transform": {
+        "x": 558.5464184648777,
+        "y": 380,
+        "width": 64.90066225165563,
+        "height": 400,
+        "rotation": 0
+      },
+      "properties": {
+        "collisionEnabled": true,
+        "friction": 0.62,
+        "restitution": 0.32,
+        "isPhaseable": false
+      }
+    }
+  ],
+  "cardDeck": {
+    "cards": [
+      {
+        "cardId": "side-gravity",
+        "count": 1,
+        "order": 0,
+        "enabled": true,
+        "usageMode": "SINGLE_USE"
+      },
+      {
+        "cardId": "feather-gravity",
+        "count": 1,
+        "order": 0,
+        "enabled": false,
+        "usageMode": "REUSABLE"
+      }
+    ]
+  },
+  "rules": {
+    "initialGravity": {
+      "x": 0,
+      "y": 1,
+      "strength": 1
+    }
+  }
+}
