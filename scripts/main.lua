@@ -2218,19 +2218,24 @@ function DrawCardSurface(id, def, card, cardState, badgeText, active, hovered)
     DrawCardBadge(badgeText or CardBadgeText(id, usage, remaining), edge)
 end
 
-function DrawCards()
+-- Cards and the direction selector occupy distinct Phaser depth bands. Keep
+-- the selector above the ordinary hand, but below a hovered or active card.
+function DrawCards(minimumDepth, maximumDepth, includePunch)
     local entries = CardEntries()
     local poses = Rules.CardHand(#entries, frame_.playfieldX + frame_.playfieldWidth / 2, frame_.cardHandY, frame_.playfieldWidth)
     local drawEntries = {}
     for i, card in ipairs(entries) do
         if not burningCardIds_[card.cardId] then
             local pose = CardVisualPose(card.cardId, poses[i])
-            drawEntries[#drawEntries + 1] = {
-                card = card,
-                pose = pose,
-                index = i,
-                depth = pose.depth,
-            }
+            if pose and (minimumDepth == nil or pose.depth >= minimumDepth)
+                and (maximumDepth == nil or pose.depth <= maximumDepth) then
+                drawEntries[#drawEntries + 1] = {
+                    card = card,
+                    pose = pose,
+                    index = i,
+                    depth = pose.depth,
+                }
+            end
         end
     end
     table.sort(drawEntries, function(a, b)
@@ -2250,6 +2255,7 @@ function DrawCards()
             DrawCardSurface(card.cardId, Rules.CARDS[card.cardId], card, cardState, CardBadgeText(card.cardId, usage, remaining), faceActive, hovered)
             nvgRestore(painter_.vg)
     end
+    if not includePunch then return end
     local cx = frame_.playfieldX + frame_.playfieldWidth - 58
     local cy = frame_.cardHandY + 23
     -- Phaser-equivalent ability face with the original fist.svg path rendered
@@ -2747,12 +2753,13 @@ function HandleRender()
         local absorbProgress = absorbing_ and math.max(0, math.min(1, absorbElapsedMs_ / 520)) or 0
         painter_:DrawApple(frame_, apple_, 1 - absorbProgress * .65, 1 - absorbProgress * .65)
         DrawVelocityArrow()
-        DrawRulePulse()
         DrawPlayfieldOverlay()
+        DrawRulePulse()
     end
     DrawHUD()
-    DrawCards()
+    DrawCards(nil, 71.999, true)
     DrawCardParameterSelector()
+    DrawCards(72, nil, false)
     DrawCardBurns()
     DrawCardBurnParticles()
     DrawRuleFlash()

@@ -296,13 +296,17 @@ def main() -> int:
            "card burn does not preserve the jagged mask and active face")
     expect("function StartRuleFeedback" in main_lua and "function DrawRulePulse" in main_lua and "function DrawRuleFlash" in main_lua,
            "card resolution feedback layers are missing")
+    expect("DrawPlayfieldOverlay()\n        DrawRulePulse()" in main_lua,
+           "rule pulse must render above the pause and bullet-time overlay")
+    expect("DrawCards(nil, 71.999, true)\n    DrawCardParameterSelector()\n    DrawCards(72, nil, false)" in main_lua,
+           "parameter selector must remain between normal and active card depth bands")
     expect("Renderer2D.COLORS.greenSoft, nil, nil, 46" in main_lua and "Renderer2D.COLORS.primaryActive, 3, 179" in main_lua,
            "bullet-time fill and border alphas are not independently calibrated")
     expect("observation_ = \"苹果已在爱因斯坦观察窗内稳定停留。\"" in main_lua and "function Renderer:DrawNewton(frame, level, anger, observation)" in renderer_lua, "runtime observation state differs from Phaser")
 
     result = {
         "mode": "FAST_VALIDATE",
-        "checks": 150,
+        "checks": 152,
         "errors": errors,
         "status": "pass" if not errors else "fail",
     }
