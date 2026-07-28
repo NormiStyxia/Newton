@@ -1,8 +1,8 @@
 {
   "schemaVersion": 1,
   "policy": "Original Phaser SVG files are read-only. Maker PNG files are independent derived assets.",
-  "runtimeAssetMode": "builtin-models-with-procedural-unlit-materials",
-  "runtimeAssetNote": "All phase1 PNGs are retained as migration references only because Maker recognized their UUIDs but did not materialize their hashed files in the Web runtime pack.",
+  "runtimeAssetMode": "nanovg-raster-assets-and-vector-primitives",
+  "runtimeAssetNote": "Runtime draws the original-derived apple and launcher PNGs plus the exact Newton portrait through NanoVG; the background, panels, goal scanner, cards, and mechanism silhouettes are rendered from the original Phaser drawing parameters.",
   "level": {
     "source": "D:/System Files/Download/牛顿/牛顿/data/levels/level_01.json",
     "copy": "assets/Data/Levels/level_01.json",
@@ -31,12 +31,11 @@
       "size": "240x240"
     },
     {
-      "source": "migration/phase1_asset_derivation/solid.svg",
-      "derived": "assets/image/phase1/solid.png",
-      "derivedSha256": "8C5A6579494F648FD292A65B0B09CE7985AB5AE2257110A2DF88666D8678B6E5",
-      "size": "64x64",
-      "runtimeUsage": false,
-      "note": "Retained as derivation evidence only. Runtime uses Zone.fogColor because Maker repeatedly omitted this UUID's hashed PNG from the runtime pack."
+      "source": "D:/System Files/Download/牛顿/牛顿/public/assets/newton-portrait.png",
+      "sourceSha256": "ED5560631BF2943D0FF8870AD2FBE85F3400D272682639689E6CD7004372887B",
+      "derived": "assets/image/newton-portrait.png",
+      "derivedSha256": "ED5560631BF2943D0FF8870AD2FBE85F3400D272682639689E6CD7004372887B",
+      "size": "598x1028"
     }
   ]
 }

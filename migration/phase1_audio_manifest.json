@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "source": "D:/System Files/Download/牛顿/牛顿/src/game/audio/SynthAudio.ts",
+  "sourceSha256": "73DD4ABBCE56E4BD866FA15DC68F24BCB1A95C513DBAA445369A6C4E64172DF6",
+  "sampleRate": 44100,
+  "note": "Derived from the original Web Audio oscillator, envelope, noise, and low-pass parameters.",
+  "assets": [
+    {
+      "kind": "launch",
+      "derived": "assets/audio/phase1/launch.wav",
+      "sha256": "03D7BD9B76F7E8389EE0ADC90CEEFF5D436B29905C8C971D34EEE5453A47DC01",
+      "durationSeconds": 0.19
+    },
+    {
+      "kind": "card",
+      "derived": "assets/audio/phase1/card.wav",
+      "sha256": "D32C41DE5075E9F31307493970E99DF4AB8E0874FEAAB50D58301A0F52C71BFF",
+      "durationSeconds": 0.23
+    },
+    {
+      "kind": "impact",
+      "derived": "assets/audio/phase1/impact.wav",
+      "sha256": "3F6C360DEEEAF6A0B4E2864833D7C81946149489E8FA7A14E3938A0FD58D6F5B",
+      "durationSeconds": 0.12
+    },
+    {
+      "kind": "punch",
+      "derived": "assets/audio/phase1/punch.wav",
+      "sha256": "31A7461B25B8CED4EEDB9564C37E2B9AB0EAB52A9B56973D69CA7DD3D68F74E5",
+      "durationSeconds": 0.31
+    },
+    {
+      "kind": "success",
+      "derived": "assets/audio/phase1/success.wav",
+      "sha256": "376D01B3D5C840D7D4F50FA4B956A733FF1C7BFF939FD0447B148DDEF3C77145",
+      "durationSeconds": 0.7
+    },
+    {
+      "kind": "reset",
+      "derived": "assets/audio/phase1/reset.wav",
+      "sha256": "0252D3C5FC68D1871368DE460222355BAD5108A26FD17C8602F8BBBA9B2F2925",
+      "durationSeconds": 0.15
+    }
+  ]
+}

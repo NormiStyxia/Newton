@@ -42,10 +42,17 @@ end
 local FACTORIES = {}
 
 FACTORIES.wall = function(context, data)
-    local phaseable = data.properties and data.properties.isPhaseable == true
+    local props = data.properties or {}
+    local phaseable = props.isPhaseable == true
     local category = phaseable and CATEGORY_PHASEABLE or CATEGORY_WORLD
     local runtime = createBox(context, data, category, MASK_ALL, false)
     runtime.phaseable = phaseable
+    runtime.collisionEnabled = props.collisionEnabled ~= false
+    runtime.baseFriction = props.friction or 0.62
+    runtime.baseRestitution = props.restitution or 0.32
+    runtime.shape.friction = runtime.baseFriction
+    runtime.shape.restitution = runtime.baseRestitution
+    runtime.shape.trigger = not runtime.collisionEnabled
     return runtime
 end
 
@@ -80,24 +87,52 @@ end
 
 FACTORIES.spring = function(context, data)
     local runtime = createBox(context, data, CATEGORY_WORLD, CATEGORY_APPLE, false)
+    local props = data.properties or {}
     runtime.spent = false
     runtime.triggeredAt = -math.huge
+    runtime.pendingExitVelocity = nil
+    runtime.direction = props.direction or "UP"
+    runtime.impulseStrength = props.impulseStrength or 10
+    runtime.cooldown = props.cooldown or 500
+    runtime.oneShot = props.oneShot == true
+    runtime.enabled = props.enabled ~= false
+    runtime.enabledChannel = props.enabledChannel or ""
+    runtime.channelEnabled = true
+    runtime.shape.friction = 0.1
+    runtime.shape.restitution = 0.5
     return runtime
 end
 
 FACTORIES.button = function(context, data)
     local runtime = createBox(context, data, CATEGORY_SENSOR, CATEGORY_APPLE, true)
-    runtime.active = data.properties and data.properties.initialState == true or false
+    local props = data.properties or {}
+    runtime.active = props.initialState == true
     runtime.contactCount = 0
-    runtime.channelId = data.properties and data.properties.channelId or ""
+    runtime.conditionSatisfied = false
+    runtime.lastActivationAt = -math.huge
+    runtime.mode = props.mode == "TOGGLE" and "TOGGLE" or "HOLD"
+    runtime.gravityThreshold = math.max(0, props.gravityThreshold or 1)
+    runtime.channelId = props.channelId or "route_A"
+    runtime.debounceTime = props.debounceTime or 180
     return runtime
 end
 
 FACTORIES.door = function(context, data)
     local runtime = createBox(context, data, CATEGORY_WORLD, MASK_ALL, false)
-    runtime.openness = data.properties and data.properties.initialState == "OPEN" and 1 or 0
+    local props = data.properties or {}
+    runtime.openness = props.initialState == "OPEN" and 1 or 0
     runtime.targetOpen = runtime.openness == 1
     runtime.closeAt = 0
+    runtime.state = runtime.targetOpen and "OPEN" or "CLOSED"
+    runtime.channelId = props.channelId or "route_A"
+    runtime.response = props.response or "OPEN"
+    runtime.openDirection = props.openDirection or "UP"
+    runtime.openDistance = props.openDistance or 190
+    runtime.duration = props.duration or 420
+    runtime.closeDelay = props.closeDelay or 180
+    runtime.antiCrush = props.antiCrush ~= false
+    runtime.shape.friction = 0.3
+    runtime.shape.restitution = 0.1
     return runtime
 end
 
@@ -161,6 +196,7 @@ function RuntimeFactory.CreateApple(scene, launcher)
         body = body,
         shape = shape,
         radius = 0.27,
+        baseRestitution = 0.36,
         displayRadius = 32,
         launcher = launcher,
         phaseActive = false,

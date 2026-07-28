@@ -23,6 +23,9 @@ function DesignSpace:Init()
     self.physicalWidth = 1
     self.physicalHeight = 1
     self.dpr = 1
+    self.systemLogicalWidth = DesignSpace.BASE_WIDTH
+    self.systemLogicalHeight = DesignSpace.BASE_HEIGHT
+    self.renderScale = 1
     self.logicalWidth = DesignSpace.BASE_WIDTH
     self.logicalHeight = DesignSpace.BASE_HEIGHT
     self.workspaceX = 24
@@ -35,17 +38,18 @@ function DesignSpace:UpdateFromGraphics()
     local physicalHeight = math.max(1, graphics:GetHeight())
     local dpr = graphics.GetDPR and graphics:GetDPR() or 1
     dpr = math.max(1, dpr or 1)
-    local width = physicalWidth / dpr
-    local height = physicalHeight / dpr
-    local baseAspect = DesignSpace.BASE_WIDTH / DesignSpace.BASE_HEIGHT
-    local aspect = width / math.max(height, 1)
-    if aspect >= baseAspect then
-        self.logicalWidth = round(DesignSpace.BASE_HEIGHT * aspect)
-        self.logicalHeight = DesignSpace.BASE_HEIGHT
-    else
-        self.logicalWidth = DesignSpace.BASE_WIDTH
-        self.logicalHeight = round(DesignSpace.BASE_WIDTH / math.max(aspect, 0.001))
-    end
+    local systemWidth = physicalWidth / dpr
+    local systemHeight = physicalHeight / dpr
+
+    -- Mode A: preserve the original 1880 x 840 proportions, while allowing
+    -- the source layout to expand on whichever axis the viewport exposes.
+    local scale = math.min(systemWidth / DesignSpace.BASE_WIDTH, systemHeight / DesignSpace.BASE_HEIGHT)
+    scale = math.max(scale, 0.001)
+    self.systemLogicalWidth = systemWidth
+    self.systemLogicalHeight = systemHeight
+    self.renderScale = scale
+    self.logicalWidth = systemWidth / scale
+    self.logicalHeight = systemHeight / scale
     self.physicalWidth = physicalWidth
     self.physicalHeight = physicalHeight
     self.dpr = dpr
@@ -79,6 +83,9 @@ function DesignSpace:Frame()
         physicalWidth = self.physicalWidth,
         physicalHeight = self.physicalHeight,
         dpr = self.dpr,
+        systemLogicalWidth = self.systemLogicalWidth,
+        systemLogicalHeight = self.systemLogicalHeight,
+        renderScale = self.renderScale,
         logicalWidth = self.logicalWidth,
         logicalHeight = self.logicalHeight,
         workspaceX = self.workspaceX,
@@ -96,7 +103,7 @@ function DesignSpace:Frame()
 end
 
 function DesignSpace:ScreenToLogical(screenX, screenY)
-    return screenX / self.dpr, screenY / self.dpr
+    return screenX / self.dpr / self.renderScale, screenY / self.dpr / self.renderScale
 end
 
 function DesignSpace:LogicalToWorld(x, y)

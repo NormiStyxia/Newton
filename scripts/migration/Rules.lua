@@ -1,5 +1,10 @@
 local Rules = {}
 
+---@class CardHandOffset
+---@field x number
+---@field y number
+---@field angle number
+
 Rules.CARDS = {
     ["feather-gravity"] = { kind = "field", name = "轻羽引力", short = "轻羽", symbol = "g½", description = "重力强度降至标准值的 55%", accent = { 95, 143, 104 } },
     ["side-gravity"] = { kind = "field", name = "横向引力", short = "横引力", symbol = "g→", description = "滑动选择四个方向的场地重力", accent = { 95, 143, 104 } },
@@ -18,9 +23,17 @@ function Rules.NewState()
         phaseActive = false,
         punchUsed = false,
         sideGravity = { x = 0, y = 1 },
+        restitutionMultiplier = 1,
         mirrorAxis = nil,
         upImpulseUsed = false,
     }
+end
+
+function Rules.DeployField(state, id)
+    state.activeFields[id] = true
+    if id == "hooke-bounce" then
+        state.restitutionMultiplier = 0.88 / 0.36
+    end
 end
 
 function Rules.ToggleField(state, id)
@@ -38,13 +51,17 @@ end
 function Rules.Launch(state)
     if state.launched then return false end
     state.launched = true
-    for id in pairs(state.selectedFields) do state.activeFields[id] = true end
+    for id in pairs(state.selectedFields) do Rules.DeployField(state, id) end
     return true
 end
 
-function Rules.UseDecision(state, id)
+function Rules.EndPhase(state)
+    state.phaseActive = false
+end
+
+function Rules.UseDecision(state, id, allowRepeat)
     if not state.launched then return false end
-    if state.usedDecisions[id] then return false end
+    if state.usedDecisions[id] and not allowRepeat then return false end
     state.usedDecisions[id] = true
     if id == "quantum-phase" then state.phaseActive = true end
     if id == "up-impulse" then state.upImpulseUsed = true end
@@ -58,7 +75,12 @@ function Rules.Punch(state)
     state.activeFields = {}
     state.phaseActive = false
     state.sideGravity = { x = 0, y = 1 }
+    state.restitutionMultiplier = 1
     return true
+end
+
+function Rules.GetRestitutionMultiplier(state)
+    return state.restitutionMultiplier or 1
 end
 
 function Rules.GetGravity(state, base)
@@ -69,20 +91,21 @@ function Rules.GetGravity(state, base)
 end
 
 function Rules.CardHand(count, centerX, centerY, playfieldWidth)
+    ---@type table<integer, CardHandOffset[]>
     local presets = {
-        [1] = { { 0, 0, 0 } },
-        [2] = { { -78, 1, -1.5 }, { 78, 1, 1.5 } },
-        [3] = { { -138, 4, -2.5 }, { 0, 0, 0 }, { 138, 4, 2.5 } },
-        [4] = { { -207, 7, -3.5 }, { -69, 1, -1.2 }, { 69, 1, 1.2 }, { 207, 7, 3.5 } },
-        [5] = { { -262, 10, -4.5 }, { -133, 3, -2 }, { 0, 0, 0 }, { 133, 3, 2 }, { 262, 10, 4.5 } },
-        [6] = { { -313, 12, -6 }, { -189, 4, -3 }, { -63, 0, -1 }, { 63, 0, 1 }, { 189, 4, 3 }, { 313, 12, 6 } },
+        [1] = { { x = 0, y = 0, angle = 0 } },
+        [2] = { { x = -78, y = 1, angle = -1.5 }, { x = 78, y = 1, angle = 1.5 } },
+        [3] = { { x = -138, y = 4, angle = -2.5 }, { x = 0, y = 0, angle = 0 }, { x = 138, y = 4, angle = 2.5 } },
+        [4] = { { x = -207, y = 7, angle = -3.5 }, { x = -69, y = 1, angle = -1.2 }, { x = 69, y = 1, angle = 1.2 }, { x = 207, y = 7, angle = 3.5 } },
+        [5] = { { x = -262, y = 10, angle = -4.5 }, { x = -133, y = 3, angle = -2 }, { x = 0, y = 0, angle = 0 }, { x = 133, y = 3, angle = 2 }, { x = 262, y = 10, angle = 4.5 } },
+        [6] = { { x = -313, y = 12, angle = -6 }, { x = -189, y = 4, angle = -3 }, { x = -63, y = 0, angle = -1 }, { x = 63, y = 0, angle = 1 }, { x = 189, y = 4, angle = 3 }, { x = 313, y = 12, angle = 6 } },
     }
     local result = {}
     count = math.max(0, math.min(10, math.floor(count)))
     if count == 0 then return result end
     if count <= 6 then
         for i, pose in ipairs(presets[count]) do
-            result[i] = { x = centerX + pose[1], y = centerY + pose[2], angle = pose[3], depth = 54 + i }
+            result[i] = { x = centerX + pose.x, y = centerY + pose.y, angle = pose.angle, depth = 54 + i }
         end
         return result
     end

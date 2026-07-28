@@ -2,18 +2,17 @@
 
 ## 已完成边界
 
-- 采用编辑器策略 A：Maker 只读取从 Phaser 导出的关卡 JSON。
-- `LevelData -> RuntimeFactory -> UrhoX instance` 已拆为独立模块。
-- 读取并校验 `level_01.json`，不改写源关卡数据。
-- 固定 GameplayViewport 使用原 Phaser 玩法区域 `1500 × 596`，在实际屏幕内等比居中并留黑边。
-- 已实例化发射器、苹果、地面和目标 Sensor；`wall_02` 明确延后，运行时会输出 deferred 日志。
-- 苹果支持原玩法的拖拽限制、最小发射距离、速度系数和角速度系数；`R` 重置，`Z` 切换 Box2D 调试绘制。
-- Sensor 使用 Box2D trigger，苹果进入/离开时更新本地 HUD 和日志。
-- 未迁移编辑器、卡牌、墙体/机关、回放、完成判定与外围 UI。
+- 采用编辑器策略 A：Maker 只读取 Phaser 导出的关卡 JSON，运行时编辑器不迁移。
+- 所有 9 个正式关卡及 2 个隔离关卡 JSON 均按字节复制并由 `LevelData -> RuntimeFactory -> UrhoX instance` 加载；墙、发射台、目标、弹簧、按钮、门及频道逻辑均已接入。
+- 画面使用原 Phaser 的 `1880 × 840` 设计空间和响应式布局参数；NanoVG 以 DPR 感知的 Mode A 渲染顶部 HUD、实验区、Newton 面板、规则卡、机关、目标扫描器、结果面板和回放控制。
+- 苹果保留原版拖拽限制、最小发射距离、速度/角速度系数、场地规则、相位穿墙、弹性墙、按钮 HOLD/TOGGLE、门 anti-crush、弹簧冷却/一次性和目标停留判定。
+- 已迁移卡牌预备、手牌重排、方向停稳手势、0.05 子弹时间、690ms 燃烧、修正拳、轨迹记录和 0.5×/1×/2×回放。
+- 原版 `SynthAudio.ts` 的发射、规则生效、碰撞、修正拳、成功和重置音效已按其振荡器、包络、噪声和低通参数派生为 WAV；运行时保留原版 80ms 碰撞去重。
+- 不保留运行时几何体替代方案；苹果、发射台和 Newton 肖像使用原资源派生或原始 PNG，其他原版矢量图形按其绘制参数使用 NanoVG 重建。
 
 ## 坐标与单位换算
 
-原项目的关卡坐标为 `1400 × 700`，固定玩法视口为 `1500 × 596`：
+原项目的关卡坐标为 `1400 × 700`，实验视口为 `1500 × 596`，整体设计空间为 `1880 × 840`：
 
 - 位置：`viewportX = levelX / 1400 × 1500`，`viewportY = levelY / 700 × 596`。
 - 物体尺寸：沿用原 `CoordinateConverter.objectScale = 596 / 700`。
@@ -26,18 +25,16 @@
 
 ## 资源约束
 
-原 Phaser SVG 仅被只读渲染。Maker 使用独立派生 PNG，来源、SHA-256 与尺寸记录在 `phase1_asset_manifest.json`。源 `level_01.json` 与 Maker 副本 SHA-256 完全一致。
-
-构建兼容性说明：Maker 能识别第一阶段 PNG 的资源 UUID，但没有把对应哈希 PNG 写入 Web 运行包。第一阶段运行时已取消对全部自定义 PNG 的依赖：背景由 `Zone.fogColor` 提供，苹果、发射器、目标环和地面使用引擎内置模型配合 `Techniques/NoTextureUnlit.xml` 程序化纯色材质；Box2D 碰撞和关卡数据保持不变。原 PNG 仅作为迁移参考与派生过程证据保留。
+原 Phaser SVG 保持只读且不被运行时直接引用。Maker 使用独立 PNG 资源，来源、SHA-256 和尺寸记录在 `phase1_asset_manifest.json`；由原版 Web Audio 参数派生的 WAV 及其 SHA-256 记录在 `phase1_audio_manifest.json`。全部关卡副本与原始 JSON 保持 SHA-256 一致。旧的 `solid.png`/几何背景派生物已删除。
 
 ## FAST_VALIDATE
 
 验证范围：
 
-1. Maker Lua LSP 对四个 Lua 文件执行 Error 级诊断。
-2. 校验关卡 schema、对象边界、坐标往返、地面与 Sensor 映射。
-3. 校验关卡副本、原 SVG SHA-256、派生 PNG SHA-256 和图片尺寸。
-4. 静态确认 Sensor 为 trigger、苹果/地面为刚体，并且项目没有 raw NanoVG 调用。
+1. 校验全部 11 个源关卡与 Maker 副本的 SHA-256、schema、正式关卡对象边界和完整对象类型集合。
+2. 校验坐标往返、地面映射、原 SVG/PNG 与派生 PNG 的 SHA-256 和图片尺寸，以及原版 SynthAudio 源、派生 WAV 和 Maker 元数据。
+3. 以基准、宽屏、窄屏和 DPR=2 样本数值校验 NanoVG Mode A、DPR 缩放、布局及输入逆变换，并静态确认 Box2D trigger、苹果刚体、目标资源、卡牌燃烧/子弹时间、回放、音频触发和编辑器排除边界。
+4. Lua 文件另以 Lua 5.3 语法解析器检查；Maker Lua LSP 仍需在其工具重新可用后作为远端构建前置检查。
 
 不执行整关试玩，也不执行 Maker 远端 build/submit。
 
