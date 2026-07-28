@@ -193,6 +193,17 @@ local function CurrentPhysicsTimeScale()
     return bulletTimeActive_ and CONFIG.bulletTimeScale or 1
 end
 
+-- Matter reports velocity in pixels per 60 Hz frame, independent of its
+-- current delta. Box2D stores physical metres per second, so a Matter value
+-- occupies only timeScale of that physical velocity while bullet time is on.
+local function CurrentMatterVelocityToWorld()
+    return CONFIG.matterVelocityToWorld * CurrentPhysicsTimeScale()
+end
+
+local function CurrentMatterSpeedFromWorld(velocity)
+    return math.sqrt(velocity.x * velocity.x + velocity.y * velocity.y) / CurrentMatterVelocityToWorld()
+end
+
 local function ApplyAppleCardMaterial()
     if not apple_ or not apple_.shape then return end
     apple_.shape.restitution = MatterCalibration.CardRestitution(Rules.GetRestitutionMultiplier(rules_))
@@ -713,8 +724,9 @@ local function CapAppleSpeed()
     if not launched_ or not apple_ or apple_.body.bodyType ~= BT_DYNAMIC then return end
     local velocity = apple_.body.linearVelocity
     local speed = math.sqrt(velocity.x * velocity.x + velocity.y * velocity.y)
-    if speed <= CONFIG.maxAppleSpeed then return end
-    local scale = CONFIG.maxAppleSpeed / speed
+    local maxSpeed = CONFIG.maxAppleSpeed * CurrentPhysicsTimeScale()
+    if speed <= maxSpeed then return end
+    local scale = maxSpeed / speed
     apple_.body.linearVelocity = Vector2(velocity.x * scale, velocity.y * scale)
     apple_.body.awake = true
 end
@@ -759,7 +771,7 @@ local function ApplyDecision(id, mirrorAxis)
     if not Rules.UseDecision(rules_, id, reusable) then return false end
     if id == "up-impulse" then
         local v = apple_.body.linearVelocity
-        apple_.body.linearVelocity = Vector2(v.x, v.y + 5.52)
+        apple_.body.linearVelocity = Vector2(v.x, v.y + 5.52 * CurrentPhysicsTimeScale())
     elseif id == "mirror-motion" then
         local v = apple_.body.linearVelocity
         if mirrorAxis == "HORIZONTAL" then
@@ -1377,10 +1389,17 @@ end
 local function CaptureReplayFinalSample()
     if not apple_ or #replaySamples_ == 0 then return end
     local last = replaySamples_[#replaySamples_]
-    if last and math.abs((last.t or 0) - flightMs_) < .001 then return end
+    local terminalTime = flightMs_
+    if last and math.abs((last.t or 0) - terminalTime) < .001 then
+        -- A successful launch normally has many samples. Keep the rare
+        -- zero-duration terminal record replayable instead of leaving the
+        -- success modal wired to a no-op button.
+        if #replaySamples_ > 1 then return end
+        terminalTime = (last.t or 0) + CONFIG.replaySampleMs
+    end
     local p, v = apple_.node.position2D, apple_.body.linearVelocity
     replaySamples_[#replaySamples_ + 1] = {
-        t = flightMs_, x = p.x, y = p.y, vx = v.x, vy = v.y, angle = apple_.node.rotation2D,
+        t = terminalTime, x = p.x, y = p.y, vx = v.x, vy = v.y, angle = apple_.node.rotation2D,
     }
     replayPreviousSample_ = replaySamples_[#replaySamples_]
 end
@@ -1418,7 +1437,9 @@ local function ReplayStateAt(time)
 end
 
 StartReplay = function()
-    if replayActive_ or #replaySamples_ < 2 or not apple_ then return end
+    if replayActive_ or not apple_ then return end
+    CaptureReplayFinalSample()
+    if #replaySamples_ < 2 then return end
     local p, v = apple_.node.position2D, apple_.body.linearVelocity
     replaySavedApple_ = {
         x = p.x, y = p.y, angle = apple_.node.rotation2D,
@@ -1508,7 +1529,7 @@ local function UpdateExperiment(dt)
             runtimeGoal.active = true
         end
         local velocity = apple_.body.linearVelocity
-        local matterSpeed = math.sqrt(velocity.x * velocity.x + velocity.y * velocity.y) * CONFIG.pixelsPerMeter / 60
+        local matterSpeed = CurrentMatterSpeedFromWorld(velocity)
         if goalContactMs_ >= requiredStayTime and matterSpeed <= 4.8 then
             CaptureReplayFinalSample()
             absorbing_ = true
@@ -1535,7 +1556,7 @@ local function UpdateExperiment(dt)
         RegisterFailure()
     else
         local velocity = apple_.body.linearVelocity
-        local matterSpeed = math.sqrt(velocity.x * velocity.x + velocity.y * velocity.y) * CONFIG.pixelsPerMeter / 60
+        local matterSpeed = CurrentMatterSpeedFromWorld(velocity)
         stalledMs_ = matterSpeed < 0.1 and stalledMs_ + dt * 1000 or 0
         if stalledMs_ > 5200 then
             CaptureReplayFinalSample()
@@ -1554,8 +1575,9 @@ local function DrawPrediction(direction, alpha, x, y, velocityX, velocityY)
     if x == nil or y == nil then x, y = AppleScreenPosition() end
     if velocityX == nil or velocityY == nil then
         local velocity = apple_.body.linearVelocity
-        velocityX = velocity.x * CONFIG.pixelsPerMeter / 60
-        velocityY = -velocity.y * CONFIG.pixelsPerMeter / 60
+        local conversion = CurrentMatterVelocityToWorld()
+        velocityX = velocity.x / conversion
+        velocityY = -velocity.y / conversion
     end
     local gravity = Rules.GetGravity(rules_, level_.rules.initialGravity)
     local gravityX, gravityY = gravity.x * gravity.strength, gravity.y * gravity.strength
@@ -1607,8 +1629,9 @@ local function DrawCardPrediction()
         DrawPrediction(cardCandidate_, 0.88, x, y)
     elseif activeCardId_ == "mirror-motion" then
         local velocity = apple_.body.linearVelocity
-        local vx = velocity.x * CONFIG.pixelsPerMeter / 60
-        local vy = -velocity.y * CONFIG.pixelsPerMeter / 60
+        local conversion = CurrentMatterVelocityToWorld()
+        local vx = velocity.x / conversion
+        local vy = -velocity.y / conversion
         if cardCandidate_ == "HORIZONTAL" then vx = -vx else vy = -vy end
         DrawPrediction(nil, 0.88, x, y, vx, vy)
     end
@@ -1636,8 +1659,9 @@ local function DrawVelocityArrow()
     if not apple_ then return end
     local x, y = AppleScreenPosition()
     local velocity = apple_.body.linearVelocity
-    local vx = velocity.x * CONFIG.pixelsPerMeter / 60
-    local vy = -velocity.y * CONFIG.pixelsPerMeter / 60
+    local conversion = CurrentMatterVelocityToWorld()
+    local vx = velocity.x / conversion
+    local vy = -velocity.y / conversion
     local length = math.min(58, math.sqrt(vx * vx + vy * vy) * 3.4)
     if length < 8 then return end
     local angle = math.atan(vy, vx)
@@ -2095,13 +2119,18 @@ end
 
 ---@param _eventType string
 ---@param _eventData PhysicsPreStepEventData
-function HandlePhysicsPreStep(_eventType, _eventData)
+function HandlePhysicsPreStep(_eventType, eventData)
     if not apple_ or not launched_ or replayActive_ or apple_.body.bodyType ~= BT_DYNAMIC then
         applePreSolveVelocity_ = nil
         return
     end
     -- Phaser caps before Matter runs the next integration and collision pass.
     CapAppleSpeed()
+    apple_.body.linearDamping = MatterCalibration.Box2DLinearDamping(
+        apple_.baseFrictionAir,
+        CurrentPhysicsTimeScale(),
+        eventData:GetFloat("TimeStep")
+    )
     local velocity = apple_.body.linearVelocity
     applePreSolveVelocity_ = Vector2(velocity.x, velocity.y)
 end
@@ -2173,7 +2202,8 @@ function HandleCollisionBegin(_eventType, eventData)
         local direction = object.direction
         local ix, iy = 0, 0
         if direction == "UP" then iy = 1 elseif direction == "DOWN" then iy = -1 elseif direction == "LEFT" then ix = -1 else ix = 1 end
-        local impulse = object.impulseStrength * Rules.GetRestitutionMultiplier(rules_) * CONFIG.matterVelocityToWorld
+        local impulse = object.impulseStrength * Rules.GetRestitutionMultiplier(rules_)
+            * CurrentMatterVelocityToWorld()
         object.pendingExitVelocity = Vector2(v.x + ix * impulse, v.y + iy * impulse)
         object.triggeredAt = uiElapsed_ * 1000
         object.spent = object.oneShot

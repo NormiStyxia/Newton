@@ -123,23 +123,23 @@ def main() -> int:
 
     # Matter keeps a velocity normalized to its 60 Hz base delta. During
     # engine timeScale=s, the stored displacement is s times that velocity;
-    # Box2D instead integrates metres/second over an unscaled 1/60 second.
-    # These identities verify the adapter used by SetBulletTimeActive and
-    # SetGravity for normal and card-induced 0.05 time.
+    # Box2D instead integrates metres/second over an unscaled physics step.
+    # These identities verify the adapter used by SetBulletTimeActive,
+    # SetGravity, and every card velocity write/read.
     air_friction = 0.01
     velocity_to_world = 60 / pixels_per_meter
     source_velocity = 13.7
     source_frame_acceleration = 0.73
     source_gravity = source_frame_acceleration * 60**2 / pixels_per_meter
     for time_scale in (1.0, 0.05):
-        retention = 1 - air_friction * time_scale
-        box2d_damping = 60 * (1 / retention - 1)
-        maker_before = source_velocity * velocity_to_world * time_scale
-        maker_after = maker_before / (1 + box2d_damping / 60) + source_gravity * time_scale**2 / 60
-        matter_reported_after = source_velocity * retention + source_frame_acceleration * time_scale
-        expected_maker_after = matter_reported_after * velocity_to_world * time_scale
-        expect(math.isclose(maker_after, expected_maker_after, rel_tol=0, abs_tol=1e-12),
-               f"Box2D bullet-time adapter diverges at scale {time_scale}")
+        for time_step in (1 / 30, 1 / 60, 1 / 120):
+            retention = 1 - air_friction * time_scale * time_step * 60
+            box2d_damping = (1 / time_step) * (1 / retention - 1)
+            maker_before = source_velocity * velocity_to_world * time_scale
+            maker_after = maker_before / (1 + box2d_damping * time_step)
+            expected_maker_after = source_velocity * retention * velocity_to_world * time_scale
+            expect(math.isclose(maker_after, expected_maker_after, rel_tol=0, abs_tol=1e-12),
+                   f"Box2D air damping diverges at scale {time_scale}, dt {time_step}")
     expect(math.isclose(
         source_velocity * velocity_to_world * 0.05 / 0.05,
         source_velocity * velocity_to_world,
@@ -148,6 +148,16 @@ def main() -> int:
     ), "bullet-time exit does not restore the Matter-normalized velocity")
     expect("velocity.x * scaleRatio" in main_lua and "timeScale * timeScale" in main_lua,
            "runtime does not apply the verified velocity/gravity time-scale mapping")
+    expect("CurrentMatterVelocityToWorld" in main_lua and "CurrentMatterSpeedFromWorld" in main_lua,
+           "Matter velocity reads are not normalized for the active time scale")
+    expect("5.52 * CurrentPhysicsTimeScale()" in main_lua,
+           "up-impulse is not scaled for Matter bullet time")
+    expect("* CurrentMatterVelocityToWorld()" in main_lua,
+           "spring exit velocity is not scaled for Matter bullet time")
+    expect("eventData:GetFloat(\"TimeStep\")" in main_lua and "timeStep" in calibration,
+           "air damping is not calibrated to the current physics step")
+    expect("CaptureReplayFinalSample()" in main_lua and "if #replaySamples_ < 2 then return end" in main_lua,
+           "replay start does not normalize its terminal sample")
 
     # Matter combines contact friction with min(a, b); Box2D uses sqrt(a*b).
     # Giving each Box2D fixture 0.1 yields the same apple/static baseline,
