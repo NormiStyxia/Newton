@@ -218,6 +218,9 @@ local function InitializeCards()
 end
 
 local function CurrentPhysicsTimeScale()
+    if level_ and level_.physicsProbe and level_.physicsProbe:IsActive() then
+        return level_.physicsProbe:GetTimeScale()
+    end
     return bulletTimeActive_ and CONFIG.bulletTimeScale or 1
 end
 
@@ -249,6 +252,9 @@ local function SetGravity()
     if not physicsWorld_ or not level_ or not physicsProfile_ then return end
     local base = level_.rules.initialGravity
     local gravity = Rules.GetGravity(rules_, base)
+    if level_.physicsProbe and level_.physicsProbe:IsActive() then
+        gravity = { x = 0, y = 1, strength = 1 }
+    end
     local timeScale = CurrentPhysicsTimeScale()
     physicsWorld_:SetGravity(Vector2(
         gravity.x * gravity.strength * physicsProfile_.gravityAcceleration * timeScale * timeScale,
@@ -353,6 +359,7 @@ local function BuildLevel(index)
     local launcherRuntime = runtime_.byId[launcher.id]
     apple_ = RuntimeFactory.CreateApple(scene_, launcherRuntime)
     rules_ = Rules.NewState()
+    level_.physicsProbe = require("migration.PhysicsProbe").New()
     InitializeCards()
     draggedApple_ = false
     activeCardId_ = nil
@@ -409,6 +416,9 @@ end
 
 local function ResetExperiment(playResetSound)
     if not apple_ or not level_ then return end
+    if level_.physicsProbe then
+        level_.physicsProbe:Stop({ apple = apple_ })
+    end
     if playResetSound ~= false then PlaySound("reset") end
     rules_ = Rules.NewState()
     InitializeCards()
@@ -2255,6 +2265,7 @@ function Start()
 end
 
 function Stop()
+    if level_ and level_.physicsProbe then level_.physicsProbe:Stop({ apple = apple_ }) end
     if painter_ then painter_:Destroy(); painter_ = nil end
 end
 
@@ -2274,6 +2285,28 @@ function HandleUpdate(_eventType, eventData)
         if replayActive_ then UpdateReplay(dt) end
         if debugDraw_ and physicsWorld_ then physicsWorld_:DrawDebugGeometry() end
         return
+    end
+    local physicsProbe = level_ and level_.physicsProbe or nil
+    if physicsProbe then
+        local probeContext = {
+            scene = scene_,
+            mapper = mapper_,
+            apple = apple_,
+            physicsWorld = physicsWorld_,
+            pixelsPerMeter = CONFIG.pixelsPerMeter,
+            matterVelocityToWorld = CONFIG.matterVelocityToWorld,
+            applyGravity = SetGravity,
+            setLaunched = function(value) launched_ = value end,
+            setStatus = SetStatus,
+        }
+        if debugDraw_ and input:GetKeyPress(KEY_T) then physicsProbe:Start(probeContext) end
+        if physicsProbe:IsActive() then
+            local probeResult = physicsProbe:Update(probeContext)
+            SyncPhysicsUpdateEnabled()
+            if probeResult == "finished" then ResetExperiment(false) end
+            if debugDraw_ and physicsWorld_ then physicsWorld_:DrawDebugGeometry() end
+            return
+        end
     end
     UpdateCardHomeMotions(dt)
     UpdateCardHoverStates(dt)
@@ -2364,6 +2397,16 @@ end
 ---@param eventData PhysicsPostStepEventData
 function HandlePhysicsPostStep(_eventType, eventData)
     if not launched_ or replayActive_ or isPaused_ then return end
+    local physicsProbe = level_ and level_.physicsProbe or nil
+    if physicsProbe and physicsProbe:IsActive() then
+        UpdateSpringExits()
+        physicsProbe:AfterPhysicsStep({
+            apple = apple_,
+            pixelsPerMeter = CONFIG.pixelsPerMeter,
+            matterVelocityToWorld = CONFIG.matterVelocityToWorld,
+        }, eventData:GetFloat("TimeStep"))
+        return
+    end
     -- The original applies a spring's pre-solve exit velocity after Matter's
     -- collision resolution, then advances runtime mechanisms in physics time.
     UpdateSpringExits()
@@ -2407,6 +2450,12 @@ end
 function HandleCollisionBegin(_eventType, eventData)
     local nodeA = eventData:GetPtr("NodeA")
     local nodeB = eventData:GetPtr("NodeB")
+    local physicsProbe = level_ and level_.physicsProbe or nil
+    if physicsProbe and physicsProbe:IsActive() then
+        if IsAppleNode(nodeA) then physicsProbe:OnContactBegin(nodeB, applePreSolveVelocity_, { apple = apple_, matterVelocityToWorld = CONFIG.matterVelocityToWorld })
+        elseif IsAppleNode(nodeB) then physicsProbe:OnContactBegin(nodeA, applePreSolveVelocity_, { apple = apple_, matterVelocityToWorld = CONFIG.matterVelocityToWorld }) end
+        return
+    end
     if IsAppleGoalPair(nodeA, nodeB) then
         goalContact_ = true
         local goal = LevelData.FindFirst(level_, "goal_sensor")
@@ -2444,6 +2493,12 @@ end
 function HandleCollisionEnd(_eventType, eventData)
     local nodeA = eventData:GetPtr("NodeA")
     local nodeB = eventData:GetPtr("NodeB")
+    local physicsProbe = level_ and level_.physicsProbe or nil
+    if physicsProbe and physicsProbe:IsActive() then
+        if IsAppleNode(nodeA) then physicsProbe:OnContactEnd(nodeB)
+        elseif IsAppleNode(nodeB) then physicsProbe:OnContactEnd(nodeA) end
+        return
+    end
     if IsAppleGoalPair(nodeA, nodeB) then
         local goal = LevelData.FindFirst(level_, "goal_sensor")
         local runtimeGoal = goal and runtime_.byId[goal.id] or nil
