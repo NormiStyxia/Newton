@@ -208,6 +208,9 @@ def main() -> int:
     expect("source-svg" not in all_lua, "runtime reads original SVG files")
     expect("NoTextureUnlit.xml" not in all_lua and "StaticModel" not in all_lua, "obsolete geometry renderer remains")
     expect("QueueCardResolution" in main_lua and "delay = 55" in main_lua and "duration = 690" in main_lua and "totalDuration = 745" in main_lua, "card burn timeline differs from Phaser")
+    expect("nvgScale(painter_.vg, CARD_TEXT_SCALE, CARD_TEXT_SCALE)" in main_lua, "card vector artwork no longer follows the Phaser container scale")
+    expect(has_main_function("GoalSensorContainsApple") and has_main_function("RefreshGoalContact"), "goal Sensor overlap fallback missing")
+    expect("RefreshGoalContact()\n    UpdateExperiment" in main_lua, "goal Sensor overlap fallback is not evaluated on every physics step")
     expect("BurnProgress" in main_lua and "1 - math.cos(linear * math.pi * .5)" in main_lua and "DrawCardBurnParticles" in main_lua, "card burn easing or particles are missing")
     expect("MoveCardToHandSlot" in main_lua and "duration = .16" in main_lua and "UpdateCardHomeMotions" in main_lua, "live hand reordering tween differs from Phaser")
     expect("SetBulletTimeActive" in main_lua and "CurrentPhysicsTimeScale" in main_lua and "StartReplay" in main_lua, "continuous card bullet time or replay missing")
@@ -265,7 +268,7 @@ def main() -> int:
            and "* CurrentMatterVelocityToWorld()" in main_lua,
            "spring impulse no longer follows the source gravity multiplier")
     expect("CapAppleSpeed()\n    apple_.body.linearDamping" in main_lua, "speed cap is not applied before the physics pass")
-    expect("UpdateSpringExits()\n    UpdateExperiment(eventData:GetFloat(\"TimeStep\") * CurrentPhysicsTimeScale())" in main_lua, "physics post-step timing differs from source bullet time")
+    expect("UpdateSpringExits()\n    RefreshGoalContact()\n    UpdateExperiment(eventData:GetFloat(\"TimeStep\") * CurrentPhysicsTimeScale())" in main_lua, "physics post-step timing differs from source bullet time")
     expect("uiElapsed_ * 1000 - object.triggeredAt" in main_lua and "uiElapsed_ * 1000 >= object.closeAt" in main_lua, "scene-time cooldown or door delay differs from source")
     expect("if #trail_ > 18" in main_lua and "flightMs_ - lastTrailAt_ > 55" in main_lua and "DrawVelocityArrow" in main_lua, "trail or velocity visualization differs from Phaser")
     expect("input:GetMouseButtonPress(MOUSEB_RIGHT)" in main_lua and "input:GetKeyPress(KEY_ESCAPE)" in main_lua and "ToggleTacticalPause" in main_lua, "source keyboard or cancel interaction is missing")

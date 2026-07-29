@@ -111,6 +111,7 @@ function PhysicsProbe:BeginCurrentCase(context)
     apple.node:SetPosition2D(worldX, worldY)
     apple.node:SetRotation2D(0)
     apple.body.bodyType = BT_DYNAMIC
+    MatterCalibration.ApplyAppleMassProperties(apple.body)
     apple.body.linearVelocity = Vector2(
         spec.vx * context.matterVelocityToWorld * self.timeScale,
         -spec.vy * context.matterVelocityToWorld * self.timeScale

@@ -246,7 +246,7 @@ function RuntimeFactory.CreateApple(scene, launcher)
     local body = node:CreateComponent("RigidBody2D")
     body.bodyType = BT_STATIC
     body.useFixtureMass = false
-    body.mass = 1
+    body.mass = MatterCalibration.APPLE_MASS
     -- The source's setCircle call resets frictionAir to Matter's .01 default.
     -- Box2D damping is per second, so use its equivalent 60 Hz coefficient.
     body.linearDamping = MatterCalibration.Box2DLinearDamping(MatterCalibration.APPLE_FRICTION_AIR)

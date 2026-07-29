@@ -22,7 +22,7 @@ local CONFIG = {
 
 -- Phaser draws card contents in a 124 px design container, then scales the
 -- whole container to 144 px. The Maker card geometry is already expanded to
--- that final size, so text needs this factor explicitly.
+-- that final size; text and the vector card artwork still need this factor.
 local CARD_TEXT_SCALE = 144 / 124
 
 -- Matter stores velocity in pixels per 60 Hz frame, while Box2D uses metres
@@ -655,6 +655,9 @@ function LaunchApple()
     local vy = -dy * 0.165
     local timeScale = CurrentPhysicsTimeScale()
     apple_.body.bodyType = BT_DYNAMIC
+    -- Switching a Box2D body from static to dynamic recomputes mass data from
+    -- the exact circle fixture. Restore the source Matter 26-gon inertia.
+    MatterCalibration.ApplyAppleMassProperties(apple_.body)
     -- Matter restores the material captured by setStatic(false), so a card
     -- played while the apple is still mounted does not survive launch.
     apple_.shape.restitution = MatterCalibration.APPLE_INITIAL_RESTITUTION
@@ -713,6 +716,31 @@ end
 
 function IsAppleNode(node)
     return node and node.name == "Apple"
+end
+
+-- Box2D contact events are authoritative when delivered. This mirrors the
+-- source Sensor's rectangle using the apple's circle as a deterministic
+-- fallback for engines that omit or prematurely end a trigger callback.
+function GoalSensorContainsApple()
+    if not apple_ or not runtime_ or not level_ then return false end
+    local goal = LevelData.FindFirst(level_, "goal_sensor")
+    local runtimeGoal = goal and runtime_.byId[goal.id] or nil
+    if not runtimeGoal then return false end
+
+    local position = apple_.node.position2D
+    local dx = position.x - runtimeGoal.worldX
+    local dy = position.y - runtimeGoal.worldY
+    local rotation = math.rad(runtimeGoal.node.rotation2D)
+    local cosine, sine = math.cos(rotation), math.sin(rotation)
+    local localX = cosine * dx + sine * dy
+    local localY = -sine * dx + cosine * dy
+    local halfWidth = runtimeGoal.worldWidth * .5
+    local halfHeight = runtimeGoal.worldHeight * .5
+    local closestX = math.max(-halfWidth, math.min(localX, halfWidth))
+    local closestY = math.max(-halfHeight, math.min(localY, halfHeight))
+    local offsetX = localX - closestX
+    local offsetY = localY - closestY
+    return offsetX * offsetX + offsetY * offsetY <= apple_.radius * apple_.radius
 end
 
 function DoorOpenVector(object)
@@ -1628,14 +1656,15 @@ function ResetGoal()
     goalEntryRecorded_ = false
     local goal = level_ and LevelData.FindFirst(level_, "goal_sensor") or nil
     local runtimeGoal = goal and runtime_ and runtime_.byId[goal.id] or nil
-    if runtimeGoal then runtimeGoal.active = false; runtimeGoal.contactProgress = 0 end
+    if runtimeGoal then
+        runtimeGoal.active = false
+        runtimeGoal.contactMs = 0
+        runtimeGoal.contactProgress = 0
+    end
 end
 
--- Box2D reports a begin contact once and an update contact every solver step.
--- The source keeps its Sensor alive through Matter's collisionactive event.
-function ActivateGoalContact(nodeA, nodeB, recordEntry)
+function BeginGoalContact(recordEntry)
     if not launched_ or replayActive_ or absorbing_ or success_ or failed_ then return false end
-    if not IsAppleGoalPair(nodeA, nodeB) then return false end
     goalContact_ = true
     goalContactMs_ = math.max(1, goalContactMs_)
     local goal = LevelData.FindFirst(level_, "goal_sensor")
@@ -1647,6 +1676,22 @@ function ActivateGoalContact(nodeA, nodeB, recordEntry)
         SetStatus("OBSERVE · 苹果进入观察窗")
     end
     return true
+end
+
+-- Box2D reports a begin contact once and an update contact every solver step.
+-- The source keeps its Sensor alive through Matter's collisionactive event.
+function ActivateGoalContact(nodeA, nodeB, recordEntry)
+    if not IsAppleGoalPair(nodeA, nodeB) then return false end
+    return BeginGoalContact(recordEntry)
+end
+
+function RefreshGoalContact()
+    if not launched_ or replayActive_ or absorbing_ or success_ or failed_ then return end
+    if GoalSensorContainsApple() then
+        BeginGoalContact(true)
+    elseif goalContact_ then
+        ResetGoal()
+    end
 end
 
 function RecordReplay(dt)
@@ -2236,8 +2281,13 @@ function DrawCardSurface(id, def, card, cardState, badgeText, active, hovered)
     painter_:RoundedRect(-72, -101, 144, 202, 8, nil, active and Renderer2D.COLORS.primaryActive or edge, active and 3 or 2)
     painter_:Text(-58, -85, (field and "场地 · " or "决策 · ") .. CardUseLabel(usage, remaining), 9 * CARD_TEXT_SCALE, edge)
     painter_:Text(0, -58, def.name, 16 * CARD_TEXT_SCALE, titleColor, NVG_ALIGN_CENTER + NVG_ALIGN_TOP, "maker-display")
+    nvgSave(painter_.vg)
+    nvgScale(painter_.vg, CARD_TEXT_SCALE, CARD_TEXT_SCALE)
     painter_:DrawCardSymbol(id, 0, 7, titleColor)
-    painter_:TextBox(-51 * CARD_TEXT_SCALE, 69, 102 * CARD_TEXT_SCALE, def.description, 10 * CARD_TEXT_SCALE, bodyColor, NVG_ALIGN_CENTER + NVG_ALIGN_TOP)
+    nvgRestore(painter_.vg)
+    -- Phaser uses a 10 px description with 2 px lineSpacing before the card
+    -- container scale is applied. Its final NanoVG line-height is 1.2.
+    painter_:TextBox(-51 * CARD_TEXT_SCALE, 69, 102 * CARD_TEXT_SCALE, def.description, 10 * CARD_TEXT_SCALE, bodyColor, NVG_ALIGN_CENTER + NVG_ALIGN_TOP, "maker-body", 1.2)
     DrawCardBadge(badgeText or CardBadgeText(id, usage, remaining), edge)
 end
 
@@ -2678,6 +2728,7 @@ function HandlePhysicsPostStep(_eventType, eventData)
     -- The original applies a spring's pre-solve exit velocity after Matter's
     -- collision resolution, then advances runtime mechanisms in physics time.
     UpdateSpringExits()
+    RefreshGoalContact()
     UpdateExperiment(eventData:GetFloat("TimeStep") * CurrentPhysicsTimeScale())
 end
 
@@ -2773,10 +2824,10 @@ function HandleCollisionEnd(_eventType, eventData)
         return
     end
     if IsAppleGoalPair(nodeA, nodeB) then
-        local goal = LevelData.FindFirst(level_, "goal_sensor")
-        local runtimeGoal = goal and runtime_.byId[goal.id] or nil
-        if runtimeGoal then runtimeGoal.active = false; runtimeGoal.contactProgress = 0 end
-        ResetGoal()
+        -- Some Box2D trigger contacts end while the fixtures are still
+        -- overlapping. Keep the source-style collisionactive state alive
+        -- until the same circle-vs-rectangle test says the apple has left.
+        if not GoalSensorContainsApple() then ResetGoal() end
         return
     end
     if not nodeA or not nodeB or not runtime_ or not IsAppleNode(nodeA) and not IsAppleNode(nodeB) then return end

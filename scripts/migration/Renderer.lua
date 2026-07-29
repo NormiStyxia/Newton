@@ -146,9 +146,10 @@ function Renderer:Text(x, y, value, size, c, align, font, alpha)
     nvgText(self.vg, x, y, value, nil)
 end
 
-function Renderer:TextBox(x, y, width, value, size, c, align, font)
+function Renderer:TextBox(x, y, width, value, size, c, align, font, lineHeight)
     nvgFontFace(self.vg, font or "maker-body")
     nvgFontSize(self.vg, size)
+    nvgTextLineHeight(self.vg, lineHeight or 1)
     nvgTextAlign(self.vg, align or (NVG_ALIGN_LEFT + NVG_ALIGN_TOP))
     nvgFillColor(self.vg, color(c or COLORS.text))
     nvgTextBox(self.vg, x, y, width, value, nil)

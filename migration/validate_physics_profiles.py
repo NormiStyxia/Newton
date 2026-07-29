@@ -115,6 +115,13 @@ def main() -> int:
     expect("APPLE_FRICTION_STATIC = 0.5" in calibration, "Matter static-friction multiplier is not calibrated")
     expect("APPLE_FRICTION_AIR = 0.01" in calibration, "apple effective air friction is not calibrated")
     expect("APPLE_INITIAL_RESTITUTION = 0" in calibration, "apple initial restitution is not calibrated")
+    expect("APPLE_MATTER_INERTIA_PX2 = 1443.867317" in calibration
+           and "APPLE_INERTIA = MatterCalibration.APPLE_MATTER_INERTIA_PX2" in calibration
+           and "function MatterCalibration.ApplyAppleMassProperties" in calibration,
+           "apple's observed Matter 26-gon inertia is not calibrated")
+    expect(main_lua.count("MatterCalibration.ApplyAppleMassProperties(apple_.body)") == 1
+           and "MatterCalibration.ApplyAppleMassProperties(apple.body)" in (ROOT / "scripts/migration/PhysicsProbe.lua").read_text(encoding="utf-8"),
+           "apple mass properties are not restored after every static-to-dynamic transition")
     expect("STATIC_FRICTION = 0.1" in calibration and "STATIC_RESTITUTION = 0" in calibration,
            "static Matter material is not calibrated")
     expect("CARD_RESTITUTION_BASE = 0.36" in calibration, "card restitution baseline is not preserved")

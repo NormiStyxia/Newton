@@ -18,6 +18,19 @@ MatterCalibration.STATIC_FRICTION = 0.1
 MatterCalibration.STATIC_RESTITUTION = 0
 MatterCalibration.CARD_RESTITUTION_BASE = 0.36
 MatterCalibration.MATTER_FRAMES_PER_SECOND = 60
+MatterCalibration.PIXELS_PER_METER = 100
+MatterCalibration.APPLE_MASS = 1
+-- Matter creates the apple as a 26-sided circle. Its observed inertia is in
+-- kilogram-pixel-squared; convert it once to Box2D's kilogram-metre-squared.
+MatterCalibration.APPLE_MATTER_INERTIA_PX2 = 1443.867317
+MatterCalibration.APPLE_INERTIA = MatterCalibration.APPLE_MATTER_INERTIA_PX2
+    / (MatterCalibration.PIXELS_PER_METER * MatterCalibration.PIXELS_PER_METER)
+
+---@param body RigidBody2D
+function MatterCalibration.ApplyAppleMassProperties(body)
+    body.mass = MatterCalibration.APPLE_MASS
+    body.inertia = MatterCalibration.APPLE_INERTIA
+end
 
 ---@param frictionAir number
 ---@param timeScale? number
