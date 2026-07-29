@@ -18,7 +18,7 @@ height, horizontal padding, and width alignment. For every clip the processor:
 2. computes one union bounding box;
 3. applies one shared horizontal crop;
 4. performs a premultiplied-alpha Lanczos downsample;
-5. writes PNG frames plus JSON and Lua manifests.
+5. writes PNG frames plus one engine-neutral JSON manifest.
 
 The current `runtime_512` output is 256x512, but that width is derived rather
 than required. A wider future action may produce a wider frame without changing

@@ -6,7 +6,29 @@ end
 
 local Animator = require("green_assistant.GreenAssistAnimator")
 local AnimationSource = require("green_assistant.GreenAssistAnimationSource")
-local RuntimeManifest = require("green_assistant.generated.GreenAssistRuntimeManifest")
+local function SourceFrame(texture, width, height)
+    return {
+        texture = texture,
+        sourceRect = { x = 0, y = 0, width = width, height = height },
+        sourceOffset = { x = 0, y = 0 },
+        frameWidth = width,
+        frameHeight = height,
+        visualBounds = { x = 0, y = 0, width = width, height = height },
+        footAnchor = { x = width * 0.5, y = height, normalizedX = 0.5, normalizedY = 1 },
+    }
+end
+local RuntimeManifest = {
+    schemaVersion = 1,
+    variants = {
+        runtime_512 = {
+            clips = {
+                idle = { fps = 8, loop = true, frames = { SourceFrame("idle", 256, 512) } },
+                blink = { fps = 12, loop = false, frames = { SourceFrame("blink", 256, 512) } },
+                move = { fps = 10, loop = true, frames = { SourceFrame("move", 256, 512) } },
+            },
+        },
+    },
+}
 local sourceConfig = {
     assets = {},
     animations = {

@@ -11,8 +11,7 @@
   },
   "output": {
     "imageRoot": "assets/image/green_assistant/runtime/runtime_512",
-    "jsonManifest": "assets/image/green_assistant/runtime/manifest.json",
-    "luaManifest": "scripts/green_assistant/generated/GreenAssistRuntimeManifest.lua"
+    "jsonManifest": "assets/image/green_assistant/runtime/manifest.json"
   },
   "clips": {
     "idle": {

@@ -119,6 +119,7 @@ GreenAssistConfig.DEFAULTS = {
     },
     assets = {
         enabled = true,
+        manifest = "image/green_assistant/runtime/manifest.json",
         -- A/D use master_1080. B/C use runtime_512.  Keep this independent
         -- from render.generateMipmaps so all four quality variants are testable.
         variant = "runtime_512",
