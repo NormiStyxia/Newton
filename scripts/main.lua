@@ -20,10 +20,14 @@ local CONFIG = {
     replaySampleMs = 1000 / 30,
 }
 
--- Phaser draws card contents in a 124 px design container, then scales the
--- whole container to 144 px. The Maker card geometry is already expanded to
--- that final size; text and the vector card artwork still need this factor.
+-- Phaser draws cards in a 124 x 172 design container, then applies a uniform
+-- 144 / 124 scale. Keep the render bounds derived from that source transform:
+-- using the 202 px interaction height as a paint height made each card visibly
+-- longer than its Phaser face.
 local CARD_TEXT_SCALE = 144 / 124
+local CARD_RENDER_WIDTH = 144
+local CARD_RENDER_HEIGHT = 172 * CARD_TEXT_SCALE
+local GOAL_CONTACT_SKIN = .005
 
 -- Matter stores velocity in pixels per 60 Hz frame, while Box2D uses metres
 -- per second. These constants keep the migrated runtime on the source scale.
@@ -740,7 +744,11 @@ function GoalSensorContainsApple()
     local closestY = math.max(-halfHeight, math.min(localY, halfHeight))
     local offsetX = localX - closestX
     local offsetY = localY - closestY
-    return offsetX * offsetX + offsetY * offsetY <= apple_.radius * apple_.radius
+    -- Matter's 26-sided apple and Box2D's contact solver both carry a small
+    -- collision skin. Include the same tolerance in the deterministic
+    -- fallback so callback churn cannot reset an otherwise continuous stay.
+    local radius = apple_.radius + GOAL_CONTACT_SKIN
+    return offsetX * offsetX + offsetY * offsetY <= radius * radius
 end
 
 function DoorOpenVector(object)
@@ -1277,7 +1285,7 @@ function FindTopCardAt(x, y)
             local scale = pose.scale or 1
             local localX = (math.cos(radians) * dx - math.sin(radians) * dy) / scale
             local localY = (math.sin(radians) * dx + math.cos(radians) * dy) / scale
-            if math.abs(localX) <= 72 and math.abs(localY) <= 101
+            if math.abs(localX) <= CARD_RENDER_WIDTH * .5 and math.abs(localY) <= CARD_RENDER_HEIGHT * .5
                 and (pose.depth > foundDepth or (pose.depth == foundDepth and i > foundIndex)) then
                 found, foundDepth, foundIndex = card, pose.depth, i
             end
@@ -1315,7 +1323,9 @@ function UpdateHoverState(x, y)
 
     local punchX, punchY = frame_.playfieldX + frame_.playfieldWidth - 58, frame_.cardHandY + 23
     punchHovered_ = x >= punchX - 40 and x <= punchX + 40 and y >= punchY - 40 and y <= punchY + 40
-    if activeCardId_ or primedCardId_ or #cardBurns_ > 0 or isPaused_ then
+    -- Tactical pause freezes the experiment, not the rule-card affordance.
+    -- Phaser keeps card hover feedback available while paused.
+    if activeCardId_ or primedCardId_ or #cardBurns_ > 0 then
         SetHoveredCard(nil)
     else
         local card = FindTopCardAt(x, y)
@@ -1324,6 +1334,10 @@ function UpdateHoverState(x, y)
 end
 
 function TryCardPress(x, y)
+    -- CARD_RESOLVING owns the full hand until its burn timeline completes.
+    -- Without this guard a second card can be picked up while the first one
+    -- is still clipping away, unlike Phaser's cardPointerId interaction lock.
+    if #cardBurns_ > 0 then return false end
     local card = FindTopCardAt(x, y)
     if not card then return false end
     local pressPose = CurrentCardVisualPose(card.cardId)
@@ -1676,6 +1690,40 @@ function BeginGoalContact(recordEntry)
         SetStatus("OBSERVE · 苹果进入观察窗")
     end
     return true
+end
+
+-- Phaser recalculates its hand only after the burn completes, then tweens the
+-- surviving cards to their new slots for 160ms. Capture their displayed poses
+-- before consumption so the count change does not produce a visual jump.
+function AnimateHandAfterBurn(removedId)
+    local entries = CardEntries()
+    local currentPoses = Rules.CardHand(#entries, frame_.playfieldX + frame_.playfieldWidth * .5, frame_.cardHandY, frame_.playfieldWidth)
+    local displayed = {}
+    for i, card in ipairs(entries) do
+        if card.cardId ~= removedId and currentPoses[i] then
+            displayed[card.cardId] = CardVisualPose(card.cardId, currentPoses[i])
+        end
+    end
+
+    local remaining = CardEntries()
+    local targetPoses = Rules.CardHand(#remaining, frame_.playfieldX + frame_.playfieldWidth * .5, frame_.cardHandY, frame_.playfieldWidth)
+    for i, card in ipairs(remaining) do
+        local from, target = displayed[card.cardId], targetPoses[i]
+        if from and target then
+            cardHomeMotions_[card.cardId] = {
+                fromX = from.x,
+                fromY = from.y,
+                fromAngle = from.angle,
+                fromScale = from.scale or 1,
+                toX = target.x,
+                toY = target.y,
+                toAngle = target.angle,
+                toScale = 1,
+                elapsed = 0,
+                duration = .16,
+            }
+        end
+    end
 end
 
 -- Box2D reports a begin contact once and an update contact every solver step.
@@ -2272,13 +2320,14 @@ function DrawCardSurface(id, def, card, cardState, badgeText, active, hovered)
     local edge = id == "quantum-phase" and Renderer2D.COLORS.quantum or (field and Renderer2D.COLORS.fieldCardBorder or Renderer2D.COLORS.decisionCardBorder)
     local titleColor = field and Renderer2D.COLORS.text or Renderer2D.COLORS.decisionCardText
     local bodyColor = field and Renderer2D.COLORS.body or Renderer2D.COLORS.decisionCardBody
-    painter_:RoundedRect(-70, -96, 144, 202, 8, Renderer2D.COLORS.dark, nil, nil, hovered and 41 or 26)
-    painter_:RoundedRect(-72, -101, 144, 202, 8, edge)
-    painter_:RoundedRect(-66, -95, 132, 190, 6, fill)
-    painter_:RoundedRect(-66, -95, 132, 24, 6, edge, nil, nil, 36)
-    painter_:RoundedRect(-57, -37, 114, 88, 5, Renderer2D.COLORS.panel, edge, 1, 107)
-    painter_:StrokeRect(-57, 59, 114, 0, edge, 1, 133)
-    painter_:RoundedRect(-72, -101, 144, 202, 8, nil, active and Renderer2D.COLORS.primaryActive or edge, active and 3 or 2)
+    local scale = CARD_TEXT_SCALE
+    painter_:RoundedRect(-60 * scale, -83 * scale, 124 * scale, 172 * scale, 7 * scale, Renderer2D.COLORS.dark, nil, nil, hovered and 41 or 26)
+    painter_:RoundedRect(-62 * scale, -87 * scale, 124 * scale, 172 * scale, 7 * scale, edge)
+    painter_:RoundedRect(-57 * scale, -82 * scale, 114 * scale, 164 * scale, 5 * scale, fill)
+    painter_:RoundedRect(-57 * scale, -82 * scale, 114 * scale, 21 * scale, 5 * scale, edge, nil, nil, 36)
+    painter_:RoundedRect(-49 * scale, -32 * scale, 98 * scale, 76 * scale, 4 * scale, Renderer2D.COLORS.panel, edge, 1 * scale, 107)
+    painter_:StrokeRect(-49 * scale, 51 * scale, 98 * scale, 0, edge, 1 * scale, 133)
+    painter_:RoundedRect(-62 * scale, -87 * scale, 124 * scale, 172 * scale, 7 * scale, nil, active and Renderer2D.COLORS.primaryActive or edge, (active and 3 or 2) * scale)
     painter_:Text(-58, -85, (field and "场地 · " or "决策 · ") .. CardUseLabel(usage, remaining), 9 * CARD_TEXT_SCALE, edge)
     painter_:Text(0, -58, def.name, 16 * CARD_TEXT_SCALE, titleColor, NVG_ALIGN_CENTER + NVG_ALIGN_TOP, "maker-display")
     nvgSave(painter_.vg)
@@ -2287,7 +2336,7 @@ function DrawCardSurface(id, def, card, cardState, badgeText, active, hovered)
     nvgRestore(painter_.vg)
     -- Phaser uses a 10 px description with 2 px lineSpacing before the card
     -- container scale is applied. Its final NanoVG line-height is 1.2.
-    painter_:TextBox(-51 * CARD_TEXT_SCALE, 69, 102 * CARD_TEXT_SCALE, def.description, 10 * CARD_TEXT_SCALE, bodyColor, NVG_ALIGN_CENTER + NVG_ALIGN_TOP, "maker-body", 1.2)
+    painter_:TextBox(-51 * scale, 59 * scale, 102 * scale, def.description, 10 * scale, bodyColor, NVG_ALIGN_CENTER + NVG_ALIGN_TOP, "maker-body", 1.2)
     DrawCardBadge(badgeText or CardBadgeText(id, usage, remaining), edge)
 end
 
@@ -2643,6 +2692,11 @@ function HandleUpdate(_eventType, eventData)
             burn.applied = ApplyCardResolution(burn.id, burn.candidate)
         end
         if burn.elapsed >= burn.totalDuration then
+            -- Record the old hand before a consumed card changes its layout.
+            -- Its state update below then lets AnimateHandAfterBurn derive the
+            -- same target slots as Phaser's finishBurn -> layoutCardHand flow.
+            local shouldReflow = burn.applied and cardStates_[burn.id]
+                and cardStates_[burn.id].usageMode ~= "REUSABLE"
             if burn.applied then
                 local cardState = cardStates_[burn.id]
                 if cardState and cardState.usageMode ~= "REUSABLE" then
@@ -2650,6 +2704,7 @@ function HandleUpdate(_eventType, eventData)
                     cardState.consumed = cardState.remainingUses == 0
                 end
             end
+            if shouldReflow then AnimateHandAfterBurn(burn.id) end
             burningCardIds_[burn.id] = nil
             table.remove(cardBurns_, i)
         end

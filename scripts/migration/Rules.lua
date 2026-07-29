@@ -1,4 +1,6 @@
 local Rules = {}
+
+local PRESET_X_SCALE = .92
 local DEFAULT_GRAVITY_MAGNITUDE = 1.05
 
 ---@class CardHandOffset
@@ -108,11 +110,11 @@ function Rules.CardHand(count, centerX, centerY, playfieldWidth)
     ---@type table<integer, CardHandOffset[]>
     local presets = {
         [1] = { { x = 0, y = 0, angle = 0 } },
-        [2] = { { x = -78, y = 1, angle = -1.5 }, { x = 78, y = 1, angle = 1.5 } },
-        [3] = { { x = -138, y = 4, angle = -2.5 }, { x = 0, y = 0, angle = 0 }, { x = 138, y = 4, angle = 2.5 } },
-        [4] = { { x = -207, y = 7, angle = -3.5 }, { x = -69, y = 1, angle = -1.2 }, { x = 69, y = 1, angle = 1.2 }, { x = 207, y = 7, angle = 3.5 } },
-        [5] = { { x = -262, y = 10, angle = -4.5 }, { x = -133, y = 3, angle = -2 }, { x = 0, y = 0, angle = 0 }, { x = 133, y = 3, angle = 2 }, { x = 262, y = 10, angle = 4.5 } },
-        [6] = { { x = -313, y = 12, angle = -6 }, { x = -189, y = 4, angle = -3 }, { x = -63, y = 0, angle = -1 }, { x = 63, y = 0, angle = 1 }, { x = 189, y = 4, angle = 3 }, { x = 313, y = 12, angle = 6 } },
+        [2] = { { x = -85, y = 1, angle = -1.5 }, { x = 85, y = 1, angle = 1.5 } },
+        [3] = { { x = -150, y = 4, angle = -2.5 }, { x = 0, y = 0, angle = 0 }, { x = 150, y = 4, angle = 2.5 } },
+        [4] = { { x = -225, y = 7, angle = -3.5 }, { x = -75, y = 1, angle = -1.2 }, { x = 75, y = 1, angle = 1.2 }, { x = 225, y = 7, angle = 3.5 } },
+        [5] = { { x = -285, y = 10, angle = -4.5 }, { x = -145, y = 3, angle = -2 }, { x = 0, y = 0, angle = 0 }, { x = 145, y = 3, angle = 2 }, { x = 285, y = 10, angle = 4.5 } },
+        [6] = { { x = -340, y = 12, angle = -6 }, { x = -205, y = 4, angle = -3 }, { x = -68, y = 0, angle = -1 }, { x = 68, y = 0, angle = 1 }, { x = 205, y = 4, angle = 3 }, { x = 340, y = 12, angle = 6 } },
     }
     local result = {}
     count = math.max(0, math.min(10, math.floor(count)))
@@ -122,7 +124,7 @@ function Rules.CardHand(count, centerX, centerY, playfieldWidth)
         for i, pose in ipairs(presets[count]) do
             local normalized = math.abs(i - 1 - center) / math.max(center, 1)
             result[i] = {
-                x = centerX + pose.x,
+                x = centerX + pose.x * PRESET_X_SCALE,
                 y = centerY + pose.y,
                 angle = pose.angle,
                 depth = 54 + (1 - normalized) * 4,
