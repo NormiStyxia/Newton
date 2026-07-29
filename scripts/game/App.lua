@@ -13,13 +13,15 @@ local SynthAudio = require("game.audio.Audio")
 local TrajectoryPrediction = require("game.physics.Trajectory")
 local ReplayTimeline = require("game.replay.Timeline")
 local ReplayFeed = require("game.replay.Feed")
+local ReplayMode = require("game.replay.Mode")
 
 local INSTALLERS = {
     "game.gameplay.Status", "game.replay.Controller", "game.gameplay.RuleController",
     "game.level.LevelSession", "game.physics.System", "game.gameplay.Mechanisms",
     "game.gameplay.Goal", "game.gameplay.Experiment", "game.input.Pointer",
     "game.cards.Controller", "game.input.InteractionRouter", "game.render.WorldView",
-    "game.render.ReplayView", "game.render.OverlayView", "game.render.CardView", "game.AppRuntime",
+    "game.render.ReplayView", "game.render.OverlayView", "game.render.CardView",
+    "game.green_assistant.Controller", "game.AppRuntime",
 }
 
 local App = {}
@@ -32,6 +34,7 @@ function App.New()
         MatterCalibration = MatterCalibration, PhysicsProfiles = PhysicsProfiles, PhysicsProbe = PhysicsProbe,
         Rules = Rules, RuntimeFactory = RuntimeFactory, Renderer2D = Renderer2D, SynthAudio = SynthAudio,
         TrajectoryPrediction = TrajectoryPrediction, ReplayTimeline = ReplayTimeline, ReplayFeed = ReplayFeed,
+        ReplayMode = ReplayMode,
     }
     local context = State.New(dependencies, Config.LegacyConstants())
     for _, moduleName in ipairs(INSTALLERS) do require(moduleName).Install(context) end

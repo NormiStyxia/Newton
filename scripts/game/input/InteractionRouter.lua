@@ -50,8 +50,17 @@ function M.Install(context)
         local pointerFrame = PointerState()
         local x, y = pointerFrame.x, pointerFrame.y
         local down, press, release = pointerFrame.down, pointerFrame.pressed, pointerFrame.released
+        if HandleGreenAssistantPointer(x, y, pointerFrame) then
+            hoveredNavigation_, hoveredLevelIndex_, punchHovered_ = nil, nil, false
+            SetHoveredCard(nil)
+            return
+        end
         UpdateHoverState(x, y)
-        if replayActive_ then HandleReplayPointer(x, y, press); return end
+        if assistantInputLocked_ then return end
+        if replayActive_ then
+            if replayBusinessMode_ == ReplayMode.PLAYER_REPLAY then HandleReplayPointer(x, y, press) end
+            return
+        end
         if IsResultOverlayVisible() then
             if press then
                 local cx, cy = frame_.playfieldX + frame_.playfieldWidth * .5, frame_.playfieldY + frame_.playfieldHeight * .5
@@ -61,12 +70,20 @@ function M.Install(context)
                 if failed_ and inOverlayButton(cx, cy + 60) then
                     ResetExperiment()
                 elseif success_ then
-                    if inOverlayButton(cx - 160, cy + 65) then
-                        BuildLevel(levelIndex_ < CONFIG.levelCount and levelIndex_ + 1 or 1)
-                    elseif inOverlayButton(cx, cy + 65) then
-                        StartReplay()
-                    elseif inOverlayButton(cx + 160, cy + 65) then
-                        ResetExperiment()
+                    if assistedClear_ then
+                        if inOverlayButton(cx - 80, cy + 65) then
+                            BuildLevel(levelIndex_ < CONFIG.levelCount and levelIndex_ + 1 or 1)
+                        elseif inOverlayButton(cx + 80, cy + 65) then
+                            ResetExperiment()
+                        end
+                    else
+                        if inOverlayButton(cx - 160, cy + 65) then
+                            BuildLevel(levelIndex_ < CONFIG.levelCount and levelIndex_ + 1 or 1)
+                        elseif inOverlayButton(cx, cy + 65) then
+                            StartReplay()
+                        elseif inOverlayButton(cx + 160, cy + 65) then
+                            ResetExperiment()
+                        end
                     end
                 end
             end

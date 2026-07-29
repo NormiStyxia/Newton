@@ -1,0 +1,125 @@
+package.path = "scripts/?.lua;scripts/?/init.lua;" .. package.path
+
+local function expect(condition, message)
+    if not condition then error(message, 2) end
+end
+
+local Animator = require("green_assistant.GreenAssistAnimator")
+local animatorEvents = {}
+local animator = Animator.new({
+    fallbackAnimation = "idle",
+    onAnimationChanged = function(name) animatorEvents[#animatorEvents + 1] = name end,
+})
+animator:registerAnimation("idle", { frames = { "idle-1", "idle-2" }, fps = 10, loop = true })
+animator:registerAnimation("move", { frames = { "move-1", "move-2", "move-3" }, fps = 5, loop = true })
+local blinkFinished = false
+animator:registerAnimation("blink", { frames = { "blink-1", "blink-2" }, fps = 10, loop = false })
+expect(animator:play("idle"), "idle animation did not start")
+animator:update(.11)
+expect(animator:getCurrentFrame() == "idle-2", "looping frame advance failed")
+expect(animator:play("missing"), "fallback animation was not used")
+expect(animator:getCurrentAnimation() == "idle", "fallback animation mismatch")
+animator:play("blink", { restart = true, onFinished = function() blinkFinished = true end })
+animator:update(.21)
+expect(animator:isFinished() and blinkFinished, "non-looping animation completion failed")
+expect(#animatorEvents >= 2, "animation change callback missing")
+
+local mockView = {
+    message = nil,
+    choice = nil,
+    x = 0,
+    y = 0,
+}
+function mockView:setFrame(frame) self.frame = frame end
+function mockView:getHomePosition() return 76, 822 end
+function mockView:getRoamBounds() return 42, 238, 722, 822 end
+function mockView:setPosition(x, y) self.x, self.y = x, y end
+function mockView:setFacingRight(value) self.facingRight = value end
+function mockView:setVisible(value) self.visible = value end
+function mockView:setEnabled(value) self.enabled = value end
+function mockView:showMessage(text) self.message, self.choice = text, nil end
+function mockView:showChoice(text, choices) self.message, self.choice = text, choices end
+function mockView:hideMessage() self.message, self.choice = nil, nil end
+function mockView:hitTestCharacter() return false end
+function mockView:hitTestBubble() return false end
+function mockView:hitTestChoice() return nil, nil end
+function mockView:render() end
+function mockView:destroy() self.destroyed = true end
+
+local adapter = { finished = false, assisted = false, locked = false }
+function adapter:canTakeover() return true end
+function adapter:lockPlayerInput() self.locked = true end
+function adapter:unlockPlayerInput() self.locked = false end
+function adapter:prepareTakeoverScene() self.prepared = true end
+function adapter:getAssistReplay() return { samples = { { t = 0 }, { t = 100 } } } end
+function adapter:beginTakeoverReplay() self.began = true; return true end
+function adapter:updateTakeover() end
+function adapter:isTakeoverFinished() return self.finished end
+function adapter:finishTakeover() self.assisted = true end
+function adapter:cancelTakeover() self.cancelled = true end
+
+local GreenAssistant = require("green_assistant.GreenAssistant")
+local events = {}
+local assistant = GreenAssistant.new({
+    view = mockView,
+    adapter = adapter,
+    config = {
+        features = { roam = false },
+        animations = {
+            idle = { frames = { "idle-1", "idle-2" }, fps = 10, loop = true },
+            move = { frames = { "move-1", "move-2" }, fps = 10, loop = true },
+            blink = { frames = { "blink-1", "blink-2" }, fps = 10, loop = false },
+        },
+        blink = { enabled = true, animation = "blink", minInterval = .05, maxInterval = .05 },
+        interaction = { duration = .05, consecutiveWindow = 1, pokeLines = { "在。", "别戳。" } },
+        failureAssist = {
+            observeDuration = .05,
+            observeLines = { "一", "二" },
+            offerText = "需要我接管吗？",
+            declineText = "不用",
+            acceptText = "交给你",
+            successText = "好了。",
+            unavailableText = "不可用",
+        },
+    },
+    events = {
+        onBehaviorChanged = function(_, state) events[#events + 1] = state end,
+    },
+})
+
+assistant:update(.06, { logicalWidth = 1880, logicalHeight = 840 })
+expect(assistant.animator:getCurrentAnimation() == "blink", "idle blink did not interrupt idle animation")
+assistant:update(.21)
+expect(assistant.animator:getCurrentAnimation() == "idle", "blink did not restore idle animation")
+assistant:poke()
+expect(assistant:getBehavior() == GreenAssistant.Behavior.INTERACT, "poke behavior missing")
+assistant:update(.06)
+expect(assistant:getBehavior() == GreenAssistant.Behavior.IDLE, "poke did not return to idle")
+
+assistant:onLevelChanged("level_01")
+assistant:onAttemptFailed({ reason = "A" })
+expect(assistant:getBehavior() == GreenAssistant.Behavior.OBSERVE, "first failure must observe")
+assistant:update(.06)
+assistant:onAttemptFailed({ reason = "B" })
+expect(assistant:getBehavior() == GreenAssistant.Behavior.OBSERVE, "second failure must observe")
+assistant:update(.06)
+assistant:onAttemptFailed({ reason = "C" })
+expect(assistant:getBehavior() == GreenAssistant.Behavior.OFFER, "third failure must offer takeover")
+expect(assistant.failureAssist.hasOfferedThisLevel, "offer flag was not retained")
+expect(assistant:acceptTakeover(), "takeover acceptance failed")
+expect(assistant:getBehavior() == GreenAssistant.Behavior.TAKEOVER and adapter.locked and adapter.began,
+    "takeover did not lock input and start replay")
+adapter.finished = true
+assistant:update(.016)
+expect(adapter.assisted and not adapter.locked, "takeover did not finish assisted and unlock input")
+expect(assistant:getBehavior() == GreenAssistant.Behavior.SUCCESS, "takeover did not enter success behavior")
+assistant:onLevelChanged("level_02")
+expect(assistant.failureAssist.failureCount == 0 and not assistant.failureAssist.hasOfferedThisLevel,
+    "new level did not reset failure assist")
+expect(assistant:hasAnimation("blink"), "public animation registry is unavailable")
+assistant:setBehaviorAnimation("INTERACT", "blink")
+expect(assistant.animationState:getBehaviorAnimation("INTERACT") == "blink", "behavior animation hot-swap failed")
+assistant:destroy()
+expect(mockView.destroyed, "assistant view was not destroyed")
+
+print("GREEN_ASSISTANT_CONTRACT_OK")

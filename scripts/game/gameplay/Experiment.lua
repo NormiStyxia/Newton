@@ -97,8 +97,10 @@ function M.Install(context)
             if absorbElapsedMs_ >= 520 then
                 absorbing_ = false
                 success_ = true
+                assistedClear_ = false
                 if level_ then level_.resultOverlayVisible = true end
                 SetStatus("CLEARED · 观测成立")
+                NotifyGreenAssistantAttemptSucceeded()
             end
             return
         end
@@ -148,7 +150,7 @@ function M.Install(context)
             failed_ = true
             launched_ = false
             apple_.body.bodyType = BT_STATIC
-            RegisterFailure()
+            RegisterFailure("OUT_OF_BOUNDS")
         else
             local velocity = apple_.body.linearVelocity
             local matterSpeed = CurrentMatterSpeedFromWorld(velocity)
@@ -158,7 +160,7 @@ function M.Install(context)
                 failed_ = true
                 launched_ = false
                 apple_.body.bodyType = BT_STATIC
-                RegisterFailure()
+                RegisterFailure("STALLED")
             end
         end
         if math.abs(p.x) > 7.5 or math.abs(p.y) > 5 then anger_ = math.min(100, anger_ + dt * 2) end

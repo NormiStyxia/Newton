@@ -30,12 +30,13 @@ function M.Install(context)
             SetStatus(launched_ and "RUNNING 路 实验进行中" or "READY 路 等待发射")
         end
     end
-    function RegisterFailure()
+    function RegisterFailure(reason)
         failureCount_ = failureCount_ + 1
         if level_ then failureCountsByLevel_[level_.levelId] = failureCount_ end
         observation_ = "轨迹停止。重置后再次发射。"
         if level_ then level_.resultOverlayVisible = true end
         SetStatus("FAILED · 实验未成立")
+        NotifyGreenAssistantAttemptFailed({ reason = reason })
     end
 end
 

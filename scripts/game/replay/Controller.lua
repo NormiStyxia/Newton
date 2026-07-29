@@ -3,9 +3,18 @@ local M = {}
 
 function M.Install(context)
     local _ENV = context
-    function SetReplayMode(mode)
+    function SetReplayMode(mode, businessMode)
         assert(mode == "none" or mode == "playing" or mode == "paused" or mode == "finished",
             "unknown replay mode: " .. tostring(mode))
+        if mode == "none" then
+            replayBusinessMode_ = ReplayMode.NONE
+        elseif businessMode ~= nil then
+            assert(ReplayMode.IsValid(businessMode) and businessMode ~= ReplayMode.NONE,
+                "invalid replay business mode: " .. tostring(businessMode))
+            replayBusinessMode_ = businessMode
+        elseif replayBusinessMode_ == ReplayMode.NONE then
+            replayBusinessMode_ = ReplayMode.PLAYER_REPLAY
+        end
         replayMode_ = mode
         replayActive_ = mode ~= "none"
         replayPaused_ = mode == "paused" or mode == "finished"
@@ -19,8 +28,9 @@ function M.Install(context)
     end
     function ReplayLog(event)
         print(string.format(
-            "[Replay] %s mode=%s overlay=%s samples=%d duration=%.3f",
+            "[Replay] %s business=%s state=%s overlay=%s samples=%d duration=%.3f",
             event,
+            ReplayMode.Name(replayBusinessMode_),
             replayMode_,
             tostring(level_ and level_.resultOverlayVisible == true),
             #replaySamples_,
@@ -28,9 +38,11 @@ function M.Install(context)
         ))
     end
     function IsResultOverlayVisible()
-        return replayMode_ == "none" and level_ and level_.resultOverlayVisible == true
+        return replayBusinessMode_ == ReplayMode.NONE and replayMode_ == "none"
+            and level_ and level_.resultOverlayVisible == true
     end
     function HandleReplayPointer(x, y, press)
+        if replayBusinessMode_ ~= ReplayMode.PLAYER_REPLAY then return end
         if not press then return end
         local cx, cy = frame_.playfieldX + frame_.playfieldWidth * .5, frame_.playfieldY + 34
         if replayFinished_ then
@@ -151,7 +163,7 @@ function M.Install(context)
             x = p.x, y = p.y, angle = apple_.node.rotation2D,
             bodyType = apple_.body.bodyType, vx = v.x, vy = v.y, angularVelocity = apple_.body.angularVelocity,
         }
-        SetReplayMode("playing")
+        SetReplayMode("playing", ReplayMode.PLAYER_REPLAY)
         absorbing_ = false
         absorbElapsedMs_ = 0
         ResetGoal()
@@ -170,7 +182,7 @@ function M.Install(context)
         return true
     end
     StopReplay = function()
-        if not replayActive_ or not apple_ then return end
+        if replayBusinessMode_ ~= ReplayMode.PLAYER_REPLAY or not replayActive_ or not apple_ then return end
         local saved = replaySavedApple_
         SetReplayMode("none")
         replayTime_ = 0
@@ -194,10 +206,75 @@ function M.Install(context)
     function UpdateReplay(dt)
         if replayMode_ ~= "playing" then return end
         replayTime_ = math.min(ReplayDuration(), replayTime_ + math.max(0, dt) * 1000 * replaySpeed_)
+        local state = ReplayStateAt(replayTime_)
+        if state and apple_ then
+            apple_.body.bodyType = BT_STATIC
+            apple_.node:SetPosition2D(state.x, state.y)
+            apple_.node:SetRotation2D(state.angle or 0)
+            apple_.body.linearVelocity = Vector2(0, 0)
+            apple_.body.angularVelocity = 0
+        end
         if replayTime_ >= ReplayDuration() then
             SetReplayMode("finished")
             ReplayLog("finished")
         end
+    end
+
+    StartAssistReplay = function(replayData)
+        if replayActive_ or not apple_ or type(replayData) ~= "table" then return false end
+        if type(replayData.samples) ~= "table" or #replayData.samples < 2 then return false end
+        replaySamples_ = replayData.samples
+        replayEvents_ = replayData.events or {}
+        replaySavedApple_ = nil
+        replayTime_, replaySpeed_ = 0, 1
+        success_, failed_, absorbing_, launched_ = false, false, false, false
+        assistedClear_ = false
+        ResetGoal()
+        isPaused_ = false
+        SetBulletTimeActive(false)
+        ClearCardInteraction()
+        apple_.body.bodyType = BT_STATIC
+        apple_.body.linearVelocity = Vector2(0, 0)
+        apple_.body.angularVelocity = 0
+        apple_.shape.trigger = false
+        SetReplayMode("playing", ReplayMode.ASSIST_TAKEOVER)
+        local state = ReplayStateAt(0)
+        if state then
+            apple_.node:SetPosition2D(state.x, state.y)
+            apple_.node:SetRotation2D(state.angle or 0)
+        end
+        SyncPhysicsUpdateEnabled()
+        SetStatus("ASSIST · 接管中")
+        ReplayLog("assist-start")
+        return true
+    end
+
+    FinishAssistReplay = function()
+        if replayBusinessMode_ ~= ReplayMode.ASSIST_TAKEOVER or not replayFinished_ then return false end
+        local state = ReplayStateAt(ReplayDuration())
+        if state and apple_ then
+            apple_.node:SetPosition2D(state.x, state.y)
+            apple_.node:SetRotation2D(state.angle or 0)
+            apple_.body.bodyType = BT_STATIC
+            apple_.body.linearVelocity = Vector2(0, 0)
+            apple_.body.angularVelocity = 0
+        end
+        SetReplayMode("none")
+        replayTime_ = 0
+        replaySamples_, replayEvents_, replaySavedApple_ = {}, {}, nil
+        SyncPhysicsUpdateEnabled()
+        ReplayLog("assist-finish")
+        return true
+    end
+
+    CancelAssistReplay = function()
+        if replayBusinessMode_ ~= ReplayMode.ASSIST_TAKEOVER then return false end
+        SetReplayMode("none")
+        replayTime_ = 0
+        replaySamples_, replayEvents_, replaySavedApple_ = {}, {}, nil
+        ResetExperiment(false)
+        ReplayLog("assist-cancel")
+        return true
     end
 end
 

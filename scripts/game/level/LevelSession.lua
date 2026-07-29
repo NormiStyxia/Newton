@@ -59,6 +59,8 @@ function M.Install(context)
         goalContactMs_, outsideMs_, flightMs_, stalledMs_ = 0, 0, 0, 0
         goalPulseElapsedMs_, phaseTraversing_ = nil, false
         success_, failed_, absorbing_, absorbElapsedMs_ = false, false, false, 0
+        assistedClear_ = false
+        assistSceneActive_ = false
         level_.resultOverlayVisible = false
         SetReplayMode("none")
         replayTime_, replaySpeed_ = 0, 1
@@ -100,6 +102,7 @@ function M.Install(context)
         apple_ = RuntimeFactory.CreateApple(scene_, launcherRuntime)
         level_.physicsProbe = require("game.physics.Probe").New()
         ResetSessionState(true)
+        NotifyGreenAssistantLevelChanged(level_.levelId)
     end
     function ResetExperiment(playResetSound)
         if not apple_ or not level_ then return end
@@ -133,6 +136,26 @@ function M.Install(context)
             end
         end
         ResetSessionState(false)
+    end
+
+    function CompleteLevel(result)
+        result = result or {}
+        local assisted = result.assisted == true
+        success_, failed_, absorbing_, launched_ = true, false, false, false
+        assistedClear_ = assisted
+        if level_ then
+            level_.assistedClear = assisted
+            level_.resultOverlayVisible = true
+        end
+        if apple_ and apple_.body then
+            apple_.body.bodyType = BT_STATIC
+            apple_.body.linearVelocity = Vector2(0, 0)
+            apple_.body.angularVelocity = 0
+        end
+        ClearCardInteraction()
+        SyncPhysicsUpdateEnabled()
+        SetStatus(assisted and "ASSISTED CLEAR · 辅助观测成立" or "CLEARED · 观测成立")
+        if assisted then PlaySound("success") end
     end
 end
 

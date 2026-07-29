@@ -15,7 +15,7 @@ own("layout", { "design_", "frame_", "painter_", "sensorAngle_", "debugDraw_" })
 own("experiment", {
     "rules_", "draggedApple_", "aimPreview_", "launched_", "outsideMs_", "flightMs_", "status_",
     "isPaused_", "bulletTimeActive_", "success_", "failed_", "absorbing_", "absorbElapsedMs_",
-    "failureCount_", "failureCountsByLevel_", "observation_", "uiElapsed_", "anger_",
+    "assistedClear_", "failureCount_", "failureCountsByLevel_", "observation_", "uiElapsed_", "anger_",
     "phaseTraversing_", "stalledMs_", "trail_", "lastTrailAt_", "rulePulse_", "ruleFlash_",
     "ruleDeployCount_",
 })
@@ -33,7 +33,10 @@ own("cards", {
 own("replay", {
     "replayActive_", "replayTime_", "replayPaused_", "replaySpeed_", "replayFinished_",
     "replaySamples_", "replayEvents_", "replaySavedApple_", "replayMode_", "replayNextSampleMs_",
-    "replayPreviousSample_",
+    "replayPreviousSample_", "replayBusinessMode_",
+})
+own("assistant", {
+    "greenAssistant_", "greenAssistantAdapter_", "assistantInputLocked_", "assistSceneActive_",
 })
 
 local function refreshModes(domains)
@@ -68,11 +71,13 @@ local function refreshModes(domains)
     end
 
     domains.replay.mode = domains.replay.replayMode_ or "none"
+    domains.replay.businessMode = domains.replay.replayBusinessMode_ or 0
 end
 
 function State.New(dependencies, constants)
     local domains = {
         runtime = {}, layout = {}, experiment = {}, goal = {}, mechanisms = {}, input = {}, cards = {}, replay = {},
+        assistant = {},
     }
     local context = {}
     setmetatable(context, {
@@ -122,10 +127,14 @@ function State.New(dependencies, constants)
     context.goalPulseElapsedMs_, context.outsideMs_, context.flightMs_ = nil, 0, 0
     context.status_, context.isPaused_, context.bulletTimeActive_, context.debugDraw_ = "READY · 等待发射", false, false, false
     context.success_, context.failed_, context.absorbing_, context.absorbElapsedMs_ = false, false, false, 0
+    context.assistedClear_ = false
     context.failureCount_, context.failureCountsByLevel_, context.observation_ = 0, {}, ""
     context.replayActive_, context.replayTime_, context.replayPaused_, context.replaySpeed_ = false, 0, false, 1
     context.replayFinished_, context.replaySamples_, context.replayEvents_, context.replaySavedApple_ = false, {}, {}, nil
     context.replayMode_, context.replayNextSampleMs_, context.replayPreviousSample_ = "none", 0, nil
+    context.replayBusinessMode_ = dependencies.ReplayMode and dependencies.ReplayMode.NONE or 0
+    context.greenAssistant_, context.greenAssistantAdapter_ = nil, nil
+    context.assistantInputLocked_, context.assistSceneActive_ = false, false
     context.trail_, context.lastTrailAt_, context.sensorAngle_, context.uiElapsed_, context.anger_ = {}, 0, 0, 0, 0
     context.phaseTraversing_, context.stalledMs_, context.channelStates_ = false, 0, {}
     context.cardStates_, context.cardDeckById_, context.handOrder_ = {}, {}, {}

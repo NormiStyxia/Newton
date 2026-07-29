@@ -73,11 +73,19 @@ function M.Install(context)
             end
             if success_ then
                 painter_:RoundedRect(cx - 345, cy - 115, 690, 230, 4, Renderer2D.COLORS.panel, Renderer2D.COLORS.primaryActive, 2)
-                painter_:Text(cx, cy - 75, "观测成立", 42, Renderer2D.COLORS.text, NVG_ALIGN_CENTER + NVG_ALIGN_TOP, "maker-display")
-                painter_:Text(cx, cy - 6, (level_.name or "实验") .. " · 苹果已稳定进入观察窗", 16, Renderer2D.COLORS.secondary, NVG_ALIGN_CENTER + NVG_ALIGN_TOP)
-                overlayButton(cx - 160, cy + 65, levelIndex_ < CONFIG.levelCount and "下一实验" or "重新观测", false)
-                overlayButton(cx, cy + 65, "查看实验回放", true)
-                overlayButton(cx + 160, cy + 65, "再次尝试", true)
+                painter_:Text(cx, cy - 75, assistedClear_ and "辅助观测成立" or "观测成立", 42, Renderer2D.COLORS.text, NVG_ALIGN_CENTER + NVG_ALIGN_TOP, "maker-display")
+                painter_:Text(cx, cy - 6,
+                    assistedClear_ and ((level_.name or "实验") .. " · 本次为 assisted clear")
+                        or ((level_.name or "实验") .. " · 苹果已稳定进入观察窗"),
+                    16, Renderer2D.COLORS.secondary, NVG_ALIGN_CENTER + NVG_ALIGN_TOP)
+                if assistedClear_ then
+                    overlayButton(cx - 80, cy + 65, levelIndex_ < CONFIG.levelCount and "下一实验" or "重新观测", false)
+                    overlayButton(cx + 80, cy + 65, "再次尝试", true)
+                else
+                    overlayButton(cx - 160, cy + 65, levelIndex_ < CONFIG.levelCount and "下一实验" or "重新观测", false)
+                    overlayButton(cx, cy + 65, "查看实验回放", true)
+                    overlayButton(cx + 160, cy + 65, "再次尝试", true)
+                end
             else
                 painter_:RoundedRect(cx - 310, cy - 105, 620, 210, 4, Renderer2D.COLORS.panel, Renderer2D.COLORS.warning, 2)
                 painter_:Text(cx, cy - 67, "实验未成立", 38, Renderer2D.COLORS.warning, NVG_ALIGN_CENTER + NVG_ALIGN_TOP, "maker-display")

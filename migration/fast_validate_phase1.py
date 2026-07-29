@@ -312,7 +312,11 @@ def main() -> int:
     expect(render_loop.index("DrawCards(72, nil, false)") < render_loop.index("if replayActive_ then DrawReplay() end"),
            "replay trajectory and controls no longer render above the gameplay HUD and cards")
     expect(has_main_function("IsResultOverlayVisible") and 'if replayMode_ ~= "none" then return end' in main_lua, "replay does not hide the completed-result overlay")
-    expect("if replayActive_ then HandleReplayPointer(x, y, press); return end" in main_lua, "replay controls do not retain pointer priority over result controls")
+    expect("if replayActive_ then" in main_lua
+           and "if replayBusinessMode_ == ReplayMode.PLAYER_REPLAY then HandleReplayPointer(x, y, press) end" in main_lua,
+           "player replay controls do not retain pointer priority over result controls")
+    expect("ReplayMode.PLAYER_REPLAY" in main_lua and "ReplayMode.ASSIST_TAKEOVER" in main_lua,
+           "player replay and assist takeover do not have separate business modes")
     expect("SetReplayMode(\"playing\")" in main_lua and "level_.resultOverlayVisible = false" in main_lua and "SyncPhysicsUpdateEnabled()" in main_lua, "replay does not take exclusive ownership of outcome UI and physics")
     replay_start = main_lua.split("StartReplay = function()", 1)[1].split("StopReplay = function()", 1)[0]
     expect("replayOutcome_" not in main_lua and "success_ = false" not in replay_start and "failed_ = false" not in replay_start,

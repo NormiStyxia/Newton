@@ -6,6 +6,10 @@ function M.Install(context)
     function DrawReplay()
         local state = ReplayStateAt(replayTime_)
         if not state then return end
+        if replayBusinessMode_ == ReplayMode.ASSIST_TAKEOVER then
+            painter_:FillRect(frame_.playfieldX, frame_.playfieldY, frame_.playfieldWidth, frame_.playfieldHeight,
+                { 32, 55, 44, 255 }, 52)
+        end
         local samples = ReplayTimeline.SamplesThrough(replaySamples_, replayTime_)
         if #samples > 0 then
             for i = 2, #samples do
@@ -100,6 +104,17 @@ function M.Install(context)
         painter_:Circle(appleX, appleY, 37, Renderer2D.COLORS.primaryActive, nil, nil, 48)
         painter_:Circle(appleX, appleY, 37, nil, Renderer2D.COLORS.primaryActive, 2, 122)
         painter_:Image(painter_.images.apple, appleX, appleY, 64, 64, 1, math.rad(state.angle or 0))
+
+        if replayBusinessMode_ == ReplayMode.ASSIST_TAKEOVER then
+            local labelX = frame_.playfieldX + frame_.playfieldWidth - 158
+            local labelY = frame_.playfieldY + 18
+            painter_:RoundedRect(labelX, labelY, 140, 38, 5, Renderer2D.COLORS.dark,
+                Renderer2D.COLORS.greenLight, 1, 235)
+            painter_:Text(labelX + 70, labelY + 9,
+                replayFinished_ and "ASSIST · 完成" or "ASSIST · 接管中",
+                13, Renderer2D.COLORS.white, NVG_ALIGN_CENTER + NVG_ALIGN_TOP, "maker-display")
+            return
+        end
 
         local cx, cy = frame_.playfieldX + frame_.playfieldWidth * .5, frame_.playfieldY + 34
         painter_:RoundedRect(cx - 289, cy - 27, 578, 54, 5, Renderer2D.COLORS.dark, Renderer2D.COLORS.greenLight, 1, 240)

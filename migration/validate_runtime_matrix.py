@@ -140,7 +140,8 @@ def main() -> int:
            "mouse/touch PointerFrame routing is incomplete")
 
     priority_markers = (
-        "if replayActive_ then HandleReplayPointer",
+        "if HandleGreenAssistantPointer",
+        "if replayActive_ then",
         "if IsResultOverlayVisible() then",
         "for index = 1, CONFIG.levelCount do",
         "Rules.Punch(rules_)",
@@ -165,6 +166,9 @@ def main() -> int:
         'SetReplayMode("playing")', 'SetReplayMode(wasPaused and "playing" or "paused")', 'SetReplayMode("finished")',
         "replaySavedApple_", "SyncPhysicsUpdateEnabled()", "RestoreAppleContactMaterial()",
     )), "replay lifecycle/Apple restoration contract is incomplete")
+    expect("ReplayMode.PLAYER_REPLAY" in legacy and "ReplayMode.ASSIST_TAKEOVER" in legacy
+           and "replayBusinessMode_" in state_source,
+           "replay business lifecycle does not distinguish player replay from assist takeover")
     expect(all(token in legacy for token in (
         "UpdateSpringExits", "EvaluateButton", "SetDoorTarget", "UpdatePhaseTraversal",
         "GoalSensorContainsApple", "goalContactMs_", "absorbElapsedMs_", "RegisterFailure",

@@ -7,6 +7,7 @@ function M.Install(context)
         graphics.windowTitle = CONFIG.title
         painter_ = Renderer2D.New()
         frame_ = design_:Frame()
+        InitializeGreenAssistant()
         BuildLevel(1)
         SubscribeToEvent("Update", "HandleUpdate")
         SubscribeToEvent("ScreenMode", "HandleScreenMode")
@@ -23,6 +24,7 @@ function M.Install(context)
     end
     function Stop()
         if level_ and level_.physicsProbe then level_.physicsProbe:Stop({ apple = apple_ }) end
+        DestroyGreenAssistant()
         if painter_ then painter_:Destroy(); painter_ = nil end
     end
 
@@ -34,11 +36,12 @@ function M.Install(context)
         uiElapsed_ = uiElapsed_ + dt
         UpdateRuleFeedback(dt)
         frame_ = design_:Frame()
+        UpdateGreenAssistant(dt)
         -- Replay owns the input/update frame. Do not let cards, reset shortcuts,
         -- or normal completion updates mutate the suspended experiment.
         if replayActive_ then
             HandlePointer()
-            if input:GetKeyPress(KEY_ESCAPE) then StopReplay() end
+            if replayBusinessMode_ == ReplayMode.PLAYER_REPLAY and input:GetKeyPress(KEY_ESCAPE) then StopReplay() end
             SyncPhysicsUpdateEnabled()
             if replayActive_ then UpdateReplay(dt) end
             if debugDraw_ and physicsWorld_ then physicsWorld_:DrawDebugGeometry() end
@@ -254,6 +257,7 @@ function M.Install(context)
             DrawRuleFlash()
             if replayActive_ then DrawReplay() end
             DrawResultOverlay()
+            DrawGreenAssistant()
             painter_:Finish()
         end)
         State.EndGameSnapshot(context)
