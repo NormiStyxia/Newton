@@ -8,6 +8,7 @@ local RuntimeFactory = require("migration.RuntimeFactory")
 local Renderer2D = require("migration.Renderer")
 local SynthAudio = require("migration.SynthAudio")
 local TrajectoryPrediction = require("migration.TrajectoryPrediction")
+local ReplayTimeline = require("migration.ReplayTimeline")
 
 local CONFIG = {
     title = "牛顿看了想打人",
@@ -1493,8 +1494,9 @@ function HandleReplayPointer(x, y, press)
             SetReplayMode("playing")
             ReplayLog("restart")
         else
-            SetReplayMode(replayMode_ == "paused" and "playing" or "paused")
-            ReplayLog(replayMode_ == "paused" and "pause" or "resume")
+            local wasPaused = replayMode_ == "paused"
+            SetReplayMode(wasPaused and "playing" or "paused")
+            ReplayLog(wasPaused and "resume" or "pause")
         end
     elseif inButton(cx - 27, 58) then
         replaySpeed_ = .5
@@ -1564,6 +1566,9 @@ function HandlePointer()
             end
         elseif not isPaused_ and not launched_ and IsNearApple(x, y) then
             draggedApple_ = true
+            -- Phaser starts aiming on POINTER_DOWN, before the first move
+            -- event. Keep the line and prediction visible for short drags.
+            UpdateAppleDrag(x, y)
         else
             TryCardPress(x, y)
         end
@@ -1675,24 +1680,7 @@ function CanReplay()
 end
 
 function ReplayStateAt(time)
-    if #replaySamples_ == 0 then return nil end
-    if #replaySamples_ == 1 or time <= replaySamples_[1].t then return replaySamples_[1] end
-    for i = 2, #replaySamples_ do
-        local before, after = replaySamples_[i - 1], replaySamples_[i]
-        if time <= after.t then
-            local span = math.max(.001, after.t - before.t)
-            local progress = math.max(0, math.min(1, (time - before.t) / span))
-            local deltaAngle = ((after.angle - before.angle + 540) % 360) - 180
-            return {
-                x = before.x + (after.x - before.x) * progress,
-                y = before.y + (after.y - before.y) * progress,
-                vx = before.vx + (after.vx - before.vx) * progress,
-                vy = before.vy + (after.vy - before.vy) * progress,
-                angle = before.angle + deltaAngle * progress,
-            }
-        end
-    end
-    return replaySamples_[#replaySamples_]
+    return ReplayTimeline.StateAt(replaySamples_, time)
 end
 
 StartReplay = function()
@@ -1875,7 +1863,7 @@ function DrawPrediction(direction, alpha, x, y, velocityX, velocityY)
         velocityY = velocityY,
         gravityX = gravityX,
         gravityY = gravityY,
-        frictionAir = MatterCalibration.APPLE_FRICTION_AIR,
+        frictionAir = apple_.baseFrictionAir or MatterCalibration.APPLE_FRICTION_AIR,
         forceScale = 0.001,
         maxSpeed = 25,
         steps = 30,
@@ -1988,18 +1976,7 @@ end
 function DrawReplay()
     local state = ReplayStateAt(replayTime_)
     if not state then return end
-    local samples = {}
-    for _, sample in ipairs(replaySamples_) do
-        if sample.t > replayTime_ + .001 then break end
-        samples[#samples + 1] = sample
-    end
-    local lastSample = samples[#samples]
-    if not lastSample or math.abs(lastSample.t - replayTime_) > .001 then
-        samples[#samples + 1] = {
-            t = replayTime_, x = state.x, y = state.y,
-            vx = state.vx, vy = state.vy, angle = state.angle,
-        }
-    end
+    local samples = ReplayTimeline.SamplesThrough(replaySamples_, replayTime_)
     if #samples > 0 then
         for i = 2, #samples do
             local from, to = samples[i - 1], samples[i]

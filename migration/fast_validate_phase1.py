@@ -182,6 +182,7 @@ def main() -> int:
     design_lua = (MAKER_ROOT / "scripts/migration/DesignSpace.lua").read_text(encoding="utf-8")
     synth_audio_lua = (MAKER_ROOT / "scripts/migration/SynthAudio.lua").read_text(encoding="utf-8")
     trajectory_lua = (MAKER_ROOT / "scripts/migration/TrajectoryPrediction.lua").read_text(encoding="utf-8")
+    replay_timeline_lua = (MAKER_ROOT / "scripts/migration/ReplayTimeline.lua").read_text(encoding="utf-8")
     physics_probe_lua = (MAKER_ROOT / "scripts/migration/PhysicsProbe.lua").read_text(encoding="utf-8")
     rules_lua = (MAKER_ROOT / "scripts/migration/Rules.lua").read_text(encoding="utf-8")
     all_lua = "\n".join(path.read_text(encoding="utf-8") for path in (MAKER_ROOT / "scripts").rglob("*.lua"))
@@ -220,6 +221,11 @@ def main() -> int:
     expect("migration.TrajectoryPrediction" in main_lua and "TrajectoryPrediction.PredictFreeFlight" in main_lua, "source-equivalent trajectory preview is not wired")
     expect("MATTER_BASE_DELTA_MS = 1000 / 60" in trajectory_lua and "input.forceScale * MATTER_BASE_DELTA_MS * MATTER_BASE_DELTA_MS" in trajectory_lua, "trajectory integration scale differs from Phaser")
     expect("velocityX = velocityX * frictionFactor + accelerationX" in trajectory_lua and "if frame % input.sampleEvery == 0" in trajectory_lua, "trajectory integration order differs from Phaser")
+    expect("draggedApple_ = true\n            -- Phaser starts aiming on POINTER_DOWN" in main_lua and "UpdateAppleDrag(x, y)" in main_lua,
+           "apple aim does not initialize on the same pointer-down frame as Phaser")
+    expect("function DrawAim()" in main_lua and "function DrawCardPrediction()" in main_lua
+           and 'activeCardId_ == "side-gravity"' in main_lua and 'activeCardId_ == "mirror-motion"' in main_lua,
+           "source-backed aim or parameter-card trajectory previews are missing")
     expect("matterFramesPerSecond = 60" in main_lua and "matterVelocityToWorld" in main_lua, "Matter-to-Box2D velocity conversion missing")
     expect("CONFIG.maxAppleSpeed = 25 * CONFIG.matterVelocityToWorld" in main_lua and has_main_function("CapAppleSpeed"), "source apple speed cap missing")
     expect("PhysicsProfiles.Resolve" in main_lua and "physicsProfile_.gravityAcceleration" in main_lua, "gravity profile is not wired")
@@ -248,6 +254,17 @@ def main() -> int:
     expect("input:GetMouseButtonPress(MOUSEB_RIGHT)" in main_lua and "input:GetKeyPress(KEY_ESCAPE)" in main_lua and "ToggleTacticalPause" in main_lua, "source keyboard or cancel interaction is missing")
     expect("replayNextSampleMs_" in main_lua and "while replayNextSampleMs_ <= flightMs_ + .0001 do" in main_lua, "replay no longer interpolates at the source sample cadence")
     expect("replayPreviousSample_" in main_lua and "deltaAngle = ((current.angle - previous.angle + 540) % 360) - 180" in main_lua, "replay angle interpolation differs from Phaser")
+    expect("migration.ReplayTimeline" in main_lua and "ReplayTimeline.SamplesThrough(replaySamples_, replayTime_)" in main_lua,
+           "replay rendering does not share the source timeline contract")
+    expect("function ReplayTimeline.StateAt" in replay_timeline_lua and "while low + 1 < high" in replay_timeline_lua
+           and "function ReplayTimeline.SamplesThrough" in replay_timeline_lua,
+           "replay timeline interpolation or visible-sample contract is missing")
+    expect("frictionAir = apple_.baseFrictionAir or MatterCalibration.APPLE_FRICTION_AIR" in main_lua,
+           "trajectory preview does not read the apple's current air-friction material")
+    render_loop = main_lua.split("function HandleRender()", 1)[1]
+    expect(render_loop.index("DrawPlayfieldOverlay()") < render_loop.index("DrawCards(nil, 71.999, true)")
+           < render_loop.index("DrawCardParameterSelector()") < render_loop.index("DrawCards(72, nil, false)"),
+           "pause overlay, normal cards, selector, and active cards no longer follow Phaser depth bands")
     expect(has_main_function("IsResultOverlayVisible") and 'if replayMode_ ~= "none" then return end' in main_lua, "replay does not hide the completed-result overlay")
     expect("if replayActive_ then HandleReplayPointer(x, y, press); return end" in main_lua, "replay controls do not retain pointer priority over result controls")
     expect("SetReplayMode(\"playing\")" in main_lua and "level_.resultOverlayVisible = false" in main_lua and "SyncPhysicsUpdateEnabled()" in main_lua, "replay does not take exclusive ownership of outcome UI and physics")
