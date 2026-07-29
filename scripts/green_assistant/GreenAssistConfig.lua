@@ -1,3 +1,6 @@
+local CompanionConfig = require("green_assistant.CompanionConfig")
+local CompanionDefaults = CompanionConfig.DEFAULTS
+
 local GreenAssistConfig = {}
 
 local function Clone(value)
@@ -32,7 +35,7 @@ local function Frames(folder, count)
 end
 
 GreenAssistConfig.DEFAULTS = {
-    fallbackAnimation = "idle",
+    fallbackAnimation = "idle_base",
     failureThreshold = 3,
     features = {
         roam = true,
@@ -42,6 +45,15 @@ GreenAssistConfig.DEFAULTS = {
         takeover = true,
     },
     animations = {
+        idle_base = {
+            frames = Frames("idle", 16),
+            fps = 8,
+            loop = true,
+            playbackSpeed = 1,
+            anchor = { x = 0.5, y = 1 },
+            frameOffset = { x = 0, y = 0 },
+            scale = 1,
+        },
         idle = {
             frames = Frames("idle", 16),
             fps = 8,
@@ -52,6 +64,15 @@ GreenAssistConfig.DEFAULTS = {
             scale = 1,
         },
         move = {
+            frames = Frames("move", 16),
+            fps = 10,
+            loop = true,
+            playbackSpeed = 1,
+            anchor = { x = 0.5, y = 1 },
+            frameOffset = { x = 0, y = 0 },
+            scale = 1,
+        },
+        walk = {
             frames = Frames("move", 16),
             fps = 10,
             loop = true,
@@ -71,15 +92,17 @@ GreenAssistConfig.DEFAULTS = {
         },
     },
     behaviorAnimationMap = {
-        IDLE = "idle",
-        ROAM = "move",
-        INTERACT = "idle",
-        OBSERVE = "idle",
-        DIALOGUE = "idle",
-        OFFER = "idle",
-        TAKEOVER = "idle",
-        SUCCESS = "idle",
-        DISABLED = "idle",
+        IDLE = "idle_base",
+        WALK = "walk",
+        ROAM = "walk",
+        DRAG = "drag",
+        INTERACT = "idle_base",
+        OBSERVE = "idle_base",
+        DIALOGUE = "idle_base",
+        OFFER = "idle_base",
+        TAKEOVER = "idle_base",
+        SUCCESS = "idle_base",
+        DISABLED = "idle_base",
     },
     ui = {
         anchorX = 0,
@@ -91,6 +114,7 @@ GreenAssistConfig.DEFAULTS = {
         hitboxWidth = 112,
         hitboxHeight = 218,
     },
+    companion = CompanionConfig.Resolve(),
     roamArea = {
         relativeToAnchor = true,
         xMin = 42,
@@ -100,17 +124,17 @@ GreenAssistConfig.DEFAULTS = {
     },
     roam = {
         enabled = true,
-        minIdleTime = 4,
-        maxIdleTime = 12,
-        moveSpeed = 40,
-        maxDistance = 120,
-        arrivalDistance = 1.5,
+        minIdleTime = CompanionDefaults.idleMinDuration,
+        maxIdleTime = CompanionDefaults.idleMaxDuration,
+        moveSpeed = CompanionDefaults.moveSpeed,
+        maxDistance = CompanionDefaults.maxWalkDistance,
+        arrivalDistance = CompanionDefaults.arrivalDistance,
     },
     blink = {
         enabled = true,
         animation = "blink",
-        minInterval = 4.5,
-        maxInterval = 10,
+        minInterval = CompanionDefaults.blinkMinInterval,
+        maxInterval = CompanionDefaults.blinkMaxInterval,
     },
     interaction = {
         duration = 1.8,
@@ -132,7 +156,31 @@ GreenAssistConfig.DEFAULTS = {
 }
 
 function GreenAssistConfig.Resolve(overrides)
-    return Merge(Clone(GreenAssistConfig.DEFAULTS), overrides or {})
+    local resolved = Merge(Clone(GreenAssistConfig.DEFAULTS), overrides or {})
+    local companion = resolved.companion
+    local legacyRoam = overrides and overrides.roam or nil
+    if legacyRoam then
+        if legacyRoam.minIdleTime ~= nil then companion.idleMinDuration = resolved.roam.minIdleTime end
+        if legacyRoam.maxIdleTime ~= nil then companion.idleMaxDuration = resolved.roam.maxIdleTime end
+        if legacyRoam.moveSpeed ~= nil then companion.moveSpeed = resolved.roam.moveSpeed end
+        if legacyRoam.maxDistance ~= nil then companion.maxWalkDistance = resolved.roam.maxDistance end
+        if legacyRoam.arrivalDistance ~= nil then companion.arrivalDistance = resolved.roam.arrivalDistance end
+    else
+        resolved.roam.minIdleTime = companion.idleMinDuration
+        resolved.roam.maxIdleTime = companion.idleMaxDuration
+        resolved.roam.moveSpeed = companion.moveSpeed
+        resolved.roam.maxDistance = companion.maxWalkDistance
+        resolved.roam.arrivalDistance = companion.arrivalDistance
+    end
+    local legacyBlink = overrides and overrides.blink or nil
+    if legacyBlink then
+        if legacyBlink.minInterval ~= nil then companion.blinkMinInterval = resolved.blink.minInterval end
+        if legacyBlink.maxInterval ~= nil then companion.blinkMaxInterval = resolved.blink.maxInterval end
+    else
+        resolved.blink.minInterval = companion.blinkMinInterval
+        resolved.blink.maxInterval = companion.blinkMaxInterval
+    end
+    return resolved
 end
 
 return GreenAssistConfig

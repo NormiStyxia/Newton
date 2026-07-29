@@ -2,7 +2,9 @@ local BehaviorState = {}
 BehaviorState.__index = BehaviorState
 
 BehaviorState.IDLE = "IDLE"
+BehaviorState.WALK = "WALK"
 BehaviorState.ROAM = "ROAM"
+BehaviorState.DRAG = "DRAG"
 BehaviorState.INTERACT = "INTERACT"
 BehaviorState.OBSERVE = "OBSERVE"
 BehaviorState.DIALOGUE = "DIALOGUE"
@@ -13,7 +15,9 @@ BehaviorState.DISABLED = "DISABLED"
 
 BehaviorState.ALL = {
     IDLE = true,
+    WALK = true,
     ROAM = true,
+    DRAG = true,
     INTERACT = true,
     OBSERVE = true,
     DIALOGUE = true,

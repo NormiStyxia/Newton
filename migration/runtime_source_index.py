@@ -34,7 +34,7 @@ LEGACY_ORDER = (
     "DrawTrail", "DrawVelocityArrow", "DrawRulePulse", "DrawRuleFlash", "DrawReplay", "DrawHUD",
     "CardUseLabel", "CardBadgeText", "DrawCardBadge", "DrawCardSurface", "DrawCards", "DrawSelectorArrow",
     "DrawCardParameterSelector", "DrawCardBurns", "DrawCardBurnParticles", "DrawPlayfieldOverlay", "DrawPauseShade",
-    "DrawPauseStatus", "DrawResultOverlay", "Start", "Stop", "HandleUpdate", "HandlePhysicsPreStep",
+    "DrawPauseStatus", "DrawResultOverlay", "RefreshWorkspaceLayout", "Start", "Stop", "HandleUpdate", "HandlePhysicsPreStep",
     "HandlePhysicsPostStep", "HandleScreenMode", "HandleTouchBegin", "HandleTouchMove", "HandleTouchEnd",
     "HandleCollisionBegin", "HandleCollisionUpdate", "HandleCollisionEnd", "HandleRender",
 )

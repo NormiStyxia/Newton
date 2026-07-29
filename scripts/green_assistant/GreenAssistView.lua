@@ -27,6 +27,7 @@ function View.New(options)
     self.position = { x = 0, y = 0 }
     self.logicalWidth = 1
     self.logicalHeight = 1
+    self.companionZone = nil
     self.visible = true
     self.enabled = true
     self.flipX = false
@@ -55,6 +56,7 @@ function View:setFrame(frame)
     if not frame then return end
     self.logicalWidth = math.max(1, frame.logicalWidth or self.logicalWidth)
     self.logicalHeight = math.max(1, frame.logicalHeight or self.logicalHeight)
+    self.companionZone = frame.companionZone
 end
 
 function View:getHomePosition()
@@ -64,13 +66,25 @@ function View:getHomePosition()
 end
 
 function View:getRoamBounds()
+    local zone = self:getCompanionZone()
+    return zone.left, zone.right, zone.top, zone.bottom
+end
+
+function View:getCompanionZone()
+    if self.companionZone then return self.companionZone end
     local area = self.config.roamArea
-    if area.relativeToAnchor == false then
-        return area.xMin, area.xMax, area.yMin, area.yMax
-    end
-    local anchorX = self.logicalWidth * self.config.ui.anchorX
-    local anchorY = self.logicalHeight * self.config.ui.anchorY
-    return anchorX + area.xMin, anchorX + area.xMax, anchorY + area.yMin, anchorY + area.yMax
+    local anchorX = area.relativeToAnchor == false and 0 or self.logicalWidth * self.config.ui.anchorX
+    local anchorY = area.relativeToAnchor == false and 0 or self.logicalHeight * self.config.ui.anchorY
+    local baselineY = self.logicalHeight * self.config.ui.anchorY + self.config.ui.offsetY
+    return {
+        left = anchorX + area.xMin,
+        right = anchorX + area.xMax,
+        top = math.min(anchorY + area.yMin, baselineY),
+        bottom = math.max(anchorY + area.yMax, baselineY),
+        baselineY = baselineY,
+        fallbackX = self.logicalWidth * self.config.ui.anchorX + self.config.ui.offsetX,
+        walkingAllowed = true,
+    }
 end
 
 function View:setPosition(x, y)
@@ -83,6 +97,10 @@ end
 
 function View:setFacingRight(facingRight)
     self.flipX = facingRight == false
+end
+
+function View:setFacing(facing)
+    self:setFacingRight(facing ~= "LEFT")
 end
 
 function View:setVisible(visible)

@@ -183,6 +183,10 @@ def main() -> int:
     renderer_lua = (MAKER_ROOT / "scripts/game/render/Canvas.lua").read_text(encoding="utf-8")
     renderer_lua += (MAKER_ROOT / "scripts/game/render/WorldPrimitives.lua").read_text(encoding="utf-8")
     design_lua = (MAKER_ROOT / "scripts/game/layout/DesignSpace.lua").read_text(encoding="utf-8")
+    workspace_layout_lua = (MAKER_ROOT / "scripts/game/layout/WorkspaceLayout.lua").read_text(encoding="utf-8")
+    card_hand_layout_lua = (MAKER_ROOT / "scripts/game/layout/CardHandLayout.lua").read_text(encoding="utf-8")
+    companion_controller_lua = (MAKER_ROOT / "scripts/green_assistant/CompanionController.lua").read_text(encoding="utf-8")
+    app_runtime_lua = (MAKER_ROOT / "scripts/game/AppRuntime.lua").read_text(encoding="utf-8")
     synth_audio_lua = (MAKER_ROOT / "scripts/game/audio/Audio.lua").read_text(encoding="utf-8")
     trajectory_lua = (MAKER_ROOT / "scripts/game/physics/Trajectory.lua").read_text(encoding="utf-8")
     replay_timeline_lua = (MAKER_ROOT / "scripts/game/replay/Timeline.lua").read_text(encoding="utf-8")
@@ -365,6 +369,27 @@ def main() -> int:
     expect(any(item.get("source", "").endswith("fist.svg") for item in manifest.get("vectorSources", [])), "fist.svg source hash is not recorded")
     expect("frame_.playfieldWidth - 98" in main_lua and "frame_.cardHandY - 17" in main_lua, "Newton ability hit target differs from the original 80px container")
     expect("depth = 54 + (1 - normalized) * 4" in rules_lua, "card hand depth differs from CardHandLayout")
+    expect("CardHandLayout.Bounds" in workspace_layout_lua
+           and "bounds.left - config.cardSafeGap" in workspace_layout_lua
+           and "frame.companionZone = companionZone" in workspace_layout_lua,
+           "layout does not derive CompanionZone from nominal cardHandBounds")
+    expect("RotatedHalfExtents" in card_hand_layout_lua and "pose.angle" in card_hand_layout_lua,
+           "cardHandBounds does not include rotated visual geometry")
+    expect('IDLE = "IDLE"' in companion_controller_lua
+           and 'WALK = "WALK"' in companion_controller_lua
+           and 'DRAG = "DRAG"' in companion_controller_lua,
+           "portable CompanionController states are incomplete")
+    expect("pointerCandidate" in companion_controller_lua
+           and "dragThreshold" in companion_controller_lua
+           and "settleDuration" in companion_controller_lua,
+           "tap/drag threshold or settle flow is missing")
+    expect("CardHand" not in companion_controller_lua
+           and "Matter" not in companion_controller_lua
+           and "Tween" not in companion_controller_lua
+           and "nvg" not in companion_controller_lua,
+           "CompanionController is coupled to host layout, physics, tween, or renderer")
+    expect(re.search(r"RefreshWorkspaceLayout\(\)\s+UpdateGreenAssistant\(dt\)", app_runtime_lua) is not None,
+           "CompanionZone is not refreshed before Companion update")
     expect(has_main_function("UpdateCardHoverStates") and has_main_function("FindTopCardAt"), "card hover or depth-aware hit testing is missing")
     expect("failureCountsByLevel_" in main_lua and has_main_function("RegisterFailure"), "failure counts are not isolated per level")
     expect("activeCardPressPose_" in main_lua and "visual.x, visual.y = pressPose.x, pressPose.y" in main_lua,
@@ -401,7 +426,7 @@ def main() -> int:
 
     result = {
         "mode": "FAST_VALIDATE",
-        "checks": 159,
+        "checks": 165,
         "errors": errors,
         "status": "pass" if not errors else "fail",
     }

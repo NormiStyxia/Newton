@@ -2,7 +2,10 @@ local AnimationState = {}
 AnimationState.__index = AnimationState
 
 AnimationState.IDLE = "IDLE"
+AnimationState.IDLE_BASE = "IDLE_BASE"
 AnimationState.MOVE = "MOVE"
+AnimationState.WALK = "WALK"
+AnimationState.DRAG = "DRAG"
 AnimationState.BLINK = "BLINK"
 AnimationState.POKE = "POKE"
 AnimationState.OBSERVE = "OBSERVE"

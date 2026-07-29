@@ -1,4 +1,5 @@
 local Config = require("green_assistant.GreenAssistConfig")
+local CompanionController = require("green_assistant.CompanionController")
 local Animator = require("green_assistant.GreenAssistAnimator")
 local AnimationState = require("green_assistant.GreenAssistAnimationState")
 local BehaviorState = require("green_assistant.GreenAssistBehaviorState")
@@ -18,6 +19,19 @@ GreenAssistant.Animation = AnimationState
 local function RandomRange(minimum, maximum)
     if maximum <= minimum then return minimum end
     return minimum + math.random() * (maximum - minimum)
+end
+
+local COMPANION_BEHAVIORS = {
+    IDLE = true,
+    WALK = true,
+    ROAM = true,
+    DRAG = true,
+}
+
+local function CompanionBehavior(state)
+    if state == CompanionController.State.WALK then return BehaviorState.WALK end
+    if state == CompanionController.State.DRAG then return BehaviorState.DRAG end
+    return BehaviorState.IDLE
 end
 
 local function CopyOptions(options)
@@ -46,7 +60,6 @@ function GreenAssistant.New(options)
     self.moving = false
     self.behaviorTimer = nil
     self.timedBehavior = nil
-    self.idleTimer = 0
     self.blinkTimer = 0
     self.blinkActive = false
     self.blinkJustFinished = false
@@ -70,6 +83,13 @@ function GreenAssistant.New(options)
     if self.view.preloadAnimations then self.view:preloadAnimations(self.config.animations) end
     self.view:setEnabled(self.enabled)
     self.view:setVisible(self.visible)
+    self.companion = CompanionController.New({
+        config = self.config.companion,
+        random = options.random,
+        onEvent = function(eventName, ...)
+            self:_onCompanionEvent(eventName, ...)
+        end,
+    })
     self.interaction = Interaction.New(self.config.interaction)
     self.failureAssist = FailureAssist.New({ failureThreshold = self.config.failureThreshold })
     self.takeover = Takeover.New(self.adapter, {
@@ -87,7 +107,6 @@ function GreenAssistant.New(options)
             self:_showTimedMessage(self.config.failureAssist.unavailableText, 2.2, BehaviorState.DIALOGUE)
         end,
     })
-    self:_scheduleIdle()
     self:_scheduleBlink()
     self:_playBehaviorAnimation(self.behaviorState:get(), true)
     return self
@@ -117,83 +136,81 @@ function GreenAssistant:_emit(eventName, ...)
     for _, callback in ipairs(self.listeners[eventName] or {}) do callback(self, ...) end
 end
 
-function GreenAssistant:_scheduleIdle()
-    local roam = self.config.roam
-    self.idleTimer = RandomRange(roam.minIdleTime, roam.maxIdleTime)
-end
-
 function GreenAssistant:_scheduleBlink()
     local blink = self.config.blink
     self.blinkTimer = RandomRange(blink.minInterval, blink.maxInterval)
 end
 
 function GreenAssistant:_playBehaviorAnimation(behavior, restart)
-    local animation = self.animationState:resolve(behavior, function(name) return self.animator:hasAnimation(name) end)
-    if animation then self.animator:play(animation, { restart = restart == true }) end
+    local requested = self.animationState:getBehaviorAnimation(behavior) or self.config.fallbackAnimation
+    local options = {
+        restart = restart == true,
+        fallbackAnimation = self.config.fallbackAnimation,
+    }
+    if behavior == BehaviorState.DRAG and not self.animator:hasAnimation(requested) then options.playbackSpeed = 0 end
+    if requested then self.animator:play(requested, options) end
 end
 
 function GreenAssistant:_onBehaviorChanged(current, previous, reason)
-    if previous == BehaviorState.ROAM and current ~= BehaviorState.ROAM and self.moving then
-        self.moving = false
-        self.target = nil
-        self:_emit("onMoveFinished", self.position.x, self.position.y, true)
+    if self.companion and not COMPANION_BEHAVIORS[current] then
+        self._ignoreCompanionState = true
+        self.companion:interrupt("behavior-" .. string.lower(current))
+        self._ignoreCompanionState = false
+        self:_syncCompanionView()
+    elseif self.companion and current == BehaviorState.IDLE
+        and self.companion:getState() ~= CompanionController.State.IDLE then
+        self._ignoreCompanionState = true
+        self.companion:interrupt("behavior-idle")
+        self._ignoreCompanionState = false
+        self:_syncCompanionView()
     end
     if current ~= BehaviorState.IDLE then self.blinkActive = false end
     self:_playBehaviorAnimation(current, true)
     if current == BehaviorState.IDLE then
-        self:_scheduleIdle()
         self:_scheduleBlink()
     end
     self:_emit("onBehaviorChanged", current, previous, reason)
 end
 
-function GreenAssistant:_ensurePosition()
-    if self.positionInitialized then return end
-    local x, y = self.view:getHomePosition()
-    self.position.x, self.position.y = x, y
-    self.positionInitialized = true
-    self.view:setPosition(x, y)
-end
-
-function GreenAssistant:_clampPosition()
-    local xMin, xMax, yMin, yMax = self.view:getRoamBounds()
-    self.position.x = math.max(xMin, math.min(xMax, self.position.x))
-    self.position.y = math.max(yMin, math.min(yMax, self.position.y))
-    self.view:setPosition(self.position.x, self.position.y)
-end
-
-function GreenAssistant:_tryRoam()
-    if not self.config.features.roam or not self.config.roam.enabled then return false end
-    local xMin, xMax, yMin, yMax = self.view:getRoamBounds()
-    local angle = math.random() * math.pi * 2
-    local distance = RandomRange(self.config.roam.maxDistance * 0.35, self.config.roam.maxDistance)
-    local targetX = math.max(xMin, math.min(xMax, self.position.x + math.cos(angle) * distance))
-    local targetY = math.max(yMin, math.min(yMax, self.position.y + math.sin(angle) * distance * 0.35))
-    if math.abs(targetX - self.position.x) < 4 and math.abs(targetY - self.position.y) < 2 then
-        self:_scheduleIdle()
-        return false
+function GreenAssistant:_syncCompanionView()
+    if not self.companion then return end
+    local snapshot = self.companion:getSnapshot()
+    self.position.x, self.position.y = snapshot.x, snapshot.y
+    self.target = snapshot.targetX and { x = snapshot.targetX, y = self.companion.zone.baselineY } or nil
+    self.moving = snapshot.state == CompanionController.State.WALK
+    self.positionInitialized = self.companion.initialized
+    self.view:setPosition(snapshot.x, snapshot.y)
+    if self.view.setFacing then
+        self.view:setFacing(snapshot.facing)
+    else
+        self.view:setFacingRight(snapshot.facing == CompanionController.Facing.RIGHT)
     end
-    return self:moveTo(targetX, targetY)
 end
 
-function GreenAssistant:_updateRoam(dt)
-    if not self.target then self:setBehavior(BehaviorState.IDLE, "missing-target"); return end
-    local dx, dy = self.target.x - self.position.x, self.target.y - self.position.y
-    local distance = math.sqrt(dx * dx + dy * dy)
-    if distance <= self.config.roam.arrivalDistance then
-        self.position.x, self.position.y = self.target.x, self.target.y
-        self.view:setPosition(self.position.x, self.position.y)
-        self.target = nil
-        self.moving = false
-        self:_emit("onMoveFinished", self.position.x, self.position.y, false)
-        self:setBehavior(BehaviorState.IDLE, "arrived")
-        return
+function GreenAssistant:_onCompanionEvent(eventName, ...)
+    if eventName == "stateChanged" then
+        local state, _, reason = ...
+        if not self._ignoreCompanionState then
+            self.behaviorState:set(CompanionBehavior(state), "companion-" .. tostring(reason or state))
+        end
+    elseif eventName == "moveStarted" then
+        self:_emit("onMoveStarted", ...)
+    elseif eventName == "moveFinished" then
+        self:_emit("onMoveFinished", ...)
+    elseif eventName == "dragStarted" then
+        self:_emit("onDragStarted", ...)
+    elseif eventName == "dragReleased" then
+        self:_emit("onDragReleased", ...)
+    elseif eventName == "dragFinished" then
+        self:_emit("onDragFinished", ...)
     end
-    local step = math.min(distance, self.config.roam.moveSpeed * dt)
-    self.position.x = self.position.x + dx / distance * step
-    self.position.y = self.position.y + dy / distance * step
-    if math.abs(dx) > 0.01 then self.view:setFacingRight(dx > 0) end
-    self.view:setPosition(self.position.x, self.position.y)
+    self:_syncCompanionView()
+end
+
+function GreenAssistant:setZone(zone)
+    local changed = self.companion:setZone(zone)
+    self:_syncCompanionView()
+    return changed
 end
 
 function GreenAssistant:_updateBlink(dt)
@@ -237,8 +254,9 @@ function GreenAssistant:update(dt, frame)
     dt = math.max(0, dt or 0)
     self.elapsed = self.elapsed + dt
     if frame then self.view:setFrame(frame) end
-    self:_ensurePosition()
-    self:_clampPosition()
+    local zone = frame and frame.companionZone or nil
+    if not zone and self.view.getCompanionZone then zone = self.view:getCompanionZone() end
+    if zone then self:setZone(zone) end
     if not self.enabled then return end
 
     self.behaviorState:update(dt)
@@ -258,12 +276,13 @@ function GreenAssistant:update(dt, frame)
         end
     end
 
-    if behavior == BehaviorState.ROAM then
-        self:_updateRoam(dt)
-    elseif behavior == BehaviorState.IDLE then
+    if COMPANION_BEHAVIORS[behavior] then
+        self.companion:update(dt, self.config.features.roam and self.config.roam.enabled)
+        self:_syncCompanionView()
+        behavior = self.behaviorState:get()
+    end
+    if behavior == BehaviorState.IDLE then
         self:_updateBlink(dt)
-        self.idleTimer = self.idleTimer - dt
-        if self.idleTimer <= 0 then self:_tryRoam() end
     end
 end
 
@@ -273,24 +292,36 @@ function GreenAssistant:render()
 end
 
 function GreenAssistant:handlePointer(x, y, pointer)
-    if not self.enabled or not self.visible or not pointer or pointer.pressed ~= true then return false end
+    if not self.enabled or not self.visible or not pointer then return false end
+    pointer.x, pointer.y = x, y
     local behavior = self.behaviorState:get()
     if behavior == BehaviorState.OFFER then
         local _, choice = self.view:hitTestChoice(x, y)
-        if choice then
+        if pointer.pressed == true and choice then
             if choice.id == "accept" then self:acceptTakeover() else self:declineTakeover() end
             return true
         end
-        if self.view:hitTestBubble(x, y) or self.view:hitTestCharacter(x, y) then return true end
+        if (pointer.pressed or pointer.down or pointer.released)
+            and (self.view:hitTestBubble(x, y) or self.view:hitTestCharacter(x, y)) then return true end
+        return false
     end
-    if self.view:hitTestCharacter(x, y) then
-        if behavior == BehaviorState.TAKEOVER or behavior == BehaviorState.SUCCESS or behavior == BehaviorState.DISABLED then
+
+    local hitCharacter = self.view:hitTestCharacter(x, y)
+    if behavior == BehaviorState.TAKEOVER or behavior == BehaviorState.SUCCESS or behavior == BehaviorState.DISABLED then
+        return hitCharacter and (pointer.pressed or pointer.down or pointer.released) or false
+    end
+
+    if COMPANION_BEHAVIORS[behavior] then
+        local consumed, result = self.companion:handlePointer(pointer, hitCharacter)
+        self:_syncCompanionView()
+        if consumed then
+            if result and result.kind == "tap" and self.config.features.interaction then self:poke() end
             return true
         end
-        if self.config.features.interaction then self:poke() end
+    elseif hitCharacter and (pointer.pressed or pointer.down or pointer.released) then
         return true
     end
-    return self.view:hitTestBubble(x, y)
+    return (pointer.pressed or pointer.down or pointer.released) and self.view:hitTestBubble(x, y) or false
 end
 
 function GreenAssistant:poke()
@@ -338,11 +369,12 @@ function GreenAssistant:onLevelChanged(levelId)
     self.levelId = levelId
     self.failureAssist:onLevelChanged()
     self.interaction:reset()
-    self.target = nil
-    self.moving = false
+    self._ignoreCompanionState = true
+    self.companion:interrupt("level-changed")
+    self._ignoreCompanionState = false
+    self:_syncCompanionView()
     self:_hideMessage()
     if self.enabled then self:setBehavior(BehaviorState.IDLE, "level-changed") end
-    self.positionInitialized = false
 end
 
 function GreenAssistant:acceptTakeover()
@@ -388,6 +420,11 @@ function GreenAssistant:hasAnimation(name)
 end
 
 function GreenAssistant:setBehavior(state, reason)
+    local normalized = type(state) == "string" and string.upper(state) or state
+    if normalized == BehaviorState.WALK or normalized == BehaviorState.ROAM then
+        if not self.companion.initialized and self.view.getCompanionZone then self:setZone(self.view:getCompanionZone()) end
+        return self.companion:startWalk()
+    end
     return self.behaviorState:set(state, reason)
 end
 
@@ -405,11 +442,8 @@ end
 
 function GreenAssistant:moveTo(x, y)
     if not self.enabled then return false end
-    self.target = { x = x, y = y }
-    self.moving = true
-    self:setBehavior(BehaviorState.ROAM, "move-to")
-    self:_emit("onMoveStarted", self.position.x, self.position.y, x, y)
-    return true
+    if not self.companion.initialized and self.view.getCompanionZone then self:setZone(self.view:getCompanionZone()) end
+    return self.companion:moveTo(x)
 end
 
 function GreenAssistant:setEnabled(enabled)
@@ -432,6 +466,7 @@ end
 
 function GreenAssistant:getDebugInfo()
     local frame = self.animator:getCurrentFrameData()
+    local companion = self.companion:getSnapshot()
     local target = self.target and string.format("%.0f, %.0f", self.target.x, self.target.y) or "-"
     return {
         "GreenAssistant",
@@ -440,6 +475,8 @@ function GreenAssistant:getDebugInfo()
         string.format("Frame: %d / %d", frame and frame.index or 0, frame and frame.count or 0),
         string.format("Position: %.0f, %.0f", self.position.x, self.position.y),
         "Target: " .. target,
+        string.format("Zone X: %.0f .. %.0f", companion.validMinX, companion.validMaxX),
+        "Facing: " .. companion.facing,
         string.format("Failures: %d / %d", self.failureAssist.failureCount, self.failureAssist.threshold),
         "Offer: " .. tostring(self.failureAssist.hasOfferedThisLevel),
         "Takeover: " .. tostring(self.takeover:isActive()),

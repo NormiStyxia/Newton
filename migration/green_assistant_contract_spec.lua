@@ -29,10 +29,14 @@ local mockView = {
     choice = nil,
     x = 0,
     y = 0,
+    hitCharacter = false,
 }
 function mockView:setFrame(frame) self.frame = frame end
 function mockView:getHomePosition() return 76, 822 end
 function mockView:getRoamBounds() return 42, 238, 722, 822 end
+function mockView:getCompanionZone()
+    return { left = 0, right = 300, top = 740, bottom = 824, baselineY = 822, fallbackX = 76 }
+end
 function mockView:setPosition(x, y) self.x, self.y = x, y end
 function mockView:setFacingRight(value) self.facingRight = value end
 function mockView:setVisible(value) self.visible = value end
@@ -40,7 +44,7 @@ function mockView:setEnabled(value) self.enabled = value end
 function mockView:showMessage(text) self.message, self.choice = text, nil end
 function mockView:showChoice(text, choices) self.message, self.choice = text, choices end
 function mockView:hideMessage() self.message, self.choice = nil, nil end
-function mockView:hitTestCharacter() return false end
+function mockView:hitTestCharacter() return self.hitCharacter end
 function mockView:hitTestBubble() return false end
 function mockView:hitTestChoice() return nil, nil end
 function mockView:render() end
@@ -65,6 +69,7 @@ local assistant = GreenAssistant.new({
     adapter = adapter,
     config = {
         features = { roam = false },
+        companion = { dragThreshold = 2, settleDuration = .05 },
         animations = {
             idle = { frames = { "idle-1", "idle-2" }, fps = 10, loop = true },
             move = { frames = { "move-1", "move-2" }, fps = 10, loop = true },
@@ -90,7 +95,19 @@ local assistant = GreenAssistant.new({
 assistant:update(.06, { logicalWidth = 1880, logicalHeight = 840 })
 expect(assistant.animator:getCurrentAnimation() == "blink", "idle blink did not interrupt idle animation")
 assistant:update(.21)
-expect(assistant.animator:getCurrentAnimation() == "idle", "blink did not restore idle animation")
+expect(assistant.animator:getCurrentAnimation() == "idle_base", "blink did not restore semantic idle animation")
+mockView.hitCharacter = true
+expect(assistant:handlePointer(mockView.x, mockView.y,
+    { down = true, pressed = true, released = false }), "drag candidate was not captured")
+expect(assistant:handlePointer(mockView.x + 4, mockView.y - 10,
+    { down = true, pressed = false, released = false }), "drag movement was not captured")
+expect(assistant:getBehavior() == GreenAssistant.Behavior.DRAG, "GreenAssistant did not mirror DRAG behavior")
+expect(assistant.animator:getCurrentAnimation() == "idle_base" and assistant.animator.playbackSpeed == 0,
+    "missing drag asset did not freeze the idle_base fallback frame")
+assistant:handlePointer(mockView.x, mockView.y, { down = false, pressed = false, released = true })
+assistant:update(.06)
+expect(assistant:getBehavior() == GreenAssistant.Behavior.IDLE, "drag settle did not return GreenAssistant to IDLE")
+mockView.hitCharacter = false
 assistant:poke()
 expect(assistant:getBehavior() == GreenAssistant.Behavior.INTERACT, "poke behavior missing")
 assistant:update(.06)

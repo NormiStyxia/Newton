@@ -3,12 +3,23 @@ local M = {}
 
 function M.Install(context)
     local _ENV = context
+    function RefreshWorkspaceLayout()
+        if not frame_ then return end
+        local entries = CardEntries and CardEntries() or {}
+        local poses = Rules.CardHand(#entries,
+            frame_.playfieldX + frame_.playfieldWidth * 0.5,
+            frame_.cardHandY,
+            frame_.playfieldWidth)
+        WorkspaceLayout.Apply(frame_, poses, CARD_RENDER_WIDTH, CARD_RENDER_HEIGHT)
+    end
+
     function Start()
         graphics.windowTitle = CONFIG.title
         painter_ = Renderer2D.New()
         frame_ = design_:Frame()
         InitializeGreenAssistant()
         BuildLevel(1)
+        RefreshWorkspaceLayout()
         SubscribeToEvent("Update", "HandleUpdate")
         SubscribeToEvent("ScreenMode", "HandleScreenMode")
         SubscribeToEvent("TouchBegin", "HandleTouchBegin")
@@ -36,6 +47,7 @@ function M.Install(context)
         uiElapsed_ = uiElapsed_ + dt
         UpdateRuleFeedback(dt)
         frame_ = design_:Frame()
+        RefreshWorkspaceLayout()
         UpdateGreenAssistant(dt)
         -- Replay owns the input/update frame. Do not let cards, reset shortcuts,
         -- or normal completion updates mutate the suspended experiment.
@@ -150,6 +162,7 @@ function M.Install(context)
     end
     function HandleScreenMode()
         frame_ = design_:Frame()
+        RefreshWorkspaceLayout()
     end
 
     ---@param _eventType string

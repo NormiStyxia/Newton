@@ -3,6 +3,7 @@ local State = require("game.State")
 local LevelData = require("game.level.LevelData")
 local CoordinateMapper = require("game.layout.CoordinateMapper")
 local DesignSpace = require("game.layout.DesignSpace")
+local WorkspaceLayout = require("game.layout.WorkspaceLayout")
 local MatterCalibration = require("game.physics.Calibration")
 local PhysicsProfiles = require("game.physics.Profiles")
 local PhysicsProbe = require("game.physics.Probe")
@@ -31,6 +32,7 @@ function App.New()
     local dependencies = {
         State = State,
         LevelData = LevelData, CoordinateMapper = CoordinateMapper, DesignSpace = DesignSpace,
+        WorkspaceLayout = WorkspaceLayout,
         MatterCalibration = MatterCalibration, PhysicsProfiles = PhysicsProfiles, PhysicsProbe = PhysicsProbe,
         Rules = Rules, RuntimeFactory = RuntimeFactory, Renderer2D = Renderer2D, SynthAudio = SynthAudio,
         TrajectoryPrediction = TrajectoryPrediction, ReplayTimeline = ReplayTimeline, ReplayFeed = ReplayFeed,
