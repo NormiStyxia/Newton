@@ -1,4 +1,4 @@
-local PhysicsProfiles = require("migration.PhysicsProfiles")
+local PhysicsProfiles = require("game.physics.Profiles")
 
 local LevelData = {}
 

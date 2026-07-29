@@ -3,9 +3,11 @@
 
 from pathlib import Path
 
+from runtime_source_index import legacy_main_source
+
 
 ROOT = Path(__file__).resolve().parents[1]
-MAIN = (ROOT / "scripts" / "main.lua").read_text(encoding="utf-8")
+MAIN = legacy_main_source()
 
 
 def expect(condition: bool, message: str, errors: list[str]) -> None:
@@ -19,13 +21,15 @@ def main() -> int:
     sensor = MAIN[MAIN.index("function GoalSensorContainsApple"):MAIN.index("function DoorOpenVector")]
     hit_test = MAIN[MAIN.index("function FindTopCardAt"):MAIN.index("function UpdateHoverState")]
 
-    expect("local CARD_TEXT_SCALE = 144 / 124" in MAIN,
+    expect("local CARD_DESIGN_WIDTH = 124" in MAIN and "local CARD_DESIGN_HEIGHT = 174" in MAIN,
+           "card design geometry no longer matches Phaser's 124x174 face", errors)
+    expect("local CARD_TEXT_SCALE = 144 / CARD_DESIGN_WIDTH" in MAIN,
            "card render scale no longer matches Phaser's 124-to-144 transform", errors)
-    expect("local CARD_RENDER_HEIGHT = 172 * CARD_TEXT_SCALE" in MAIN,
+    expect("local CARD_RENDER_HEIGHT = CARD_DESIGN_HEIGHT * CARD_TEXT_SCALE" in MAIN,
            "card paint height is not derived from the Phaser design face", errors)
     for source_rect in (
-        "-60 * scale, -83 * scale, 124 * scale, 172 * scale",
-        "-62 * scale, -87 * scale, 124 * scale, 172 * scale",
+        "-60 * scale, -83 * scale, CARD_DESIGN_WIDTH * scale, CARD_DESIGN_HEIGHT * scale",
+        "-62 * scale, -87 * scale, CARD_DESIGN_WIDTH * scale, CARD_DESIGN_HEIGHT * scale",
         "-57 * scale, -82 * scale, 114 * scale, 164 * scale",
         "-49 * scale, -32 * scale, 98 * scale, 76 * scale",
     ):
@@ -36,6 +40,10 @@ def main() -> int:
            "goal fallback lacks the Box2D/Matter contact skin", errors)
     expect("matterSpeed <= 4.8" in MAIN,
            "goal completion no longer preserves the source stability threshold", errors)
+    speed_conversion = MAIN[MAIN.index("function CurrentMatterSpeedFromWorld"):MAIN.index("function ApplyAppleCardMaterial")]
+    expect("/ CONFIG.matterVelocityToWorld" in speed_conversion
+           and "CurrentMatterVelocityToWorld" not in speed_conversion,
+           "goal speed comparison rescales slow-motion velocity twice", errors)
 
     if errors:
         print("CARD_SENSOR_FIDELITY_VALIDATE fail")

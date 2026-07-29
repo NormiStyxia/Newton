@@ -7,6 +7,8 @@ import re
 import struct
 from pathlib import Path
 
+from runtime_source_index import all_runtime_source, legacy_main_source
+
 
 MAKER_ROOT = Path(__file__).resolve().parents[1]
 PHASER_ROOT = Path(r"D:\System Files\Download\牛顿\牛顿")
@@ -174,26 +176,27 @@ def main() -> int:
             expect(signature[:4] == b"RIFF" and signature[8:12] == b"WAVE", f"not WAV: {item['derived']}")
             expect(derived.with_suffix(derived.suffix + ".meta").exists(), f"audio meta missing {item['derived']}")
 
-    main_lua = (MAKER_ROOT / "scripts/main.lua").read_text(encoding="utf-8")
-    calibration_lua = (MAKER_ROOT / "scripts/migration/MatterCalibration.lua").read_text(encoding="utf-8")
-    profiles_lua = (MAKER_ROOT / "scripts/migration/PhysicsProfiles.lua").read_text(encoding="utf-8")
-    factory_lua = (MAKER_ROOT / "scripts/migration/RuntimeFactory.lua").read_text(encoding="utf-8")
-    renderer_lua = (MAKER_ROOT / "scripts/migration/Renderer.lua").read_text(encoding="utf-8")
-    design_lua = (MAKER_ROOT / "scripts/migration/DesignSpace.lua").read_text(encoding="utf-8")
-    synth_audio_lua = (MAKER_ROOT / "scripts/migration/SynthAudio.lua").read_text(encoding="utf-8")
-    trajectory_lua = (MAKER_ROOT / "scripts/migration/TrajectoryPrediction.lua").read_text(encoding="utf-8")
-    replay_timeline_lua = (MAKER_ROOT / "scripts/migration/ReplayTimeline.lua").read_text(encoding="utf-8")
-    replay_feed_lua = (MAKER_ROOT / "scripts/migration/ReplayFeed.lua").read_text(encoding="utf-8")
-    physics_probe_lua = (MAKER_ROOT / "scripts/migration/PhysicsProbe.lua").read_text(encoding="utf-8")
-    physics_telemetry_lua = (MAKER_ROOT / "scripts/migration/PhysicsTelemetry.lua").read_text(encoding="utf-8")
+    main_lua = legacy_main_source()
+    calibration_lua = (MAKER_ROOT / "scripts/game/physics/Calibration.lua").read_text(encoding="utf-8")
+    profiles_lua = (MAKER_ROOT / "scripts/game/physics/Profiles.lua").read_text(encoding="utf-8")
+    factory_lua = (MAKER_ROOT / "scripts/game/level/RuntimeFactory.lua").read_text(encoding="utf-8")
+    renderer_lua = (MAKER_ROOT / "scripts/game/render/Canvas.lua").read_text(encoding="utf-8")
+    renderer_lua += (MAKER_ROOT / "scripts/game/render/WorldPrimitives.lua").read_text(encoding="utf-8")
+    design_lua = (MAKER_ROOT / "scripts/game/layout/DesignSpace.lua").read_text(encoding="utf-8")
+    synth_audio_lua = (MAKER_ROOT / "scripts/game/audio/Audio.lua").read_text(encoding="utf-8")
+    trajectory_lua = (MAKER_ROOT / "scripts/game/physics/Trajectory.lua").read_text(encoding="utf-8")
+    replay_timeline_lua = (MAKER_ROOT / "scripts/game/replay/Timeline.lua").read_text(encoding="utf-8")
+    replay_feed_lua = (MAKER_ROOT / "scripts/game/replay/Feed.lua").read_text(encoding="utf-8")
+    physics_probe_lua = (MAKER_ROOT / "scripts/game/physics/Probe.lua").read_text(encoding="utf-8")
+    physics_telemetry_lua = (MAKER_ROOT / "scripts/game/physics/Telemetry.lua").read_text(encoding="utf-8")
     trajectory_contract_py = (MAKER_ROOT / "migration/physics_trajectory_contract.py").read_text(encoding="utf-8")
-    rules_lua = (MAKER_ROOT / "scripts/migration/Rules.lua").read_text(encoding="utf-8")
-    all_lua = "\n".join(path.read_text(encoding="utf-8") for path in (MAKER_ROOT / "scripts").rglob("*.lua"))
+    rules_lua = (MAKER_ROOT / "scripts/game/gameplay/Rules.lua").read_text(encoding="utf-8")
+    all_lua = all_runtime_source()
     portrait_source = PHASER_ROOT / "public/assets/newton-portrait.png"
     portrait_copy = MAKER_ROOT / "assets/image/newton-portrait.png"
 
     def has_main_function(name: str) -> bool:
-        return re.search(rf"^(?:local\s+)?function\s+{re.escape(name)}\s*\(", main_lua, re.M) is not None
+        return re.search(rf"^\s*(?:local\s+)?function\s+{re.escape(name)}\s*\(", main_lua, re.M) is not None
     expect(portrait_copy.exists(), "Newton portrait copy missing")
     expect(portrait_source.exists() and sha256(portrait_source) == sha256(portrait_copy), "Newton portrait hash mismatch")
 
@@ -214,20 +217,23 @@ def main() -> int:
     expect("BurnProgress" in main_lua and "1 - math.cos(linear * math.pi * .5)" in main_lua and "DrawCardBurnParticles" in main_lua, "card burn easing or particles are missing")
     expect("MoveCardToHandSlot" in main_lua and "duration = .16" in main_lua and "UpdateCardHomeMotions" in main_lua, "live hand reordering tween differs from Phaser")
     expect("SetBulletTimeActive" in main_lua and "CurrentPhysicsTimeScale" in main_lua and "StartReplay" in main_lua, "continuous card bullet time or replay missing")
-    expect("migration.SynthAudio" in main_lua and "PlaySound(\"launch\")" in main_lua, "launch audio wiring missing")
+    expect("game.audio.Audio" in main_lua and "PlaySound(\"launch\")" in main_lua, "launch audio wiring missing")
     expect("PlaySound(\"card\")" in main_lua and "PlaySound(\"impact\")" in main_lua, "card or impact audio wiring missing")
     expect("PlaySound(\"punch\")" in main_lua and "PlaySound(\"success\")" in main_lua, "punch or success audio wiring missing")
     expect("audio/phase1/launch.wav" in synth_audio_lua and "self.elapsedMs - self.lastImpactMs < 80" in synth_audio_lua, "SynthAudio playback or impact gate missing")
     expect("apple_.shape.trigger = false" in main_lua and "object.contactProgress = 0" in main_lua, "success retry does not restore collision state")
     expect("isEditor_" not in main_lua and "EditorController" not in all_lua, "runtime editor remains in Maker build")
-    expect(has_main_function("PointerState") and "local x, y, down, press, release = PointerState()" in main_lua, "input state is not unified")
+    expect(has_main_function("PointerState") and "local pointerFrame = PointerState()" in main_lua
+           and "pointerFrame.down, pointerFrame.pressed, pointerFrame.released" in main_lua,
+           "input state is not unified")
     expect('SubscribeToEvent("TouchBegin", "HandleTouchBegin")' in main_lua and 'SubscribeToEvent("TouchMove", "HandleTouchMove")' in main_lua and 'SubscribeToEvent("TouchEnd", "HandleTouchEnd")' in main_lua, "touch events are not wired")
     expect("function HandleTouchBegin" in main_lua and "function HandleTouchMove" in main_lua and "function HandleTouchEnd" in main_lua, "touch event handlers are missing")
     expect("activeTouchId" in main_lua and 'eventData:GetInt("TouchID")' in main_lua, "single-touch ownership is missing")
-    expect("migration.TrajectoryPrediction" in main_lua and "TrajectoryPrediction.PredictFreeFlight" in main_lua, "source-equivalent trajectory preview is not wired")
+    expect("game.physics.Trajectory" in main_lua and "TrajectoryPrediction.PredictFreeFlight" in main_lua, "source-equivalent trajectory preview is not wired")
     expect("MATTER_BASE_DELTA_MS = 1000 / 60" in trajectory_lua and "input.forceScale * MATTER_BASE_DELTA_MS * MATTER_BASE_DELTA_MS" in trajectory_lua, "trajectory integration scale differs from Phaser")
     expect("velocityX = velocityX * frictionFactor + accelerationX" in trajectory_lua and "if frame % input.sampleEvery == 0" in trajectory_lua, "trajectory integration order differs from Phaser")
-    expect("draggedApple_ = true\n            -- Phaser starts aiming on POINTER_DOWN" in main_lua and "UpdateAppleDrag(x, y)" in main_lua,
+    expect(re.search(r"draggedApple_\s*=\s*true\s*\n\s*-- Phaser starts aiming on POINTER_DOWN", main_lua) is not None
+           and "UpdateAppleDrag(x, y)" in main_lua,
            "apple aim does not initialize on the same pointer-down frame as Phaser")
     expect("function DrawAim()" in main_lua and "function DrawAimPrediction(preview)" in main_lua and "function DrawCardPrediction()" in main_lua
            and 'activeCardId_ == "side-gravity"' in main_lua and 'activeCardId_ == "mirror-motion"' in main_lua,
@@ -278,12 +284,12 @@ def main() -> int:
     expect("math.max(0, dt) * 1000 * replaySpeed_" in replay_update
            and "replaySpeed_ = .5" in main_lua and "replaySpeed_ = 1" in main_lua and "replaySpeed_ = 2" in main_lua,
            "replay speed no longer advances the original recorded timeline at 0.5x/1x/2x")
-    expect("migration.ReplayTimeline" in main_lua and "ReplayTimeline.SamplesThrough(replaySamples_, replayTime_)" in main_lua,
+    expect("game.replay.Timeline" in main_lua and "ReplayTimeline.SamplesThrough(replaySamples_, replayTime_)" in main_lua,
            "replay rendering does not share the source timeline contract")
     expect("function ReplayTimeline.StateAt" in replay_timeline_lua and "while low + 1 < high" in replay_timeline_lua
            and "function ReplayTimeline.SamplesThrough" in replay_timeline_lua,
            "replay timeline interpolation or visible-sample contract is missing")
-    expect("migration.ReplayFeed" in main_lua and "ReplayFeed.Items(replayEvents_, replayTime_, Rules.CARDS)" in main_lua,
+    expect("game.replay.Feed" in main_lua and "ReplayFeed.Items(replayEvents_, replayTime_, Rules.CARDS)" in main_lua,
            "replay rule feed does not use the source-equivalent state model")
     expect("INSTANT_ACTIVE_MS = 1400" in replay_feed_lua and 'event.type == "RULE_REMOVED"' in replay_feed_lua
            and 'event.type == "NEWTON_PUNCH"' in replay_feed_lua,
@@ -323,11 +329,15 @@ def main() -> int:
     expect("AnimateCardToHome(previous, PrimedCardPose(previous), .12)" in main_lua
            and "AnimateCardToHome(id, from, .18)" in main_lua,
            "primed or cancelled cards do not restore with Phaser timing")
-    expect("CARD_TEXT_SCALE = 144 / 124" in main_lua and "hasCandidate and .58" in main_lua
+    expect("CARD_DESIGN_WIDTH = 124" in main_lua
+           and "CARD_DESIGN_HEIGHT = 174" in main_lua
+           and "CARD_TEXT_SCALE = 144 / CARD_DESIGN_WIDTH" in main_lua
+           and "hasCandidate and .58" in main_lua
            and "local function clamp(value, minimum, maximum)" in main_lua,
            "card content scaling or parameter selector feedback differs from Phaser")
     expect("absorbing_" in main_lua and "absorbElapsedMs_ = math.min(520" in main_lua and "absorbElapsedMs_ >= 520" in main_lua, "success absorption timing differs from Phaser")
-    expect("function Renderer:DrawApple(frame, apple, scale, alpha)" in renderer_lua and "1 - absorbProgress * .65" in main_lua, "success absorption visual differs from Phaser")
+    expect("function Renderer:DrawApple(frame, apple, scale, alpha, design)" in renderer_lua
+           and "1 - absorbProgress * .65" in main_lua, "success absorption visual differs from Phaser")
     expect("goalPulseElapsedMs_" in main_lua and "goalPulseElapsedMs_ / 460" in main_lua, "goal pulse timing differs from Phaser")
     expect("state.goalPulseProgress" in renderer_lua and "1 + progress * .22" in renderer_lua, "goal pulse expansion differs from Phaser")
     expect("glass = { 216, 214, 232, 255 }" in renderer_lua and "glassEdge = { 128, 118, 181, 255 }" in renderer_lua, "phase wall palette differs from LightLabTheme")

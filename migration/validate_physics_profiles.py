@@ -5,6 +5,8 @@ import math
 import re
 from pathlib import Path
 
+from runtime_source_index import legacy_main_source
+
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -19,14 +21,15 @@ def main() -> int:
         if not condition:
             errors.append(message)
 
-    profiles = (ROOT / "scripts/migration/PhysicsProfiles.lua").read_text(encoding="utf-8")
-    main_lua = (ROOT / "scripts/main.lua").read_text(encoding="utf-8")
-    factory = (ROOT / "scripts/migration/RuntimeFactory.lua").read_text(encoding="utf-8")
-    calibration = (ROOT / "scripts/migration/MatterCalibration.lua").read_text(encoding="utf-8")
-    level_data = (ROOT / "scripts/migration/LevelData.lua").read_text(encoding="utf-8")
+    profiles = (ROOT / "scripts/game/physics/Profiles.lua").read_text(encoding="utf-8")
+    main_lua = legacy_main_source()
+    state_lua = (ROOT / "scripts/game/State.lua").read_text(encoding="utf-8")
+    factory = (ROOT / "scripts/game/level/RuntimeFactory.lua").read_text(encoding="utf-8")
+    calibration = (ROOT / "scripts/game/physics/Calibration.lua").read_text(encoding="utf-8")
+    level_data = (ROOT / "scripts/game/level/LevelData.lua").read_text(encoding="utf-8")
 
     def has_main_function(name: str) -> bool:
-        return re.search(rf"^(?:local\s+)?function\s+{re.escape(name)}\s*\(", main_lua, re.M) is not None
+        return re.search(rf"^\s*(?:local\s+)?function\s+{re.escape(name)}\s*\(", main_lua, re.M) is not None
 
     standard_id = "standard"
     incident_id = "incident_codex_migration_01"
@@ -34,7 +37,8 @@ def main() -> int:
     expect(f'INCIDENT_ID = "{incident_id}"' in profiles, "incident profile id is missing")
     expect("local id = PhysicsProfiles.IsKnown(requestedId) and requestedId or PhysicsProfiles.DEFAULT_ID" in profiles,
            "profile resolution does not fail closed to standard")
-    expect("local physicsProfile_ = nil" in main_lua, "runtime profile state is missing")
+    expect('"physicsProfile_"' in state_lua and "context.level_, context.physicsProfile_" in state_lua,
+           "runtime profile state is missing")
     expect("physicsProfile_ = PhysicsProfiles.Resolve(level_.physicsProfile)" in main_lua,
            "level profile is not resolved during level construction")
     expect("physicsProfile_.gravityAcceleration" in main_lua, "gravity does not use the resolved profile")
@@ -120,7 +124,7 @@ def main() -> int:
            and "function MatterCalibration.ApplyAppleMassProperties" in calibration,
            "apple's observed Matter 26-gon inertia is not calibrated")
     expect(main_lua.count("MatterCalibration.ApplyAppleMassProperties(apple_.body)") == 1
-           and "MatterCalibration.ApplyAppleMassProperties(apple.body)" in (ROOT / "scripts/migration/PhysicsProbe.lua").read_text(encoding="utf-8"),
+           and "MatterCalibration.ApplyAppleMassProperties(apple.body)" in (ROOT / "scripts/game/physics/Probe.lua").read_text(encoding="utf-8"),
            "apple mass properties are not restored after every static-to-dynamic transition")
     expect("STATIC_FRICTION = 0.1" in calibration and "STATIC_RESTITUTION = 0" in calibration,
            "static Matter material is not calibrated")

@@ -1,5 +1,5 @@
-local MatterCalibration = require("migration.MatterCalibration")
-local PhysicsTelemetry = require("migration.PhysicsTelemetry")
+local MatterCalibration = require("game.physics.Calibration")
+local PhysicsTelemetry = require("game.physics.Telemetry")
 
 ---@class PhysicsProbe
 ---@field active boolean

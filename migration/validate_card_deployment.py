@@ -3,10 +3,12 @@
 
 from pathlib import Path
 
+from runtime_source_index import legacy_main_source
+
 
 ROOT = Path(__file__).resolve().parents[1]
-MAIN = (ROOT / "scripts" / "main.lua").read_text(encoding="utf-8")
-RULES = (ROOT / "scripts" / "migration" / "Rules.lua").read_text(encoding="utf-8")
+MAIN = legacy_main_source()
+RULES = (ROOT / "scripts" / "game" / "gameplay" / "Rules.lua").read_text(encoding="utf-8")
 
 
 def expect(condition: bool, message: str, errors: list[str]) -> None:

@@ -1,5 +1,5 @@
 local RuntimeFactory = {}
-local MatterCalibration = require("migration.MatterCalibration")
+local MatterCalibration = require("game.physics.Calibration")
 
 local CATEGORY_APPLE = 0x0001
 local CATEGORY_WORLD = 0x0002
@@ -140,13 +140,6 @@ FACTORIES.door = function(context, data)
     runtime.shape.friction = MatterCalibration.STATIC_FRICTION
     runtime.shape.restitution = MatterCalibration.STATIC_RESTITUTION
     return runtime
-end
-
-function RuntimeFactory.CreateViewportBackground(scene)
-    -- The background is rendered in design pixels by NanoVG. Keeping this
-    -- function as a no-op preserves the old factory boundary without creating
-    -- a 3D Zone or a model substitute.
-    return { scene = scene, type = "design-background" }
 end
 
 local function createWorldBoundary(scene, mapper, definition)

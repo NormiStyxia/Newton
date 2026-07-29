@@ -2,13 +2,16 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from runtime_source_index import legacy_main_source
+
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
 def main() -> int:
-    main_lua = (ROOT / "scripts/main.lua").read_text(encoding="utf-8")
-    renderer_lua = (ROOT / "scripts/migration/Renderer.lua").read_text(encoding="utf-8")
+    main_lua = legacy_main_source()
+    renderer_lua = (ROOT / "scripts/game/render/Canvas.lua").read_text(encoding="utf-8")
+    renderer_lua += (ROOT / "scripts/game/render/WorldPrimitives.lua").read_text(encoding="utf-8")
     errors: list[str] = []
 
     def expect(condition: bool, message: str) -> None:
@@ -19,6 +22,9 @@ def main() -> int:
            "card art does not use the deterministic vector renderer")
     expect("nvgScale(painter_.vg, CARD_TEXT_SCALE, CARD_TEXT_SCALE)" in main_lua,
            "card art does not use the Phaser card-container scale")
+    expect("local CARD_DESIGN_HEIGHT = 174" in main_lua
+           and "CARD_RENDER_HEIGHT = CARD_DESIGN_HEIGHT * CARD_TEXT_SCALE" in main_lua,
+           "card face no longer derives Phaser's 202px rendered height from its 174px design face")
     expect("def.symbol" not in main_lua,
            "card face can fall back to unavailable browser glyphs")
     expect("ruleFlash_.cardId" in main_lua

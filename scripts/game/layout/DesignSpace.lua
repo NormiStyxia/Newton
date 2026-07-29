@@ -13,13 +13,14 @@ local function round(value)
     return math.floor(value + 0.5)
 end
 
-function DesignSpace.New()
+function DesignSpace.New(pixelsPerMeter)
     local self = setmetatable({}, DesignSpace)
-    self:Init()
+    self:Init(pixelsPerMeter)
     return self
 end
 
-function DesignSpace:Init()
+function DesignSpace:Init(pixelsPerMeter)
+    self.pixelsPerMeter = assert(pixelsPerMeter, "pixelsPerMeter is required")
     self.physicalWidth = 1
     self.physicalHeight = 1
     self.dpr = 1
@@ -109,23 +110,17 @@ end
 function DesignSpace:LogicalToWorld(x, y)
     local px = x - self.playfieldX
     local py = y - DesignSpace.LAB.y
-    return (px - DesignSpace.LAB.width * 0.5) / 100,
-        (DesignSpace.LAB.height * 0.5 - py) / 100
+    return (px - DesignSpace.LAB.width * 0.5) / self.pixelsPerMeter,
+        (DesignSpace.LAB.height * 0.5 - py) / self.pixelsPerMeter
 end
 
 function DesignSpace:WorldToLogical(x, y)
-    return self.playfieldX + DesignSpace.LAB.width * 0.5 + x * 100,
-        DesignSpace.LAB.y + DesignSpace.LAB.height * 0.5 - y * 100
+    return self.playfieldX + DesignSpace.LAB.width * 0.5 + x * self.pixelsPerMeter,
+        DesignSpace.LAB.y + DesignSpace.LAB.height * 0.5 - y * self.pixelsPerMeter
 end
 
-function DesignSpace:LevelToLogical(levelX, levelY)
-    return self.playfieldX + levelX / 1400 * DesignSpace.LAB.width,
-        DesignSpace.LAB.y + levelY / 700 * DesignSpace.LAB.height
-end
-
-function DesignSpace:LogicalToLevel(x, y)
-    return (x - self.playfieldX) / DesignSpace.LAB.width * 1400,
-        (y - DesignSpace.LAB.y) / DesignSpace.LAB.height * 700
+function DesignSpace:WorldSizeToLogical(width, height)
+    return width * self.pixelsPerMeter, height * self.pixelsPerMeter
 end
 
 return DesignSpace

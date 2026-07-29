@@ -3,6 +3,8 @@ from __future__ import annotations
 import math
 from pathlib import Path
 
+from runtime_source_index import legacy_main_source
+
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -28,7 +30,7 @@ def circle_overlaps_oriented_box(
 
 
 def main() -> int:
-    main_lua = (ROOT / "scripts/main.lua").read_text(encoding="utf-8")
+    main_lua = legacy_main_source()
     errors: list[str] = []
 
     def expect(condition: bool, message: str) -> None:
