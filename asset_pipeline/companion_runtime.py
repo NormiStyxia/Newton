@@ -12,7 +12,7 @@ from typing import Any, Iterable
 from PIL import Image
 
 
-PROCESSOR_VERSION = 1
+PROCESSOR_VERSION = 2
 DEFAULT_SPEC = Path(__file__).with_name("companion_runtime.json")
 
 
@@ -48,6 +48,15 @@ def _rect_dict(rect: tuple[int, int, int, int]) -> dict[str, int]:
     return {"x": left, "y": top, "width": right - left, "height": bottom - top}
 
 
+def _offset_rect(
+    rect: tuple[int, int, int, int],
+    offset: tuple[int, int],
+) -> tuple[int, int, int, int]:
+    left, top, right, bottom = rect
+    offset_x, offset_y = offset
+    return left + offset_x, top + offset_y, right + offset_x, bottom + offset_y
+
+
 def _union(rectangles: Iterable[tuple[int, int, int, int]]) -> tuple[int, int, int, int]:
     items = list(rectangles)
     if not items:
@@ -79,6 +88,71 @@ def _normalized_anchor(spec: dict[str, Any], width: int, height: int) -> tuple[f
     if unit == "pixels":
         return x, y
     raise ValueError(f"unsupported foot anchor unit: {unit}")
+
+
+def _spatial_registration(
+    clip_name: str,
+    clip_spec: dict[str, Any],
+    frames: list[SourceFrame],
+    frame_size: tuple[int, int],
+) -> tuple[tuple[int, int], list[tuple[int, int]], dict[str, Any] | None]:
+    registration = clip_spec.get("registration")
+    if not registration:
+        return (0, 0), [(0, 0)] * len(frames), None
+
+    method = registration.get("method")
+    if method != "reference-relative-position":
+        raise ValueError(f"{clip_name}: unsupported spatial registration method: {method}")
+    threshold = int(registration.get("alphaThreshold", 32))
+    reference_frame = int(registration.get("referenceFrame", 1))
+    if reference_frame < 1 or reference_frame > len(frames):
+        raise ValueError(f"{clip_name}: spatial registration referenceFrame is out of range")
+
+    relative_positions = registration.get("referenceRelativePositions")
+    if not isinstance(relative_positions, list) or len(relative_positions) != len(frames):
+        raise ValueError(f"{clip_name}: referenceRelativePositions must match the frame count")
+    positions = [(int(position["x"]), int(position["y"])) for position in relative_positions]
+    if positions[reference_frame - 1] != (0, 0):
+        raise ValueError(f"{clip_name}: reference frame relative position must be (0, 0)")
+
+    feature_bounds = [_alpha_bounds(frame.canvas, threshold) for frame in frames]
+    reference_x, reference_y = feature_bounds[reference_frame - 1][:2]
+    corrections = [
+        (
+            reference_x + position[0] - bounds[0],
+            reference_y + position[1] - bounds[1],
+        )
+        for position, bounds in zip(positions, feature_bounds)
+    ]
+    shared_spec = registration.get("sharedContentOffset", {})
+    shared_offset = (int(shared_spec.get("x", 0)), int(shared_spec.get("y", 0)))
+    offsets = [
+        (shared_offset[0] + correction[0], shared_offset[1] + correction[1])
+        for correction in corrections
+    ]
+    frame_width, frame_height = frame_size
+    shifted_bounds = [
+        _offset_rect(bounds, offset)
+        for bounds, offset in zip(feature_bounds, offsets)
+    ]
+    if any(left < 0 or top < 0 or right > frame_width or bottom > frame_height
+           for left, top, right, bottom in shifted_bounds):
+        raise ValueError(f"{clip_name}: spatial registration exceeds the shared frame canvas")
+
+    metadata = {
+        "method": method,
+        "alphaThreshold": threshold,
+        "referenceFrame": reference_frame,
+        "referenceFeature": {"x": reference_x, "y": reference_y},
+        "sharedContentOffset": {"x": shared_offset[0], "y": shared_offset[1]},
+        "referenceRelativePositions": [
+            {"x": position[0], "y": position[1]} for position in positions
+        ],
+        "frameCorrections": [
+            {"x": correction[0], "y": correction[1]} for correction in corrections
+        ],
+    }
+    return shared_offset, corrections, metadata
 
 
 def _sequence_frames(project_root: Path, source: dict[str, Any]) -> list[SourceFrame]:
@@ -194,8 +268,23 @@ def _process_clip(
     foot_anchor = _normalized_anchor(clip_spec["footAnchor"], source_width, source_height)
     alpha_bounds = [_alpha_bounds(frame.canvas) for frame in frames]
     visual_bounds = [_alpha_bounds(frame.canvas, 32) for frame in frames]
-    union_bounds = _union(alpha_bounds)
-    visual_union = _union(visual_bounds)
+    shared_offset, frame_corrections, registration = _spatial_registration(
+        clip_name, clip_spec, frames, source_size,
+    )
+    frame_offsets = [
+        (shared_offset[0] + correction[0], shared_offset[1] + correction[1])
+        for correction in frame_corrections
+    ]
+    registered_visual_bounds = [
+        _offset_rect(bounds, offset)
+        for bounds, offset in zip(visual_bounds, frame_offsets)
+    ]
+    registered_alpha_bounds = [
+        _offset_rect(bounds, offset)
+        for bounds, offset in zip(alpha_bounds, frame_offsets)
+    ]
+    union_bounds = _union(registered_alpha_bounds)
+    visual_union = _union(registered_visual_bounds)
 
     runtime_height = int(runtime_spec["frameHeight"])
     scale = runtime_height / source_height
@@ -209,33 +298,58 @@ def _process_clip(
     output_width = _align_up(raw_right - raw_left, alignment)
     crop_left = math.floor((raw_left + raw_right - output_width) * 0.5)
     crop_right = crop_left + output_width
-    runtime_anchor = (foot_anchor[0] * scale - crop_left, foot_anchor[1] * scale)
+    runtime_shared_offset = (
+        int(round(shared_offset[0] * scale)),
+        int(round(shared_offset[1] * scale)),
+    )
+    runtime_frame_corrections = [
+        (int(round(correction[0] * scale)), int(round(correction[1] * scale)))
+        for correction in frame_corrections
+    ]
+    runtime_frame_offsets = [
+        (
+            runtime_shared_offset[0] + correction[0],
+            runtime_shared_offset[1] + correction[1],
+        )
+        for correction in runtime_frame_corrections
+    ]
+    master_anchor = (
+        foot_anchor[0] + shared_offset[0],
+        foot_anchor[1] + shared_offset[1],
+    )
+    runtime_anchor = (
+        foot_anchor[0] * scale + runtime_shared_offset[0] - crop_left,
+        foot_anchor[1] * scale + runtime_shared_offset[1],
+    )
     master_descriptors: list[dict[str, Any]] = []
     runtime_descriptors: list[dict[str, Any]] = []
     clip_output = output_root / clip_name
     clip_output.mkdir(parents=True, exist_ok=True)
 
-    for index, (frame, bounds) in enumerate(zip(frames, visual_bounds), start=1):
+    for index, (frame, bounds, frame_offset) in enumerate(
+        zip(frames, registered_visual_bounds, frame_offsets), start=1,
+    ):
         master_texture = _resource_path(project_root, frame.texture_path)
         master_descriptors.append(_frame_descriptor(
             master_texture,
             frame.source_rect,
-            frame.source_offset,
+            (
+                frame.source_offset[0] + frame_offset[0],
+                frame.source_offset[1] + frame_offset[1],
+            ),
             source_size,
-            foot_anchor,
+            master_anchor,
             bounds,
             frame.source_hash,
         ))
 
         resized = _resize_rgba(frame.canvas, (scaled_width, runtime_height))
         runtime_frame = Image.new("RGBA", (output_width, runtime_height), (0, 0, 0, 0))
-        source_left = max(0, crop_left)
-        source_right = min(scaled_width, crop_right)
-        if source_right > source_left:
-            runtime_frame.alpha_composite(
-                resized.crop((source_left, 0, source_right, runtime_height)),
-                (source_left - crop_left, 0),
-            )
+        runtime_offset = runtime_frame_offsets[index - 1]
+        runtime_frame.alpha_composite(
+            resized,
+            (runtime_offset[0] - crop_left, runtime_offset[1]),
+        )
         output_path = clip_output / f"frame_{index:02d}.png"
         runtime_frame.save(output_path, format="PNG", optimize=True, compress_level=9)
         runtime_bounds = _alpha_bounds(runtime_frame, 32)
@@ -275,6 +389,8 @@ def _process_clip(
         "footAnchor": master_descriptors[0]["footAnchor"],
         "frames": master_descriptors,
     }
+    if registration:
+        master_clip["spatialRegistration"] = registration
     runtime_clip = {
         **common,
         "frameWidth": output_width,
@@ -289,6 +405,28 @@ def _process_clip(
         "scaleFromMaster": scale,
         "frames": runtime_descriptors,
     }
+    if registration:
+        runtime_clip["spatialRegistration"] = {
+            **registration,
+            "referenceFeature": {
+                "x": int(round(registration["referenceFeature"]["x"] * scale)) - crop_left,
+                "y": int(round(registration["referenceFeature"]["y"] * scale)),
+            },
+            "sharedContentOffset": {
+                "x": runtime_shared_offset[0], "y": runtime_shared_offset[1],
+            },
+            "referenceRelativePositions": [
+                {
+                    "x": int(round(position["x"] * scale)),
+                    "y": int(round(position["y"] * scale)),
+                }
+                for position in registration["referenceRelativePositions"]
+            ],
+            "frameCorrections": [
+                {"x": correction[0], "y": correction[1]}
+                for correction in runtime_frame_corrections
+            ],
+        }
     return master_clip, runtime_clip
 
 
@@ -330,6 +468,7 @@ def build(spec_path: Path) -> dict[str, Any]:
             "resampling": spec["runtime"]["resampling"],
             "cropPolicy": "per-clip-alpha-union",
             "anchorSemantic": "foot-center",
+            "registrationPolicy": "optional-reference-relative-xy",
             "visualAlphaThreshold": 32,
         },
         "variants": {

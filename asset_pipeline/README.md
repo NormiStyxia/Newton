@@ -20,6 +20,18 @@ height, horizontal padding, and width alignment. For every clip the processor:
 4. performs a premultiplied-alpha Lanczos downsample;
 5. writes PNG frames plus one engine-neutral JSON manifest.
 
+An individual clip may additionally opt into spatial registration. WALK uses
+the original opaque 1080x1080 sequence's relative X/Y positions recorded in
+`companion_runtime.json`; this restores the source motion that was lost when
+the transparent Master inputs were tight-cropped to different sizes. The
+processor moves all WALK content upward by 24 Master pixels to leave alignment
+room and moves the shared foot anchor by the same amount. This keeps the
+screen-space root unchanged while allowing the animated feet to move naturally
+instead of forcing every frame's lowest pixel onto the floor. The Master PNGs
+remain untouched; portable `sourceOffset`, `footAnchor`, and
+`spatialRegistration` metadata carry the correction. Runtime PNGs bake the same
+registration into one shared per-clip canvas.
+
 The current `runtime_512` output is 256x512, but that width is derived rather
 than required. A wider future action may produce a wider frame without changing
 the animation player.

@@ -83,6 +83,8 @@ def main() -> int:
            "runtime crop policy is not clip union")
     expect(manifest["runtimePolicy"]["resampling"] == "lanczos-premultiplied-alpha",
            "runtime resampling policy changed")
+    expect(manifest["runtimePolicy"]["registrationPolicy"] == "optional-reference-relative-xy",
+           "runtime registration policy changed")
 
     for clip_name in ("idle", "blink", "move"):
         master_clip = master["clips"][clip_name]
@@ -99,7 +101,9 @@ def main() -> int:
         expect(len(runtime_anchors) == 1, f"{clip_name}: foot anchor changed between frames")
         master_screen_height = master_clip["visualBounds"]["height"] / master_clip["frameHeight"] * SPRITE_HEIGHT
         runtime_screen_height = runtime_clip["visualBounds"]["height"] / runtime_clip["frameHeight"] * SPRITE_HEIGHT
-        expect(abs(master_screen_height - runtime_screen_height) <= 0.5,
+        # Reference-relative motion can enlarge the clip union by one Lanczos
+        # threshold pixel at each extreme without changing spriteHeight.
+        expect(abs(master_screen_height - runtime_screen_height) <= 0.75,
                f"{clip_name}: visual display height changed")
         for master_frame, runtime_frame in zip(master_clip["frames"], runtime_clip["frames"]):
             expect(sha256(texture_path(master_frame)) == master_frame["sourceHash"],
@@ -111,14 +115,53 @@ def main() -> int:
             # preserving the visible alpha>32 silhouette.
             expect(abs(runtime_bounds["height"] - master_bounds["height"] * scale) <= 3.1,
                    f"{clip_name}: frame alpha height drifted during resize")
-            expect(abs((runtime_bounds["y"] + runtime_bounds["height"])
-                       - runtime_frame["footAnchor"]["y"]) <= 1,
-                   f"{clip_name}: frame foot no longer reaches the shared anchor")
+            if clip_name != "move":
+                expect(abs((runtime_bounds["y"] + runtime_bounds["height"])
+                           - runtime_frame["footAnchor"]["y"]) <= 1,
+                       f"{clip_name}: frame foot no longer reaches the shared anchor")
             actual = alpha_bounds(texture_path(runtime_frame))
             expected = runtime_frame["visualBounds"]
-            expect(actual == (expected["x"], expected["y"],
-                              expected["x"] + expected["width"], expected["y"] + expected["height"]),
+            offset = runtime_frame["sourceOffset"]
+            expect(actual == (expected["x"] - offset["x"], expected["y"] - offset["y"],
+                              expected["x"] + expected["width"] - offset["x"],
+                              expected["y"] + expected["height"] - offset["y"]),
                    f"{clip_name}: runtime manifest alpha bounds are stale")
+
+    master_move = master["clips"]["move"]
+    runtime_move = runtime["clips"]["move"]
+    master_registration = master_move.get("spatialRegistration", {})
+    runtime_registration = runtime_move.get("spatialRegistration", {})
+    expect(master_registration.get("method") == "reference-relative-position"
+           and master_registration.get("referenceFrame") == 1,
+           "move: Master reference-relative registration is missing")
+    expect(master_registration.get("sharedContentOffset") == {"x": 0, "y": -24},
+           "move: Master registration headroom changed")
+    expect(runtime_registration.get("sharedContentOffset", {}).get("y", 0) < 0,
+           "move: runtime frames were not moved upward")
+    expected_positions = [
+        (position["x"], position["y"])
+        for position in master_registration.get("referenceRelativePositions", [])
+    ]
+    master_left = master_move["frames"][0]["visualBounds"]["x"]
+    master_top = master_move["frames"][0]["visualBounds"]["y"]
+    actual_positions = [
+        (frame["visualBounds"]["x"] - master_left, frame["visualBounds"]["y"] - master_top)
+        for frame in master_move["frames"]
+    ]
+    expect(actual_positions == expected_positions,
+           "move: Master frames do not preserve the reference relative X/Y")
+    runtime_positions = runtime_registration.get("referenceRelativePositions", [])
+    runtime_left = runtime_move["frames"][0]["visualBounds"]["x"]
+    runtime_top = runtime_move["frames"][0]["visualBounds"]["y"]
+    for index, (frame, expected_position) in enumerate(
+        zip(runtime_move["frames"], runtime_positions), start=1,
+    ):
+        expect(abs((frame["visualBounds"]["x"] - runtime_left) - expected_position["x"]) <= 1
+               and abs((frame["visualBounds"]["y"] - runtime_top) - expected_position["y"]) <= 1,
+               f"move: runtime frame {index} lost the reference relative X/Y")
+    expect(master_move["footAnchor"]["normalizedY"] < 1
+           and runtime_move["footAnchor"]["normalizedY"] < 1,
+           "move: shared foot anchor did not compensate the upward content shift")
 
     view_source = VIEW_PATH.read_text(encoding="utf-8")
     config_source = CONFIG_PATH.read_text(encoding="utf-8")

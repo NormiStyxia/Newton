@@ -45,6 +45,30 @@
     "move": {
       "fps": 10,
       "loop": true,
+      "registration": {
+        "method": "reference-relative-position",
+        "alphaThreshold": 32,
+        "referenceFrame": 1,
+        "sharedContentOffset": { "x": 0, "y": -24 },
+        "referenceRelativePositions": [
+          { "x": 0, "y": 0 },
+          { "x": -1, "y": 2 },
+          { "x": -3, "y": 7 },
+          { "x": -4, "y": 10 },
+          { "x": -5, "y": 10 },
+          { "x": -4, "y": 9 },
+          { "x": -2, "y": 4 },
+          { "x": -1, "y": 1 },
+          { "x": 0, "y": 0 },
+          { "x": 1, "y": 2 },
+          { "x": 3, "y": 7 },
+          { "x": 5, "y": 10 },
+          { "x": 5, "y": 9 },
+          { "x": 5, "y": 8 },
+          { "x": 2, "y": 3 },
+          { "x": 2, "y": 0 }
+        ]
+      },
       "footAnchor": {
         "x": 0.5,
         "y": 1.0,
