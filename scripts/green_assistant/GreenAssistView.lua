@@ -276,7 +276,12 @@ function View:render(frameData, debugInfo)
         local vg = self.renderer.vg
         nvgSave(vg)
         if self.flipX then
-            nvgTranslate(vg, rect.x + rect.width, rect.y)
+            -- Mirror around the logical foot/root anchor, not the cropped
+            -- texture center. Runtime clip crops are intentionally compact,
+            -- so anchorX is not guaranteed to be 0.5.
+            local pivotX = self.position.x + (frameData.offsetX or 0)
+            local mirrorOrigin = pivotX * 2 - rect.x
+            nvgTranslate(vg, mirrorOrigin, rect.y)
             nvgScale(vg, -1, 1)
             self:_drawFrame(vg, handle, imageSize, frameData,
                 { x = 0, y = 0, width = rect.width, height = rect.height })

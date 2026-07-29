@@ -39,6 +39,18 @@ local function ValidateFrame(frame, label)
         or type(anchor.normalizedY) ~= "number" then
         return false, label .. ".footAnchor is invalid"
     end
+    if frame.semanticAnchors ~= nil and type(frame.semanticAnchors) ~= "table" then
+        return false, label .. ".semanticAnchors must be a table"
+    end
+    for name, semanticAnchor in pairs(frame.semanticAnchors or {}) do
+        if type(semanticAnchor) ~= "table"
+            or type(semanticAnchor.x) ~= "number"
+            or type(semanticAnchor.y) ~= "number"
+            or type(semanticAnchor.normalizedX) ~= "number"
+            or type(semanticAnchor.normalizedY) ~= "number" then
+            return false, string.format("%s.semanticAnchors.%s is invalid", label, tostring(name))
+        end
+    end
     return true
 end
 
@@ -77,6 +89,7 @@ local function RuntimeFrame(frame)
         frameHeight = frame.frameHeight,
         visualBounds = CopyTable(frame.visualBounds),
         footAnchor = CopyTable(anchor),
+        semanticAnchors = CopyTable(frame.semanticAnchors),
         anchorX = anchor.normalizedX,
         anchorY = anchor.normalizedY,
     }

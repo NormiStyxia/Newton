@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "processorVersion": 2,
+  "processorVersion": 3,
   "assetId": "green_assistant",
   "runtimePolicy": {
     "targetFrameHeight": 512,
@@ -18,7 +18,7 @@
       "clips": {
         "blink": {
           "sourceType": "imageSequence",
-          "fps": 12.0,
+          "fps": 10.0,
           "loop": false,
           "frameCount": 16,
           "frameWidth": 1080,
@@ -486,9 +486,615 @@
             }
           ]
         },
+        "drag": {
+          "sourceType": "imageSequence",
+          "fps": 16.0,
+          "loop": true,
+          "frameCount": 16,
+          "frameWidth": 1080,
+          "frameHeight": 1080,
+          "visualBounds": {
+            "x": 172,
+            "y": 160,
+            "width": 620,
+            "height": 749
+          },
+          "footAnchor": {
+            "x": 540.0,
+            "y": 1080.0,
+            "normalizedX": 0.5,
+            "normalizedY": 1.0
+          },
+          "frames": [
+            {
+              "texture": "image/green_assistant/drag/frame_01.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 1080,
+                "height": 1080
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 1080,
+              "frameHeight": 1080,
+              "footAnchor": {
+                "x": 540.0,
+                "y": 1080.0,
+                "normalizedX": 0.5,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 172,
+                "y": 160,
+                "width": 601,
+                "height": 748
+              },
+              "sourceHash": "e67d0e37b9cd7533d7101ab52389b6670107d4cf8b5810027854832812a57f98",
+              "semanticAnchors": {
+                "dragGrab": {
+                  "x": 611.0,
+                  "y": 184.0,
+                  "normalizedX": 0.5657407407407408,
+                  "normalizedY": 0.17037037037037037
+                }
+              }
+            },
+            {
+              "texture": "image/green_assistant/drag/frame_02.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 1080,
+                "height": 1080
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 1080,
+              "frameHeight": 1080,
+              "footAnchor": {
+                "x": 540.0,
+                "y": 1080.0,
+                "normalizedX": 0.5,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 172,
+                "y": 160,
+                "width": 601,
+                "height": 748
+              },
+              "sourceHash": "43bfc4af1b934c0dc896e9a55cb9df46eec8a51659762855aba4ba9c4cffdfe5",
+              "semanticAnchors": {
+                "dragGrab": {
+                  "x": 611.0,
+                  "y": 184.0,
+                  "normalizedX": 0.5657407407407408,
+                  "normalizedY": 0.17037037037037037
+                }
+              }
+            },
+            {
+              "texture": "image/green_assistant/drag/frame_03.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 1080,
+                "height": 1080
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 1080,
+              "frameHeight": 1080,
+              "footAnchor": {
+                "x": 540.0,
+                "y": 1080.0,
+                "normalizedX": 0.5,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 173,
+                "y": 160,
+                "width": 602,
+                "height": 748
+              },
+              "sourceHash": "5c209247e0133f03fcbd41a0f280160b1f402322d7f8ede884fa8b22e4afca53",
+              "semanticAnchors": {
+                "dragGrab": {
+                  "x": 611.0,
+                  "y": 184.0,
+                  "normalizedX": 0.5657407407407408,
+                  "normalizedY": 0.17037037037037037
+                }
+              }
+            },
+            {
+              "texture": "image/green_assistant/drag/frame_04.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 1080,
+                "height": 1080
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 1080,
+              "frameHeight": 1080,
+              "footAnchor": {
+                "x": 540.0,
+                "y": 1080.0,
+                "normalizedX": 0.5,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 175,
+                "y": 160,
+                "width": 604,
+                "height": 748
+              },
+              "sourceHash": "bd60cd47857a61d11a02d99cd26ed2f8d09c0a55a4c6b07023aa12d4138cba88",
+              "semanticAnchors": {
+                "dragGrab": {
+                  "x": 611.0,
+                  "y": 184.0,
+                  "normalizedX": 0.5657407407407408,
+                  "normalizedY": 0.17037037037037037
+                }
+              }
+            },
+            {
+              "texture": "image/green_assistant/drag/frame_05.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 1080,
+                "height": 1080
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 1080,
+              "frameHeight": 1080,
+              "footAnchor": {
+                "x": 540.0,
+                "y": 1080.0,
+                "normalizedX": 0.5,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 177,
+                "y": 161,
+                "width": 605,
+                "height": 748
+              },
+              "sourceHash": "d60846b2e0b02ea8afcab675043471e2ddf47f7801067cb89995d851ed2685c6",
+              "semanticAnchors": {
+                "dragGrab": {
+                  "x": 611.0,
+                  "y": 184.0,
+                  "normalizedX": 0.5657407407407408,
+                  "normalizedY": 0.17037037037037037
+                }
+              }
+            },
+            {
+              "texture": "image/green_assistant/drag/frame_06.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 1080,
+                "height": 1080
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 1080,
+              "frameHeight": 1080,
+              "footAnchor": {
+                "x": 540.0,
+                "y": 1080.0,
+                "normalizedX": 0.5,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 179,
+                "y": 161,
+                "width": 607,
+                "height": 748
+              },
+              "sourceHash": "6277870079a1e8116c4e4607f8f54d5b6ae855865fa3e84cb4734ac2d91e27d5",
+              "semanticAnchors": {
+                "dragGrab": {
+                  "x": 611.0,
+                  "y": 184.0,
+                  "normalizedX": 0.5657407407407408,
+                  "normalizedY": 0.17037037037037037
+                }
+              }
+            },
+            {
+              "texture": "image/green_assistant/drag/frame_07.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 1080,
+                "height": 1080
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 1080,
+              "frameHeight": 1080,
+              "footAnchor": {
+                "x": 540.0,
+                "y": 1080.0,
+                "normalizedX": 0.5,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 181,
+                "y": 161,
+                "width": 608,
+                "height": 748
+              },
+              "sourceHash": "7ebe33017ad94dc6fafb2a2c5e927b031a9add74956f2156b8024d5ca793cad8",
+              "semanticAnchors": {
+                "dragGrab": {
+                  "x": 611.0,
+                  "y": 184.0,
+                  "normalizedX": 0.5657407407407408,
+                  "normalizedY": 0.17037037037037037
+                }
+              }
+            },
+            {
+              "texture": "image/green_assistant/drag/frame_08.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 1080,
+                "height": 1080
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 1080,
+              "frameHeight": 1080,
+              "footAnchor": {
+                "x": 540.0,
+                "y": 1080.0,
+                "normalizedX": 0.5,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 183,
+                "y": 161,
+                "width": 608,
+                "height": 748
+              },
+              "sourceHash": "21fde0a41eab43b4b4a19d319fa4ba60c2e793b84f7704ab5fe0bb9b60199479",
+              "semanticAnchors": {
+                "dragGrab": {
+                  "x": 611.0,
+                  "y": 184.0,
+                  "normalizedX": 0.5657407407407408,
+                  "normalizedY": 0.17037037037037037
+                }
+              }
+            },
+            {
+              "texture": "image/green_assistant/drag/frame_09.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 1080,
+                "height": 1080
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 1080,
+              "frameHeight": 1080,
+              "footAnchor": {
+                "x": 540.0,
+                "y": 1080.0,
+                "normalizedX": 0.5,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 184,
+                "y": 161,
+                "width": 608,
+                "height": 748
+              },
+              "sourceHash": "9dc3dc4d405e37b7befa7b8aa78455535e211038ff5d9e29f2a4e0644e72fc35",
+              "semanticAnchors": {
+                "dragGrab": {
+                  "x": 611.0,
+                  "y": 184.0,
+                  "normalizedX": 0.5657407407407408,
+                  "normalizedY": 0.17037037037037037
+                }
+              }
+            },
+            {
+              "texture": "image/green_assistant/drag/frame_10.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 1080,
+                "height": 1080
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 1080,
+              "frameHeight": 1080,
+              "footAnchor": {
+                "x": 540.0,
+                "y": 1080.0,
+                "normalizedX": 0.5,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 184,
+                "y": 161,
+                "width": 607,
+                "height": 748
+              },
+              "sourceHash": "e242460e625f318289a596fda7b8c2a91084ef62d1c198accdf4ca8c1b62ab0d",
+              "semanticAnchors": {
+                "dragGrab": {
+                  "x": 611.0,
+                  "y": 184.0,
+                  "normalizedX": 0.5657407407407408,
+                  "normalizedY": 0.17037037037037037
+                }
+              }
+            },
+            {
+              "texture": "image/green_assistant/drag/frame_11.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 1080,
+                "height": 1080
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 1080,
+              "frameHeight": 1080,
+              "footAnchor": {
+                "x": 540.0,
+                "y": 1080.0,
+                "normalizedX": 0.5,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 182,
+                "y": 161,
+                "width": 605,
+                "height": 748
+              },
+              "sourceHash": "8ba4cc56208809d5b1b53942bf06a981a7e66ee43aadcf5dedce60de56668d0b",
+              "semanticAnchors": {
+                "dragGrab": {
+                  "x": 611.0,
+                  "y": 184.0,
+                  "normalizedX": 0.5657407407407408,
+                  "normalizedY": 0.17037037037037037
+                }
+              }
+            },
+            {
+              "texture": "image/green_assistant/drag/frame_12.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 1080,
+                "height": 1080
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 1080,
+              "frameHeight": 1080,
+              "footAnchor": {
+                "x": 540.0,
+                "y": 1080.0,
+                "normalizedX": 0.5,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 181,
+                "y": 161,
+                "width": 604,
+                "height": 748
+              },
+              "sourceHash": "0bfad050cc313dca293480f200626c89b8cb6df2179c9cb1e5180672f4bb5d22",
+              "semanticAnchors": {
+                "dragGrab": {
+                  "x": 611.0,
+                  "y": 184.0,
+                  "normalizedX": 0.5657407407407408,
+                  "normalizedY": 0.17037037037037037
+                }
+              }
+            },
+            {
+              "texture": "image/green_assistant/drag/frame_13.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 1080,
+                "height": 1080
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 1080,
+              "frameHeight": 1080,
+              "footAnchor": {
+                "x": 540.0,
+                "y": 1080.0,
+                "normalizedX": 0.5,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 178,
+                "y": 161,
+                "width": 602,
+                "height": 748
+              },
+              "sourceHash": "8d25f5466b8f0e077badc826359b7493230d4ce6275c104479eef215c9905837",
+              "semanticAnchors": {
+                "dragGrab": {
+                  "x": 611.0,
+                  "y": 184.0,
+                  "normalizedX": 0.5657407407407408,
+                  "normalizedY": 0.17037037037037037
+                }
+              }
+            },
+            {
+              "texture": "image/green_assistant/drag/frame_14.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 1080,
+                "height": 1080
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 1080,
+              "frameHeight": 1080,
+              "footAnchor": {
+                "x": 540.0,
+                "y": 1080.0,
+                "normalizedX": 0.5,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 176,
+                "y": 160,
+                "width": 602,
+                "height": 748
+              },
+              "sourceHash": "9a2ad9edf523c39f7d309f53813dc9dab71ee6eee562210db5892b43793d8d1f",
+              "semanticAnchors": {
+                "dragGrab": {
+                  "x": 611.0,
+                  "y": 184.0,
+                  "normalizedX": 0.5657407407407408,
+                  "normalizedY": 0.17037037037037037
+                }
+              }
+            },
+            {
+              "texture": "image/green_assistant/drag/frame_15.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 1080,
+                "height": 1080
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 1080,
+              "frameHeight": 1080,
+              "footAnchor": {
+                "x": 540.0,
+                "y": 1080.0,
+                "normalizedX": 0.5,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 174,
+                "y": 160,
+                "width": 601,
+                "height": 748
+              },
+              "sourceHash": "1d7c25548c0463050eefcfc7be7b1ff09853f44c8ef3040b4cacb8bc70772516",
+              "semanticAnchors": {
+                "dragGrab": {
+                  "x": 611.0,
+                  "y": 184.0,
+                  "normalizedX": 0.5657407407407408,
+                  "normalizedY": 0.17037037037037037
+                }
+              }
+            },
+            {
+              "texture": "image/green_assistant/drag/frame_16.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 1080,
+                "height": 1080
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 1080,
+              "frameHeight": 1080,
+              "footAnchor": {
+                "x": 540.0,
+                "y": 1080.0,
+                "normalizedX": 0.5,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 172,
+                "y": 160,
+                "width": 600,
+                "height": 747
+              },
+              "sourceHash": "cc07662e53f8c918cdefd271d0be651263c30eb318db5f5ea771025cdc8a59ed",
+              "semanticAnchors": {
+                "dragGrab": {
+                  "x": 611.0,
+                  "y": 184.0,
+                  "normalizedX": 0.5657407407407408,
+                  "normalizedY": 0.17037037037037037
+                }
+              }
+            }
+          ],
+          "semanticAnchors": {
+            "dragGrab": {
+              "x": 611.0,
+              "y": 184.0,
+              "normalizedX": 0.5657407407407408,
+              "normalizedY": 0.17037037037037037
+            }
+          }
+        },
         "idle": {
           "sourceType": "imageSequence",
-          "fps": 8.0,
+          "fps": 10.0,
           "loop": true,
           "frameCount": 16,
           "frameWidth": 1080,
@@ -958,7 +1564,7 @@
         },
         "move": {
           "sourceType": "imageSequence",
-          "fps": 10.0,
+          "fps": 16.0,
           "loop": true,
           "frameCount": 16,
           "frameWidth": 1080,
@@ -1570,6 +2176,946 @@
               }
             ]
           }
+        },
+        "tap_react_a": {
+          "sourceType": "imageSequence",
+          "fps": 16.0,
+          "loop": false,
+          "frameCount": 16,
+          "frameWidth": 1080,
+          "frameHeight": 1080,
+          "visualBounds": {
+            "x": 329,
+            "y": 120,
+            "width": 451,
+            "height": 960
+          },
+          "footAnchor": {
+            "x": 540.0,
+            "y": 1080.0,
+            "normalizedX": 0.5,
+            "normalizedY": 1.0
+          },
+          "frames": [
+            {
+              "texture": "image/green_assistant/tap_react_a/frame_01.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 1080,
+                "height": 1080
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 1080,
+              "frameHeight": 1080,
+              "footAnchor": {
+                "x": 540.0,
+                "y": 1080.0,
+                "normalizedX": 0.5,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 350,
+                "y": 122,
+                "width": 380,
+                "height": 957
+              },
+              "sourceHash": "2ddc6538a9588e15fb64c6977033a0e0735c0686149a534f1deee4f074126748"
+            },
+            {
+              "texture": "image/green_assistant/tap_react_a/frame_02.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 1080,
+                "height": 1080
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 1080,
+              "frameHeight": 1080,
+              "footAnchor": {
+                "x": 540.0,
+                "y": 1080.0,
+                "normalizedX": 0.5,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 349,
+                "y": 122,
+                "width": 389,
+                "height": 957
+              },
+              "sourceHash": "3bb27c15eb7cf7140a7571c8f7e552e8a80749269adda94f9c5ba7d774152f81"
+            },
+            {
+              "texture": "image/green_assistant/tap_react_a/frame_03.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 1080,
+                "height": 1080
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 1080,
+              "frameHeight": 1080,
+              "footAnchor": {
+                "x": 540.0,
+                "y": 1080.0,
+                "normalizedX": 0.5,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 364,
+                "y": 122,
+                "width": 395,
+                "height": 958
+              },
+              "sourceHash": "51577b47456795f9bb1658dee7fb4bb96f7885319933c792ffde89934a2bec62"
+            },
+            {
+              "texture": "image/green_assistant/tap_react_a/frame_04.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 1080,
+                "height": 1080
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 1080,
+              "frameHeight": 1080,
+              "footAnchor": {
+                "x": 540.0,
+                "y": 1080.0,
+                "normalizedX": 0.5,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 359,
+                "y": 123,
+                "width": 404,
+                "height": 956
+              },
+              "sourceHash": "7e6cd649bc893664eb3314c9ee05149da28a947fd7336c4dd860e2dadea09b98"
+            },
+            {
+              "texture": "image/green_assistant/tap_react_a/frame_05.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 1080,
+                "height": 1080
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 1080,
+              "frameHeight": 1080,
+              "footAnchor": {
+                "x": 540.0,
+                "y": 1080.0,
+                "normalizedX": 0.5,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 375,
+                "y": 124,
+                "width": 401,
+                "height": 956
+              },
+              "sourceHash": "1085985276bc903910c88a7db811ae5c01827e49eabbdf73fabd262924bb93f6"
+            },
+            {
+              "texture": "image/green_assistant/tap_react_a/frame_06.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 1080,
+                "height": 1080
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 1080,
+              "frameHeight": 1080,
+              "footAnchor": {
+                "x": 540.0,
+                "y": 1080.0,
+                "normalizedX": 0.5,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 356,
+                "y": 122,
+                "width": 424,
+                "height": 958
+              },
+              "sourceHash": "63334a404867fb998f6a0add9b8b035360afe7196f2269f6d13bada0b8271968"
+            },
+            {
+              "texture": "image/green_assistant/tap_react_a/frame_07.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 1080,
+                "height": 1080
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 1080,
+              "frameHeight": 1080,
+              "footAnchor": {
+                "x": 540.0,
+                "y": 1080.0,
+                "normalizedX": 0.5,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 338,
+                "y": 122,
+                "width": 428,
+                "height": 958
+              },
+              "sourceHash": "7f30ac2014671dbe9bacebe479ab6f1084c580985ed794892590767324d02f59"
+            },
+            {
+              "texture": "image/green_assistant/tap_react_a/frame_08.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 1080,
+                "height": 1080
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 1080,
+              "frameHeight": 1080,
+              "footAnchor": {
+                "x": 540.0,
+                "y": 1080.0,
+                "normalizedX": 0.5,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 329,
+                "y": 121,
+                "width": 410,
+                "height": 958
+              },
+              "sourceHash": "ddf2693c40a70c23fd4a8537171c4470053c5c79446ca02d9463b3ccf037e352"
+            },
+            {
+              "texture": "image/green_assistant/tap_react_a/frame_09.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 1080,
+                "height": 1080
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 1080,
+              "frameHeight": 1080,
+              "footAnchor": {
+                "x": 540.0,
+                "y": 1080.0,
+                "normalizedX": 0.5,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 336,
+                "y": 122,
+                "width": 390,
+                "height": 957
+              },
+              "sourceHash": "b30a90511482150719ce314430d6982167285abf4c09e420846a0b3a93de99ba"
+            },
+            {
+              "texture": "image/green_assistant/tap_react_a/frame_10.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 1080,
+                "height": 1080
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 1080,
+              "frameHeight": 1080,
+              "footAnchor": {
+                "x": 540.0,
+                "y": 1080.0,
+                "normalizedX": 0.5,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 347,
+                "y": 120,
+                "width": 383,
+                "height": 959
+              },
+              "sourceHash": "71156a99c7711d6c0486431f62eb2ca828e08bf2f4476819b631ce929d5819a5"
+            },
+            {
+              "texture": "image/green_assistant/tap_react_a/frame_11.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 1080,
+                "height": 1080
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 1080,
+              "frameHeight": 1080,
+              "footAnchor": {
+                "x": 540.0,
+                "y": 1080.0,
+                "normalizedX": 0.5,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 352,
+                "y": 120,
+                "width": 378,
+                "height": 959
+              },
+              "sourceHash": "b0dbbd00a1ee35f7f5c0db3e73f100044f41911ee1e7f85a4de2dd7abca04313"
+            },
+            {
+              "texture": "image/green_assistant/tap_react_a/frame_12.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 1080,
+                "height": 1080
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 1080,
+              "frameHeight": 1080,
+              "footAnchor": {
+                "x": 540.0,
+                "y": 1080.0,
+                "normalizedX": 0.5,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 353,
+                "y": 120,
+                "width": 378,
+                "height": 959
+              },
+              "sourceHash": "5dc1839a935f043c6475f396de34c359834663b470c824e9fa79d1ec26daaff9"
+            },
+            {
+              "texture": "image/green_assistant/tap_react_a/frame_13.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 1080,
+                "height": 1080
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 1080,
+              "frameHeight": 1080,
+              "footAnchor": {
+                "x": 540.0,
+                "y": 1080.0,
+                "normalizedX": 0.5,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 350,
+                "y": 120,
+                "width": 380,
+                "height": 959
+              },
+              "sourceHash": "1a17738816796aa21ec96ea5ae445111e6b620139a6b96fcb84843c42f8c2956"
+            },
+            {
+              "texture": "image/green_assistant/tap_react_a/frame_14.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 1080,
+                "height": 1080
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 1080,
+              "frameHeight": 1080,
+              "footAnchor": {
+                "x": 540.0,
+                "y": 1080.0,
+                "normalizedX": 0.5,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 350,
+                "y": 120,
+                "width": 381,
+                "height": 959
+              },
+              "sourceHash": "15dbc8b3a72aba86f41ddc3dbb59dc465194a2f87f56d3d85fa6b1b31ad6f9b0"
+            },
+            {
+              "texture": "image/green_assistant/tap_react_a/frame_15.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 1080,
+                "height": 1080
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 1080,
+              "frameHeight": 1080,
+              "footAnchor": {
+                "x": 540.0,
+                "y": 1080.0,
+                "normalizedX": 0.5,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 350,
+                "y": 121,
+                "width": 381,
+                "height": 959
+              },
+              "sourceHash": "d053dcbcb42fe1440dcdc34bd2724399bbecd8d0b2c53fb383f320cb96b62e62"
+            },
+            {
+              "texture": "image/green_assistant/tap_react_a/frame_16.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 1080,
+                "height": 1080
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 1080,
+              "frameHeight": 1080,
+              "footAnchor": {
+                "x": 540.0,
+                "y": 1080.0,
+                "normalizedX": 0.5,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 350,
+                "y": 121,
+                "width": 381,
+                "height": 959
+              },
+              "sourceHash": "60f45809e3dcbcc3ecf58192e82c4c0fd66671bebe7c0b185a6283a512577ca3"
+            }
+          ]
+        },
+        "tap_react_b": {
+          "sourceType": "imageSequence",
+          "fps": 16.0,
+          "loop": false,
+          "frameCount": 16,
+          "frameWidth": 1080,
+          "frameHeight": 1080,
+          "visualBounds": {
+            "x": 312,
+            "y": 118,
+            "width": 502,
+            "height": 962
+          },
+          "footAnchor": {
+            "x": 540.0,
+            "y": 1080.0,
+            "normalizedX": 0.5,
+            "normalizedY": 1.0
+          },
+          "frames": [
+            {
+              "texture": "image/green_assistant/tap_react_b/frame_01.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 1080,
+                "height": 1080
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 1080,
+              "frameHeight": 1080,
+              "footAnchor": {
+                "x": 540.0,
+                "y": 1080.0,
+                "normalizedX": 0.5,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 344,
+                "y": 120,
+                "width": 381,
+                "height": 959
+              },
+              "sourceHash": "303b7145017856100cfe53338629f694b38337aff474ff711a8daa8fc9d1c97c"
+            },
+            {
+              "texture": "image/green_assistant/tap_react_b/frame_02.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 1080,
+                "height": 1080
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 1080,
+              "frameHeight": 1080,
+              "footAnchor": {
+                "x": 540.0,
+                "y": 1080.0,
+                "normalizedX": 0.5,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 342,
+                "y": 129,
+                "width": 381,
+                "height": 950
+              },
+              "sourceHash": "ffd53f23646fce253ad9f9d0815429f7cb0606ed5ea3d1920ca51915dfb8400e"
+            },
+            {
+              "texture": "image/green_assistant/tap_react_b/frame_03.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 1080,
+                "height": 1080
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 1080,
+              "frameHeight": 1080,
+              "footAnchor": {
+                "x": 540.0,
+                "y": 1080.0,
+                "normalizedX": 0.5,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 330,
+                "y": 139,
+                "width": 387,
+                "height": 940
+              },
+              "sourceHash": "d531bb19ac51bf33c53470157bf1ce0f7034a0db5ad68677b01e464d16d1a32b"
+            },
+            {
+              "texture": "image/green_assistant/tap_react_b/frame_04.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 1080,
+                "height": 1080
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 1080,
+              "frameHeight": 1080,
+              "footAnchor": {
+                "x": 540.0,
+                "y": 1080.0,
+                "normalizedX": 0.5,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 317,
+                "y": 132,
+                "width": 411,
+                "height": 948
+              },
+              "sourceHash": "f0a9949498f8ece4215778d279e15200f8099a895df7948925f7224b39245781"
+            },
+            {
+              "texture": "image/green_assistant/tap_react_b/frame_05.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 1080,
+                "height": 1080
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 1080,
+              "frameHeight": 1080,
+              "footAnchor": {
+                "x": 540.0,
+                "y": 1080.0,
+                "normalizedX": 0.5,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 312,
+                "y": 129,
+                "width": 426,
+                "height": 950
+              },
+              "sourceHash": "6b5ce1c04b81731f2733a9f98939e1101c085fddb1fa13a6136ad6ccc4ab811e"
+            },
+            {
+              "texture": "image/green_assistant/tap_react_b/frame_06.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 1080,
+                "height": 1080
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 1080,
+              "frameHeight": 1080,
+              "footAnchor": {
+                "x": 540.0,
+                "y": 1080.0,
+                "normalizedX": 0.5,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 319,
+                "y": 129,
+                "width": 427,
+                "height": 950
+              },
+              "sourceHash": "d248dbdb2c464485b136389fc78e916bfd3b4975756b50faefa12f128eab0b06"
+            },
+            {
+              "texture": "image/green_assistant/tap_react_b/frame_07.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 1080,
+                "height": 1080
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 1080,
+              "frameHeight": 1080,
+              "footAnchor": {
+                "x": 540.0,
+                "y": 1080.0,
+                "normalizedX": 0.5,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 329,
+                "y": 134,
+                "width": 433,
+                "height": 945
+              },
+              "sourceHash": "f373e8a3b7fbbeae6a4e0d51d144f60fd82a343b775d68465c29c894a293f272"
+            },
+            {
+              "texture": "image/green_assistant/tap_react_b/frame_08.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 1080,
+                "height": 1080
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 1080,
+              "frameHeight": 1080,
+              "footAnchor": {
+                "x": 540.0,
+                "y": 1080.0,
+                "normalizedX": 0.5,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 331,
+                "y": 136,
+                "width": 444,
+                "height": 943
+              },
+              "sourceHash": "80b0125fe318a2e0172537f20b738f1a809d42bd26e2d9e7a1f2355d77dc7d0a"
+            },
+            {
+              "texture": "image/green_assistant/tap_react_b/frame_09.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 1080,
+                "height": 1080
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 1080,
+              "frameHeight": 1080,
+              "footAnchor": {
+                "x": 540.0,
+                "y": 1080.0,
+                "normalizedX": 0.5,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 334,
+                "y": 136,
+                "width": 459,
+                "height": 943
+              },
+              "sourceHash": "06efb6b20202c8496424220bf43933c4f6c3152dcef9a41043622dadfa3f9db9"
+            },
+            {
+              "texture": "image/green_assistant/tap_react_b/frame_10.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 1080,
+                "height": 1080
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 1080,
+              "frameHeight": 1080,
+              "footAnchor": {
+                "x": 540.0,
+                "y": 1080.0,
+                "normalizedX": 0.5,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 340,
+                "y": 132,
+                "width": 471,
+                "height": 948
+              },
+              "sourceHash": "db61ab1d2ec15b3469bac88c7cf3c35871d6387e1b49c7d8da86ea5a676497d8"
+            },
+            {
+              "texture": "image/green_assistant/tap_react_b/frame_11.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 1080,
+                "height": 1080
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 1080,
+              "frameHeight": 1080,
+              "footAnchor": {
+                "x": 540.0,
+                "y": 1080.0,
+                "normalizedX": 0.5,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 343,
+                "y": 129,
+                "width": 471,
+                "height": 950
+              },
+              "sourceHash": "4ddbb759dfcdd6752c22c270614650a5801dbcae60beb6ff0ca6775ea02cee68"
+            },
+            {
+              "texture": "image/green_assistant/tap_react_b/frame_12.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 1080,
+                "height": 1080
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 1080,
+              "frameHeight": 1080,
+              "footAnchor": {
+                "x": 540.0,
+                "y": 1080.0,
+                "normalizedX": 0.5,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 343,
+                "y": 119,
+                "width": 455,
+                "height": 960
+              },
+              "sourceHash": "97d35c98a8fe406f3cec7330216b6c9b467ce9cf109e2528aeb73aa146fa3727"
+            },
+            {
+              "texture": "image/green_assistant/tap_react_b/frame_13.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 1080,
+                "height": 1080
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 1080,
+              "frameHeight": 1080,
+              "footAnchor": {
+                "x": 540.0,
+                "y": 1080.0,
+                "normalizedX": 0.5,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 341,
+                "y": 118,
+                "width": 424,
+                "height": 962
+              },
+              "sourceHash": "22c7a6bc90048c8c62f64d24f41557615f4f6737b5921b4bad05a8518476440e"
+            },
+            {
+              "texture": "image/green_assistant/tap_react_b/frame_14.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 1080,
+                "height": 1080
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 1080,
+              "frameHeight": 1080,
+              "footAnchor": {
+                "x": 540.0,
+                "y": 1080.0,
+                "normalizedX": 0.5,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 342,
+                "y": 121,
+                "width": 396,
+                "height": 959
+              },
+              "sourceHash": "09ba60e0abe16714c5858392bd3cdc7aa277757d77ffd1492386c0ee852c20a6"
+            },
+            {
+              "texture": "image/green_assistant/tap_react_b/frame_15.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 1080,
+                "height": 1080
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 1080,
+              "frameHeight": 1080,
+              "footAnchor": {
+                "x": 540.0,
+                "y": 1080.0,
+                "normalizedX": 0.5,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 343,
+                "y": 122,
+                "width": 395,
+                "height": 958
+              },
+              "sourceHash": "e387d4fd6d9d21b6e02618cb0bac3c18d4c0f7780e38bc7eaed34a590580bac8"
+            },
+            {
+              "texture": "image/green_assistant/tap_react_b/frame_16.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 1080,
+                "height": 1080
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 1080,
+              "frameHeight": 1080,
+              "footAnchor": {
+                "x": 540.0,
+                "y": 1080.0,
+                "normalizedX": 0.5,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 345,
+                "y": 120,
+                "width": 380,
+                "height": 959
+              },
+              "sourceHash": "f12aa3c2daa946ac8c80e6ae2d331e5855eecb452bac6a8359518a2cee4fb150"
+            }
+          ]
         }
       }
     },
@@ -1578,7 +3124,7 @@
       "clips": {
         "blink": {
           "sourceType": "imageSequence",
-          "fps": 12.0,
+          "fps": 10.0,
           "loop": false,
           "frameCount": 16,
           "frameWidth": 256,
@@ -2052,9 +3598,621 @@
             }
           ]
         },
+        "drag": {
+          "sourceType": "imageSequence",
+          "fps": 16.0,
+          "loop": true,
+          "frameCount": 16,
+          "frameWidth": 360,
+          "frameHeight": 512,
+          "visualBounds": {
+            "x": 33,
+            "y": 76,
+            "width": 295,
+            "height": 355
+          },
+          "footAnchor": {
+            "x": 208.0,
+            "y": 512.0,
+            "normalizedX": 0.5777777777777777,
+            "normalizedY": 1.0
+          },
+          "sourceCrop": {
+            "scaledCanvasWidth": 512,
+            "left": 48,
+            "right": 408
+          },
+          "scaleFromMaster": 0.4740740740740741,
+          "frames": [
+            {
+              "texture": "image/green_assistant/runtime/runtime_512/drag/frame_01.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 360,
+                "height": 512
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 360,
+              "frameHeight": 512,
+              "footAnchor": {
+                "x": 208.0,
+                "y": 512.0,
+                "normalizedX": 0.5777777777777777,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 33,
+                "y": 76,
+                "width": 286,
+                "height": 355
+              },
+              "sourceHash": "28d3d0acc6504bab6c5f3f7cad5b485bd04e978babbc7e5d1dc7609846108118",
+              "semanticAnchors": {
+                "dragGrab": {
+                  "x": 241.65925925925927,
+                  "y": 87.22962962962963,
+                  "normalizedX": 0.6712757201646091,
+                  "normalizedY": 0.17037037037037037
+                }
+              }
+            },
+            {
+              "texture": "image/green_assistant/runtime/runtime_512/drag/frame_02.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 360,
+                "height": 512
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 360,
+              "frameHeight": 512,
+              "footAnchor": {
+                "x": 208.0,
+                "y": 512.0,
+                "normalizedX": 0.5777777777777777,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 33,
+                "y": 76,
+                "width": 286,
+                "height": 355
+              },
+              "sourceHash": "c1857efdaef75dd4736bb13b0b2960b8342dddad2e6d7685231b9af1ad8921b6",
+              "semanticAnchors": {
+                "dragGrab": {
+                  "x": 241.65925925925927,
+                  "y": 87.22962962962963,
+                  "normalizedX": 0.6712757201646091,
+                  "normalizedY": 0.17037037037037037
+                }
+              }
+            },
+            {
+              "texture": "image/green_assistant/runtime/runtime_512/drag/frame_03.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 360,
+                "height": 512
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 360,
+              "frameHeight": 512,
+              "footAnchor": {
+                "x": 208.0,
+                "y": 512.0,
+                "normalizedX": 0.5777777777777777,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 34,
+                "y": 76,
+                "width": 286,
+                "height": 355
+              },
+              "sourceHash": "00f1923d2547ff3097b468a754b171cc552d3a3e1398b3994f14dddecaf12123",
+              "semanticAnchors": {
+                "dragGrab": {
+                  "x": 241.65925925925927,
+                  "y": 87.22962962962963,
+                  "normalizedX": 0.6712757201646091,
+                  "normalizedY": 0.17037037037037037
+                }
+              }
+            },
+            {
+              "texture": "image/green_assistant/runtime/runtime_512/drag/frame_04.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 360,
+                "height": 512
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 360,
+              "frameHeight": 512,
+              "footAnchor": {
+                "x": 208.0,
+                "y": 512.0,
+                "normalizedX": 0.5777777777777777,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 35,
+                "y": 76,
+                "width": 287,
+                "height": 355
+              },
+              "sourceHash": "aeeb398f0f9b03e052cab45430c8d1217f226c7b9341db6347e4cc832e0e48ba",
+              "semanticAnchors": {
+                "dragGrab": {
+                  "x": 241.65925925925927,
+                  "y": 87.22962962962963,
+                  "normalizedX": 0.6712757201646091,
+                  "normalizedY": 0.17037037037037037
+                }
+              }
+            },
+            {
+              "texture": "image/green_assistant/runtime/runtime_512/drag/frame_05.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 360,
+                "height": 512
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 360,
+              "frameHeight": 512,
+              "footAnchor": {
+                "x": 208.0,
+                "y": 512.0,
+                "normalizedX": 0.5777777777777777,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 36,
+                "y": 76,
+                "width": 287,
+                "height": 355
+              },
+              "sourceHash": "7dc5424b2d3b28ff9c4eb19a8906f320b9649628ebf740a352d69fc9780d49e9",
+              "semanticAnchors": {
+                "dragGrab": {
+                  "x": 241.65925925925927,
+                  "y": 87.22962962962963,
+                  "normalizedX": 0.6712757201646091,
+                  "normalizedY": 0.17037037037037037
+                }
+              }
+            },
+            {
+              "texture": "image/green_assistant/runtime/runtime_512/drag/frame_06.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 360,
+                "height": 512
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 360,
+              "frameHeight": 512,
+              "footAnchor": {
+                "x": 208.0,
+                "y": 512.0,
+                "normalizedX": 0.5777777777777777,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 37,
+                "y": 76,
+                "width": 288,
+                "height": 355
+              },
+              "sourceHash": "f2d0d03d53cbb43104d75ea82bf6adae2118f8ee10c6ea26e8fb140b5b79a2b3",
+              "semanticAnchors": {
+                "dragGrab": {
+                  "x": 241.65925925925927,
+                  "y": 87.22962962962963,
+                  "normalizedX": 0.6712757201646091,
+                  "normalizedY": 0.17037037037037037
+                }
+              }
+            },
+            {
+              "texture": "image/green_assistant/runtime/runtime_512/drag/frame_07.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 360,
+                "height": 512
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 360,
+              "frameHeight": 512,
+              "footAnchor": {
+                "x": 208.0,
+                "y": 512.0,
+                "normalizedX": 0.5777777777777777,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 38,
+                "y": 76,
+                "width": 288,
+                "height": 355
+              },
+              "sourceHash": "9df094fc3947435dd4f4575d1f292496fbd747b7fd75f50375e545d620973d7b",
+              "semanticAnchors": {
+                "dragGrab": {
+                  "x": 241.65925925925927,
+                  "y": 87.22962962962963,
+                  "normalizedX": 0.6712757201646091,
+                  "normalizedY": 0.17037037037037037
+                }
+              }
+            },
+            {
+              "texture": "image/green_assistant/runtime/runtime_512/drag/frame_08.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 360,
+                "height": 512
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 360,
+              "frameHeight": 512,
+              "footAnchor": {
+                "x": 208.0,
+                "y": 512.0,
+                "normalizedX": 0.5777777777777777,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 39,
+                "y": 76,
+                "width": 288,
+                "height": 355
+              },
+              "sourceHash": "e57c74310a10f4551bff4893b5a1490cb0ef48be5f01003e7b4db8f6b72ce5f1",
+              "semanticAnchors": {
+                "dragGrab": {
+                  "x": 241.65925925925927,
+                  "y": 87.22962962962963,
+                  "normalizedX": 0.6712757201646091,
+                  "normalizedY": 0.17037037037037037
+                }
+              }
+            },
+            {
+              "texture": "image/green_assistant/runtime/runtime_512/drag/frame_09.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 360,
+                "height": 512
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 360,
+              "frameHeight": 512,
+              "footAnchor": {
+                "x": 208.0,
+                "y": 512.0,
+                "normalizedX": 0.5777777777777777,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 39,
+                "y": 76,
+                "width": 289,
+                "height": 355
+              },
+              "sourceHash": "ac1f5cb018b548bcd58105ee4cb0c70bef4dbd9a4db099a4491f62a240a07af0",
+              "semanticAnchors": {
+                "dragGrab": {
+                  "x": 241.65925925925927,
+                  "y": 87.22962962962963,
+                  "normalizedX": 0.6712757201646091,
+                  "normalizedY": 0.17037037037037037
+                }
+              }
+            },
+            {
+              "texture": "image/green_assistant/runtime/runtime_512/drag/frame_10.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 360,
+                "height": 512
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 360,
+              "frameHeight": 512,
+              "footAnchor": {
+                "x": 208.0,
+                "y": 512.0,
+                "normalizedX": 0.5777777777777777,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 39,
+                "y": 76,
+                "width": 288,
+                "height": 355
+              },
+              "sourceHash": "5869a3b1fe6615917fc4bc56a6a9fc7338fdc9605b0f044cab1f5b6ef24d45be",
+              "semanticAnchors": {
+                "dragGrab": {
+                  "x": 241.65925925925927,
+                  "y": 87.22962962962963,
+                  "normalizedX": 0.6712757201646091,
+                  "normalizedY": 0.17037037037037037
+                }
+              }
+            },
+            {
+              "texture": "image/green_assistant/runtime/runtime_512/drag/frame_11.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 360,
+                "height": 512
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 360,
+              "frameHeight": 512,
+              "footAnchor": {
+                "x": 208.0,
+                "y": 512.0,
+                "normalizedX": 0.5777777777777777,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 38,
+                "y": 76,
+                "width": 287,
+                "height": 355
+              },
+              "sourceHash": "38690acc0839ddeda620d532412cd5504850a3ff60e9e2187474f09e6bf53c76",
+              "semanticAnchors": {
+                "dragGrab": {
+                  "x": 241.65925925925927,
+                  "y": 87.22962962962963,
+                  "normalizedX": 0.6712757201646091,
+                  "normalizedY": 0.17037037037037037
+                }
+              }
+            },
+            {
+              "texture": "image/green_assistant/runtime/runtime_512/drag/frame_12.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 360,
+                "height": 512
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 360,
+              "frameHeight": 512,
+              "footAnchor": {
+                "x": 208.0,
+                "y": 512.0,
+                "normalizedX": 0.5777777777777777,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 38,
+                "y": 76,
+                "width": 286,
+                "height": 355
+              },
+              "sourceHash": "16b3315a830ba3f3553920e5be767483281e28cee403d7818519d846fa35c35a",
+              "semanticAnchors": {
+                "dragGrab": {
+                  "x": 241.65925925925927,
+                  "y": 87.22962962962963,
+                  "normalizedX": 0.6712757201646091,
+                  "normalizedY": 0.17037037037037037
+                }
+              }
+            },
+            {
+              "texture": "image/green_assistant/runtime/runtime_512/drag/frame_13.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 360,
+                "height": 512
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 360,
+              "frameHeight": 512,
+              "footAnchor": {
+                "x": 208.0,
+                "y": 512.0,
+                "normalizedX": 0.5777777777777777,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 36,
+                "y": 76,
+                "width": 286,
+                "height": 355
+              },
+              "sourceHash": "16c8c05a8f0fafe7e720e3a0e71d8897d6c25ae0b406e96e72f07a0d988c1962",
+              "semanticAnchors": {
+                "dragGrab": {
+                  "x": 241.65925925925927,
+                  "y": 87.22962962962963,
+                  "normalizedX": 0.6712757201646091,
+                  "normalizedY": 0.17037037037037037
+                }
+              }
+            },
+            {
+              "texture": "image/green_assistant/runtime/runtime_512/drag/frame_14.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 360,
+                "height": 512
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 360,
+              "frameHeight": 512,
+              "footAnchor": {
+                "x": 208.0,
+                "y": 512.0,
+                "normalizedX": 0.5777777777777777,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 35,
+                "y": 76,
+                "width": 286,
+                "height": 355
+              },
+              "sourceHash": "36e9660dfcdf1db60eeed215fd86a321cf9dc6cfd980bf1164546022c8b0519d",
+              "semanticAnchors": {
+                "dragGrab": {
+                  "x": 241.65925925925927,
+                  "y": 87.22962962962963,
+                  "normalizedX": 0.6712757201646091,
+                  "normalizedY": 0.17037037037037037
+                }
+              }
+            },
+            {
+              "texture": "image/green_assistant/runtime/runtime_512/drag/frame_15.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 360,
+                "height": 512
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 360,
+              "frameHeight": 512,
+              "footAnchor": {
+                "x": 208.0,
+                "y": 512.0,
+                "normalizedX": 0.5777777777777777,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 34,
+                "y": 76,
+                "width": 286,
+                "height": 355
+              },
+              "sourceHash": "5f147953ea8883c98afa264c328406df5c9b3a67c509de123f444c253eef1ceb",
+              "semanticAnchors": {
+                "dragGrab": {
+                  "x": 241.65925925925927,
+                  "y": 87.22962962962963,
+                  "normalizedX": 0.6712757201646091,
+                  "normalizedY": 0.17037037037037037
+                }
+              }
+            },
+            {
+              "texture": "image/green_assistant/runtime/runtime_512/drag/frame_16.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 360,
+                "height": 512
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 360,
+              "frameHeight": 512,
+              "footAnchor": {
+                "x": 208.0,
+                "y": 512.0,
+                "normalizedX": 0.5777777777777777,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 33,
+                "y": 76,
+                "width": 285,
+                "height": 354
+              },
+              "sourceHash": "6dc537c79b78eb73d6c8bf09b74f5cbd634a40f4ceb6987c64cf5fb289e137d9",
+              "semanticAnchors": {
+                "dragGrab": {
+                  "x": 241.65925925925927,
+                  "y": 87.22962962962963,
+                  "normalizedX": 0.6712757201646091,
+                  "normalizedY": 0.17037037037037037
+                }
+              }
+            }
+          ],
+          "semanticAnchors": {
+            "dragGrab": {
+              "x": 241.65925925925927,
+              "y": 87.22962962962963,
+              "normalizedX": 0.6712757201646091,
+              "normalizedY": 0.17037037037037037
+            }
+          }
+        },
         "idle": {
           "sourceType": "imageSequence",
-          "fps": 8.0,
+          "fps": 10.0,
           "loop": true,
           "frameCount": 16,
           "frameWidth": 256,
@@ -2530,7 +4688,7 @@
         },
         "move": {
           "sourceType": "imageSequence",
-          "fps": 10.0,
+          "fps": 16.0,
           "loop": true,
           "frameCount": 16,
           "frameWidth": 256,
@@ -3148,6 +5306,958 @@
               }
             ]
           }
+        },
+        "tap_react_a": {
+          "sourceType": "imageSequence",
+          "fps": 16.0,
+          "loop": false,
+          "frameCount": 16,
+          "frameWidth": 280,
+          "frameHeight": 512,
+          "visualBounds": {
+            "x": 34,
+            "y": 57,
+            "width": 214,
+            "height": 455
+          },
+          "footAnchor": {
+            "x": 134.0,
+            "y": 512.0,
+            "normalizedX": 0.4785714285714286,
+            "normalizedY": 1.0
+          },
+          "sourceCrop": {
+            "scaledCanvasWidth": 512,
+            "left": 122,
+            "right": 402
+          },
+          "scaleFromMaster": 0.4740740740740741,
+          "frames": [
+            {
+              "texture": "image/green_assistant/runtime/runtime_512/tap_react_a/frame_01.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 280,
+                "height": 512
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 280,
+              "frameHeight": 512,
+              "footAnchor": {
+                "x": 134.0,
+                "y": 512.0,
+                "normalizedX": 0.4785714285714286,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 44,
+                "y": 58,
+                "width": 180,
+                "height": 454
+              },
+              "sourceHash": "44a83d6c653fc34fac0ea85a27649c89d74d7efc4469bccf0e91bbfd93d0e871"
+            },
+            {
+              "texture": "image/green_assistant/runtime/runtime_512/tap_react_a/frame_02.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 280,
+                "height": 512
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 280,
+              "frameHeight": 512,
+              "footAnchor": {
+                "x": 134.0,
+                "y": 512.0,
+                "normalizedX": 0.4785714285714286,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 43,
+                "y": 58,
+                "width": 185,
+                "height": 454
+              },
+              "sourceHash": "906d9967a0d642e18926d78187f700d7b4cf0009c26352f71e43f936112f5644"
+            },
+            {
+              "texture": "image/green_assistant/runtime/runtime_512/tap_react_a/frame_03.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 280,
+                "height": 512
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 280,
+              "frameHeight": 512,
+              "footAnchor": {
+                "x": 134.0,
+                "y": 512.0,
+                "normalizedX": 0.4785714285714286,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 50,
+                "y": 58,
+                "width": 188,
+                "height": 454
+              },
+              "sourceHash": "552936e48c00fe6191189bd9412300331f6de83a3a82ebd5a95e3ce26ea1f5c8"
+            },
+            {
+              "texture": "image/green_assistant/runtime/runtime_512/tap_react_a/frame_04.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 280,
+                "height": 512
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 280,
+              "frameHeight": 512,
+              "footAnchor": {
+                "x": 134.0,
+                "y": 512.0,
+                "normalizedX": 0.4785714285714286,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 48,
+                "y": 58,
+                "width": 192,
+                "height": 454
+              },
+              "sourceHash": "709254239eafa7445ff6625621ba5a937902d7ae01ed4721b4cc9a1fe148220d"
+            },
+            {
+              "texture": "image/green_assistant/runtime/runtime_512/tap_react_a/frame_05.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 280,
+                "height": 512
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 280,
+              "frameHeight": 512,
+              "footAnchor": {
+                "x": 134.0,
+                "y": 512.0,
+                "normalizedX": 0.4785714285714286,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 55,
+                "y": 59,
+                "width": 191,
+                "height": 453
+              },
+              "sourceHash": "4b969417fb0270ab6b5e9b3d2ea434240f19115a6d8148ce593dd92ff665e87d"
+            },
+            {
+              "texture": "image/green_assistant/runtime/runtime_512/tap_react_a/frame_06.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 280,
+                "height": 512
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 280,
+              "frameHeight": 512,
+              "footAnchor": {
+                "x": 134.0,
+                "y": 512.0,
+                "normalizedX": 0.4785714285714286,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 46,
+                "y": 58,
+                "width": 202,
+                "height": 454
+              },
+              "sourceHash": "5139a49a7c67ed6e90d73bc63123f376f4d3819094df3303a0776c743d1a6abb"
+            },
+            {
+              "texture": "image/green_assistant/runtime/runtime_512/tap_react_a/frame_07.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 280,
+                "height": 512
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 280,
+              "frameHeight": 512,
+              "footAnchor": {
+                "x": 134.0,
+                "y": 512.0,
+                "normalizedX": 0.4785714285714286,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 38,
+                "y": 58,
+                "width": 203,
+                "height": 454
+              },
+              "sourceHash": "5b01fa525a99626ca9143c48312edc577e206ebf4bd88c409651824456bf66c3"
+            },
+            {
+              "texture": "image/green_assistant/runtime/runtime_512/tap_react_a/frame_08.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 280,
+                "height": 512
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 280,
+              "frameHeight": 512,
+              "footAnchor": {
+                "x": 134.0,
+                "y": 512.0,
+                "normalizedX": 0.4785714285714286,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 34,
+                "y": 57,
+                "width": 195,
+                "height": 455
+              },
+              "sourceHash": "2ece433dedf11eeab8eb15df33cf2d4f4d186d5b993fbc78717f9f75683fbbe8"
+            },
+            {
+              "texture": "image/green_assistant/runtime/runtime_512/tap_react_a/frame_09.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 280,
+                "height": 512
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 280,
+              "frameHeight": 512,
+              "footAnchor": {
+                "x": 134.0,
+                "y": 512.0,
+                "normalizedX": 0.4785714285714286,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 37,
+                "y": 58,
+                "width": 186,
+                "height": 454
+              },
+              "sourceHash": "d109e06c7b5755f67c80119aeb7c7015f3575fb11b003084fe110f11bbfc0332"
+            },
+            {
+              "texture": "image/green_assistant/runtime/runtime_512/tap_react_a/frame_10.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 280,
+                "height": 512
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 280,
+              "frameHeight": 512,
+              "footAnchor": {
+                "x": 134.0,
+                "y": 512.0,
+                "normalizedX": 0.4785714285714286,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 42,
+                "y": 57,
+                "width": 182,
+                "height": 455
+              },
+              "sourceHash": "f63c60333e3cfbb7608b21c4a8b9b8acb434d0c0e5fa23063c2c102e1cb605c4"
+            },
+            {
+              "texture": "image/green_assistant/runtime/runtime_512/tap_react_a/frame_11.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 280,
+                "height": 512
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 280,
+              "frameHeight": 512,
+              "footAnchor": {
+                "x": 134.0,
+                "y": 512.0,
+                "normalizedX": 0.4785714285714286,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 44,
+                "y": 57,
+                "width": 180,
+                "height": 455
+              },
+              "sourceHash": "a71eb92c7f7a002aa0abc9c0deb2ca07e373ca6ff3733f52725d279b40717cdf"
+            },
+            {
+              "texture": "image/green_assistant/runtime/runtime_512/tap_react_a/frame_12.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 280,
+                "height": 512
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 280,
+              "frameHeight": 512,
+              "footAnchor": {
+                "x": 134.0,
+                "y": 512.0,
+                "normalizedX": 0.4785714285714286,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 45,
+                "y": 57,
+                "width": 180,
+                "height": 455
+              },
+              "sourceHash": "1d8c695d97473571a49e5af107cebe1ab6bcfd355f38f5c739f7d076308980b4"
+            },
+            {
+              "texture": "image/green_assistant/runtime/runtime_512/tap_react_a/frame_13.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 280,
+                "height": 512
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 280,
+              "frameHeight": 512,
+              "footAnchor": {
+                "x": 134.0,
+                "y": 512.0,
+                "normalizedX": 0.4785714285714286,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 44,
+                "y": 57,
+                "width": 180,
+                "height": 455
+              },
+              "sourceHash": "5638bdf72d0c86fe37d84d77d296a1ea1c165cd849fdc10a48c1cd42eb333b0a"
+            },
+            {
+              "texture": "image/green_assistant/runtime/runtime_512/tap_react_a/frame_14.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 280,
+                "height": 512
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 280,
+              "frameHeight": 512,
+              "footAnchor": {
+                "x": 134.0,
+                "y": 512.0,
+                "normalizedX": 0.4785714285714286,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 44,
+                "y": 57,
+                "width": 181,
+                "height": 455
+              },
+              "sourceHash": "d3fe70f70dcd4fa2473b6d0dded11a9a15a82ccc4d45281058c4b5082390adc4"
+            },
+            {
+              "texture": "image/green_assistant/runtime/runtime_512/tap_react_a/frame_15.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 280,
+                "height": 512
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 280,
+              "frameHeight": 512,
+              "footAnchor": {
+                "x": 134.0,
+                "y": 512.0,
+                "normalizedX": 0.4785714285714286,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 44,
+                "y": 57,
+                "width": 181,
+                "height": 455
+              },
+              "sourceHash": "b7ef440a84df26202a0303ada90f149477fc6de2739c042b4096988336bb3eea"
+            },
+            {
+              "texture": "image/green_assistant/runtime/runtime_512/tap_react_a/frame_16.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 280,
+                "height": 512
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 280,
+              "frameHeight": 512,
+              "footAnchor": {
+                "x": 134.0,
+                "y": 512.0,
+                "normalizedX": 0.4785714285714286,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 44,
+                "y": 57,
+                "width": 181,
+                "height": 455
+              },
+              "sourceHash": "bc869f289ae76ade46518e65df3ac22287ad17d24784ac8de861b7ec0472b482"
+            }
+          ]
+        },
+        "tap_react_b": {
+          "sourceType": "imageSequence",
+          "fps": 16.0,
+          "loop": false,
+          "frameCount": 16,
+          "frameWidth": 304,
+          "frameHeight": 512,
+          "visualBounds": {
+            "x": 34,
+            "y": 56,
+            "width": 238,
+            "height": 456
+          },
+          "footAnchor": {
+            "x": 142.0,
+            "y": 512.0,
+            "normalizedX": 0.46710526315789475,
+            "normalizedY": 1.0
+          },
+          "sourceCrop": {
+            "scaledCanvasWidth": 512,
+            "left": 114,
+            "right": 418
+          },
+          "scaleFromMaster": 0.4740740740740741,
+          "frames": [
+            {
+              "texture": "image/green_assistant/runtime/runtime_512/tap_react_b/frame_01.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 304,
+                "height": 512
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 304,
+              "frameHeight": 512,
+              "footAnchor": {
+                "x": 142.0,
+                "y": 512.0,
+                "normalizedX": 0.46710526315789475,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 49,
+                "y": 57,
+                "width": 181,
+                "height": 455
+              },
+              "sourceHash": "67509ff78599841f4c9ad983c19a6dbd7fc34a5fce225e5d85a97682d67a6754"
+            },
+            {
+              "texture": "image/green_assistant/runtime/runtime_512/tap_react_b/frame_02.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 304,
+                "height": 512
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 304,
+              "frameHeight": 512,
+              "footAnchor": {
+                "x": 142.0,
+                "y": 512.0,
+                "normalizedX": 0.46710526315789475,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 48,
+                "y": 61,
+                "width": 181,
+                "height": 451
+              },
+              "sourceHash": "7eb4e71acbd0b35f09a06d4001acd4fbba587b8c12934ccba86824507507f36d"
+            },
+            {
+              "texture": "image/green_assistant/runtime/runtime_512/tap_react_b/frame_03.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 304,
+                "height": 512
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 304,
+              "frameHeight": 512,
+              "footAnchor": {
+                "x": 142.0,
+                "y": 512.0,
+                "normalizedX": 0.46710526315789475,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 42,
+                "y": 65,
+                "width": 184,
+                "height": 447
+              },
+              "sourceHash": "9e85eba0365ca6345d4538f46605d2b9ba855b0d958fa7c97bfe53ff0d04c48a"
+            },
+            {
+              "texture": "image/green_assistant/runtime/runtime_512/tap_react_b/frame_04.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 304,
+                "height": 512
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 304,
+              "frameHeight": 512,
+              "footAnchor": {
+                "x": 142.0,
+                "y": 512.0,
+                "normalizedX": 0.46710526315789475,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 36,
+                "y": 62,
+                "width": 196,
+                "height": 450
+              },
+              "sourceHash": "25867580d1bd6a6e4236df59583f39183eb1e56f49dc7d0e8b20242be6ff3274"
+            },
+            {
+              "texture": "image/green_assistant/runtime/runtime_512/tap_react_b/frame_05.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 304,
+                "height": 512
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 304,
+              "frameHeight": 512,
+              "footAnchor": {
+                "x": 142.0,
+                "y": 512.0,
+                "normalizedX": 0.46710526315789475,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 34,
+                "y": 61,
+                "width": 202,
+                "height": 451
+              },
+              "sourceHash": "25fcad35b77aef23479d4dbbae98c05eecbe3b5740fa116c3bbcfe5d4b7a3c3b"
+            },
+            {
+              "texture": "image/green_assistant/runtime/runtime_512/tap_react_b/frame_06.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 304,
+                "height": 512
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 304,
+              "frameHeight": 512,
+              "footAnchor": {
+                "x": 142.0,
+                "y": 512.0,
+                "normalizedX": 0.46710526315789475,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 37,
+                "y": 61,
+                "width": 203,
+                "height": 451
+              },
+              "sourceHash": "ffcdb9dad3da0c4fa696fce017a08907532f7f1f989e8e02734f5d448a670ee4"
+            },
+            {
+              "texture": "image/green_assistant/runtime/runtime_512/tap_react_b/frame_07.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 304,
+                "height": 512
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 304,
+              "frameHeight": 512,
+              "footAnchor": {
+                "x": 142.0,
+                "y": 512.0,
+                "normalizedX": 0.46710526315789475,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 42,
+                "y": 63,
+                "width": 205,
+                "height": 449
+              },
+              "sourceHash": "e74a9ae68c7c2028ded26de388f9fc803f6860d0be05f7801432b96cbefc0229"
+            },
+            {
+              "texture": "image/green_assistant/runtime/runtime_512/tap_react_b/frame_08.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 304,
+                "height": 512
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 304,
+              "frameHeight": 512,
+              "footAnchor": {
+                "x": 142.0,
+                "y": 512.0,
+                "normalizedX": 0.46710526315789475,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 42,
+                "y": 64,
+                "width": 212,
+                "height": 448
+              },
+              "sourceHash": "bf4ff22c7a1b93510cfdc91a8d1cbf6714467f26c50ccec2226050be6dbb2158"
+            },
+            {
+              "texture": "image/green_assistant/runtime/runtime_512/tap_react_b/frame_09.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 304,
+                "height": 512
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 304,
+              "frameHeight": 512,
+              "footAnchor": {
+                "x": 142.0,
+                "y": 512.0,
+                "normalizedX": 0.46710526315789475,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 44,
+                "y": 64,
+                "width": 218,
+                "height": 448
+              },
+              "sourceHash": "6e24f102d0f048e96517de2383fb8c71f422ee37a72b5272f926b3af8005c65c"
+            },
+            {
+              "texture": "image/green_assistant/runtime/runtime_512/tap_react_b/frame_10.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 304,
+                "height": 512
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 304,
+              "frameHeight": 512,
+              "footAnchor": {
+                "x": 142.0,
+                "y": 512.0,
+                "normalizedX": 0.46710526315789475,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 47,
+                "y": 62,
+                "width": 224,
+                "height": 450
+              },
+              "sourceHash": "1399cb5859e1052252d0bfbf272eba462c4bd8740a13550f4ec060d0a4fea8c8"
+            },
+            {
+              "texture": "image/green_assistant/runtime/runtime_512/tap_react_b/frame_11.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 304,
+                "height": 512
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 304,
+              "frameHeight": 512,
+              "footAnchor": {
+                "x": 142.0,
+                "y": 512.0,
+                "normalizedX": 0.46710526315789475,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 48,
+                "y": 61,
+                "width": 224,
+                "height": 451
+              },
+              "sourceHash": "0f6aba418b58b907efbd6f290ffe9be0446dfc9ee2985d55daab93eb7d3ef40c"
+            },
+            {
+              "texture": "image/green_assistant/runtime/runtime_512/tap_react_b/frame_12.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 304,
+                "height": 512
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 304,
+              "frameHeight": 512,
+              "footAnchor": {
+                "x": 142.0,
+                "y": 512.0,
+                "normalizedX": 0.46710526315789475,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 48,
+                "y": 56,
+                "width": 216,
+                "height": 456
+              },
+              "sourceHash": "2a7e9213233091b063c9c2fbc1f1b794282534bebd550bdf0f4ad7e86ad46c6c"
+            },
+            {
+              "texture": "image/green_assistant/runtime/runtime_512/tap_react_b/frame_13.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 304,
+                "height": 512
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 304,
+              "frameHeight": 512,
+              "footAnchor": {
+                "x": 142.0,
+                "y": 512.0,
+                "normalizedX": 0.46710526315789475,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 47,
+                "y": 56,
+                "width": 202,
+                "height": 456
+              },
+              "sourceHash": "6f06fbe812f925283a92cff60ca0c7c7511a032a06137d6dd1b881ff571f5dc0"
+            },
+            {
+              "texture": "image/green_assistant/runtime/runtime_512/tap_react_b/frame_14.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 304,
+                "height": 512
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 304,
+              "frameHeight": 512,
+              "footAnchor": {
+                "x": 142.0,
+                "y": 512.0,
+                "normalizedX": 0.46710526315789475,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 48,
+                "y": 57,
+                "width": 188,
+                "height": 455
+              },
+              "sourceHash": "9ece9d60ebb981a3a2fac1950021fc92dcb7fd67eda1001b52b619fe4744375f"
+            },
+            {
+              "texture": "image/green_assistant/runtime/runtime_512/tap_react_b/frame_15.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 304,
+                "height": 512
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 304,
+              "frameHeight": 512,
+              "footAnchor": {
+                "x": 142.0,
+                "y": 512.0,
+                "normalizedX": 0.46710526315789475,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 48,
+                "y": 58,
+                "width": 188,
+                "height": 454
+              },
+              "sourceHash": "57e2f4ee51f6acfb2be72cd1a6768cdf3e1ec19eabd4a9adddc78d4e5526d8b7"
+            },
+            {
+              "texture": "image/green_assistant/runtime/runtime_512/tap_react_b/frame_16.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 304,
+                "height": 512
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 304,
+              "frameHeight": 512,
+              "footAnchor": {
+                "x": 142.0,
+                "y": 512.0,
+                "normalizedX": 0.46710526315789475,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 49,
+                "y": 57,
+                "width": 181,
+                "height": 455
+              },
+              "sourceHash": "3404d769cecff66d5edf0644aa1e0ea38c021ef107894490055daf1d4e95cedb"
+            }
+          ]
         }
       }
     }

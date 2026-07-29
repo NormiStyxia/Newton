@@ -46,6 +46,31 @@ local function CopyOptions(options)
     return config
 end
 
+local function ConfigureDragGrab(config)
+    local companion = config.companion
+    if companion.dragGrabOffsetX ~= nil and companion.dragGrabOffsetY ~= nil then return end
+    local animationName = config.behaviorAnimationMap.DRAG
+    local animation = animationName and config.animations[animationName] or nil
+    local frame = animation and animation.frames and animation.frames[1] or nil
+    local foot = type(frame) == "table" and frame.footAnchor or nil
+    local hotspot = type(frame) == "table" and frame.semanticAnchors
+        and frame.semanticAnchors.dragGrab or nil
+    if not foot or not hotspot or not frame.frameHeight then return end
+    local frameScale = config.ui.spriteHeight * config.ui.scale
+        * (animation.scale or 1) * (frame.scale or 1) / frame.frameHeight
+    local frameOffset = animation.frameOffset or {}
+    if companion.dragGrabOffsetX == nil then
+        companion.dragGrabOffsetX = (hotspot.x - foot.x) * frameScale
+            + (frameOffset.x or frameOffset[1] or 0)
+    end
+    if companion.dragGrabOffsetY == nil then
+        companion.dragGrabOffsetY = (hotspot.y - foot.y) * frameScale
+            + (frameOffset.y or frameOffset[2] or 0)
+    end
+    companion.dragGrabSourceFacing = companion.dragGrabSourceFacing
+        or config.ui.sourceFacing or CompanionController.Facing.LEFT
+end
+
 function GreenAssistant.New(options)
     options = options or {}
     local self = setmetatable({}, GreenAssistant)
@@ -63,6 +88,7 @@ function GreenAssistant.New(options)
         local applied, errorMessage = AnimationSource.Apply(self.config, manifest, self.config.assets.variant)
         if not applied then print("[GreenAssistant] runtime animation manifest ignored: " .. tostring(errorMessage)) end
     end
+    ConfigureDragGrab(self.config)
     self.adapter = options.adapter or Adapter.New()
     self.listeners = {}
     self.elapsed = 0
@@ -105,7 +131,7 @@ function GreenAssistant.New(options)
             self:_onCompanionEvent(eventName, ...)
         end,
     })
-    self.interaction = Interaction.New(self.config.interaction)
+    self.interaction = Interaction.New(self.config.interaction, { random = options.random })
     self.failureAssist = FailureAssist.New({ failureThreshold = self.config.failureThreshold })
     self.takeover = Takeover.New(self.adapter, {
         onStarted = function(replayData)
@@ -213,6 +239,7 @@ function GreenAssistant:_onCompanionEvent(eventName, ...)
     elseif eventName == "moveFinished" then
         self:_emit("onMoveFinished", ...)
     elseif eventName == "dragStarted" then
+        self:_hideMessage()
         self:_emit("onDragStarted", ...)
     elseif eventName == "dragReleased" then
         self:_emit("onDragReleased", ...)
@@ -248,11 +275,11 @@ function GreenAssistant:_updateBlink(dt)
 end
 
 function GreenAssistant:_showTimedMessage(text, duration, behavior)
-    if not self.config.features.dialogue then return end
-    self.view:showMessage(text)
     self.behaviorTimer = math.max(0, duration or 1.8)
     self.timedBehavior = behavior or BehaviorState.DIALOGUE
     self:setBehavior(self.timedBehavior, "message")
+    if not self.config.features.dialogue then return end
+    self.view:showMessage(text)
     self:_emit("onDialogueOpened", text)
 end
 
@@ -326,7 +353,7 @@ function GreenAssistant:handlePointer(x, y, pointer)
         return hitCharacter and (pointer.pressed or pointer.down or pointer.released) or false
     end
 
-    if COMPANION_BEHAVIORS[behavior] then
+    if COMPANION_BEHAVIORS[behavior] or behavior == BehaviorState.INTERACT then
         local consumed, result = self.companion:handlePointer(pointer, hitCharacter)
         self:_syncCompanionView()
         if consumed then
@@ -342,10 +369,23 @@ end
 function GreenAssistant:poke()
     if not self.enabled or not self.config.features.interaction then return false end
     local behavior = self.behaviorState:get()
-    if behavior == BehaviorState.OFFER or behavior == BehaviorState.TAKEOVER or behavior == BehaviorState.SUCCESS then return false end
-    local line, pokeCount = self.interaction:poke(self.elapsed)
+    if behavior == BehaviorState.DRAG or behavior == BehaviorState.OFFER
+        or behavior == BehaviorState.TAKEOVER or behavior == BehaviorState.SUCCESS then return false end
+    local line, pokeCount, animationName = self.interaction:poke(self.elapsed)
+    if not line then return false end
     self:_showTimedMessage(line, self.config.interaction.duration, BehaviorState.INTERACT)
-    self:_emit("onPoked", pokeCount, line)
+    if animationName then
+        self.animator:play(animationName, {
+            restart = true,
+            fallbackAnimation = self.config.fallbackAnimation,
+            onFinished = function()
+                if self.behaviorState:get() == BehaviorState.INTERACT then
+                    self:_playBehaviorAnimation(BehaviorState.INTERACT, true)
+                end
+            end,
+        })
+    end
+    self:_emit("onPoked", pokeCount, line, animationName)
     return true
 end
 

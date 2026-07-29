@@ -238,11 +238,24 @@ function Controller:_beginDrag(pointerX, pointerY)
     self:_updateDrag(pointerX, pointerY)
 end
 
+function Controller:_dragGrabOffset(candidate)
+    local offsetX = self.config.dragGrabOffsetX
+    local offsetY = self.config.dragGrabOffsetY
+    if type(offsetX) ~= "number" or type(offsetY) ~= "number" then
+        return candidate.offsetX, candidate.offsetY
+    end
+    local sourceFacing = self.config.dragGrabSourceFacing or Controller.Facing.LEFT
+    if self.facing ~= sourceFacing then offsetX = -offsetX end
+    return offsetX, offsetY
+end
+
 function Controller:_updateDrag(pointerX, pointerY)
     local candidate = self.pointerCandidate
     if not candidate or not self.zone then return end
-    self.x = Clamp(pointerX - candidate.offsetX, self.validMinX, self.validMaxX)
-    self.y = Clamp(pointerY - candidate.offsetY, self.zone.top, self.zone.bottom)
+    local offsetX, offsetY = self:_dragGrabOffset(candidate)
+    candidate.activeOffsetX, candidate.activeOffsetY = offsetX, offsetY
+    self.x = Clamp(pointerX - offsetX, self.validMinX, self.validMaxX)
+    self.y = Clamp(pointerY - offsetY, self.zone.top, self.zone.bottom)
     self:_emit("positionChanged", self.x, self.y, "drag")
 end
 
@@ -361,6 +374,8 @@ function Controller:getSnapshot()
         walkingAllowed = self.walkingAllowed,
         dragging = self.state == Controller.State.DRAG and self.settle == nil,
         settling = self.settle ~= nil,
+        dragGrabOffsetX = self.pointerCandidate and self.pointerCandidate.activeOffsetX or nil,
+        dragGrabOffsetY = self.pointerCandidate and self.pointerCandidate.activeOffsetY or nil,
     }
 end
 

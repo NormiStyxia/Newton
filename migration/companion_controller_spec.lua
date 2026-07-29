@@ -84,6 +84,35 @@ pointer = { x = controller.x, y = controller.y, down = false, pressed = false, r
 consumed, result = controller:handlePointer(pointer, true)
 expect(consumed and result.kind == "tap", "tap was not preserved separately from drag")
 
+local function hotspotController(facing)
+    local instance = CompanionController.new({
+        facing = facing,
+        config = {
+            characterHalfWidth = 20,
+            edgePadding = 5,
+            dragThreshold = 8,
+            dragGrabOffsetX = 14,
+            dragGrabOffsetY = -174,
+            dragGrabSourceFacing = CompanionController.Facing.LEFT,
+        },
+    })
+    instance:setZone({ left = 0, right = 500, top = 0, bottom = 500, baselineY = 400, fallbackX = 100 })
+    instance:handlePointer({ x = 100, y = 400, down = true, pressed = true, released = false }, true)
+    instance:handlePointer({ x = 200, y = 100, down = true, pressed = false, released = false }, false)
+    return instance
+end
+
+local leftGrab = hotspotController(CompanionController.Facing.LEFT)
+expect(leftGrab.x == 186 and leftGrab.y == 274,
+    "LEFT drag did not place the semantic cape-tip hotspot under the pointer")
+expect(leftGrab:getSnapshot().dragGrabOffsetX == 14 and leftGrab:getSnapshot().dragGrabOffsetY == -174,
+    "LEFT drag did not expose the active semantic grab offset")
+local rightGrab = hotspotController(CompanionController.Facing.RIGHT)
+expect(rightGrab.x == 214 and rightGrab.y == 274,
+    "RIGHT drag did not mirror the semantic cape-tip hotspot")
+expect(rightGrab:getSnapshot().dragGrabOffsetX == -14,
+    "RIGHT drag hotspot X was not mirrored with facing")
+
 local frame = {
     logicalWidth = 1880,
     logicalHeight = 840,

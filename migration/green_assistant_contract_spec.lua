@@ -6,7 +6,8 @@ end
 
 local Animator = require("green_assistant.GreenAssistAnimator")
 local AnimationSource = require("green_assistant.GreenAssistAnimationSource")
-local function SourceFrame(texture, width, height)
+local Interaction = require("green_assistant.GreenAssistInteraction")
+local function SourceFrame(texture, width, height, semanticAnchors)
     return {
         texture = texture,
         sourceRect = { x = 0, y = 0, width = width, height = height },
@@ -15,6 +16,7 @@ local function SourceFrame(texture, width, height)
         frameHeight = height,
         visualBounds = { x = 0, y = 0, width = width, height = height },
         footAnchor = { x = width * 0.5, y = height, normalizedX = 0.5, normalizedY = 1 },
+        semanticAnchors = semanticAnchors,
     }
 end
 local RuntimeManifest = {
@@ -25,6 +27,11 @@ local RuntimeManifest = {
                 idle = { fps = 8, loop = true, frames = { SourceFrame("idle", 256, 512) } },
                 blink = { fps = 12, loop = false, frames = { SourceFrame("blink", 256, 512) } },
                 move = { fps = 10, loop = true, frames = { SourceFrame("move", 256, 512) } },
+                drag = { fps = 16, loop = true, frames = {
+                    SourceFrame("drag", 360, 512, {
+                        dragGrab = { x = 242, y = 87, normalizedX = 242 / 360, normalizedY = 87 / 512 },
+                    }),
+                } },
             },
         },
     },
@@ -35,6 +42,7 @@ local sourceConfig = {
         idle = { assetClip = "idle", frames = { "fallback" }, fps = 8, loop = true },
         blink = { assetClip = "blink", frames = { "fallback" }, fps = 12, loop = false },
         walk = { assetClip = "move", frames = { "fallback" }, fps = 10, loop = true },
+        drag = { assetClip = "drag", frames = { "fallback" }, fps = 16, loop = true },
     },
 }
 expect(AnimationSource.Apply(sourceConfig, RuntimeManifest, "runtime_512"),
@@ -46,6 +54,8 @@ expect(sourceConfig.animations.idle.frames[1].texture ~= nil
     "portable texture/sourceRect FrameDescriptor fields are missing")
 expect(sourceConfig.animations.idle.frames[1].anchorY == 1,
     "runtime foot anchor was not preserved")
+expect(sourceConfig.animations.drag.frames[1].semanticAnchors.dragGrab.x == 242,
+    "runtime semantic drag hotspot was not preserved")
 local animatorEvents = {}
 local animator = Animator.new({
     fallbackAnimation = "idle",
@@ -64,6 +74,29 @@ animator:play("blink", { restart = true, onFinished = function() blinkFinished =
 animator:update(.21)
 expect(animator:isFinished() and blinkFinished, "non-looping animation completion failed")
 expect(#animatorEvents >= 2, "animation change callback missing")
+
+local interactionRolls = { 0.1, 0.1, 0.2, 0.9 }
+local interactionRollIndex = 0
+local interaction = Interaction.new({
+    retriggerCooldown = 0.3,
+    consecutiveWindow = 1,
+    pokeLines = { "tap" },
+    tapAnimations = { "tap_react_a", "tap_react_b" },
+}, {
+    random = function()
+        interactionRollIndex = interactionRollIndex + 1
+        return interactionRolls[interactionRollIndex]
+    end,
+})
+local _, firstPokeCount, firstTapAnimation = interaction:poke(0)
+expect(firstPokeCount == 1 and firstTapAnimation == "tap_react_a",
+    "first semantic tap animation was not selected")
+local blockedLine, blockedCount, blockedAnimation, blockedReason = interaction:poke(0.29)
+expect(blockedLine == nil and blockedCount == 1 and blockedAnimation == nil and blockedReason == "cooldown",
+    "tap animation retriggered inside the 0.3 second cooldown")
+local _, secondPokeCount, secondTapAnimation = interaction:poke(0.3)
+expect(secondPokeCount == 2 and secondTapAnimation == "tap_react_b",
+    "second semantic tap animation was not randomly selectable after cooldown")
 
 local mockView = {
     message = nil,
@@ -143,14 +176,18 @@ expect(assistant:handlePointer(mockView.x, mockView.y,
 expect(assistant:handlePointer(mockView.x + 4, mockView.y - 10,
     { down = true, pressed = false, released = false }), "drag movement was not captured")
 expect(assistant:getBehavior() == GreenAssistant.Behavior.DRAG, "GreenAssistant did not mirror DRAG behavior")
-expect(assistant.animator:getCurrentAnimation() == "idle_base" and assistant.animator.playbackSpeed == 0,
-    "missing drag asset did not freeze the idle_base fallback frame")
+expect(assistant.animator:getCurrentAnimation() == "drag" and assistant.animator.playbackSpeed == 1,
+    "DRAG did not play the registered drag sequence")
 assistant:handlePointer(mockView.x, mockView.y, { down = false, pressed = false, released = true })
 assistant:update(.06)
 expect(assistant:getBehavior() == GreenAssistant.Behavior.IDLE, "drag settle did not return GreenAssistant to IDLE")
 mockView.hitCharacter = false
 assistant:poke()
 expect(assistant:getBehavior() == GreenAssistant.Behavior.INTERACT, "poke behavior missing")
+expect(assistant.animator:getCurrentAnimation() == "tap_react_a"
+    or assistant.animator:getCurrentAnimation() == "tap_react_b",
+    "poke did not play either registered tap reaction")
+expect(not assistant:poke(), "poke retriggered inside the 0.3 second cooldown")
 assistant:update(.06)
 expect(assistant:getBehavior() == GreenAssistant.Behavior.IDLE, "poke did not return to idle")
 

@@ -15,7 +15,7 @@
   },
   "clips": {
     "idle": {
-      "fps": 8,
+      "fps": 10,
       "loop": true,
       "footAnchor": {
         "x": 0.5,
@@ -29,7 +29,7 @@
       }
     },
     "blink": {
-      "fps": 12,
+      "fps": 10,
       "loop": false,
       "footAnchor": {
         "x": 0.5,
@@ -42,8 +42,29 @@
         "pattern": "frame_*.png"
       }
     },
+    "drag": {
+      "fps": 16,
+      "loop": true,
+      "footAnchor": {
+        "x": 0.5,
+        "y": 1.0,
+        "unit": "normalized"
+      },
+      "semanticAnchors": {
+        "dragGrab": {
+          "x": 611,
+          "y": 184,
+          "unit": "pixels"
+        }
+      },
+      "source": {
+        "type": "imageSequence",
+        "root": "assets/image/green_assistant/drag",
+        "pattern": "frame_*.png"
+      }
+    },
     "move": {
-      "fps": 10,
+      "fps": 16,
       "loop": true,
       "registration": {
         "method": "reference-relative-position",
@@ -77,6 +98,34 @@
       "source": {
         "type": "imageSequence",
         "root": "assets/image/green_assistant/move",
+        "pattern": "frame_*.png"
+      }
+    },
+    "tap_react_a": {
+      "fps": 16,
+      "loop": false,
+      "footAnchor": {
+        "x": 0.5,
+        "y": 1.0,
+        "unit": "normalized"
+      },
+      "source": {
+        "type": "imageSequence",
+        "root": "assets/image/green_assistant/tap_react_a",
+        "pattern": "frame_*.png"
+      }
+    },
+    "tap_react_b": {
+      "fps": 16,
+      "loop": false,
+      "footAnchor": {
+        "x": 0.5,
+        "y": 1.0,
+        "unit": "normalized"
+      },
+      "source": {
+        "type": "imageSequence",
+        "root": "assets/image/green_assistant/tap_react_b",
         "pattern": "frame_*.png"
       }
     }

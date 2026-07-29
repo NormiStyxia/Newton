@@ -12,7 +12,7 @@ from typing import Any, Iterable
 from PIL import Image
 
 
-PROCESSOR_VERSION = 2
+PROCESSOR_VERSION = 3
 DEFAULT_SPEC = Path(__file__).with_name("companion_runtime.json")
 
 
@@ -88,6 +88,17 @@ def _normalized_anchor(spec: dict[str, Any], width: int, height: int) -> tuple[f
     if unit == "pixels":
         return x, y
     raise ValueError(f"unsupported foot anchor unit: {unit}")
+
+
+def _anchor_dict(anchor: tuple[float, float], frame_size: tuple[int, int]) -> dict[str, float]:
+    frame_width, frame_height = frame_size
+    anchor_x, anchor_y = anchor
+    return {
+        "x": anchor_x,
+        "y": anchor_y,
+        "normalizedX": anchor_x / frame_width,
+        "normalizedY": anchor_y / frame_height,
+    }
 
 
 def _spatial_registration(
@@ -232,24 +243,26 @@ def _frame_descriptor(
     anchor: tuple[float, float],
     visual_bounds: tuple[int, int, int, int],
     source_hash: str,
+    semantic_anchors: dict[str, tuple[float, float]] | None = None,
 ) -> dict[str, Any]:
     frame_width, frame_height = frame_size
     anchor_x, anchor_y = anchor
-    return {
+    descriptor = {
         "texture": texture,
         "sourceRect": _rect_dict(source_rect),
         "sourceOffset": {"x": source_offset[0], "y": source_offset[1]},
         "frameWidth": frame_width,
         "frameHeight": frame_height,
-        "footAnchor": {
-            "x": anchor_x,
-            "y": anchor_y,
-            "normalizedX": anchor_x / frame_width,
-            "normalizedY": anchor_y / frame_height,
-        },
+        "footAnchor": _anchor_dict((anchor_x, anchor_y), frame_size),
         "visualBounds": _rect_dict(visual_bounds),
         "sourceHash": source_hash,
     }
+    if semantic_anchors:
+        descriptor["semanticAnchors"] = {
+            name: _anchor_dict(value, frame_size)
+            for name, value in semantic_anchors.items()
+        }
+    return descriptor
 
 
 def _process_clip(
@@ -266,6 +279,10 @@ def _process_clip(
 
     source_width, source_height = source_size
     foot_anchor = _normalized_anchor(clip_spec["footAnchor"], source_width, source_height)
+    semantic_anchors = {
+        name: _normalized_anchor(anchor, source_width, source_height)
+        for name, anchor in clip_spec.get("semanticAnchors", {}).items()
+    }
     alpha_bounds = [_alpha_bounds(frame.canvas) for frame in frames]
     visual_bounds = [_alpha_bounds(frame.canvas, 32) for frame in frames]
     shared_offset, frame_corrections, registration = _spatial_registration(
@@ -321,6 +338,17 @@ def _process_clip(
         foot_anchor[0] * scale + runtime_shared_offset[0] - crop_left,
         foot_anchor[1] * scale + runtime_shared_offset[1],
     )
+    master_semantic_anchors = {
+        name: (anchor[0] + shared_offset[0], anchor[1] + shared_offset[1])
+        for name, anchor in semantic_anchors.items()
+    }
+    runtime_semantic_anchors = {
+        name: (
+            anchor[0] * scale + runtime_shared_offset[0] - crop_left,
+            anchor[1] * scale + runtime_shared_offset[1],
+        )
+        for name, anchor in semantic_anchors.items()
+    }
     master_descriptors: list[dict[str, Any]] = []
     runtime_descriptors: list[dict[str, Any]] = []
     clip_output = output_root / clip_name
@@ -341,6 +369,7 @@ def _process_clip(
             master_anchor,
             bounds,
             frame.source_hash,
+            master_semantic_anchors,
         ))
 
         resized = _resize_rgba(frame.canvas, (scaled_width, runtime_height))
@@ -361,6 +390,7 @@ def _process_clip(
             runtime_anchor,
             runtime_bounds,
             _sha256(output_path),
+            runtime_semantic_anchors,
         ))
 
     runtime_union = _union((
@@ -389,6 +419,8 @@ def _process_clip(
         "footAnchor": master_descriptors[0]["footAnchor"],
         "frames": master_descriptors,
     }
+    if master_semantic_anchors:
+        master_clip["semanticAnchors"] = master_descriptors[0]["semanticAnchors"]
     if registration:
         master_clip["spatialRegistration"] = registration
     runtime_clip = {
@@ -405,6 +437,8 @@ def _process_clip(
         "scaleFromMaster": scale,
         "frames": runtime_descriptors,
     }
+    if runtime_semantic_anchors:
+        runtime_clip["semanticAnchors"] = runtime_descriptors[0]["semanticAnchors"]
     if registration:
         runtime_clip["spatialRegistration"] = {
             **registration,

@@ -56,7 +56,7 @@ GreenAssistConfig.DEFAULTS = {
         idle_base = {
             assetClip = "idle",
             frames = Frames("idle", 16),
-            fps = 8,
+            fps = 10,
             loop = true,
             playbackSpeed = 1,
             anchor = { x = 0.5, y = 1 },
@@ -66,7 +66,7 @@ GreenAssistConfig.DEFAULTS = {
         idle = {
             assetClip = "idle",
             frames = Frames("idle", 16),
-            fps = 8,
+            fps = 10,
             loop = true,
             playbackSpeed = 1,
             anchor = { x = 0.5, y = 1 },
@@ -76,7 +76,7 @@ GreenAssistConfig.DEFAULTS = {
         move = {
             assetClip = "move",
             frames = Frames("move", 16),
-            fps = 10,
+            fps = 16,
             loop = true,
             playbackSpeed = 1,
             anchor = { x = 0.5, y = 1 },
@@ -86,7 +86,7 @@ GreenAssistConfig.DEFAULTS = {
         walk = {
             assetClip = "move",
             frames = Frames("move", 16),
-            fps = 10,
+            fps = 16,
             loop = true,
             playbackSpeed = 1,
             anchor = { x = 0.5, y = 1 },
@@ -96,7 +96,37 @@ GreenAssistConfig.DEFAULTS = {
         blink = {
             assetClip = "blink",
             frames = Frames("blink", 16),
-            fps = 12,
+            fps = 10,
+            loop = false,
+            playbackSpeed = 1,
+            anchor = { x = 0.5, y = 1 },
+            frameOffset = { x = 0, y = 0 },
+            scale = 1,
+        },
+        drag = {
+            assetClip = "drag",
+            frames = Frames("drag", 16),
+            fps = 16,
+            loop = true,
+            playbackSpeed = 1,
+            anchor = { x = 0.5, y = 1 },
+            frameOffset = { x = 0, y = 0 },
+            scale = 1,
+        },
+        tap_react_a = {
+            assetClip = "tap_react_a",
+            frames = Frames("tap_react_a", 16),
+            fps = 16,
+            loop = false,
+            playbackSpeed = 1,
+            anchor = { x = 0.5, y = 1 },
+            frameOffset = { x = 0, y = 0 },
+            scale = 1,
+        },
+        tap_react_b = {
+            assetClip = "tap_react_b",
+            frames = Frames("tap_react_b", 16),
+            fps = 16,
             loop = false,
             playbackSpeed = 1,
             anchor = { x = 0.5, y = 1 },
@@ -165,6 +195,8 @@ GreenAssistConfig.DEFAULTS = {
     interaction = {
         duration = 1.8,
         consecutiveWindow = 1.2,
+        retriggerCooldown = 0.3,
+        tapAnimations = { "tap_react_a", "tap_react_b" },
         pokeLines = { "在。", "怎么了？", "正在记录。", "……", "不要一直戳。" },
     },
     failureAssist = {
