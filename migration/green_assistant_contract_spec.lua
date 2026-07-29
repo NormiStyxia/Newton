@@ -172,13 +172,16 @@ assistant:update(.21)
 expect(assistant.animator:getCurrentAnimation() == "idle_base", "blink did not restore semantic idle animation")
 mockView.hitCharacter = true
 expect(assistant:handlePointer(mockView.x, mockView.y,
-    { down = true, pressed = true, released = false }), "drag candidate was not captured")
+    { down = true, pressed = true, released = false }), "pointer down was not captured")
+expect(assistant:getBehavior() == GreenAssistant.Behavior.DRAGGING,
+    "GreenAssistant did not enter DRAGGING on pointer down")
 expect(assistant:handlePointer(mockView.x + 4, mockView.y - 10,
     { down = true, pressed = false, released = false }), "drag movement was not captured")
-expect(assistant:getBehavior() == GreenAssistant.Behavior.DRAG, "GreenAssistant did not mirror DRAG behavior")
+expect(assistant:getBehavior() == GreenAssistant.Behavior.DRAGGING, "GreenAssistant did not mirror DRAGGING behavior")
 expect(assistant.animator:getCurrentAnimation() == "drag" and assistant.animator.playbackSpeed == 1,
-    "DRAG did not play the registered drag sequence")
+    "DRAGGING did not play the registered drag sequence")
 assistant:handlePointer(mockView.x, mockView.y, { down = false, pressed = false, released = true })
+expect(assistant:getBehavior() == GreenAssistant.Behavior.IDLE, "drag release did not enter IDLE immediately")
 assistant:update(.06)
 expect(assistant:getBehavior() == GreenAssistant.Behavior.IDLE, "drag settle did not return GreenAssistant to IDLE")
 mockView.hitCharacter = false

@@ -7,8 +7,10 @@ Controller.__index = Controller
 Controller.State = {
     IDLE = "IDLE",
     WALK = "WALK",
-    DRAG = "DRAG",
+    DRAGGING = "DRAGGING",
 }
+-- Backwards-compatible symbolic alias.  Runtime state is always DRAGGING.
+Controller.State.DRAG = Controller.State.DRAGGING
 
 Controller.Facing = {
     LEFT = "LEFT",
@@ -18,7 +20,7 @@ Controller.Facing = {
 local ANIMATION_BY_STATE = {
     IDLE = "idle_base",
     WALK = "walk",
-    DRAG = "drag",
+    DRAGGING = "drag",
 }
 
 local function Clamp(value, minimum, maximum)
@@ -58,6 +60,7 @@ function Controller:Init(options)
     self.state = Controller.State.IDLE
     self.facing = options.facing == Controller.Facing.LEFT and Controller.Facing.LEFT or Controller.Facing.RIGHT
     self.x, self.y = 0, 0
+    self.velocityX, self.velocityY = 0, 0
     self.targetX = nil
     self.zone = nil
     self.validMinX, self.validMaxX = 0, 0
@@ -87,6 +90,7 @@ end
 
 function Controller:_enterIdle(reason)
     self.targetX = nil
+    self.velocityX, self.velocityY = 0, 0
     self:_setState(Controller.State.IDLE, reason)
     self:_scheduleIdle()
 end
@@ -94,6 +98,7 @@ end
 function Controller:_finishWalk(interrupted, reason)
     local targetX = self.targetX
     self.targetX = nil
+    self.velocityX, self.velocityY = 0, 0
     self:_setState(Controller.State.IDLE, reason or (interrupted and "walk-interrupted" or "walk-finished"))
     self:_scheduleIdle()
     self:_emit("moveFinished", self.x, self.y, interrupted == true, targetX)
@@ -134,7 +139,9 @@ function Controller:_chooseTarget()
 end
 
 function Controller:_beginWalk(targetX, reason)
-    if not self.walkingAllowed then return false end
+    if not self.walkingAllowed or self.state == Controller.State.DRAGGING or self.pointerCandidate then
+        return false
+    end
     targetX = targetX or self:_chooseTarget()
     if not targetX or math.abs(targetX - self.x) < self.config.minWalkDistance then
         self:_enterIdle("walk-target-unavailable")
@@ -142,6 +149,8 @@ function Controller:_beginWalk(targetX, reason)
     end
     self.targetX = Clamp(targetX, self.validMinX, self.validMaxX)
     self.facing = self.targetX > self.x and Controller.Facing.RIGHT or Controller.Facing.LEFT
+    self.velocityX = self.facing == Controller.Facing.RIGHT and self.config.moveSpeed or -self.config.moveSpeed
+    self.velocityY = 0
     self:_setState(Controller.State.WALK, reason or "walk-started")
     self:_emit("moveStarted", self.x, self.y, self.targetX, self.zone.baselineY, self.facing)
     return true
@@ -174,11 +183,14 @@ function Controller:setZone(zone)
         return true
     end
 
+    -- Layout owns the legal zone, but an active drag owns the transform.  The
+    -- current pointer sample below will apply these new bounds without a
+    -- second position writer fighting the drag.
+    if self.state == Controller.State.DRAGGING then return true end
+
     local previousX, previousY = self.x, self.y
     self.x = Clamp(self.x, self.validMinX, self.validMaxX)
-    if self.state == Controller.State.DRAG and not self.settle then
-        self.y = Clamp(self.y, zone.top, zone.bottom)
-    elseif not self.settle then
+    if not self.settle then
         self.y = zone.baselineY
     end
     if self.x ~= previousX or self.y ~= previousY then
@@ -195,6 +207,8 @@ function Controller:setZone(zone)
             if replacement then
                 self.targetX = replacement
                 self.facing = replacement > self.x and Controller.Facing.RIGHT or Controller.Facing.LEFT
+                self.velocityX = self.facing == Controller.Facing.RIGHT and self.config.moveSpeed or -self.config.moveSpeed
+                self.velocityY = 0
                 self:_emit("moveRetargeted", replacement, self.facing)
             else
                 self:_finishWalk(true, "zone-too-small")
@@ -226,47 +240,43 @@ function Controller:interrupt(reason)
     end
 end
 
-function Controller:_beginDrag(pointerX, pointerY)
+function Controller:_beginDragging(pointerX, pointerY)
     if self.state == Controller.State.WALK then
         local oldTarget = self.targetX
         self.targetX = nil
         self:_emit("moveFinished", self.x, self.y, true, oldTarget)
     end
+    self.targetX = nil
+    self.velocityX, self.velocityY = 0, 0
     self.settle = nil
-    self:_setState(Controller.State.DRAG, "drag-started")
+    self:_setState(Controller.State.DRAGGING, "drag-started")
     self:_emit("dragStarted", self.x, self.y, self.facing)
-    self:_updateDrag(pointerX, pointerY)
+    self:_updateDragging(pointerX, pointerY)
 end
 
-function Controller:_dragGrabOffset(candidate)
-    local offsetX = self.config.dragGrabOffsetX
-    local offsetY = self.config.dragGrabOffsetY
-    if type(offsetX) ~= "number" or type(offsetY) ~= "number" then
-        return candidate.offsetX, candidate.offsetY
-    end
-    local sourceFacing = self.config.dragGrabSourceFacing or Controller.Facing.LEFT
-    if self.facing ~= sourceFacing then offsetX = -offsetX end
-    return offsetX, offsetY
-end
-
-function Controller:_updateDrag(pointerX, pointerY)
+function Controller:_updateDragging(pointerX, pointerY)
     local candidate = self.pointerCandidate
     if not candidate or not self.zone then return end
-    local offsetX, offsetY = self:_dragGrabOffset(candidate)
-    candidate.activeOffsetX, candidate.activeOffsetY = offsetX, offsetY
-    self.x = Clamp(pointerX - offsetX, self.validMinX, self.validMaxX)
-    self.y = Clamp(pointerY - offsetY, self.zone.top, self.zone.bottom)
+    local dx, dy = pointerX - candidate.startX, pointerY - candidate.startY
+    if dx * dx + dy * dy >= self.config.dragThreshold * self.config.dragThreshold then
+        candidate.moved = true
+    end
+    -- Rigid screen-space drag: the grab offset is captured once on pointerDown
+    -- and is never replaced by animation, facing, velocity, or layout data.
+    self.x = Clamp(pointerX + candidate.grabOffsetX, self.validMinX, self.validMaxX)
+    self.y = Clamp(pointerY + candidate.grabOffsetY, self.zone.top, self.zone.bottom)
     self:_emit("positionChanged", self.x, self.y, "drag")
 end
 
-function Controller:_releaseDrag()
+function Controller:_releaseDragging()
     local duration = math.max(0, self.config.settleDuration)
-    self.settle = { fromY = self.y, elapsed = 0, duration = duration }
     self:_emit("dragReleased", self.x, self.y, self.zone.baselineY)
-    if duration == 0 then
+    self:_enterIdle("drag-released")
+    if duration > 0 and self.y ~= self.zone.baselineY then
+        self.settle = { fromY = self.y, elapsed = 0, duration = duration }
+    else
         self.y = self.zone.baselineY
         self.settle = nil
-        self:_enterIdle("drag-settled")
         self:_emit("dragFinished", self.x, self.y)
     end
 end
@@ -279,42 +289,43 @@ function Controller:handlePointer(pointer, hitCharacter)
         self.pointerCandidate = {
             startX = pointer.x,
             startY = pointer.y,
-            offsetX = pointer.x - self.x,
-            offsetY = pointer.y - self.y,
+            originX = self.x,
+            originY = self.y,
+            grabOffsetX = self.x - pointer.x,
+            grabOffsetY = self.y - pointer.y,
+            moved = false,
         }
-        return true, { kind = "candidate" }
+        self:_beginDragging(pointer.x, pointer.y)
+        return true, { kind = "drag-started" }
     end
 
     if pointer.released == true or pointer.down == false then
-        self.pointerCandidate = nil
-        if self.state == Controller.State.DRAG then
-            self:_releaseDrag()
-            return true, { kind = "drag-released" }
+        self:_updateDragging(pointer.x, pointer.y)
+        local wasTap = candidate.moved ~= true
+        if wasTap then
+            -- A tap temporarily acquires DRAGGING priority, but must not leave
+            -- a sub-threshold visual displacement before the tap reaction.
+            self.x = Clamp(candidate.originX, self.validMinX, self.validMaxX)
+            self.y = self.zone.baselineY
         end
-        return true, { kind = "tap" }
+        self.pointerCandidate = nil
+        self:_releaseDragging()
+        return true, { kind = wasTap and "tap" or "drag-released" }
     end
 
-    local dx = pointer.x - candidate.startX
-    local dy = pointer.y - candidate.startY
-    if self.state ~= Controller.State.DRAG
-        and dx * dx + dy * dy >= self.config.dragThreshold * self.config.dragThreshold then
-        self:_beginDrag(pointer.x, pointer.y)
-        return true, { kind = "drag-started" }
-    end
-    if self.state == Controller.State.DRAG then
-        self:_updateDrag(pointer.x, pointer.y)
+    if self.state == Controller.State.DRAGGING then
+        self:_updateDragging(pointer.x, pointer.y)
         return true, { kind = "dragging" }
     end
-    return true, { kind = "candidate" }
+    return true, { kind = "dragging" }
 end
 
 function Controller:update(dt, allowAutonomy)
     if not self.initialized then return end
     dt = math.max(0, dt or 0)
-    if self.pointerCandidate then return end
+    if self.state == Controller.State.DRAGGING or self.pointerCandidate then return end
 
-    if self.state == Controller.State.DRAG then
-        if not self.settle then return end
+    if self.settle then
         local settle = self.settle
         settle.elapsed = math.min(settle.duration, settle.elapsed + dt)
         local linear = settle.duration > 0 and settle.elapsed / settle.duration or 1
@@ -324,7 +335,6 @@ function Controller:update(dt, allowAutonomy)
         if linear >= 1 then
             self.y = self.zone.baselineY
             self.settle = nil
-            self:_enterIdle("drag-settled")
             self:_emit("dragFinished", self.x, self.y)
         end
         return
@@ -346,6 +356,7 @@ function Controller:update(dt, allowAutonomy)
         return
     end
     local direction = delta > 0 and 1 or -1
+    self.velocityX, self.velocityY = direction * self.config.moveSpeed, 0
     local step = math.min(distance, self.config.moveSpeed * dt)
     self.x = self.x + direction * step
     self.y = self.zone.baselineY
@@ -372,10 +383,12 @@ function Controller:getSnapshot()
         validMinX = self.validMinX,
         validMaxX = self.validMaxX,
         walkingAllowed = self.walkingAllowed,
-        dragging = self.state == Controller.State.DRAG and self.settle == nil,
+        velocityX = self.velocityX,
+        velocityY = self.velocityY,
+        dragging = self.state == Controller.State.DRAGGING,
         settling = self.settle ~= nil,
-        dragGrabOffsetX = self.pointerCandidate and self.pointerCandidate.activeOffsetX or nil,
-        dragGrabOffsetY = self.pointerCandidate and self.pointerCandidate.activeOffsetY or nil,
+        dragGrabOffsetX = self.pointerCandidate and self.pointerCandidate.grabOffsetX or nil,
+        dragGrabOffsetY = self.pointerCandidate and self.pointerCandidate.grabOffsetY or nil,
     }
 end
 

@@ -48,11 +48,15 @@ function M.Install(context)
         UpdateRuleFeedback(dt)
         frame_ = design_:Frame()
         RefreshWorkspaceLayout()
+        -- Sample once, then give the screen-space Companion first chance to
+        -- apply a rigid drag before its animation/update and before rendering.
+        local pointerFrame = PointerState()
+        local assistantPointerConsumed = HandleGreenAssistantPointer(pointerFrame.x, pointerFrame.y, pointerFrame)
         UpdateGreenAssistant(dt)
         -- Replay owns the input/update frame. Do not let cards, reset shortcuts,
         -- or normal completion updates mutate the suspended experiment.
         if replayActive_ then
-            HandlePointer()
+            HandlePointer(pointerFrame, assistantPointerConsumed)
             if replayBusinessMode_ == ReplayMode.PLAYER_REPLAY and input:GetKeyPress(KEY_ESCAPE) then StopReplay() end
             SyncPhysicsUpdateEnabled()
             if replayActive_ then UpdateReplay(dt) end
@@ -88,7 +92,7 @@ function M.Install(context)
         UpdateCardAnimations(dt)
         UpdateSpringVisuals(dt)
         sensorAngle_ = sensorAngle_ + dt * (goalContact_ and (math.pi * 2 / 7.2) or (math.pi * 2 / 10))
-        HandlePointer()
+        HandlePointer(pointerFrame, assistantPointerConsumed)
         if replayActive_ then
             SyncPhysicsUpdateEnabled()
             UpdateReplay(dt)

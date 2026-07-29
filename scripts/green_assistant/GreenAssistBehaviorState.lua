@@ -4,7 +4,8 @@ BehaviorState.__index = BehaviorState
 BehaviorState.IDLE = "IDLE"
 BehaviorState.WALK = "WALK"
 BehaviorState.ROAM = "ROAM"
-BehaviorState.DRAG = "DRAG"
+BehaviorState.DRAGGING = "DRAGGING"
+BehaviorState.DRAG = BehaviorState.DRAGGING
 BehaviorState.INTERACT = "INTERACT"
 BehaviorState.OBSERVE = "OBSERVE"
 BehaviorState.DIALOGUE = "DIALOGUE"
@@ -17,7 +18,7 @@ BehaviorState.ALL = {
     IDLE = true,
     WALK = true,
     ROAM = true,
-    DRAG = true,
+    DRAGGING = true,
     INTERACT = true,
     OBSERVE = true,
     DIALOGUE = true,
@@ -30,6 +31,7 @@ BehaviorState.ALL = {
 local function Normalize(state)
     assert(type(state) == "string" and state ~= "", "behavior state is required")
     local normalized = string.upper(state)
+    if normalized == "DRAG" then normalized = BehaviorState.DRAGGING end
     assert(BehaviorState.ALL[normalized], "unknown GreenAssistant behavior: " .. tostring(state))
     return normalized
 end

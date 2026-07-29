@@ -45,12 +45,16 @@ function M.Install(context)
             SetHoveredCard(card and card.cardId or nil)
         end
     end
-    function HandlePointer()
+    function HandlePointer(pointerFrame, assistantHandled)
         if not frame_ or not apple_ then return end
-        local pointerFrame = PointerState()
+        pointerFrame = pointerFrame or PointerState()
         local x, y = pointerFrame.x, pointerFrame.y
         local down, press, release = pointerFrame.down, pointerFrame.pressed, pointerFrame.released
-        if HandleGreenAssistantPointer(x, y, pointerFrame) then
+        local assistantConsumed = assistantHandled
+        if assistantConsumed == nil then
+            assistantConsumed = HandleGreenAssistantPointer(x, y, pointerFrame)
+        end
+        if assistantConsumed then
             hoveredNavigation_, hoveredLevelIndex_, punchHovered_ = nil, nil, false
             SetHoveredCard(nil)
             return

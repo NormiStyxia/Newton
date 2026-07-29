@@ -6,6 +6,7 @@ AnimationState.IDLE_BASE = "IDLE_BASE"
 AnimationState.MOVE = "MOVE"
 AnimationState.WALK = "WALK"
 AnimationState.DRAG = "DRAG"
+AnimationState.DRAGGING = "DRAGGING"
 AnimationState.BLINK = "BLINK"
 AnimationState.POKE = "POKE"
 AnimationState.OBSERVE = "OBSERVE"
@@ -19,7 +20,9 @@ AnimationState.SLEEP = "SLEEP"
 
 local function NormalizeBehavior(behavior)
     assert(type(behavior) == "string" and behavior ~= "", "behavior is required")
-    return string.upper(behavior)
+    local normalized = string.upper(behavior)
+    if normalized == "DRAG" then return "DRAGGING" end
+    return normalized
 end
 
 function AnimationState.New(mapping, fallbackAnimation)

@@ -27,12 +27,12 @@ local COMPANION_BEHAVIORS = {
     IDLE = true,
     WALK = true,
     ROAM = true,
-    DRAG = true,
+    DRAGGING = true,
 }
 
 local function CompanionBehavior(state)
     if state == CompanionController.State.WALK then return BehaviorState.WALK end
-    if state == CompanionController.State.DRAG then return BehaviorState.DRAG end
+    if state == CompanionController.State.DRAGGING then return BehaviorState.DRAGGING end
     return BehaviorState.IDLE
 end
 
@@ -44,31 +44,6 @@ local function CopyOptions(options)
     if options.behaviorAnimationMap then config.behaviorAnimationMap = options.behaviorAnimationMap end
     if options.debug ~= nil then config.debug = type(options.debug) == "table" and options.debug or { enabled = options.debug == true } end
     return config
-end
-
-local function ConfigureDragGrab(config)
-    local companion = config.companion
-    if companion.dragGrabOffsetX ~= nil and companion.dragGrabOffsetY ~= nil then return end
-    local animationName = config.behaviorAnimationMap.DRAG
-    local animation = animationName and config.animations[animationName] or nil
-    local frame = animation and animation.frames and animation.frames[1] or nil
-    local foot = type(frame) == "table" and frame.footAnchor or nil
-    local hotspot = type(frame) == "table" and frame.semanticAnchors
-        and frame.semanticAnchors.dragGrab or nil
-    if not foot or not hotspot or not frame.frameHeight then return end
-    local frameScale = config.ui.spriteHeight * config.ui.scale
-        * (animation.scale or 1) * (frame.scale or 1) / frame.frameHeight
-    local frameOffset = animation.frameOffset or {}
-    if companion.dragGrabOffsetX == nil then
-        companion.dragGrabOffsetX = (hotspot.x - foot.x) * frameScale
-            + (frameOffset.x or frameOffset[1] or 0)
-    end
-    if companion.dragGrabOffsetY == nil then
-        companion.dragGrabOffsetY = (hotspot.y - foot.y) * frameScale
-            + (frameOffset.y or frameOffset[2] or 0)
-    end
-    companion.dragGrabSourceFacing = companion.dragGrabSourceFacing
-        or config.ui.sourceFacing or CompanionController.Facing.LEFT
 end
 
 function GreenAssistant.New(options)
@@ -88,7 +63,6 @@ function GreenAssistant.New(options)
         local applied, errorMessage = AnimationSource.Apply(self.config, manifest, self.config.assets.variant)
         if not applied then print("[GreenAssistant] runtime animation manifest ignored: " .. tostring(errorMessage)) end
     end
-    ConfigureDragGrab(self.config)
     self.adapter = options.adapter or Adapter.New()
     self.listeners = {}
     self.elapsed = 0
@@ -188,7 +162,7 @@ function GreenAssistant:_playBehaviorAnimation(behavior, restart)
         restart = restart == true,
         fallbackAnimation = self.config.fallbackAnimation,
     }
-    if behavior == BehaviorState.DRAG and not self.animator:hasAnimation(requested) then options.playbackSpeed = 0 end
+    if behavior == BehaviorState.DRAGGING and not self.animator:hasAnimation(requested) then options.playbackSpeed = 0 end
     if requested then self.animator:play(requested, options) end
 end
 
@@ -255,6 +229,15 @@ function GreenAssistant:setZone(zone)
     return changed
 end
 
+function GreenAssistant:setFrame(frame)
+    if not frame then return false end
+    self.view:setFrame(frame)
+    local zone = frame.companionZone
+    if not zone and self.view.getCompanionZone then zone = self.view:getCompanionZone() end
+    if zone then self:setZone(zone) end
+    return true
+end
+
 function GreenAssistant:_updateBlink(dt)
     local config = self.config.blink
     if self.blinkJustFinished then self.blinkJustFinished = false; return end
@@ -295,17 +278,14 @@ end
 function GreenAssistant:update(dt, frame)
     dt = math.max(0, dt or 0)
     self.elapsed = self.elapsed + dt
-    if frame then self.view:setFrame(frame) end
-    local zone = frame and frame.companionZone or nil
-    if not zone and self.view.getCompanionZone then zone = self.view:getCompanionZone() end
-    if zone then self:setZone(zone) end
+    if frame then self:setFrame(frame) end
     if not self.enabled then return end
 
     self.behaviorState:update(dt)
-    self.animator:update(dt)
     local behavior = self.behaviorState:get()
     if behavior == BehaviorState.TAKEOVER then
         self.takeover:update(dt)
+        self.animator:update(dt)
         return
     end
 
@@ -326,6 +306,9 @@ function GreenAssistant:update(dt, frame)
     if behavior == BehaviorState.IDLE then
         self:_updateBlink(dt)
     end
+    -- Position is final before advancing the animation that will be rendered
+    -- for this frame.  DRAGGING itself is updated by the current pointer sample.
+    self.animator:update(dt)
 end
 
 function GreenAssistant:render()
@@ -369,7 +352,7 @@ end
 function GreenAssistant:poke()
     if not self.enabled or not self.config.features.interaction then return false end
     local behavior = self.behaviorState:get()
-    if behavior == BehaviorState.DRAG or behavior == BehaviorState.OFFER
+    if behavior == BehaviorState.DRAGGING or behavior == BehaviorState.OFFER
         or behavior == BehaviorState.TAKEOVER or behavior == BehaviorState.SUCCESS then return false end
     local line, pokeCount, animationName = self.interaction:poke(self.elapsed)
     if not line then return false end
@@ -466,7 +449,9 @@ end
 
 function GreenAssistant:setBehaviorAnimation(behavior, animation)
     self.animationState:setBehaviorAnimation(behavior, animation)
-    if string.upper(behavior) == self.behaviorState:get() then self:_playBehaviorAnimation(self.behaviorState:get(), true) end
+    local normalized = string.upper(behavior)
+    if normalized == "DRAG" then normalized = BehaviorState.DRAGGING end
+    if normalized == self.behaviorState:get() then self:_playBehaviorAnimation(self.behaviorState:get(), true) end
     return self
 end
 

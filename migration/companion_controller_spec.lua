@@ -57,61 +57,53 @@ expect(not controller.targetX or controller.targetX >= controller.validMinX and 
     "zone shrink left an invalid WALK target")
 
 controller:interrupt("drag-test")
-local pointer = { x = controller.x, y = controller.y, down = true, pressed = true, released = false }
+expect(controller:moveTo(controller.validMaxX), "walk could not be started before drag interruption")
+local grabbedX, grabbedY = controller.x, controller.y
+local pointer = { x = grabbedX + 6, y = grabbedY - 12, down = true, pressed = true, released = false }
 local consumed, result = controller:handlePointer(pointer, true)
-expect(consumed and result.kind == "candidate", "pointer down did not create a drag candidate")
-pointer = { x = controller.x + 18, y = controller.y - 30, down = true, pressed = false, released = false }
-consumed, result = controller:handlePointer(pointer, false)
-expect(consumed and result.kind == "drag-started", "drag threshold did not enter DRAG")
-expect(controller:getState() == CompanionController.State.DRAG, "DRAG state missing")
-expect(controller:getRequestedAnimation() == "drag", "DRAG semantic animation missing")
+expect(consumed and result.kind == "drag-started", "pointer down did not enter DRAGGING immediately")
+expect(controller:getState() == CompanionController.State.DRAGGING, "DRAGGING state missing")
+expect(controller.targetX == nil and controller.velocityX == 0 and controller.velocityY == 0,
+    "DRAGGING did not clear movement target and velocity")
+expect(controller.x == grabbedX and controller.y == grabbedY, "pointer down changed the captured UI origin")
+expect(controller:getRequestedAnimation() == "drag", "DRAGGING semantic animation missing")
 local dragFacing = controller.facing
+pointer = { x = pointer.x + 30, y = pointer.y - 25, down = true, pressed = false, released = false }
+consumed, result = controller:handlePointer(pointer, false)
+expect(consumed and result.kind == "dragging", "active DRAGGING pointer was not captured")
+expect(controller.x == grabbedX + 30 and controller.y == grabbedY - 25,
+    "DRAGGING did not preserve the pointer-to-origin grab offset")
+local rigidX, rigidY = controller.x, controller.y
+controller:update(0.5, true)
+expect(controller.x == rigidX and controller.y == rigidY,
+    "autonomy or movement overwrote the active drag position")
+local dragZone = { left = 0, right = 250, top = 200, bottom = 280, baselineY = 270, fallbackX = 40 }
+controller:setZone(dragZone)
+expect(controller.x == rigidX and controller.y == rigidY,
+    "layout rewrote the active drag transform before the current pointer sample")
 pointer = { x = 999, y = 0, down = true, pressed = false, released = false }
 controller:handlePointer(pointer, false)
 expect(controller.x == controller.validMaxX, "drag escaped the horizontal CompanionZone")
-expect(controller.y == shrinkZone.top, "drag escaped the vertical CompanionZone")
+expect(controller.y == dragZone.top, "drag escaped the vertical CompanionZone")
 expect(controller.facing == dragFacing, "drag changed the locked facing")
 pointer = { x = controller.x, y = controller.y, down = false, pressed = false, released = true }
 controller:handlePointer(pointer, false)
-expect(controller:getState() == CompanionController.State.DRAG, "release skipped the settle phase")
+expect(controller:getState() == CompanionController.State.IDLE, "pointer release did not enter IDLE immediately")
 controller:update(0.16, true)
-expect(controller:getState() == CompanionController.State.IDLE and controller.y == shrinkZone.baselineY,
+expect(controller:getState() == CompanionController.State.IDLE and controller.y == dragZone.baselineY,
     "drag settle did not return to baseline IDLE")
 
-pointer = { x = controller.x, y = controller.y, down = true, pressed = true, released = false }
+local tapOriginX, tapOriginY = controller.x, controller.y
+pointer = { x = tapOriginX, y = tapOriginY, down = true, pressed = true, released = false }
 controller:handlePointer(pointer, true)
-pointer = { x = controller.x, y = controller.y, down = false, pressed = false, released = true }
+expect(controller:getState() == CompanionController.State.DRAGGING,
+    "tap candidate did not temporarily acquire highest-priority DRAGGING")
+pointer = { x = tapOriginX + 2, y = tapOriginY - 2, down = false, pressed = false, released = true }
 consumed, result = controller:handlePointer(pointer, true)
 expect(consumed and result.kind == "tap", "tap was not preserved separately from drag")
-
-local function hotspotController(facing)
-    local instance = CompanionController.new({
-        facing = facing,
-        config = {
-            characterHalfWidth = 20,
-            edgePadding = 5,
-            dragThreshold = 8,
-            dragGrabOffsetX = 14,
-            dragGrabOffsetY = -174,
-            dragGrabSourceFacing = CompanionController.Facing.LEFT,
-        },
-    })
-    instance:setZone({ left = 0, right = 500, top = 0, bottom = 500, baselineY = 400, fallbackX = 100 })
-    instance:handlePointer({ x = 100, y = 400, down = true, pressed = true, released = false }, true)
-    instance:handlePointer({ x = 200, y = 100, down = true, pressed = false, released = false }, false)
-    return instance
-end
-
-local leftGrab = hotspotController(CompanionController.Facing.LEFT)
-expect(leftGrab.x == 186 and leftGrab.y == 274,
-    "LEFT drag did not place the semantic cape-tip hotspot under the pointer")
-expect(leftGrab:getSnapshot().dragGrabOffsetX == 14 and leftGrab:getSnapshot().dragGrabOffsetY == -174,
-    "LEFT drag did not expose the active semantic grab offset")
-local rightGrab = hotspotController(CompanionController.Facing.RIGHT)
-expect(rightGrab.x == 214 and rightGrab.y == 274,
-    "RIGHT drag did not mirror the semantic cape-tip hotspot")
-expect(rightGrab:getSnapshot().dragGrabOffsetX == -14,
-    "RIGHT drag hotspot X was not mirrored with facing")
+expect(controller:getState() == CompanionController.State.IDLE, "tap release did not restore IDLE")
+expect(controller.x == tapOriginX and controller.y == dragZone.baselineY,
+    "sub-threshold tap left a drag displacement behind")
 
 local frame = {
     logicalWidth = 1880,

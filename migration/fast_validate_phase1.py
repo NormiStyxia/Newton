@@ -379,12 +379,13 @@ def main() -> int:
            "cardHandBounds does not include rotated visual geometry")
     expect('IDLE = "IDLE"' in companion_controller_lua
            and 'WALK = "WALK"' in companion_controller_lua
-           and 'DRAG = "DRAG"' in companion_controller_lua,
+           and 'DRAGGING = "DRAGGING"' in companion_controller_lua,
            "portable CompanionController states are incomplete")
     expect("pointerCandidate" in companion_controller_lua
            and "dragThreshold" in companion_controller_lua
-           and "settleDuration" in companion_controller_lua,
-           "tap/drag threshold or settle flow is missing")
+           and "settleDuration" in companion_controller_lua
+           and "pointerX + candidate.grabOffsetX" in companion_controller_lua,
+           "immediate rigid drag or tap/settle flow is missing")
     expect("CardHand" not in companion_controller_lua
            and "Matter" not in companion_controller_lua
            and "Tween" not in companion_controller_lua
@@ -393,8 +394,12 @@ def main() -> int:
     expect('sourceFacing = "LEFT"' in green_assist_config_lua
            and 'self.flipX = (facingRight == true) ~= sourceFacesRight' in green_assist_view_lua,
            "Companion sprite facing is not derived from the left-facing source asset")
-    expect(re.search(r"RefreshWorkspaceLayout\(\)\s+UpdateGreenAssistant\(dt\)", app_runtime_lua) is not None,
-           "CompanionZone is not refreshed before Companion update")
+    runtime_update = app_runtime_lua.split("function HandleUpdate", 1)[1].split("function HandleScreenMode", 1)[0]
+    expect(runtime_update.index("RefreshWorkspaceLayout()")
+           < runtime_update.index("local pointerFrame = PointerState()")
+           < runtime_update.index("HandleGreenAssistantPointer(pointerFrame.x, pointerFrame.y, pointerFrame)")
+           < runtime_update.index("UpdateGreenAssistant(dt)"),
+           "Companion input is not applied after layout and before animation/update")
     expect(has_main_function("UpdateCardHoverStates") and has_main_function("FindTopCardAt"), "card hover or depth-aware hit testing is missing")
     expect("failureCountsByLevel_" in main_lua and has_main_function("RegisterFailure"), "failure counts are not isolated per level")
     expect("activeCardPressPose_" in main_lua and "visual.x, visual.y = pressPose.x, pressPose.y" in main_lua,

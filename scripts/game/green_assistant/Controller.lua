@@ -25,7 +25,7 @@ function M.Install(context)
     end
 
     function UpdateGreenAssistant(dt)
-        if greenAssistant_ then greenAssistant_:update(dt, frame_) end
+        if greenAssistant_ then greenAssistant_:update(dt) end
     end
 
     function DrawGreenAssistant()
@@ -33,7 +33,11 @@ function M.Install(context)
     end
 
     function HandleGreenAssistantPointer(x, y, pointerFrame)
-        return greenAssistant_ and greenAssistant_:handlePointer(x, y, pointerFrame) or false
+        if not greenAssistant_ then return false end
+        -- Layout is applied first so pointer and CompanionZone share the same
+        -- current-frame design-space coordinates.
+        greenAssistant_:setFrame(frame_)
+        return greenAssistant_:handlePointer(x, y, pointerFrame)
     end
 
     function NotifyGreenAssistantAttemptFailed(payload)
