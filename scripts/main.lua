@@ -305,7 +305,8 @@ function SetGravity()
     if not physicsWorld_ or not level_ or not physicsProfile_ then return end
     local base = level_.rules.initialGravity
     local gravity = Rules.GetGravity(rules_, base)
-    if level_.physicsProbe and level_.physicsProbe:IsActive() then
+    local probeActive = level_.physicsProbe and level_.physicsProbe:IsActive()
+    if probeActive then
         gravity = { x = 0, y = 1, strength = 1 }
     end
     local timeScale = CurrentPhysicsTimeScale()
@@ -313,7 +314,9 @@ function SetGravity()
         gravity.x * gravity.strength * physicsProfile_.gravityAcceleration * timeScale * timeScale,
         -gravity.y * gravity.strength * physicsProfile_.gravityAcceleration * timeScale * timeScale
     ))
-    if apple_ and apple_.shape then
+    -- PhysicsProbe owns the apple collision mask while it is sampling. Do not
+    -- restore the normal level mask here or real fixtures leak into telemetry.
+    if apple_ and apple_.shape and not probeActive then
         apple_.shape.maskBits = rules_.phaseActive and (RuntimeFactory.MASK_ALL & ~RuntimeFactory.CATEGORY_PHASEABLE) or RuntimeFactory.MASK_ALL
     end
     if ReevaluateButtons then ReevaluateButtons() end
@@ -2519,7 +2522,11 @@ function HandleUpdate(_eventType, eventData)
             setLaunched = function(value) launched_ = value end,
             setStatus = SetStatus,
         }
-        if debugDraw_ and input:GetKeyPress(KEY_T) then physicsProbe:Start(probeContext) end
+        -- Deliberately hard to trigger during a normal game, but independent
+        -- of the disabled physics debug renderer so captures remain possible.
+        if input:GetKeyDown(KEY_CTRL) and input:GetKeyDown(KEY_ALT) and input:GetKeyPress(KEY_T) then
+            physicsProbe:Start(probeContext)
+        end
         if physicsProbe:IsActive() then
             local probeResult = physicsProbe:Update(probeContext)
             SyncPhysicsUpdateEnabled()

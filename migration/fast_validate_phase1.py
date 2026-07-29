@@ -182,6 +182,7 @@ def main() -> int:
     design_lua = (MAKER_ROOT / "scripts/migration/DesignSpace.lua").read_text(encoding="utf-8")
     synth_audio_lua = (MAKER_ROOT / "scripts/migration/SynthAudio.lua").read_text(encoding="utf-8")
     trajectory_lua = (MAKER_ROOT / "scripts/migration/TrajectoryPrediction.lua").read_text(encoding="utf-8")
+    physics_probe_lua = (MAKER_ROOT / "scripts/migration/PhysicsProbe.lua").read_text(encoding="utf-8")
     rules_lua = (MAKER_ROOT / "scripts/migration/Rules.lua").read_text(encoding="utf-8")
     all_lua = "\n".join(path.read_text(encoding="utf-8") for path in (MAKER_ROOT / "scripts").rglob("*.lua"))
     portrait_source = PHASER_ROOT / "public/assets/newton-portrait.png"
@@ -222,6 +223,12 @@ def main() -> int:
     expect("matterFramesPerSecond = 60" in main_lua and "matterVelocityToWorld" in main_lua, "Matter-to-Box2D velocity conversion missing")
     expect("CONFIG.maxAppleSpeed = 25 * CONFIG.matterVelocityToWorld" in main_lua and has_main_function("CapAppleSpeed"), "source apple speed cap missing")
     expect("PhysicsProfiles.Resolve" in main_lua and "physicsProfile_.gravityAcceleration" in main_lua, "gravity profile is not wired")
+    expect("local probeActive = level_.physicsProbe and level_.physicsProbe:IsActive()" in main_lua
+           and "if apple_ and apple_.shape and not probeActive then" in main_lua
+           and "apple.shape.maskBits = PROBE_CATEGORY" in physics_probe_lua,
+           "physics probe does not isolate apple contacts from level fixtures")
+    expect("input:GetKeyDown(KEY_CTRL) and input:GetKeyDown(KEY_ALT) and input:GetKeyPress(KEY_T)" in main_lua,
+           "physics probe no longer has an explicit development capture trigger")
     expect("STANDARD_GRAVITY_ACCELERATION" in profiles_lua and "MATTER_BASE_DELTA_MS * MATTER_BASE_DELTA_MS" in profiles_lua, "standard gravity conversion missing")
     expect("INCIDENT_GRAVITY_ACCELERATION" in profiles_lua and "incident_codex_migration_01" in profiles_lua, "incident gravity profile missing")
     expect("CreateLaboratoryBoundaries" in factory_lua and "world-ceiling" in factory_lua and "world-left" in factory_lua and "world-right" in factory_lua, "laboratory boundaries are incomplete")
@@ -306,7 +313,7 @@ def main() -> int:
 
     result = {
         "mode": "FAST_VALIDATE",
-        "checks": 152,
+        "checks": 154,
         "errors": errors,
         "status": "pass" if not errors else "fail",
     }
