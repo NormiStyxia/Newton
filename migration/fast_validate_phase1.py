@@ -183,6 +183,7 @@ def main() -> int:
     synth_audio_lua = (MAKER_ROOT / "scripts/migration/SynthAudio.lua").read_text(encoding="utf-8")
     trajectory_lua = (MAKER_ROOT / "scripts/migration/TrajectoryPrediction.lua").read_text(encoding="utf-8")
     replay_timeline_lua = (MAKER_ROOT / "scripts/migration/ReplayTimeline.lua").read_text(encoding="utf-8")
+    replay_feed_lua = (MAKER_ROOT / "scripts/migration/ReplayFeed.lua").read_text(encoding="utf-8")
     physics_probe_lua = (MAKER_ROOT / "scripts/migration/PhysicsProbe.lua").read_text(encoding="utf-8")
     rules_lua = (MAKER_ROOT / "scripts/migration/Rules.lua").read_text(encoding="utf-8")
     all_lua = "\n".join(path.read_text(encoding="utf-8") for path in (MAKER_ROOT / "scripts").rglob("*.lua"))
@@ -262,6 +263,13 @@ def main() -> int:
     expect("function ReplayTimeline.StateAt" in replay_timeline_lua and "while low + 1 < high" in replay_timeline_lua
            and "function ReplayTimeline.SamplesThrough" in replay_timeline_lua,
            "replay timeline interpolation or visible-sample contract is missing")
+    expect("migration.ReplayFeed" in main_lua and "ReplayFeed.Items(replayEvents_, replayTime_, Rules.CARDS)" in main_lua,
+           "replay rule feed does not use the source-equivalent state model")
+    expect("INSTANT_ACTIVE_MS = 1400" in replay_feed_lua and 'event.type == "RULE_REMOVED"' in replay_feed_lua
+           and 'event.type == "NEWTON_PUNCH"' in replay_feed_lua,
+           "replay rule-feed persistence and removal states are missing")
+    expect('RecordReplayEvent("RULE_REMOVED", "quantum-phase")' in main_lua and "local removedRules = {}" in main_lua,
+           "replay does not record phase or Newton rule removals")
     expect("frictionAir = apple_.baseFrictionAir or MatterCalibration.APPLE_FRICTION_AIR" in main_lua,
            "trajectory preview does not read the apple's current air-friction material")
     render_loop = main_lua.split("function HandleRender()", 1)[1]

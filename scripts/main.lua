@@ -9,6 +9,7 @@ local Renderer2D = require("migration.Renderer")
 local SynthAudio = require("migration.SynthAudio")
 local TrajectoryPrediction = require("migration.TrajectoryPrediction")
 local ReplayTimeline = require("migration.ReplayTimeline")
+local ReplayFeed = require("migration.ReplayFeed")
 
 local CONFIG = {
     title = "牛顿看了想打人",
@@ -886,6 +887,7 @@ function UpdatePhaseTraversal()
     elseif phaseTraversing_ then
         phaseTraversing_ = false
         Rules.EndPhase(rules_)
+        RecordReplayEvent("RULE_REMOVED", "quantum-phase")
         SetGravity()
         UpdateAngerFromRules()
         SetStatus("PHASE · 相位穿墙已消耗")
@@ -1562,11 +1564,15 @@ function HandlePointer()
             ToggleTacticalPause()
         elseif x >= frame_.playfieldX + frame_.playfieldWidth - 98 and x <= frame_.playfieldX + frame_.playfieldWidth - 18
             and y >= frame_.cardHandY - 17 and y <= frame_.cardHandY + 63 then
+            local removedRules = {}
+            for cardId in pairs(rules_.activeFields) do removedRules[#removedRules + 1] = cardId end
+            if rules_.phaseActive then removedRules[#removedRules + 1] = "quantum-phase" end
             if Rules.Punch(rules_) then
                 phaseTraversing_ = false
                 SetGravity()
                 ApplyAppleCardMaterial()
                 UpdateAngerFromRules()
+                for _, cardId in ipairs(removedRules) do RecordReplayEvent("RULE_REMOVED", cardId) end
                 RecordReplayEvent("NEWTON_PUNCH")
                 SetStatus("NEWTON · 修正拳已出手")
                 PlaySound("punch")
@@ -1691,7 +1697,7 @@ function ReplayStateAt(time)
 end
 
 StartReplay = function()
-    if replayActive_ or not apple_ or not (success_ or failed_) then return false end
+    if replayActive_ or not apple_ or not success_ then return false end
     CaptureReplayFinalSample()
     if not CanReplay() then
         -- Phaser only constructs a replay from a real recorded timeline. A
@@ -2094,20 +2100,16 @@ function DrawReplay()
     local feedX, feedY = frame_.playfieldX + 18, frame_.playfieldY + frame_.playfieldHeight - 166
     painter_:RoundedRect(feedX, feedY, 310, 148, 3, Renderer2D.COLORS.dark, Renderer2D.COLORS.greenLight, 1, 232)
     painter_:Text(feedX + 14, feedY + 11, replayFinished_ and "本次规则使用顺序" or "REPLAY · 规则记录", 13, Renderer2D.COLORS.white, NVG_ALIGN_LEFT + NVG_ALIGN_TOP, "maker-display")
-    local visible = {}
-    for _, event in ipairs(replayEvents_) do if event.t <= replayTime_ then visible[#visible + 1] = event end end
-    local start = math.max(1, #visible - 2)
-    if #visible == 0 then painter_:Text(feedX + 14, feedY + 57, "未使用规则卡", 13, Renderer2D.COLORS.greenSecondary) end
-    for i = start, #visible do
-        local event = visible[i]
+    local feedItems = ReplayFeed.Items(replayEvents_, replayTime_, Rules.CARDS)
+    local start = math.max(1, #feedItems - 2)
+    if #feedItems == 0 then painter_:Text(feedX + 14, feedY + 57, "未使用规则卡", 13, Renderer2D.COLORS.greenSecondary) end
+    for i = start, #feedItems do
+        local item = feedItems[i]
         local row = i - start
-        local card = event.cardId and Rules.CARDS[event.cardId] or nil
-        local accent = card and card.accent or Renderer2D.COLORS.warning
-        local label = card and card.name or (event.type == "NEWTON_PUNCH" and "修正拳" or "苹果进入观察窗")
-        painter_:Circle(feedX + 22, feedY + 52 + row * 34, 11, accent, nil, nil, 235)
-        painter_:Text(feedX + 22, feedY + 45 + row * 34, card and card.symbol or "N", 10, Renderer2D.COLORS.dark, NVG_ALIGN_CENTER + NVG_ALIGN_TOP, "maker-display")
-        painter_:Text(feedX + 42, feedY + 42 + row * 34, label, 13, Renderer2D.COLORS.white, NVG_ALIGN_LEFT + NVG_ALIGN_TOP, "maker-display")
-        painter_:Text(feedX + 42, feedY + 58 + row * 34, event.t <= replayTime_ and "已执行" or "等待中", 10, Renderer2D.COLORS.greenSecondary)
+        painter_:Circle(feedX + 22, feedY + 52 + row * 34, 11, item.accent, nil, nil, item.active and 242 or 107)
+        painter_:Text(feedX + 22, feedY + 45 + row * 34, item.symbol, 10, Renderer2D.COLORS.dark, NVG_ALIGN_CENTER + NVG_ALIGN_TOP, "maker-display")
+        painter_:Text(feedX + 42, feedY + 42 + row * 34, item.title, 13, Renderer2D.COLORS.white, NVG_ALIGN_LEFT + NVG_ALIGN_TOP, "maker-display")
+        painter_:Text(feedX + 42, feedY + 58 + row * 34, item.status, 10, item.active and Renderer2D.COLORS.greenSecondary or Renderer2D.COLORS.secondary)
     end
     if replayFinished_ then
         local endX = frame_.playfieldX + frame_.playfieldWidth - 190
