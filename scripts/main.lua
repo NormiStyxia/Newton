@@ -171,13 +171,20 @@ function SetReplayMode(mode)
     replayActive_ = mode ~= "none"
     replayPaused_ = mode == "paused" or mode == "finished"
     replayFinished_ = mode == "finished"
+    -- Replay exclusively owns the modal layer. Outcome state remains intact
+    -- so an explicit exit can restore it, but it must never receive input or
+    -- draw over replay controls while a replay mode is active.
+    if level_ then
+        level_.resultOverlayVisible = mode == "none" and (success_ or failed_) or false
+    end
 end
 
 function ReplayLog(event)
     print(string.format(
-        "[Replay] %s mode=%s samples=%d duration=%.3f",
+        "[Replay] %s mode=%s overlay=%s samples=%d duration=%.3f",
         event,
         replayMode_,
+        tostring(level_ and level_.resultOverlayVisible == true),
         #replaySamples_,
         (#replaySamples_ > 0 and (replaySamples_[#replaySamples_].t or 0) or 0) / 1000
     ))
@@ -1462,7 +1469,7 @@ function ResolveActiveCard(x, y)
 end
 
 function IsResultOverlayVisible()
-    return level_ and level_.resultOverlayVisible == true
+    return replayMode_ == "none" and level_ and level_.resultOverlayVisible == true
 end
 
 function HandleReplayPointer(x, y, press)
@@ -1698,7 +1705,6 @@ StartReplay = function()
         x = p.x, y = p.y, angle = apple_.node.rotation2D,
         bodyType = apple_.body.bodyType, vx = v.x, vy = v.y, angularVelocity = apple_.body.angularVelocity,
     }
-    level_.resultOverlayVisible = false
     SetReplayMode("playing")
     absorbing_ = false
     absorbElapsedMs_ = 0
@@ -1735,7 +1741,6 @@ StopReplay = function()
     end
     RestoreAppleContactMaterial()
     SyncPhysicsUpdateEnabled()
-    level_.resultOverlayVisible = success_ or failed_
     if success_ then SetStatus("CLEARED · 观测成立")
     elseif failed_ then SetStatus("FAILED · 实验未成立")
     else SetStatus(launched_ and "FLIGHT · 规则已生效" or "READY · 等待发射") end

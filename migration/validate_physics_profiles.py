@@ -178,10 +178,9 @@ def main() -> int:
     expect(has_main_function("SetReplayMode") and 'SetReplayMode("playing")' in main_lua
            and 'replayMode_ ~= "none"' in main_lua and "ClearCardInteraction()" in main_lua,
            "replay start does not take exclusive ownership of the result UI")
-    expect("level_.resultOverlayVisible = false" in main_lua
-           and "level_.resultOverlayVisible = success_ or failed_" in main_lua
-           and "return level_ and level_.resultOverlayVisible == true" in main_lua,
-           "replay does not explicitly hide and restore the result overlay")
+    expect('level_.resultOverlayVisible = mode == "none" and (success_ or failed_) or false' in main_lua
+           and 'return replayMode_ == "none" and level_ and level_.resultOverlayVisible == true' in main_lua,
+           "replay mode no longer exclusively owns the result overlay")
     expect("[Replay]" in main_lua and "ReplayLog(\"start\")" in main_lua and "ReplayLog(\"finished\")" in main_lua,
            "replay lifecycle has no runtime audit markers")
 
