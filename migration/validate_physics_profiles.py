@@ -166,6 +166,10 @@ def main() -> int:
            "up-impulse is not scaled for Matter bullet time")
     expect("* CurrentMatterVelocityToWorld()" in main_lua,
            "spring exit velocity is not scaled for Matter bullet time")
+    expect("object.impulseStrength * Rules.GetGravityMultiplier(rules_, level_.rules.initialGravity)" in main_lua,
+           "spring exit impulse does not follow the source gravity multiplier")
+    expect("object.impulseStrength * Rules.GetRestitutionMultiplier(rules_)" not in main_lua,
+           "spring exit impulse is incorrectly coupled to Hooke restitution")
     expect("eventData:GetFloat(\"TimeStep\")" in main_lua and "timeStep" in calibration,
            "air damping is not calibrated to the current physics step")
     expect("apple_.body.angularDamping = MatterCalibration.Box2DLinearDamping" in main_lua

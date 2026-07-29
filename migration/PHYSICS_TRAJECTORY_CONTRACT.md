@@ -75,7 +75,8 @@ and `PhysicsBeginContact2D`, including the actual `TimeStep`, active
 `time_scale`, contact phase, and the other node ID.  It must capture all four
 cases at `1x` and `.05x`.
 
-`--maker-log` consumes lines prefixed with `[PhysicsTelemetry]`.  Every session
+`--maker-log` consumes raw lines prefixed with `[PhysicsTelemetry]` and Maker
+runtime JSONL records whose `msg` field contains that prefix. Every session
 must start with `type=begin` and then emit exactly one explicit
 `type=material` event before its first sample:
 
@@ -91,7 +92,13 @@ Missing `begin`, `material`, or `end` events are hard failures.  The parser
 does not fill material values from defaults, because that would hide a runtime
 calibration regression.
 
-The Maker probe starts only after enabling physics debug drawing and pressing
-`T`. It runs on a dedicated collision layer, disables ordinary level
+The Maker probe starts from a focused game canvas in the `READY` state (not
+paused and not replaying) with `Ctrl+Alt+T`. It runs on a dedicated collision
+layer, disables ordinary level
 collisions, and destroys its fixtures before resetting the normal experiment.
 A missing sample, material field, or contact event is a comparison failure.
+
+At `.05x`, the probe records every `PhysicsPostStep` so a low-speed contact is
+not downsampled to 60Hz. Contact comparison uses begin/end lifecycle semantics:
+repeated Matter begin notifications for a single resting pair do not count as
+separate physical collisions.

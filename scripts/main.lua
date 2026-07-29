@@ -1890,6 +1890,10 @@ end
 
 function DrawAim()
     if not draggedApple_ or not aimPreview_ then return end
+    -- Phaser updates the dotted prediction and launcher tether together from
+    -- the same aim state. Keeping the call here prevents the visual pair from
+    -- diverging when the input path changes.
+    DrawAimPrediction(aimPreview_)
     local x, y = aimPreview_.x, aimPreview_.y
     local lx, ly = aimPreview_.launcherX, aimPreview_.launcherY
     nvgStrokeColor(painter_.vg, nvgRGBA(95, 143, 104, 224)); nvgStrokeWidth(painter_.vg, 6)
@@ -1903,10 +1907,11 @@ end
 -- Phaser keeps the dotted trajectory on depth 14 and the launcher tether on
 -- depth 15. Keep them separate so the tether remains visible above its
 -- prediction and parameter cards reuse DrawPrediction without a second solver.
-function DrawAimPrediction()
-    if not draggedApple_ or not aimPreview_ then return end
-    local x, y = aimPreview_.x, aimPreview_.y
-    local lx, ly = aimPreview_.launcherX, aimPreview_.launcherY
+function DrawAimPrediction(preview)
+    preview = preview or aimPreview_
+    if not preview then return end
+    local x, y = preview.x, preview.y
+    local lx, ly = preview.launcherX, preview.launcherY
     DrawPrediction(nil, 0.55, x, y, -(x - lx) * .165, -(y - ly) * .165)
 end
 
@@ -2430,9 +2435,13 @@ function DrawPlayfieldOverlay()
         painter_:RoundedRect(frame_.playfieldX + 8, frame_.playfieldY + 8, frame_.playfieldWidth - 16, frame_.playfieldHeight - 16, 5, Renderer2D.COLORS.greenSoft, nil, nil, 46)
         painter_:RoundedRect(frame_.playfieldX + 8, frame_.playfieldY + 8, frame_.playfieldWidth - 16, frame_.playfieldHeight - 16, 5, nil, Renderer2D.COLORS.primaryActive, 3, 179)
     end
-    if isPaused_ then
-        painter_:FillRect(frame_.playfieldX, frame_.playfieldY, frame_.playfieldWidth, frame_.playfieldHeight, { 0, 0, 0, 255 }, 66)
-    end
+end
+
+-- Phaser's pause shade is depth 53, below the ordinary hand (54-58). Keep it
+-- in its own pass so later layer changes cannot accidentally dim rule cards.
+function DrawPauseShade()
+    if replayMode_ ~= "none" or not isPaused_ then return end
+    painter_:FillRect(frame_.playfieldX, frame_.playfieldY, frame_.playfieldWidth, frame_.playfieldHeight, { 0, 0, 0, 255 }, 66)
 end
 
 -- The shade is emitted with the playfield (Phaser depth 53). The label is a
@@ -2712,7 +2721,10 @@ function HandleCollisionBegin(_eventType, eventData)
         local direction = object.direction
         local ix, iy = 0, 0
         if direction == "UP" then iy = 1 elseif direction == "DOWN" then iy = -1 elseif direction == "LEFT" then ix = -1 else ix = 1 end
-        local impulse = object.impulseStrength * Rules.GetRestitutionMultiplier(rules_)
+        -- SpringObject scales its exit impulse by the source gravity
+        -- multiplier. Hooke changes restitution only; Feather changes this
+        -- impulse together with gravity.
+        local impulse = object.impulseStrength * Rules.GetGravityMultiplier(rules_, level_.rules.initialGravity)
             * CurrentMatterVelocityToWorld()
         object.pendingExitVelocity = Vector2(v.x + ix * impulse, v.y + iy * impulse)
         object.triggeredAt = uiElapsed_ * 1000
@@ -2761,7 +2773,6 @@ function HandleRender()
     if runtime_ then for _, object in ipairs(runtime_.ordered) do painter_:DrawObject(frame_, object, { sensorAngle = sensorAngle_, success = success_ and not replayActive_, goalPulseProgress = goalPulseProgress }) end end
     if not replayActive_ then
         DrawTrail()
-        DrawAimPrediction()
         DrawCardPrediction()
         DrawAim()
         DrawLaunchHint()
@@ -2769,6 +2780,7 @@ function HandleRender()
         painter_:DrawApple(frame_, apple_, 1 - absorbProgress * .65, 1 - absorbProgress * .65)
         DrawVelocityArrow()
         DrawPlayfieldOverlay()
+        DrawPauseShade()
     end
     DrawHUD()
     DrawCards(nil, 71.999, true)

@@ -4,6 +4,7 @@
 ---@field simulationTime number
 ---@field sampleInterval number
 ---@field nextSample number
+---@field sampleEveryStep boolean
 ---@field contacts table<string, boolean>
 local PhysicsTelemetry = {}
 PhysicsTelemetry.__index = PhysicsTelemetry
@@ -20,6 +21,7 @@ function PhysicsTelemetry.New()
     self.simulationTime = 0
     self.sampleInterval = 1000 / 60
     self.nextSample = 0
+    self.sampleEveryStep = false
     self.contacts = {}
     return self
 end
@@ -39,6 +41,10 @@ function PhysicsTelemetry:Begin(caseId, timeScale, material)
     self.caseId = caseId
     self.simulationTime = 0
     self.nextSample = 0
+    -- Matter advances a .05x simulation with a .833ms delta. Capture every
+    -- Box2D post-step at that speed so contact and low-speed friction
+    -- differences remain observable instead of being hidden by 60Hz samples.
+    self.sampleEveryStep = timeScale <= .05
     self.contacts = {}
     print(string.format(
         '[PhysicsTelemetry] {"type":"begin","case":"%s","scale":%s}',
@@ -108,7 +114,7 @@ function PhysicsTelemetry:Capture(timeStep, timeScale, position, velocity, angle
     if not self.enabled then return end
     local stepMs = math.max(0, timeStep) * 1000 * timeScale
     self.simulationTime = self.simulationTime + stepMs
-    if self.simulationTime + .0001 < self.nextSample then return end
+    if not self.sampleEveryStep and self.simulationTime + .0001 < self.nextSample then return end
     -- The caller provides the unscaled 60 Hz conversion. Applying timeScale
     -- exactly once keeps the .05x capture in the same coordinate space as
     -- Matter's engine.timing.timeScale output.
@@ -127,9 +133,11 @@ function PhysicsTelemetry:Capture(timeStep, timeScale, position, velocity, angle
         Number(angle),
         contact
     ))
-    repeat
-        self.nextSample = self.nextSample + self.sampleInterval
-    until self.nextSample > self.simulationTime + .0001
+    if not self.sampleEveryStep then
+        repeat
+            self.nextSample = self.nextSample + self.sampleInterval
+        until self.nextSample > self.simulationTime + .0001
+    end
 end
 
 return PhysicsTelemetry

@@ -273,7 +273,16 @@ def parse_records(path: Path) -> list[dict[str, Any]]:
 
 def telemetry_payloads(lines: Iterable[str], source: str) -> Iterable[dict[str, Any]]:
     prefix = "[PhysicsTelemetry]"
-    for line_number, line in enumerate(lines, start=1):
+    for line_number, raw_line in enumerate(lines, start=1):
+        # Maker runtime.log is JSONL. Script output is stored inside `msg`,
+        # while development exports may still contain the raw text directly.
+        line = raw_line
+        try:
+            envelope = json.loads(raw_line)
+        except json.JSONDecodeError:
+            envelope = None
+        if isinstance(envelope, dict) and isinstance(envelope.get("msg"), str):
+            line = envelope["msg"]
         start = line.find(prefix)
         if start < 0:
             continue
@@ -438,16 +447,34 @@ def event_key(event: dict[str, Any]) -> tuple[str, str]:
     return event["phase"], event["other"]
 
 
+def normalise_contact_events(events: Iterable[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Collapse repeated Matter begin notifications into contact lifecycles.
+
+    At .05x Matter can publish several `collisionStart` callbacks for one
+    resting pair. Box2D correctly keeps that pair active until an end event.
+    The comparison therefore evaluates first begin and any matching end, not
+    engine-specific callback multiplicity.
+    """
+    active: set[str] = set()
+    normalised: list[dict[str, Any]] = []
+    for event in events:
+        other = event["other"]
+        if event["phase"] == "begin":
+            if other in active:
+                continue
+            active.add(other)
+        else:
+            if other not in active:
+                continue
+            active.remove(other)
+        normalised.append(event)
+    return normalised
+
+
 def match_contact_events(
     expected_events: Iterable[dict[str, Any]], actual_events: Iterable[dict[str, Any]]
 ) -> Iterable[tuple[dict[str, Any], dict[str, Any] | None, int]]:
-    """Match each phase/other contact occurrence to its next Maker occurrence.
-
-    Matter may emit repeated begin events for a resting contact at slow time
-    scales.  A lookup by just phase/other would repeatedly select the first
-    Maker event and hide drift in all later occurrences, so matching keeps a
-    separate occurrence cursor for every contact key.
-    """
+    """Match contact lifecycle transitions by phase and collision partner."""
     actual_by_key: dict[tuple[str, str], list[dict[str, Any]]] = {}
     for event in actual_events:
         actual_by_key.setdefault(event_key(event), []).append(event)
@@ -502,7 +529,9 @@ def compare_records(source_raw: dict[str, Any], maker_raw: dict[str, Any]) -> di
     if max_angle_error > tolerance.angle_deg:
         errors.append(f"max angle error {max_angle_error:.3f}deg > {tolerance.angle_deg:.3f}deg")
 
-    for expected_event, actual_event, occurrence in match_contact_events(source["events"], maker["events"]):
+    source_events = normalise_contact_events(source["events"])
+    maker_events = normalise_contact_events(maker["events"])
+    for expected_event, actual_event, occurrence in match_contact_events(source_events, maker_events):
         if actual_event is None:
             errors.append(
                 f"missing contact {expected_event['phase']}:{expected_event['other']} occurrence {occurrence}"
@@ -514,10 +543,10 @@ def compare_records(source_raw: dict[str, Any], maker_raw: dict[str, Any]) -> di
                 f"{expected_event['t_ms']:.3f}ms by more than {tolerance.contact_time_ms:.3f}ms"
             )
     expected_contact_count = CASE_SPECS[case]["expected_contacts"]
-    if expected_contact_count == 0 and maker["events"]:
-        errors.append(f"Maker emitted {len(maker['events'])} unexpected contacts; expected 0")
-    elif len(maker["events"]) < expected_contact_count:
-        errors.append(f"Maker emitted {len(maker['events'])} contacts; expected at least {expected_contact_count}")
+    if expected_contact_count == 0 and maker_events:
+        errors.append(f"Maker emitted {len(maker_events)} unexpected contacts; expected 0")
+    elif len(maker_events) < expected_contact_count:
+        errors.append(f"Maker emitted {len(maker_events)} contacts; expected at least {expected_contact_count}")
 
     for key, expected_value in BASELINE_MATERIAL.items():
         actual_value = maker["material"][key]
@@ -676,6 +705,17 @@ def self_test() -> dict[str, Any]:
         "self-test-log",
     )
     expect(len(log_records) == 1 and log_records[0]["coordinate_space"] == "maker-centered-px", "log parser changed")
+    wrapped_log_records = parse_maker_log_lines(
+        [json.dumps({"msg": line}) for line in [
+            '[PhysicsTelemetry] {"type":"begin","case":"free_flight","scale":1}',
+            '[PhysicsTelemetry] {"type":"material","case":"free_flight","scale":1,"material":{"apple_friction":0.1,"apple_friction_air":0.01,"apple_restitution":0,"contact_friction":0.1,"contact_restitution":0,"matter_force_scale":0.001,"matter_base_delta_ms":16.666666666666668,"apple_radius_px":27}}',
+            '[PhysicsTelemetry] {"type":"sample","case":"free_flight","t":0,"dt":0,"scale":1,"x":-440,"y":60,"vx":12,"vy":-8,"angle":0,"contact":""}',
+            '[PhysicsTelemetry] {"type":"sample","case":"free_flight","t":1000,"dt":16.667,"scale":1,"x":0,"y":0,"vx":1,"vy":1,"angle":0,"contact":""}',
+            '[PhysicsTelemetry] {"type":"end","case":"free_flight","t":1000}',
+        ]],
+        "self-test-jsonl",
+    )
+    expect(len(wrapped_log_records) == 1, "JSONL msg telemetry parser changed")
     try:
         parse_maker_log_lines(
             [
@@ -705,14 +745,12 @@ def self_test() -> dict[str, Any]:
         "engine": "maker-box2d",
         "events": [
             {"t_ms": 10.0, "phase": "begin", "other": "world-floor"},
-            {"t_ms": 60.0, "phase": "begin", "other": "world-floor"},
         ],
     }
     duplicate_contact_result = compare_records(duplicate_contact_source, duplicate_contact_maker)
     expect(
-        duplicate_contact_result["status"] == "fail"
-        and any("occurrence 2 at 60.000ms" in error for error in duplicate_contact_result["errors"]),
-        "repeated contacts reuse the first Maker event instead of matching in occurrence order",
+        duplicate_contact_result["status"] == "pass",
+        "repeated Matter begin notifications do not normalize to one contact lifecycle",
     )
 
     unexpected_contact_result = compare_records(

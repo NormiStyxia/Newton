@@ -185,6 +185,8 @@ def main() -> int:
     replay_timeline_lua = (MAKER_ROOT / "scripts/migration/ReplayTimeline.lua").read_text(encoding="utf-8")
     replay_feed_lua = (MAKER_ROOT / "scripts/migration/ReplayFeed.lua").read_text(encoding="utf-8")
     physics_probe_lua = (MAKER_ROOT / "scripts/migration/PhysicsProbe.lua").read_text(encoding="utf-8")
+    physics_telemetry_lua = (MAKER_ROOT / "scripts/migration/PhysicsTelemetry.lua").read_text(encoding="utf-8")
+    trajectory_contract_py = (MAKER_ROOT / "migration/physics_trajectory_contract.py").read_text(encoding="utf-8")
     rules_lua = (MAKER_ROOT / "scripts/migration/Rules.lua").read_text(encoding="utf-8")
     all_lua = "\n".join(path.read_text(encoding="utf-8") for path in (MAKER_ROOT / "scripts").rglob("*.lua"))
     portrait_source = PHASER_ROOT / "public/assets/newton-portrait.png"
@@ -224,12 +226,15 @@ def main() -> int:
     expect("velocityX = velocityX * frictionFactor + accelerationX" in trajectory_lua and "if frame % input.sampleEvery == 0" in trajectory_lua, "trajectory integration order differs from Phaser")
     expect("draggedApple_ = true\n            -- Phaser starts aiming on POINTER_DOWN" in main_lua and "UpdateAppleDrag(x, y)" in main_lua,
            "apple aim does not initialize on the same pointer-down frame as Phaser")
-    expect("function DrawAim()" in main_lua and "function DrawAimPrediction()" in main_lua and "function DrawCardPrediction()" in main_lua
+    expect("function DrawAim()" in main_lua and "function DrawAimPrediction(preview)" in main_lua and "function DrawCardPrediction()" in main_lua
            and 'activeCardId_ == "side-gravity"' in main_lua and 'activeCardId_ == "mirror-motion"' in main_lua,
            "source-backed aim or parameter-card trajectory previews are missing")
-    aim_prediction = main_lua.split("function DrawAimPrediction()", 1)[1].split("function DrawCardPrediction()", 1)[0]
+    aim_prediction = main_lua.split("function DrawAimPrediction(preview)", 1)[1].split("function DrawCardPrediction()", 1)[0]
     expect("DrawPrediction(nil, 0.55" in aim_prediction,
            "aim trajectory no longer reuses the source free-flight prediction")
+    aim_tether = main_lua.split("function DrawAim()", 1)[1].split("function DrawAimPrediction(preview)", 1)[0]
+    expect("DrawAimPrediction(aimPreview_)" in aim_tether,
+           "aim tether and trajectory preview are no longer generated from one aim state")
     expect("matterFramesPerSecond = 60" in main_lua and "matterVelocityToWorld" in main_lua, "Matter-to-Box2D velocity conversion missing")
     expect("CONFIG.maxAppleSpeed = 25 * CONFIG.matterVelocityToWorld" in main_lua and has_main_function("CapAppleSpeed"), "source apple speed cap missing")
     expect("PhysicsProfiles.Resolve" in main_lua and "physicsProfile_.gravityAcceleration" in main_lua, "gravity profile is not wired")
@@ -239,6 +244,12 @@ def main() -> int:
            "physics probe does not isolate apple contacts from level fixtures")
     expect("input:GetKeyDown(KEY_CTRL) and input:GetKeyDown(KEY_ALT) and input:GetKeyPress(KEY_T)" in main_lua,
            "physics probe no longer has an explicit development capture trigger")
+    expect("self.sampleEveryStep = timeScale <= .05" in physics_telemetry_lua
+           and "not self.sampleEveryStep and self.simulationTime + .0001 < self.nextSample" in physics_telemetry_lua,
+           "slow-motion physics telemetry no longer records every Box2D post-step")
+    expect("envelope.get(\"msg\")" in trajectory_contract_py
+           and "def normalise_contact_events" in trajectory_contract_py,
+           "Maker JSONL telemetry or contact lifecycle normalization is missing")
     expect("STANDARD_GRAVITY_ACCELERATION" in profiles_lua and "MATTER_BASE_DELTA_MS * MATTER_BASE_DELTA_MS" in profiles_lua, "standard gravity conversion missing")
     expect("INCIDENT_GRAVITY_ACCELERATION" in profiles_lua and "incident_codex_migration_01" in profiles_lua, "incident gravity profile missing")
     expect("CreateLaboratoryBoundaries" in factory_lua and "world-ceiling" in factory_lua and "world-left" in factory_lua and "world-right" in factory_lua, "laboratory boundaries are incomplete")
@@ -250,7 +261,9 @@ def main() -> int:
     expect("apple_.body.angularDamping = MatterCalibration.Box2DLinearDamping" in main_lua, "Matter frictionAir is not applied to angular motion")
     expect('SubscribeToEvent("PhysicsPreStep", "HandlePhysicsPreStep")' in main_lua and 'SubscribeToEvent("PhysicsPostStep", "HandlePhysicsPostStep")' in main_lua, "physics step event wiring missing")
     expect("applePreSolveVelocity_" in main_lua and "local v = applePreSolveVelocity_ or apple_.body.linearVelocity" in main_lua, "spring does not retain pre-solve velocity")
-    expect("object.impulseStrength * Rules.GetRestitutionMultiplier(rules_)" in main_lua and "* CurrentMatterVelocityToWorld()" in main_lua, "spring impulse time-scale conversion missing")
+    expect("object.impulseStrength * Rules.GetGravityMultiplier(rules_, level_.rules.initialGravity)" in main_lua
+           and "* CurrentMatterVelocityToWorld()" in main_lua,
+           "spring impulse no longer follows the source gravity multiplier")
     expect("CapAppleSpeed()\n    apple_.body.linearDamping" in main_lua, "speed cap is not applied before the physics pass")
     expect("UpdateSpringExits()\n    UpdateExperiment(eventData:GetFloat(\"TimeStep\") * CurrentPhysicsTimeScale())" in main_lua, "physics post-step timing differs from source bullet time")
     expect("uiElapsed_ * 1000 - object.triggeredAt" in main_lua and "uiElapsed_ * 1000 >= object.closeAt" in main_lua, "scene-time cooldown or door delay differs from source")
@@ -258,6 +271,10 @@ def main() -> int:
     expect("input:GetMouseButtonPress(MOUSEB_RIGHT)" in main_lua and "input:GetKeyPress(KEY_ESCAPE)" in main_lua and "ToggleTacticalPause" in main_lua, "source keyboard or cancel interaction is missing")
     expect("replayNextSampleMs_" in main_lua and "while replayNextSampleMs_ <= flightMs_ + .0001 do" in main_lua, "replay no longer interpolates at the source sample cadence")
     expect("replayPreviousSample_" in main_lua and "deltaAngle = ((current.angle - previous.angle + 540) % 360) - 180" in main_lua, "replay angle interpolation differs from Phaser")
+    replay_update = main_lua.split("function UpdateReplay(dt)", 1)[1].split("function RegisterFailure()", 1)[0]
+    expect("math.max(0, dt) * 1000 * replaySpeed_" in replay_update
+           and "replaySpeed_ = .5" in main_lua and "replaySpeed_ = 1" in main_lua and "replaySpeed_ = 2" in main_lua,
+           "replay speed no longer advances the original recorded timeline at 0.5x/1x/2x")
     expect("migration.ReplayTimeline" in main_lua and "ReplayTimeline.SamplesThrough(replaySamples_, replayTime_)" in main_lua,
            "replay rendering does not share the source timeline contract")
     expect("function ReplayTimeline.StateAt" in replay_timeline_lua and "while low + 1 < high" in replay_timeline_lua
@@ -273,14 +290,15 @@ def main() -> int:
     expect("frictionAir = apple_.baseFrictionAir or MatterCalibration.APPLE_FRICTION_AIR" in main_lua,
            "trajectory preview does not read the apple's current air-friction material")
     render_loop = main_lua.split("function HandleRender()", 1)[1]
-    expect(render_loop.index("DrawPlayfieldOverlay()") < render_loop.index("DrawCards(nil, 71.999, true)")
+    expect(render_loop.index("DrawPlayfieldOverlay()") < render_loop.index("DrawPauseShade()")
+           < render_loop.index("DrawCards(nil, 71.999, true)")
            < render_loop.index("DrawPauseStatus()") < render_loop.index("DrawCardParameterSelector()")
            < render_loop.index("DrawCards(72, nil, false)"),
            "pause shade, cards, pause status, selector, and active cards no longer follow Phaser depth bands")
-    pause_overlay = main_lua.split("function DrawPlayfieldOverlay()", 1)[1].split("function DrawPauseStatus()", 1)[0]
+    pause_overlay = main_lua.split("function DrawPauseShade()", 1)[1].split("function DrawPauseStatus()", 1)[0]
     expect("实验暂停 · 规则卡可操作" not in pause_overlay,
            "pause label is drawn with the depth-53 shade instead of at Phaser depth 67")
-    expect(render_loop.index("DrawAimPrediction()") < render_loop.index("DrawAim()") < render_loop.index("painter_:DrawApple"),
+    expect(render_loop.index("DrawAim()") < render_loop.index("painter_:DrawApple"),
            "aim tether is not drawn above the shared trajectory preview and below the apple")
     expect(render_loop.index("DrawCards(72, nil, false)") < render_loop.index("if replayActive_ then DrawReplay() end"),
            "replay trajectory and controls no longer render above the gameplay HUD and cards")
@@ -339,7 +357,8 @@ def main() -> int:
            "card burn does not preserve the jagged mask and active face")
     expect("function StartRuleFeedback" in main_lua and "function DrawRulePulse" in main_lua and "function DrawRuleFlash" in main_lua,
            "card resolution feedback layers are missing")
-    expect(render_loop.index("DrawPlayfieldOverlay()") < render_loop.index("DrawPauseStatus()")
+    expect(render_loop.index("DrawPlayfieldOverlay()") < render_loop.index("DrawPauseShade()")
+           < render_loop.index("DrawPauseStatus()")
            < render_loop.index("DrawRulePulse()"),
            "rule pulse must render above the pause and bullet-time overlay")
     expect(render_loop.index("DrawCards(nil, 71.999, true)") < render_loop.index("DrawPauseStatus()")
