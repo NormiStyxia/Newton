@@ -42,7 +42,7 @@ local function Frames(folder, count)
 end
 
 GreenAssistConfig.DEFAULTS = {
-    qualityPreset = "C_RUNTIME_MIPMAP",
+    qualityPreset = "B_RUNTIME_LINEAR",
     fallbackAnimation = "idle_base",
     failureThreshold = 3,
     features = {
