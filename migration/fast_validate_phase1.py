@@ -186,6 +186,7 @@ def main() -> int:
     workspace_layout_lua = (MAKER_ROOT / "scripts/game/layout/WorkspaceLayout.lua").read_text(encoding="utf-8")
     card_hand_layout_lua = (MAKER_ROOT / "scripts/game/layout/CardHandLayout.lua").read_text(encoding="utf-8")
     companion_controller_lua = (MAKER_ROOT / "scripts/green_assistant/CompanionController.lua").read_text(encoding="utf-8")
+    green_assistant_lua = (MAKER_ROOT / "scripts/green_assistant/GreenAssistant.lua").read_text(encoding="utf-8")
     green_assist_config_lua = (MAKER_ROOT / "scripts/green_assistant/GreenAssistConfig.lua").read_text(encoding="utf-8")
     green_assist_view_lua = (MAKER_ROOT / "scripts/green_assistant/GreenAssistView.lua").read_text(encoding="utf-8")
     app_runtime_lua = (MAKER_ROOT / "scripts/game/AppRuntime.lua").read_text(encoding="utf-8")
@@ -384,8 +385,13 @@ def main() -> int:
     expect("pointerCandidate" in companion_controller_lua
            and "dragThreshold" in companion_controller_lua
            and "settleDuration" in companion_controller_lua
-           and "pointerX + candidate.grabOffsetX" in companion_controller_lua,
+           and "pointerX + candidate.grabOffsetX" in companion_controller_lua
+           and "function Controller:_captureGrabOffset" in companion_controller_lua,
            "immediate rigid drag or tap/settle flow is missing")
+    expect("local function ConfigureDragGrab" in green_assistant_lua
+           and "semanticAnchors.dragGrab" in green_assistant_lua
+           and "ConfigureDragGrab(self.config)" in green_assistant_lua,
+           "drag animation hotspot is not converted into a fixed screen-space grab offset")
     expect("CardHand" not in companion_controller_lua
            and "Matter" not in companion_controller_lua
            and "Tween" not in companion_controller_lua

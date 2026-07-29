@@ -105,6 +105,38 @@ expect(controller:getState() == CompanionController.State.IDLE, "tap release did
 expect(controller.x == tapOriginX and controller.y == dragZone.baselineY,
     "sub-threshold tap left a drag displacement behind")
 
+local function hotspotController(facing)
+    local instance = CompanionController.new({
+        facing = facing,
+        config = {
+            characterHalfWidth = 20,
+            edgePadding = 5,
+            dragThreshold = 8,
+            dragGrabOffsetX = 14,
+            dragGrabOffsetY = -174,
+            dragGrabSourceFacing = CompanionController.Facing.LEFT,
+        },
+    })
+    instance:setZone({ left = 0, right = 500, top = 0, bottom = 500, baselineY = 400, fallbackX = 100 })
+    instance:handlePointer({ x = 200, y = 100, down = true, pressed = true, released = false }, true)
+    return instance
+end
+
+local leftGrab = hotspotController(CompanionController.Facing.LEFT)
+expect(leftGrab.x == 186 and leftGrab.y == 274,
+    "LEFT drag did not place the lifted-cloth tip under the pointer immediately")
+expect(leftGrab:getSnapshot().dragGrabOffsetX == -14 and leftGrab:getSnapshot().dragGrabOffsetY == 174,
+    "LEFT drag did not preserve the rigid root-to-pointer offset")
+expect(leftGrab:getSnapshot().usesSemanticGrab, "LEFT drag did not use the semantic hotspot")
+leftGrab:handlePointer({ x = 200, y = 490, down = true, pressed = false, released = false }, false)
+expect(leftGrab.y == 664 and leftGrab.y - 174 == 490,
+    "bottom-edge drag clamped the foot/root instead of keeping the lifted-cloth tip under the pointer")
+local rightGrab = hotspotController(CompanionController.Facing.RIGHT)
+expect(rightGrab.x == 214 and rightGrab.y == 274,
+    "RIGHT drag did not mirror the lifted-cloth tip around the foot anchor")
+expect(rightGrab:getSnapshot().dragGrabOffsetX == 14,
+    "RIGHT drag hotspot X was not mirrored with facing")
+
 local frame = {
     logicalWidth = 1880,
     logicalHeight = 840,

@@ -46,6 +46,32 @@ local function CopyOptions(options)
     return config
 end
 
+local function ConfigureDragGrab(config)
+    local companion = config.companion
+    if companion.dragGrabOffsetX ~= nil and companion.dragGrabOffsetY ~= nil then return end
+    local animationName = config.behaviorAnimationMap.DRAGGING or config.behaviorAnimationMap.DRAG
+    local animation = animationName and config.animations[animationName] or nil
+    local frame = animation and animation.frames and animation.frames[1] or nil
+    local foot = type(frame) == "table" and frame.footAnchor or nil
+    local hotspot = type(frame) == "table" and frame.semanticAnchors
+        and frame.semanticAnchors.dragGrab or nil
+    if not foot or not hotspot or not frame.frameHeight then return end
+
+    local frameScale = config.ui.spriteHeight * config.ui.scale
+        * (animation.scale or 1) * (frame.scale or 1) / frame.frameHeight
+    local frameOffset = animation.frameOffset or {}
+    if companion.dragGrabOffsetX == nil then
+        companion.dragGrabOffsetX = (hotspot.x - foot.x) * frameScale
+            + (frameOffset.x or frameOffset[1] or 0)
+    end
+    if companion.dragGrabOffsetY == nil then
+        companion.dragGrabOffsetY = (hotspot.y - foot.y) * frameScale
+            + (frameOffset.y or frameOffset[2] or 0)
+    end
+    companion.dragGrabSourceFacing = companion.dragGrabSourceFacing
+        or config.ui.sourceFacing or CompanionController.Facing.LEFT
+end
+
 function GreenAssistant.New(options)
     options = options or {}
     local self = setmetatable({}, GreenAssistant)
@@ -63,6 +89,7 @@ function GreenAssistant.New(options)
         local applied, errorMessage = AnimationSource.Apply(self.config, manifest, self.config.assets.variant)
         if not applied then print("[GreenAssistant] runtime animation manifest ignored: " .. tostring(errorMessage)) end
     end
+    ConfigureDragGrab(self.config)
     self.adapter = options.adapter or Adapter.New()
     self.listeners = {}
     self.elapsed = 0

@@ -263,13 +263,24 @@ function Controller:_updateDragging(pointerX, pointerY)
     end
     -- Rigid screen-space drag: the grab offset is captured once on pointerDown
     -- and is never replaced by animation, facing, velocity, or layout data.
-    self.x = Clamp(pointerX + candidate.grabOffsetX, self.validMinX, self.validMaxX)
-    self.y = Clamp(pointerY + candidate.grabOffsetY, self.zone.top, self.zone.bottom)
+    if candidate.usesSemanticGrab then
+        -- During the lifted pose the pointer owns the cloth-tip anchor, not
+        -- the foot/root.  Constrain that hotspot to CompanionZone and derive
+        -- the root from it so a bottom-edge pointer is not pushed off the tip.
+        local hotspotX = Clamp(pointerX, self.validMinX, self.validMaxX)
+        local hotspotY = Clamp(pointerY, self.zone.top, self.zone.bottom)
+        self.x = hotspotX + candidate.grabOffsetX
+        self.y = hotspotY + candidate.grabOffsetY
+    else
+        self.x = Clamp(pointerX + candidate.grabOffsetX, self.validMinX, self.validMaxX)
+        self.y = Clamp(pointerY + candidate.grabOffsetY, self.zone.top, self.zone.bottom)
+    end
     self:_emit("positionChanged", self.x, self.y, "drag")
 end
 
 function Controller:_releaseDragging()
     local duration = math.max(0, self.config.settleDuration)
+    self.x = Clamp(self.x, self.validMinX, self.validMaxX)
     self:_emit("dragReleased", self.x, self.y, self.zone.baselineY)
     self:_enterIdle("drag-released")
     if duration > 0 and self.y ~= self.zone.baselineY then
@@ -281,18 +292,33 @@ function Controller:_releaseDragging()
     end
 end
 
+function Controller:_captureGrabOffset(pointerX, pointerY)
+    local hotspotX = self.config.dragGrabOffsetX
+    local hotspotY = self.config.dragGrabOffsetY
+    if type(hotspotX) == "number" and type(hotspotY) == "number" then
+        local sourceFacing = self.config.dragGrabSourceFacing or Controller.Facing.LEFT
+        if self.facing ~= sourceFacing then hotspotX = -hotspotX end
+        -- hotspot is measured from the logical foot/root to the lifted-cloth
+        -- tip.  The rigid drag equation needs the inverse: root - pointer.
+        return -hotspotX, -hotspotY, true
+    end
+    return self.x - pointerX, self.y - pointerY, false
+end
+
 function Controller:handlePointer(pointer, hitCharacter)
     if not pointer or not self.initialized then return false, nil end
     local candidate = self.pointerCandidate
     if not candidate then
         if pointer.pressed ~= true or hitCharacter ~= true then return false, nil end
+        local grabOffsetX, grabOffsetY, usesSemanticGrab = self:_captureGrabOffset(pointer.x, pointer.y)
         self.pointerCandidate = {
             startX = pointer.x,
             startY = pointer.y,
             originX = self.x,
             originY = self.y,
-            grabOffsetX = self.x - pointer.x,
-            grabOffsetY = self.y - pointer.y,
+            grabOffsetX = grabOffsetX,
+            grabOffsetY = grabOffsetY,
+            usesSemanticGrab = usesSemanticGrab,
             moved = false,
         }
         self:_beginDragging(pointer.x, pointer.y)
@@ -389,6 +415,7 @@ function Controller:getSnapshot()
         settling = self.settle ~= nil,
         dragGrabOffsetX = self.pointerCandidate and self.pointerCandidate.grabOffsetX or nil,
         dragGrabOffsetY = self.pointerCandidate and self.pointerCandidate.grabOffsetY or nil,
+        usesSemanticGrab = self.pointerCandidate and self.pointerCandidate.usesSemanticGrab == true or false,
     }
 end
 
