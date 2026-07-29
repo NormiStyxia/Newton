@@ -5,6 +5,25 @@ local function expect(condition, message)
 end
 
 local Animator = require("green_assistant.GreenAssistAnimator")
+local AnimationSource = require("green_assistant.GreenAssistAnimationSource")
+local RuntimeManifest = require("green_assistant.generated.GreenAssistRuntimeManifest")
+local sourceConfig = {
+    assets = {},
+    animations = {
+        idle = { assetClip = "idle", frames = { "fallback" }, fps = 8, loop = true },
+        blink = { assetClip = "blink", frames = { "fallback" }, fps = 12, loop = false },
+        walk = { assetClip = "move", frames = { "fallback" }, fps = 10, loop = true },
+    },
+}
+expect(AnimationSource.Apply(sourceConfig, RuntimeManifest, "runtime_512"),
+    "runtime animation manifest did not apply")
+expect(sourceConfig.animations.idle.frames[1].frameHeight == 512,
+    "runtime FrameDescriptor height mismatch")
+expect(sourceConfig.animations.idle.frames[1].texture ~= nil
+    and sourceConfig.animations.idle.frames[1].sourceRect ~= nil,
+    "portable texture/sourceRect FrameDescriptor fields are missing")
+expect(sourceConfig.animations.idle.frames[1].anchorY == 1,
+    "runtime foot anchor was not preserved")
 local animatorEvents = {}
 local animator = Animator.new({
     fallbackAnimation = "idle",

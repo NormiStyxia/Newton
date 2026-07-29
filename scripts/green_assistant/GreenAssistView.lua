@@ -18,12 +18,17 @@ local function PointInRect(x, y, rect)
     return rect and x >= rect.x and x <= rect.x + rect.width and y >= rect.y and y <= rect.y + rect.height
 end
 
+local function FrameTexture(frame)
+    return frame and (frame.texture or frame.path) or nil
+end
+
 function View.New(options)
     local self = setmetatable({}, View)
     self.renderer = assert(options and options.renderer, "GreenAssistView renderer is required")
     self.config = assert(options.config, "GreenAssistView config is required")
     self.images = {}
     self.imageSizes = {}
+    self.imageFlags = self:_resolveImageFlags()
     self.position = { x = 0, y = 0 }
     self.logicalWidth = 1
     self.logicalHeight = 1
@@ -134,23 +139,34 @@ function View:hideMessage()
     self.choiceRects = {}
 end
 
+function View:_resolveImageFlags()
+    local enabled = self.config.render and self.config.render.generateMipmaps == true
+    if not enabled then return 0 end
+    if type(NVG_IMAGE_GENERATE_MIPMAPS) == "number" then
+        return NVG_IMAGE_GENERATE_MIPMAPS
+    end
+    print("[GreenAssistant] NVG_IMAGE_GENERATE_MIPMAPS is unavailable; using linear filtering")
+    return 0
+end
+
 function View:_image(path)
-    if self.images[path] ~= nil then return self.images[path], self.imageSizes[path] end
-    local handle = nvgCreateImage(self.renderer.vg, path, 0)
-    self.images[path] = handle
+    local key = tostring(self.imageFlags) .. ":" .. path
+    if self.images[key] ~= nil then return self.images[key], self.imageSizes[key] end
+    local handle = nvgCreateImage(self.renderer.vg, path, self.imageFlags)
+    self.images[key] = handle
     if handle and handle >= 0 then
         local width, height = nvgImageSize(self.renderer.vg, handle)
-        self.imageSizes[path] = { width = width, height = height }
+        self.imageSizes[key] = { width = width, height = height }
     else
-        self.imageSizes[path] = { width = 1, height = 1 }
+        self.imageSizes[key] = { width = 1, height = 1 }
         print("[GreenAssistant] frame load failed: " .. tostring(path))
     end
-    return handle, self.imageSizes[path]
+    return handle, self.imageSizes[key]
 end
 
 function View:preloadAnimation(config)
     for _, frame in ipairs(config and config.frames or {}) do
-        local path = type(frame) == "table" and frame.path or frame
+        local path = type(frame) == "table" and FrameTexture(frame) or frame
         if type(path) == "string" then self:_image(path) end
     end
 end
@@ -162,11 +178,37 @@ end
 function View:_spriteRect(frameData)
     local ui = self.config.ui
     local height = ui.spriteHeight * ui.scale * (frameData.scale or 1)
-    local _, source = self:_image(frameData.path)
-    local width = height * source.width / math.max(1, source.height)
+    local _, source = self:_image(FrameTexture(frameData))
+    local frameWidth = frameData.frameWidth or source.width
+    local frameHeight = frameData.frameHeight or source.height
+    local width = height * frameWidth / math.max(1, frameHeight)
     local x = self.position.x + (frameData.offsetX or 0) - width * (frameData.anchorX or 0.5)
     local y = self.position.y + (frameData.offsetY or 0) - height * (frameData.anchorY or 1)
     return { x = x, y = y, width = width, height = height }
+end
+
+function View:_drawFrame(vg, handle, imageSize, frameData, frameRect)
+    local sourceRect = frameData.sourceRect or {
+        x = 0, y = 0, width = imageSize.width, height = imageSize.height,
+    }
+    local sourceOffset = frameData.sourceOffset or { x = 0, y = 0 }
+    local frameWidth = frameData.frameWidth or sourceRect.width
+    local frameHeight = frameData.frameHeight or sourceRect.height
+    local scaleX = frameRect.width / math.max(1, frameWidth)
+    local scaleY = frameRect.height / math.max(1, frameHeight)
+    local drawX = frameRect.x + (sourceOffset.x or 0) * scaleX
+    local drawY = frameRect.y + (sourceOffset.y or 0) * scaleY
+    local drawWidth = sourceRect.width * scaleX
+    local drawHeight = sourceRect.height * scaleY
+    local patternX = drawX - sourceRect.x * scaleX
+    local patternY = drawY - sourceRect.y * scaleY
+    local patternWidth = imageSize.width * scaleX
+    local patternHeight = imageSize.height * scaleY
+    nvgBeginPath(vg)
+    nvgRect(vg, drawX, drawY, drawWidth, drawHeight)
+    nvgFillPaint(vg, nvgImagePattern(vg, patternX, patternY,
+        patternWidth, patternHeight, 0, handle, 1))
+    nvgFill(vg)
 end
 
 function View:_updateHitbox()
@@ -224,10 +266,11 @@ function View:hitTestChoice(x, y)
 end
 
 function View:render(frameData, debugInfo)
-    if not self.visible or not frameData or not frameData.path then return end
+    local texture = FrameTexture(frameData)
+    if not self.visible or not frameData or not texture then return end
     self:_updateHitbox()
     self:_updateBubbleLayout()
-    local handle = self:_image(frameData.path)
+    local handle, imageSize = self:_image(texture)
     local rect = self:_spriteRect(frameData)
     if handle and handle >= 0 then
         local vg = self.renderer.vg
@@ -235,15 +278,11 @@ function View:render(frameData, debugInfo)
         if self.flipX then
             nvgTranslate(vg, rect.x + rect.width, rect.y)
             nvgScale(vg, -1, 1)
-            nvgBeginPath(vg)
-            nvgRect(vg, 0, 0, rect.width, rect.height)
-            nvgFillPaint(vg, nvgImagePattern(vg, 0, 0, rect.width, rect.height, 0, handle, 1))
+            self:_drawFrame(vg, handle, imageSize, frameData,
+                { x = 0, y = 0, width = rect.width, height = rect.height })
         else
-            nvgBeginPath(vg)
-            nvgRect(vg, rect.x, rect.y, rect.width, rect.height)
-            nvgFillPaint(vg, nvgImagePattern(vg, rect.x, rect.y, rect.width, rect.height, 0, handle, 1))
+            self:_drawFrame(vg, handle, imageSize, frameData, rect)
         end
-        nvgFill(vg)
         nvgRestore(vg)
     end
 

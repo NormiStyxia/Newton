@@ -1,4 +1,6 @@
 local Config = require("green_assistant.GreenAssistConfig")
+local AnimationSource = require("green_assistant.GreenAssistAnimationSource")
+local RuntimeManifest = require("green_assistant.generated.GreenAssistRuntimeManifest")
 local CompanionController = require("green_assistant.CompanionController")
 local Animator = require("green_assistant.GreenAssistAnimator")
 local AnimationState = require("green_assistant.GreenAssistAnimationState")
@@ -48,6 +50,14 @@ function GreenAssistant.New(options)
     options = options or {}
     local self = setmetatable({}, GreenAssistant)
     self.config = Config.Resolve(CopyOptions(options))
+    local customAnimations = options.animations ~= nil
+        or type(options.config) == "table" and options.config.animations ~= nil
+    local useDefaultManifest = not customAnimations and options.animationManifest ~= false
+    local manifest = options.animationManifest or (useDefaultManifest and RuntimeManifest or nil)
+    if self.config.assets.enabled and manifest then
+        local applied, errorMessage = AnimationSource.Apply(self.config, manifest, self.config.assets.variant)
+        if not applied then print("[GreenAssistant] runtime animation manifest ignored: " .. tostring(errorMessage)) end
+    end
     self.adapter = options.adapter or Adapter.New()
     self.listeners = {}
     self.elapsed = 0

@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 1,
+  "assetId": "green_assistant",
+  "masterVariant": "master_1080",
+  "runtimeVariant": "runtime_512",
+  "runtime": {
+    "frameHeight": 512,
+    "horizontalPadding": 32,
+    "widthAlignment": 8,
+    "resampling": "lanczos-premultiplied-alpha"
+  },
+  "output": {
+    "imageRoot": "assets/image/green_assistant/runtime/runtime_512",
+    "jsonManifest": "assets/image/green_assistant/runtime/manifest.json",
+    "luaManifest": "scripts/green_assistant/generated/GreenAssistRuntimeManifest.lua"
+  },
+  "clips": {
+    "idle": {
+      "fps": 8,
+      "loop": true,
+      "footAnchor": {
+        "x": 0.5,
+        "y": 1.0,
+        "unit": "normalized"
+      },
+      "source": {
+        "type": "imageSequence",
+        "root": "assets/image/green_assistant/idle",
+        "pattern": "frame_*.png"
+      }
+    },
+    "blink": {
+      "fps": 12,
+      "loop": false,
+      "footAnchor": {
+        "x": 0.5,
+        "y": 1.0,
+        "unit": "normalized"
+      },
+      "source": {
+        "type": "imageSequence",
+        "root": "assets/image/green_assistant/blink",
+        "pattern": "frame_*.png"
+      }
+    },
+    "move": {
+      "fps": 10,
+      "loop": true,
+      "footAnchor": {
+        "x": 0.5,
+        "y": 1.0,
+        "unit": "normalized"
+      },
+      "source": {
+        "type": "imageSequence",
+        "root": "assets/image/green_assistant/move",
+        "pattern": "frame_*.png"
+      }
+    }
+  }
+}

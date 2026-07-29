@@ -3,6 +3,13 @@ local CompanionDefaults = CompanionConfig.DEFAULTS
 
 local GreenAssistConfig = {}
 
+GreenAssistConfig.QUALITY_PROFILES = {
+    A_MASTER_LINEAR = { variant = "master_1080", generateMipmaps = false },
+    B_RUNTIME_LINEAR = { variant = "runtime_512", generateMipmaps = false },
+    C_RUNTIME_MIPMAP = { variant = "runtime_512", generateMipmaps = true },
+    D_MASTER_MIPMAP = { variant = "master_1080", generateMipmaps = true },
+}
+
 local function Clone(value)
     if type(value) ~= "table" then return value end
     local result = {}
@@ -35,6 +42,7 @@ local function Frames(folder, count)
 end
 
 GreenAssistConfig.DEFAULTS = {
+    qualityPreset = "C_RUNTIME_MIPMAP",
     fallbackAnimation = "idle_base",
     failureThreshold = 3,
     features = {
@@ -46,6 +54,7 @@ GreenAssistConfig.DEFAULTS = {
     },
     animations = {
         idle_base = {
+            assetClip = "idle",
             frames = Frames("idle", 16),
             fps = 8,
             loop = true,
@@ -55,6 +64,7 @@ GreenAssistConfig.DEFAULTS = {
             scale = 1,
         },
         idle = {
+            assetClip = "idle",
             frames = Frames("idle", 16),
             fps = 8,
             loop = true,
@@ -64,6 +74,7 @@ GreenAssistConfig.DEFAULTS = {
             scale = 1,
         },
         move = {
+            assetClip = "move",
             frames = Frames("move", 16),
             fps = 10,
             loop = true,
@@ -73,6 +84,7 @@ GreenAssistConfig.DEFAULTS = {
             scale = 1,
         },
         walk = {
+            assetClip = "move",
             frames = Frames("move", 16),
             fps = 10,
             loop = true,
@@ -82,6 +94,7 @@ GreenAssistConfig.DEFAULTS = {
             scale = 1,
         },
         blink = {
+            assetClip = "blink",
             frames = Frames("blink", 16),
             fps = 12,
             loop = false,
@@ -103,6 +116,17 @@ GreenAssistConfig.DEFAULTS = {
         TAKEOVER = "idle_base",
         SUCCESS = "idle_base",
         DISABLED = "idle_base",
+    },
+    assets = {
+        enabled = true,
+        -- A/D use master_1080. B/C use runtime_512.  Keep this independent
+        -- from render.generateMipmaps so all four quality variants are testable.
+        variant = "runtime_512",
+        activeVariant = nil,
+    },
+    render = {
+        -- false = A/B linear; true = C/D linear + mipmap.
+        generateMipmaps = false,
     },
     ui = {
         anchorX = 0,
@@ -158,6 +182,13 @@ GreenAssistConfig.DEFAULTS = {
 
 function GreenAssistConfig.Resolve(overrides)
     local resolved = Merge(Clone(GreenAssistConfig.DEFAULTS), overrides or {})
+    local qualityPreset = resolved.qualityPreset
+    if qualityPreset ~= false then
+        local quality = GreenAssistConfig.QUALITY_PROFILES[qualityPreset]
+        assert(quality, "unknown GreenAssistant quality preset: " .. tostring(qualityPreset))
+        resolved.assets.variant = quality.variant
+        resolved.render.generateMipmaps = quality.generateMipmaps
+    end
     local companion = resolved.companion
     local legacyRoam = overrides and overrides.roam or nil
     if legacyRoam then
