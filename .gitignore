@@ -1,20 +1,40 @@
-# >>> TapTap Maker AI dev kit (local only) >>>
-.DS_Store
-.claude/
+# Build artifacts & runtime state
+.build/
+dist/
 .cli/
-.codex/
+logs/
+*.log
+logs/.nfs*
+.sce/logs/
+.sce/build/build_steps/__pycache__/
+
+# Temp & swap files
+.tmp/
+*.crswap
+.DS_Store
+
+# OSS util
+.ossutil_checkpoint/
+ossutil_output/
+
+# Editor / IDE / agent configs
+.vscode/
 .cursor/
-.emmylua/
+.codex/
 .gemini/
+.claude/
+.emmylua/
 .installer/
 .maker/
-AGENTS.md
-CLAUDE.md
+
+# Maker engine assets & agent files (provided by ai-dev-kit, not user source)
 engine-docs/
 examples/
+lua-tools/
 schemas/
 skills/
 templates/
 tools/
 urhox-libs/
-# <<< TapTap Maker AI dev kit (local only) <<<
+AGENTS.md
+CLAUDE.md
