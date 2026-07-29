@@ -1887,6 +1887,15 @@ function DrawAim()
     nvgLineTo(painter_.vg, x, y)
     nvgLineTo(painter_.vg, lx + 18, ly + 4)
     nvgStroke(painter_.vg)
+end
+
+-- Phaser keeps the dotted trajectory on depth 14 and the launcher tether on
+-- depth 15. Keep them separate so the tether remains visible above its
+-- prediction and parameter cards reuse DrawPrediction without a second solver.
+function DrawAimPrediction()
+    if not draggedApple_ or not aimPreview_ then return end
+    local x, y = aimPreview_.x, aimPreview_.y
+    local lx, ly = aimPreview_.launcherX, aimPreview_.launcherY
     DrawPrediction(nil, 0.55, x, y, -(x - lx) * .165, -(y - ly) * .165)
 end
 
@@ -2420,6 +2429,24 @@ function DrawPlayfieldOverlay()
     end
 end
 
+-- The shade is emitted with the playfield (Phaser depth 53); this label is
+-- emitted after ordinary cards (Phaser depth 67). The opaque label surface
+-- also prevents the lower shade-label pass from leaking through the hand.
+function DrawPauseStatus()
+    if replayMode_ ~= "none" or not isPaused_ then return end
+    local right = frame_.playfieldX + frame_.playfieldWidth - 24
+    local top = frame_.playfieldY + 16
+    painter_:FillRect(right - 196, top, 196, 24, Renderer2D.COLORS.panel, 255)
+    painter_:Text(
+        right - 9,
+        top + 3,
+        "\u{5B9E}\u{9A8C}\u{6682}\u{505C} \u{00B7} \u{89C4}\u{5219}\u{5361}\u{4ECD}\u{53EF}\u{64CD}\u{4F5C}",
+        13,
+        Renderer2D.COLORS.text,
+        NVG_ALIGN_RIGHT + NVG_ALIGN_TOP
+    )
+end
+
 function DrawResultOverlay()
     if replayMode_ ~= "none" then return end
     if IsResultOverlayVisible() then
@@ -2727,26 +2754,27 @@ function HandleRender()
     painter_:DrawGround(frame_)
     local goalPulseProgress = goalPulseElapsedMs_ and math.max(0, math.min(1, goalPulseElapsedMs_ / 460)) or nil
     if runtime_ then for _, object in ipairs(runtime_.ordered) do painter_:DrawObject(frame_, object, { sensorAngle = sensorAngle_, success = success_ and not replayActive_, goalPulseProgress = goalPulseProgress }) end end
-    if replayActive_ then
-        DrawReplay()
-    else
+    if not replayActive_ then
         DrawTrail()
-        DrawAim()
+        DrawAimPrediction()
         DrawCardPrediction()
+        DrawAim()
         DrawLaunchHint()
         local absorbProgress = absorbing_ and math.max(0, math.min(1, absorbElapsedMs_ / 520)) or 0
         painter_:DrawApple(frame_, apple_, 1 - absorbProgress * .65, 1 - absorbProgress * .65)
         DrawVelocityArrow()
         DrawPlayfieldOverlay()
-        DrawRulePulse()
     end
     DrawHUD()
     DrawCards(nil, 71.999, true)
+    DrawPauseStatus()
+    if not replayActive_ then DrawRulePulse() end
     DrawCardParameterSelector()
     DrawCards(72, nil, false)
     DrawCardBurns()
     DrawCardBurnParticles()
     DrawRuleFlash()
+    if replayActive_ then DrawReplay() end
     DrawResultOverlay()
     painter_:Finish()
 end

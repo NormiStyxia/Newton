@@ -223,9 +223,12 @@ def main() -> int:
     expect("velocityX = velocityX * frictionFactor + accelerationX" in trajectory_lua and "if frame % input.sampleEvery == 0" in trajectory_lua, "trajectory integration order differs from Phaser")
     expect("draggedApple_ = true\n            -- Phaser starts aiming on POINTER_DOWN" in main_lua and "UpdateAppleDrag(x, y)" in main_lua,
            "apple aim does not initialize on the same pointer-down frame as Phaser")
-    expect("function DrawAim()" in main_lua and "function DrawCardPrediction()" in main_lua
+    expect("function DrawAim()" in main_lua and "function DrawAimPrediction()" in main_lua and "function DrawCardPrediction()" in main_lua
            and 'activeCardId_ == "side-gravity"' in main_lua and 'activeCardId_ == "mirror-motion"' in main_lua,
            "source-backed aim or parameter-card trajectory previews are missing")
+    aim_prediction = main_lua.split("function DrawAimPrediction()", 1)[1].split("function DrawCardPrediction()", 1)[0]
+    expect("DrawPrediction(nil, 0.55" in aim_prediction,
+           "aim trajectory no longer reuses the source free-flight prediction")
     expect("matterFramesPerSecond = 60" in main_lua and "matterVelocityToWorld" in main_lua, "Matter-to-Box2D velocity conversion missing")
     expect("CONFIG.maxAppleSpeed = 25 * CONFIG.matterVelocityToWorld" in main_lua and has_main_function("CapAppleSpeed"), "source apple speed cap missing")
     expect("PhysicsProfiles.Resolve" in main_lua and "physicsProfile_.gravityAcceleration" in main_lua, "gravity profile is not wired")
@@ -263,8 +266,13 @@ def main() -> int:
            "trajectory preview does not read the apple's current air-friction material")
     render_loop = main_lua.split("function HandleRender()", 1)[1]
     expect(render_loop.index("DrawPlayfieldOverlay()") < render_loop.index("DrawCards(nil, 71.999, true)")
-           < render_loop.index("DrawCardParameterSelector()") < render_loop.index("DrawCards(72, nil, false)"),
-           "pause overlay, normal cards, selector, and active cards no longer follow Phaser depth bands")
+           < render_loop.index("DrawPauseStatus()") < render_loop.index("DrawCardParameterSelector()")
+           < render_loop.index("DrawCards(72, nil, false)"),
+           "pause shade, cards, pause status, selector, and active cards no longer follow Phaser depth bands")
+    expect(render_loop.index("DrawAimPrediction()") < render_loop.index("DrawAim()") < render_loop.index("painter_:DrawApple"),
+           "aim tether is not drawn above the shared trajectory preview and below the apple")
+    expect(render_loop.index("DrawCards(72, nil, false)") < render_loop.index("if replayActive_ then DrawReplay() end"),
+           "replay trajectory and controls no longer render above the gameplay HUD and cards")
     expect(has_main_function("IsResultOverlayVisible") and 'if replayMode_ ~= "none" then return end' in main_lua, "replay does not hide the completed-result overlay")
     expect("if replayActive_ then HandleReplayPointer(x, y, press); return end" in main_lua, "replay controls do not retain pointer priority over result controls")
     expect("SetReplayMode(\"playing\")" in main_lua and "level_.resultOverlayVisible = false" in main_lua and "SyncPhysicsUpdateEnabled()" in main_lua, "replay does not take exclusive ownership of outcome UI and physics")
@@ -320,9 +328,11 @@ def main() -> int:
            "card burn does not preserve the jagged mask and active face")
     expect("function StartRuleFeedback" in main_lua and "function DrawRulePulse" in main_lua and "function DrawRuleFlash" in main_lua,
            "card resolution feedback layers are missing")
-    expect("DrawPlayfieldOverlay()\n        DrawRulePulse()" in main_lua,
+    expect(render_loop.index("DrawPlayfieldOverlay()") < render_loop.index("DrawPauseStatus()")
+           < render_loop.index("DrawRulePulse()"),
            "rule pulse must render above the pause and bullet-time overlay")
-    expect("DrawCards(nil, 71.999, true)\n    DrawCardParameterSelector()\n    DrawCards(72, nil, false)" in main_lua,
+    expect(render_loop.index("DrawCards(nil, 71.999, true)") < render_loop.index("DrawPauseStatus()")
+           < render_loop.index("DrawCardParameterSelector()") < render_loop.index("DrawCards(72, nil, false)"),
            "parameter selector must remain between normal and active card depth bands")
     expect("Renderer2D.COLORS.greenSoft, nil, nil, 46" in main_lua and "Renderer2D.COLORS.primaryActive, 3, 179" in main_lua,
            "bullet-time fill and border alphas are not independently calibrated")
