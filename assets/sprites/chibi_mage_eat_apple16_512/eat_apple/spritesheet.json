@@ -26,16 +26,16 @@
       "frame": {
         "x": 0,
         "y": 0,
-        "w": 178,
-        "h": 426
+        "w": 203,
+        "h": 427
       },
       "rotated": false,
       "trimmed": true,
       "spriteSourceSize": {
-        "x": 198,
+        "x": 183,
         "y": 99,
-        "w": 178,
-        "h": 426
+        "w": 203,
+        "h": 427
       },
       "sourceSize": {
         "w": 594,
@@ -45,18 +45,18 @@
     },
     "eat_apple_0002": {
       "frame": {
-        "x": 178,
+        "x": 203,
         "y": 0,
-        "w": 178,
-        "h": 426
+        "w": 199,
+        "h": 427
       },
       "rotated": false,
       "trimmed": true,
       "spriteSourceSize": {
-        "x": 198,
+        "x": 187,
         "y": 99,
-        "w": 178,
-        "h": 426
+        "w": 199,
+        "h": 427
       },
       "sourceSize": {
         "w": 594,
@@ -66,18 +66,18 @@
     },
     "eat_apple_0003": {
       "frame": {
-        "x": 356,
+        "x": 402,
         "y": 0,
-        "w": 178,
-        "h": 426
+        "w": 196,
+        "h": 427
       },
       "rotated": false,
       "trimmed": true,
       "spriteSourceSize": {
-        "x": 198,
+        "x": 190,
         "y": 99,
-        "w": 178,
-        "h": 426
+        "w": 196,
+        "h": 427
       },
       "sourceSize": {
         "w": 594,
@@ -87,18 +87,18 @@
     },
     "eat_apple_0004": {
       "frame": {
-        "x": 534,
+        "x": 598,
         "y": 0,
-        "w": 178,
-        "h": 426
+        "w": 191,
+        "h": 427
       },
       "rotated": false,
       "trimmed": true,
       "spriteSourceSize": {
-        "x": 198,
+        "x": 195,
         "y": 99,
-        "w": 178,
-        "h": 426
+        "w": 191,
+        "h": 427
       },
       "sourceSize": {
         "w": 594,
@@ -108,18 +108,18 @@
     },
     "eat_apple_0005": {
       "frame": {
-        "x": 712,
+        "x": 789,
         "y": 0,
-        "w": 178,
-        "h": 426
+        "w": 188,
+        "h": 427
       },
       "rotated": false,
       "trimmed": true,
       "spriteSourceSize": {
-        "x": 198,
+        "x": 199,
         "y": 99,
-        "w": 178,
-        "h": 426
+        "w": 188,
+        "h": 427
       },
       "sourceSize": {
         "w": 594,
@@ -129,18 +129,18 @@
     },
     "eat_apple_0006": {
       "frame": {
-        "x": 890,
+        "x": 977,
         "y": 0,
-        "w": 179,
-        "h": 425
+        "w": 186,
+        "h": 427
       },
       "rotated": false,
       "trimmed": true,
       "spriteSourceSize": {
-        "x": 195,
-        "y": 100,
-        "w": 179,
-        "h": 425
+        "x": 203,
+        "y": 99,
+        "w": 186,
+        "h": 427
       },
       "sourceSize": {
         "w": 594,
@@ -150,18 +150,18 @@
     },
     "eat_apple_0007": {
       "frame": {
-        "x": 1069,
+        "x": 1163,
         "y": 0,
-        "w": 179,
-        "h": 425
+        "w": 180,
+        "h": 428
       },
       "rotated": false,
       "trimmed": true,
       "spriteSourceSize": {
-        "x": 194,
-        "y": 100,
-        "w": 179,
-        "h": 425
+        "x": 208,
+        "y": 98,
+        "w": 180,
+        "h": 428
       },
       "sourceSize": {
         "w": 594,
@@ -171,18 +171,18 @@
     },
     "eat_apple_0008": {
       "frame": {
-        "x": 1248,
+        "x": 1343,
         "y": 0,
         "w": 178,
-        "h": 425
+        "h": 427
       },
       "rotated": false,
       "trimmed": true,
       "spriteSourceSize": {
-        "x": 194,
-        "y": 100,
+        "x": 212,
+        "y": 98,
         "w": 178,
-        "h": 425
+        "h": 427
       },
       "sourceSize": {
         "w": 594,
@@ -192,18 +192,18 @@
     },
     "eat_apple_0009": {
       "frame": {
-        "x": 1426,
+        "x": 1521,
         "y": 0,
-        "w": 181,
-        "h": 424
+        "w": 178,
+        "h": 427
       },
       "rotated": false,
       "trimmed": true,
       "spriteSourceSize": {
-        "x": 189,
-        "y": 101,
-        "w": 181,
-        "h": 424
+        "x": 213,
+        "y": 98,
+        "w": 178,
+        "h": 427
       },
       "sourceSize": {
         "w": 594,
@@ -213,18 +213,18 @@
     },
     "eat_apple_0010": {
       "frame": {
-        "x": 1607,
+        "x": 1699,
         "y": 0,
-        "w": 180,
-        "h": 424
+        "w": 178,
+        "h": 427
       },
       "rotated": false,
       "trimmed": true,
       "spriteSourceSize": {
-        "x": 189,
-        "y": 101,
-        "w": 180,
-        "h": 424
+        "x": 213,
+        "y": 98,
+        "w": 178,
+        "h": 427
       },
       "sourceSize": {
         "w": 594,
@@ -234,18 +234,18 @@
     },
     "eat_apple_0011": {
       "frame": {
-        "x": 1787,
-        "y": 0,
-        "w": 181,
-        "h": 424
+        "x": 0,
+        "y": 428,
+        "w": 177,
+        "h": 426
       },
       "rotated": false,
       "trimmed": true,
       "spriteSourceSize": {
-        "x": 188,
-        "y": 101,
-        "w": 181,
-        "h": 424
+        "x": 214,
+        "y": 99,
+        "w": 177,
+        "h": 426
       },
       "sourceSize": {
         "w": 594,
@@ -255,18 +255,18 @@
     },
     "eat_apple_0012": {
       "frame": {
-        "x": 0,
-        "y": 426,
-        "w": 181,
-        "h": 424
+        "x": 177,
+        "y": 428,
+        "w": 177,
+        "h": 426
       },
       "rotated": false,
       "trimmed": true,
       "spriteSourceSize": {
-        "x": 188,
-        "y": 101,
-        "w": 181,
-        "h": 424
+        "x": 214,
+        "y": 99,
+        "w": 177,
+        "h": 426
       },
       "sourceSize": {
         "w": 594,
@@ -276,18 +276,18 @@
     },
     "eat_apple_0013": {
       "frame": {
-        "x": 181,
-        "y": 426,
-        "w": 181,
-        "h": 425
+        "x": 354,
+        "y": 428,
+        "w": 176,
+        "h": 426
       },
       "rotated": false,
       "trimmed": true,
       "spriteSourceSize": {
-        "x": 189,
-        "y": 100,
-        "w": 181,
-        "h": 425
+        "x": 215,
+        "y": 99,
+        "w": 176,
+        "h": 426
       },
       "sourceSize": {
         "w": 594,
@@ -297,18 +297,18 @@
     },
     "eat_apple_0014": {
       "frame": {
-        "x": 362,
-        "y": 426,
-        "w": 178,
-        "h": 425
+        "x": 530,
+        "y": 428,
+        "w": 176,
+        "h": 426
       },
       "rotated": false,
       "trimmed": true,
       "spriteSourceSize": {
-        "x": 192,
-        "y": 100,
-        "w": 178,
-        "h": 425
+        "x": 215,
+        "y": 99,
+        "w": 176,
+        "h": 426
       },
       "sourceSize": {
         "w": 594,
@@ -318,17 +318,17 @@
     },
     "eat_apple_0015": {
       "frame": {
-        "x": 540,
-        "y": 426,
-        "w": 178,
+        "x": 706,
+        "y": 428,
+        "w": 177,
         "h": 425
       },
       "rotated": false,
       "trimmed": true,
       "spriteSourceSize": {
-        "x": 193,
+        "x": 214,
         "y": 100,
-        "w": 178,
+        "w": 177,
         "h": 425
       },
       "sourceSize": {
@@ -339,18 +339,18 @@
     },
     "eat_apple_0016": {
       "frame": {
-        "x": 718,
-        "y": 426,
+        "x": 883,
+        "y": 428,
         "w": 178,
-        "h": 426
+        "h": 424
       },
       "rotated": false,
       "trimmed": true,
       "spriteSourceSize": {
-        "x": 197,
-        "y": 99,
+        "x": 213,
+        "y": 101,
         "w": 178,
-        "h": 426
+        "h": 424
       },
       "sourceSize": {
         "w": 594,
@@ -360,18 +360,18 @@
     },
     "eat_apple_0017": {
       "frame": {
-        "x": 896,
-        "y": 426,
-        "w": 178,
-        "h": 426
+        "x": 1061,
+        "y": 428,
+        "w": 177,
+        "h": 424
       },
       "rotated": false,
       "trimmed": true,
       "spriteSourceSize": {
-        "x": 197,
-        "y": 99,
-        "w": 178,
-        "h": 426
+        "x": 213,
+        "y": 101,
+        "w": 177,
+        "h": 424
       },
       "sourceSize": {
         "w": 594,
@@ -381,18 +381,18 @@
     },
     "eat_apple_0018": {
       "frame": {
-        "x": 1074,
-        "y": 426,
-        "w": 180,
-        "h": 426
+        "x": 1238,
+        "y": 428,
+        "w": 179,
+        "h": 424
       },
       "rotated": false,
       "trimmed": true,
       "spriteSourceSize": {
-        "x": 199,
-        "y": 99,
-        "w": 180,
-        "h": 426
+        "x": 210,
+        "y": 101,
+        "w": 179,
+        "h": 424
       },
       "sourceSize": {
         "w": 594,
@@ -402,18 +402,18 @@
     },
     "eat_apple_0019": {
       "frame": {
-        "x": 1254,
-        "y": 426,
+        "x": 1417,
+        "y": 428,
         "w": 181,
-        "h": 426
+        "h": 422
       },
       "rotated": false,
       "trimmed": true,
       "spriteSourceSize": {
-        "x": 199,
-        "y": 99,
+        "x": 204,
+        "y": 104,
         "w": 181,
-        "h": 426
+        "h": 422
       },
       "sourceSize": {
         "w": 594,
@@ -423,18 +423,18 @@
     },
     "eat_apple_0020": {
       "frame": {
-        "x": 1435,
-        "y": 426,
-        "w": 178,
-        "h": 426
+        "x": 1598,
+        "y": 428,
+        "w": 181,
+        "h": 422
       },
       "rotated": false,
       "trimmed": true,
       "spriteSourceSize": {
         "x": 203,
-        "y": 99,
-        "w": 178,
-        "h": 426
+        "y": 104,
+        "w": 181,
+        "h": 422
       },
       "sourceSize": {
         "w": 594,
@@ -444,18 +444,18 @@
     },
     "eat_apple_0021": {
       "frame": {
-        "x": 1613,
-        "y": 426,
-        "w": 181,
-        "h": 426
+        "x": 1779,
+        "y": 428,
+        "w": 179,
+        "h": 422
       },
       "rotated": false,
       "trimmed": true,
       "spriteSourceSize": {
-        "x": 203,
-        "y": 99,
-        "w": 181,
-        "h": 426
+        "x": 202,
+        "y": 104,
+        "w": 179,
+        "h": 422
       },
       "sourceSize": {
         "w": 594,
@@ -465,18 +465,18 @@
     },
     "eat_apple_0022": {
       "frame": {
-        "x": 1794,
-        "y": 426,
+        "x": 0,
+        "y": 854,
         "w": 181,
-        "h": 426
+        "h": 423
       },
       "rotated": false,
       "trimmed": true,
       "spriteSourceSize": {
-        "x": 203,
-        "y": 99,
+        "x": 199,
+        "y": 103,
         "w": 181,
-        "h": 426
+        "h": 423
       },
       "sourceSize": {
         "w": 594,
@@ -486,18 +486,18 @@
     },
     "eat_apple_0023": {
       "frame": {
-        "x": 0,
-        "y": 852,
-        "w": 181,
-        "h": 426
+        "x": 181,
+        "y": 854,
+        "w": 182,
+        "h": 425
       },
       "rotated": false,
       "trimmed": true,
       "spriteSourceSize": {
-        "x": 204,
-        "y": 99,
-        "w": 181,
-        "h": 426
+        "x": 198,
+        "y": 101,
+        "w": 182,
+        "h": 425
       },
       "sourceSize": {
         "w": 594,
@@ -507,18 +507,18 @@
     },
     "eat_apple_0024": {
       "frame": {
-        "x": 181,
-        "y": 852,
-        "w": 181,
-        "h": 426
+        "x": 363,
+        "y": 854,
+        "w": 180,
+        "h": 425
       },
       "rotated": false,
       "trimmed": true,
       "spriteSourceSize": {
-        "x": 204,
-        "y": 99,
-        "w": 181,
-        "h": 426
+        "x": 198,
+        "y": 101,
+        "w": 180,
+        "h": 425
       },
       "sourceSize": {
         "w": 594,
@@ -528,18 +528,333 @@
     },
     "eat_apple_0025": {
       "frame": {
-        "x": 362,
-        "y": 852,
+        "x": 543,
+        "y": 854,
         "w": 181,
+        "h": 425
+      },
+      "rotated": false,
+      "trimmed": true,
+      "spriteSourceSize": {
+        "x": 198,
+        "y": 101,
+        "w": 181,
+        "h": 425
+      },
+      "sourceSize": {
+        "w": 594,
+        "h": 594
+      },
+      "duration": 42
+    },
+    "eat_apple_0026": {
+      "frame": {
+        "x": 724,
+        "y": 854,
+        "w": 182,
         "h": 426
       },
       "rotated": false,
       "trimmed": true,
       "spriteSourceSize": {
-        "x": 204,
+        "x": 198,
+        "y": 100,
+        "w": 182,
+        "h": 426
+      },
+      "sourceSize": {
+        "w": 594,
+        "h": 594
+      },
+      "duration": 42
+    },
+    "eat_apple_0027": {
+      "frame": {
+        "x": 906,
+        "y": 854,
+        "w": 181,
+        "h": 427
+      },
+      "rotated": false,
+      "trimmed": true,
+      "spriteSourceSize": {
+        "x": 200,
         "y": 99,
         "w": 181,
-        "h": 426
+        "h": 427
+      },
+      "sourceSize": {
+        "w": 594,
+        "h": 594
+      },
+      "duration": 42
+    },
+    "eat_apple_0028": {
+      "frame": {
+        "x": 1087,
+        "y": 854,
+        "w": 179,
+        "h": 427
+      },
+      "rotated": false,
+      "trimmed": true,
+      "spriteSourceSize": {
+        "x": 202,
+        "y": 99,
+        "w": 179,
+        "h": 427
+      },
+      "sourceSize": {
+        "w": 594,
+        "h": 594
+      },
+      "duration": 42
+    },
+    "eat_apple_0029": {
+      "frame": {
+        "x": 1266,
+        "y": 854,
+        "w": 181,
+        "h": 427
+      },
+      "rotated": false,
+      "trimmed": true,
+      "spriteSourceSize": {
+        "x": 203,
+        "y": 99,
+        "w": 181,
+        "h": 427
+      },
+      "sourceSize": {
+        "w": 594,
+        "h": 594
+      },
+      "duration": 42
+    },
+    "eat_apple_0030": {
+      "frame": {
+        "x": 1447,
+        "y": 854,
+        "w": 184,
+        "h": 427
+      },
+      "rotated": false,
+      "trimmed": true,
+      "spriteSourceSize": {
+        "x": 200,
+        "y": 99,
+        "w": 184,
+        "h": 427
+      },
+      "sourceSize": {
+        "w": 594,
+        "h": 594
+      },
+      "duration": 42
+    },
+    "eat_apple_0031": {
+      "frame": {
+        "x": 1631,
+        "y": 854,
+        "w": 193,
+        "h": 428
+      },
+      "rotated": false,
+      "trimmed": true,
+      "spriteSourceSize": {
+        "x": 193,
+        "y": 98,
+        "w": 193,
+        "h": 428
+      },
+      "sourceSize": {
+        "w": 594,
+        "h": 594
+      },
+      "duration": 42
+    },
+    "eat_apple_0032": {
+      "frame": {
+        "x": 1824,
+        "y": 854,
+        "w": 194,
+        "h": 428
+      },
+      "rotated": false,
+      "trimmed": true,
+      "spriteSourceSize": {
+        "x": 192,
+        "y": 98,
+        "w": 194,
+        "h": 428
+      },
+      "sourceSize": {
+        "w": 594,
+        "h": 594
+      },
+      "duration": 42
+    },
+    "eat_apple_0033": {
+      "frame": {
+        "x": 0,
+        "y": 1282,
+        "w": 197,
+        "h": 428
+      },
+      "rotated": false,
+      "trimmed": true,
+      "spriteSourceSize": {
+        "x": 189,
+        "y": 98,
+        "w": 197,
+        "h": 428
+      },
+      "sourceSize": {
+        "w": 594,
+        "h": 594
+      },
+      "duration": 42
+    },
+    "eat_apple_0034": {
+      "frame": {
+        "x": 197,
+        "y": 1282,
+        "w": 199,
+        "h": 428
+      },
+      "rotated": false,
+      "trimmed": true,
+      "spriteSourceSize": {
+        "x": 188,
+        "y": 98,
+        "w": 199,
+        "h": 428
+      },
+      "sourceSize": {
+        "w": 594,
+        "h": 594
+      },
+      "duration": 42
+    },
+    "eat_apple_0035": {
+      "frame": {
+        "x": 396,
+        "y": 1282,
+        "w": 202,
+        "h": 428
+      },
+      "rotated": false,
+      "trimmed": true,
+      "spriteSourceSize": {
+        "x": 187,
+        "y": 98,
+        "w": 202,
+        "h": 428
+      },
+      "sourceSize": {
+        "w": 594,
+        "h": 594
+      },
+      "duration": 42
+    },
+    "eat_apple_0036": {
+      "frame": {
+        "x": 598,
+        "y": 1282,
+        "w": 204,
+        "h": 427
+      },
+      "rotated": false,
+      "trimmed": true,
+      "spriteSourceSize": {
+        "x": 186,
+        "y": 99,
+        "w": 204,
+        "h": 427
+      },
+      "sourceSize": {
+        "w": 594,
+        "h": 594
+      },
+      "duration": 42
+    },
+    "eat_apple_0037": {
+      "frame": {
+        "x": 802,
+        "y": 1282,
+        "w": 204,
+        "h": 427
+      },
+      "rotated": false,
+      "trimmed": true,
+      "spriteSourceSize": {
+        "x": 186,
+        "y": 99,
+        "w": 204,
+        "h": 427
+      },
+      "sourceSize": {
+        "w": 594,
+        "h": 594
+      },
+      "duration": 42
+    },
+    "eat_apple_0038": {
+      "frame": {
+        "x": 1006,
+        "y": 1282,
+        "w": 206,
+        "h": 427
+      },
+      "rotated": false,
+      "trimmed": true,
+      "spriteSourceSize": {
+        "x": 184,
+        "y": 99,
+        "w": 206,
+        "h": 427
+      },
+      "sourceSize": {
+        "w": 594,
+        "h": 594
+      },
+      "duration": 42
+    },
+    "eat_apple_0039": {
+      "frame": {
+        "x": 1212,
+        "y": 1282,
+        "w": 206,
+        "h": 427
+      },
+      "rotated": false,
+      "trimmed": true,
+      "spriteSourceSize": {
+        "x": 184,
+        "y": 99,
+        "w": 206,
+        "h": 427
+      },
+      "sourceSize": {
+        "w": 594,
+        "h": 594
+      },
+      "duration": 42
+    },
+    "eat_apple_0040": {
+      "frame": {
+        "x": 1418,
+        "y": 1282,
+        "w": 206,
+        "h": 427
+      },
+      "rotated": false,
+      "trimmed": true,
+      "spriteSourceSize": {
+        "x": 184,
+        "y": 99,
+        "w": 206,
+        "h": 427
       },
       "sourceSize": {
         "w": 594,
@@ -551,7 +866,7 @@
   "animations": [
     {
       "name": "eat_apple",
-      "frames": ["eat_apple_0001", "eat_apple_0002", "eat_apple_0003", "eat_apple_0004", "eat_apple_0005", "eat_apple_0006", "eat_apple_0007", "eat_apple_0008", "eat_apple_0009", "eat_apple_0010", "eat_apple_0011", "eat_apple_0012", "eat_apple_0013", "eat_apple_0014", "eat_apple_0015", "eat_apple_0016", "eat_apple_0017", "eat_apple_0018", "eat_apple_0019", "eat_apple_0020", "eat_apple_0021", "eat_apple_0022", "eat_apple_0023", "eat_apple_0024", "eat_apple_0025"],
+      "frames": ["eat_apple_0001", "eat_apple_0002", "eat_apple_0003", "eat_apple_0004", "eat_apple_0005", "eat_apple_0006", "eat_apple_0007", "eat_apple_0008", "eat_apple_0009", "eat_apple_0010", "eat_apple_0011", "eat_apple_0012", "eat_apple_0013", "eat_apple_0014", "eat_apple_0015", "eat_apple_0016", "eat_apple_0017", "eat_apple_0018", "eat_apple_0019", "eat_apple_0020", "eat_apple_0021", "eat_apple_0022", "eat_apple_0023", "eat_apple_0024", "eat_apple_0025", "eat_apple_0026", "eat_apple_0027", "eat_apple_0028", "eat_apple_0029", "eat_apple_0030", "eat_apple_0031", "eat_apple_0032", "eat_apple_0033", "eat_apple_0034", "eat_apple_0035", "eat_apple_0036", "eat_apple_0037", "eat_apple_0038", "eat_apple_0039", "eat_apple_0040"],
       "direction": "forward",
       "repeat": 1,
       "fps": 24
