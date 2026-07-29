@@ -7,18 +7,28 @@
   "entry": "main.lua",
   "version": "1.0.0",
   "taptap_publish": {
-    "title": "<game title, required>",
+    "title": "牛顿实验室",
     "description": "<game description>",
-    "category": "<game category: rpg, casual, action, strategy, simulation, trivia, arcade, adventure, card, sports, racing, puzzle, educational, music, word, board>",
+    "category": "puzzle",
     "screen_orientation": "landscape",
     "collection_type": "sce",
     "trial_note": "<developer's note>",
     "transparent": false,
-    "app_platforms": "1,2"
+    "app_platforms": "1,2",
+    "app_id": 895312,
+    "miniapp_id": "tapmce41ecayfsfet6",
+    "developer_id": 411438
   },
   "assets": {
     "icon": "",
     "screenshots": [],
     "promotional_image": ""
+  },
+  "test_qrcode": {
+    "url": "https://tapcode-sce.spark.xd.com/qrcode/p_ss8c_1785284266360.png",
+    "generated_at": "2026-07-29T00:17:46.484Z"
+  },
+  "metadata": {
+    "updated_at": "2026-07-29T00:17:46.484Z"
   }
 }
