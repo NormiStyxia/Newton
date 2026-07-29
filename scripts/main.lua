@@ -104,6 +104,7 @@ local pointer_ = {
 local launched_ = false
 local goalContact_ = false
 local goalContactMs_ = 0
+local goalEntryRecorded_ = false
 local goalPulseElapsedMs_ = nil
 local outsideMs_ = 0
 local flightMs_ = 0
@@ -447,6 +448,7 @@ function BuildLevel(index)
     launched_ = false
     goalContact_ = false
     goalContactMs_ = 0
+    goalEntryRecorded_ = false
     goalPulseElapsedMs_ = nil
     outsideMs_ = 0
     flightMs_ = 0
@@ -524,6 +526,7 @@ function ResetExperiment(playResetSound)
     cardGestureDistance_ = 0
     goalContact_ = false
     goalContactMs_ = 0
+    goalEntryRecorded_ = false
     goalPulseElapsedMs_ = nil
     outsideMs_ = 0
     flightMs_ = 0
@@ -1622,9 +1625,28 @@ end
 function ResetGoal()
     goalContact_ = false
     goalContactMs_ = 0
+    goalEntryRecorded_ = false
     local goal = level_ and LevelData.FindFirst(level_, "goal_sensor") or nil
     local runtimeGoal = goal and runtime_ and runtime_.byId[goal.id] or nil
     if runtimeGoal then runtimeGoal.active = false; runtimeGoal.contactProgress = 0 end
+end
+
+-- Box2D reports a begin contact once and an update contact every solver step.
+-- The source keeps its Sensor alive through Matter's collisionactive event.
+function ActivateGoalContact(nodeA, nodeB, recordEntry)
+    if not launched_ or replayActive_ or absorbing_ or success_ or failed_ then return false end
+    if not IsAppleGoalPair(nodeA, nodeB) then return false end
+    goalContact_ = true
+    goalContactMs_ = math.max(1, goalContactMs_)
+    local goal = LevelData.FindFirst(level_, "goal_sensor")
+    local runtimeGoal = goal and runtime_ and runtime_.byId[goal.id] or nil
+    if runtimeGoal then runtimeGoal.active = true end
+    if recordEntry and not goalEntryRecorded_ then
+        goalEntryRecorded_ = true
+        RecordReplayEvent("GOAL_ENTER")
+        SetStatus("OBSERVE · 苹果进入观察窗")
+    end
+    return true
 end
 
 function RecordReplay(dt)
@@ -2135,15 +2157,15 @@ function DrawHUD()
     local titleX = f.workspaceX - 37
     painter_:Text(titleX + 36, 19, "牛顿看了想打人", 29, Renderer2D.COLORS.white, NVG_ALIGN_LEFT + NVG_ALIGN_TOP, "maker-display")
     painter_:Text(titleX + 36, 57, string.format("实验 %02d · %s", levelIndex_, level_.name or ""), 13, Renderer2D.COLORS.greenSecondary)
-    local function DrawNavigationButton(x, symbol, key, symbolY, size)
+    local function DrawNavigationButton(x, key)
         local hovered = hoveredNavigation_ == key
         painter_:FillRect(x, 23, 46, 46, hovered and Renderer2D.COLORS.darkSecondary or Renderer2D.COLORS.dark, hovered and 255 or 107)
         painter_:StrokeRect(x, 23, 46, 46, hovered and Renderer2D.COLORS.greenLight or Renderer2D.COLORS.background, 2, hovered and 230 or 115)
-        painter_:Text(x + 23, symbolY, symbol, size, Renderer2D.COLORS.background, NVG_ALIGN_CENTER + NVG_ALIGN_TOP)
+        painter_:DrawNavigationIcon(key == "pause" and (isPaused_ and "play" or "pause") or key, x + 23, 46, Renderer2D.COLORS.background)
     end
-    DrawNavigationButton(titleX + 255, "←", "back", 32, 27)
-    DrawNavigationButton(titleX + 315, "↻", "reset", 32, 27)
-    DrawNavigationButton(titleX + 375, isPaused_ and "▶" or "Ⅱ", "pause", 34, 21)
+    DrawNavigationButton(titleX + 255, "back")
+    DrawNavigationButton(titleX + 315, "reset")
+    DrawNavigationButton(titleX + 375, "pause")
     painter_:Text(f.playfieldX + 180, 17, "当前实验状态", 12, Renderer2D.COLORS.secondary)
     painter_:Text(f.playfieldX + 180, 42, status_, 17, Renderer2D.COLORS.text, NVG_ALIGN_LEFT + NVG_ALIGN_TOP, "maker-display")
     painter_:Text(f.playfieldX + 585, 17, "当前场地规则", 12, Renderer2D.COLORS.secondary)
@@ -2214,7 +2236,7 @@ function DrawCardSurface(id, def, card, cardState, badgeText, active, hovered)
     painter_:RoundedRect(-72, -101, 144, 202, 8, nil, active and Renderer2D.COLORS.primaryActive or edge, active and 3 or 2)
     painter_:Text(-58, -85, (field and "场地 · " or "决策 · ") .. CardUseLabel(usage, remaining), 9 * CARD_TEXT_SCALE, edge)
     painter_:Text(0, -58, def.name, 16 * CARD_TEXT_SCALE, titleColor, NVG_ALIGN_CENTER + NVG_ALIGN_TOP, "maker-display")
-    painter_:Text(0, 8, def.symbol, 42 * CARD_TEXT_SCALE, titleColor, NVG_ALIGN_CENTER + NVG_ALIGN_MIDDLE, "maker-display")
+    painter_:DrawCardSymbol(id, 0, 7, titleColor)
     painter_:TextBox(-51 * CARD_TEXT_SCALE, 69, 102 * CARD_TEXT_SCALE, def.description, 10 * CARD_TEXT_SCALE, bodyColor, NVG_ALIGN_CENTER + NVG_ALIGN_TOP)
     DrawCardBadge(badgeText or CardBadgeText(id, usage, remaining), edge)
 end
@@ -2499,6 +2521,7 @@ function Start()
     SubscribeToEvent("PhysicsPreStep", "HandlePhysicsPreStep")
     SubscribeToEvent("PhysicsPostStep", "HandlePhysicsPostStep")
     SubscribeToEvent("PhysicsBeginContact2D", "HandleCollisionBegin")
+    SubscribeToEvent("PhysicsUpdateContact2D", "HandleCollisionUpdate")
     SubscribeToEvent("PhysicsEndContact2D", "HandleCollisionEnd")
     SubscribeToEvent(painter_.vg, "NanoVGRender", "HandleRender")
     print("[Migration] 1:1 design-space runtime started")
@@ -2701,15 +2724,7 @@ function HandleCollisionBegin(_eventType, eventData)
         elseif IsAppleNode(nodeB) then physicsProbe:OnContactBegin(nodeA, applePreSolveVelocity_, { apple = apple_, matterVelocityToWorld = CONFIG.matterVelocityToWorld }) end
         return
     end
-    if IsAppleGoalPair(nodeA, nodeB) then
-        goalContact_ = true
-        local goal = LevelData.FindFirst(level_, "goal_sensor")
-        local runtimeGoal = goal and runtime_.byId[goal.id] or nil
-        if runtimeGoal then runtimeGoal.active = true end
-        RecordReplayEvent("GOAL_ENTER")
-        SetStatus("OBSERVE · 苹果进入观察窗")
-        return
-    end
+    if ActivateGoalContact(nodeA, nodeB, true) then return end
     if not nodeA or not nodeB or not runtime_ or not IsAppleNode(nodeA) and not IsAppleNode(nodeB) then return end
     local other = IsAppleNode(nodeA) and nodeB or nodeA
     local object = runtime_.byId[other.name]
@@ -2734,6 +2749,16 @@ function HandleCollisionBegin(_eventType, eventData)
         object.contactCount = object.contactCount + 1
         EvaluateButton(object)
     end
+end
+
+---@param _eventType string
+---@param eventData PhysicsUpdateContact2DEventData
+function HandleCollisionUpdate(_eventType, eventData)
+    local nodeA = eventData:GetPtr("NodeA")
+    local nodeB = eventData:GetPtr("NodeB")
+    local physicsProbe = level_ and level_.physicsProbe or nil
+    if physicsProbe and physicsProbe:IsActive() then return end
+    ActivateGoalContact(nodeA, nodeB, false)
 end
 
 ---@param _eventType string

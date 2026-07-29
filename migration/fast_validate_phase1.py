@@ -335,6 +335,10 @@ def main() -> int:
     expect("decisionCardSurface = { 249, 222, 121, 255 }" in renderer_lua and "decisionCardBorder = { 208, 181, 86, 255 }" in renderer_lua, "decision card palette differs from LightLabTheme")
     expect("decisionCardText = { 73, 63, 39, 255 }" in renderer_lua and "decisionCardBody = { 101, 90, 52, 255 }" in renderer_lua, "decision card typography palette differs from LightLabTheme")
     expect("Renderer2D.COLORS.fieldCardSurface" in main_lua and "Renderer2D.COLORS.decisionCardSurface" in main_lua, "rule cards do not use source-specific surfaces")
+    expect("function Renderer:DrawCardSymbol" in renderer_lua and "painter_:DrawCardSymbol(id, 0, 7, titleColor)" in main_lua,
+           "card symbols still depend on unavailable browser fallback glyphs")
+    expect("function Renderer:DrawNavigationIcon" in renderer_lua and "painter_:DrawNavigationIcon" in main_lua,
+           "navigation icons still depend on unavailable browser fallback glyphs")
     expect("function Renderer:DrawFist" in renderer_lua and "nvgBezierTo(self.vg, 102, 41, 115, 48, 110, 58)" in renderer_lua, "fist.svg vector path is not reproduced")
     expect("painter_:DrawFist(cx, cy - 5, 46" in main_lua, "Newton ability does not render the source fist.svg")
     expect("painter_:Text(cx, cy - 16" not in main_lua and "tabStartX = frame_.playfieldX + frame_.playfieldWidth - 290" in main_lua, "obsolete fist placeholder or level-tab input remains")
@@ -367,10 +371,20 @@ def main() -> int:
     expect("Renderer2D.COLORS.greenSoft, nil, nil, 46" in main_lua and "Renderer2D.COLORS.primaryActive, 3, 179" in main_lua,
            "bullet-time fill and border alphas are not independently calibrated")
     expect("observation_ = \"苹果已在爱因斯坦观察窗内稳定停留。\"" in main_lua and "function Renderer:DrawNewton(frame, level, anger, observation)" in renderer_lua, "runtime observation state differs from Phaser")
+    expect('SubscribeToEvent("PhysicsUpdateContact2D", "HandleCollisionUpdate")' in main_lua
+           and has_main_function("ActivateGoalContact") and has_main_function("HandleCollisionUpdate"),
+           "goal Sensor does not subscribe to continuous Box2D contact updates")
+    expect("ActivateGoalContact(nodeA, nodeB, true)" in main_lua and "ActivateGoalContact(nodeA, nodeB, false)" in main_lua
+           and "goalContactMs_ = math.max(1, goalContactMs_)" in main_lua,
+           "goal Sensor enter/update lifecycle does not preserve a single active stay timer")
+    expect("if recordEntry and not goalEntryRecorded_ then" in main_lua and "goalEntryRecorded_ = false" in main_lua
+           and "RecordReplayEvent(\"GOAL_ENTER\")" in main_lua
+           and "if goalContactMs_ >= requiredStayTime and matterSpeed <= 4.8 then" in main_lua,
+           "goal Sensor does not enforce one enter event and the source completion threshold")
 
     result = {
         "mode": "FAST_VALIDATE",
-        "checks": 154,
+        "checks": 159,
         "errors": errors,
         "status": "pass" if not errors else "fail",
     }

@@ -154,6 +154,106 @@ function Renderer:TextBox(x, y, width, value, size, c, align, font)
     nvgTextBox(self.vg, x, y, width, value, nil)
 end
 
+-- These source UI glyphs use browser fallback fonts (Georgia/Arial). Keep the
+-- semantic artwork deterministic until the licensed font package is supplied.
+function Renderer:DrawCardSymbol(id, x, y, c, alpha)
+    local vg = self.vg
+    local opacity = alpha or 255
+    local stroke = color(c or COLORS.text, opacity)
+    local function arrow(x1, y1, x2, y2, head)
+        local dx, dy = x2 - x1, y2 - y1
+        local length = math.sqrt(dx * dx + dy * dy)
+        if length <= .001 then return end
+        local ux, uy = dx / length, dy / length
+        local nx, ny = -uy, ux
+        nvgBeginPath(vg)
+        nvgMoveTo(vg, x1, y1)
+        nvgLineTo(vg, x2, y2)
+        nvgStroke(vg)
+        nvgBeginPath(vg)
+        nvgMoveTo(vg, x2, y2)
+        nvgLineTo(vg, x2 - ux * head + nx * head * .58, y2 - uy * head + ny * head * .58)
+        nvgLineTo(vg, x2 - ux * head - nx * head * .58, y2 - uy * head - ny * head * .58)
+        nvgClosePath(vg)
+        nvgFill(vg)
+    end
+
+    nvgSave(vg)
+    nvgTranslate(vg, x, y)
+    nvgStrokeColor(vg, stroke)
+    nvgFillColor(vg, stroke)
+    nvgStrokeWidth(vg, 3)
+
+    if id == "feather-gravity" then
+        self:Text(-27, -22, "g", 42, c, NVG_ALIGN_LEFT + NVG_ALIGN_TOP, "maker-body", opacity)
+        self:Text(5, -23, "1", 16, c, NVG_ALIGN_LEFT + NVG_ALIGN_TOP, "maker-body", opacity)
+        self:Text(9, 5, "2", 16, c, NVG_ALIGN_LEFT + NVG_ALIGN_TOP, "maker-body", opacity)
+        nvgStrokeWidth(vg, 2)
+        nvgBeginPath(vg)
+        nvgMoveTo(vg, 3, 5)
+        nvgLineTo(vg, 20, -4)
+        nvgStroke(vg)
+    elseif id == "side-gravity" then
+        self:Text(-31, -22, "g", 42, c, NVG_ALIGN_LEFT + NVG_ALIGN_TOP, "maker-body", opacity)
+        arrow(-1, 2, 31, 2, 11)
+    elseif id == "hooke-bounce" or id == "up-impulse" then
+        arrow(0, 25, 0, -28, 15)
+    elseif id == "mirror-motion" then
+        arrow(-31, -8, 31, -8, 11)
+        arrow(31, 13, -31, 13, 11)
+    elseif id == "quantum-phase" then
+        nvgStrokeWidth(vg, 3)
+        nvgBeginPath(vg)
+        for step = 0, 48 do
+            local px = -32 + step / 48 * 64
+            local py = math.sin(step / 48 * math.pi * 4) * 13
+            if step == 0 then nvgMoveTo(vg, px, py) else nvgLineTo(vg, px, py) end
+        end
+        nvgStroke(vg)
+    end
+    nvgRestore(vg)
+end
+
+function Renderer:DrawNavigationIcon(kind, x, y, c, alpha)
+    local vg = self.vg
+    local stroke = color(c or COLORS.white, alpha or 255)
+    nvgStrokeColor(vg, stroke)
+    nvgFillColor(vg, stroke)
+    nvgStrokeWidth(vg, 2.4)
+    if kind == "back" then
+        nvgBeginPath(vg)
+        nvgMoveTo(vg, x + 10, y)
+        nvgLineTo(vg, x - 10, y)
+        nvgMoveTo(vg, x - 10, y)
+        nvgLineTo(vg, x - 2, y - 8)
+        nvgMoveTo(vg, x - 10, y)
+        nvgLineTo(vg, x - 2, y + 8)
+        nvgStroke(vg)
+    elseif kind == "reset" then
+        nvgBeginPath(vg)
+        nvgArc(vg, x, y, 11, math.pi * .18, math.pi * 1.72, NVG_CW)
+        nvgStroke(vg)
+        nvgBeginPath(vg)
+        nvgMoveTo(vg, x - 1, y - 11)
+        nvgLineTo(vg, x + 10, y - 11)
+        nvgLineTo(vg, x + 6, y - 1)
+        nvgClosePath(vg)
+        nvgFill(vg)
+    elseif kind == "pause" then
+        nvgBeginPath(vg)
+        nvgRect(vg, x - 7, y - 10, 5, 20)
+        nvgRect(vg, x + 2, y - 10, 5, 20)
+        nvgFill(vg)
+    else
+        nvgBeginPath(vg)
+        nvgMoveTo(vg, x - 7, y - 11)
+        nvgLineTo(vg, x + 11, y)
+        nvgLineTo(vg, x - 7, y + 11)
+        nvgClosePath(vg)
+        nvgFill(vg)
+    end
+end
+
 function Renderer:Image(image, x, y, w, h, alpha, angle, originX, originY)
     if not image or image < 0 then return end
     originX = originX or 0.5
