@@ -23,10 +23,15 @@ def main() -> int:
     expect("or isPaused_" not in hover, "tactical pause still clears card hover", errors)
     expect("if #cardBurns_ > 0 then return false end" in press,
            "burn timeline does not lock further card presses", errors)
-    expect("function AnimateHandAfterBurn(removedId)" in MAIN
+    expect("function CaptureHandVisualPoses(removedId)" in MAIN
+           and "function AnimateHandAfterBurn(displayed)" in MAIN
            and "duration = .16" in MAIN
-           and "AnimateHandAfterBurn(burn.id)" in MAIN,
+           and "CaptureHandVisualPoses(burn.id)" in MAIN
+           and "AnimateHandAfterBurn(displayed)" in MAIN,
            "burn completion does not animate surviving cards into their new hand slots", errors)
+    burn_completion = MAIN[MAIN.index("if burn.elapsed >= burn.totalDuration"):MAIN.index("burningCardIds_[burn.id] = nil")]
+    expect(burn_completion.index("CaptureHandVisualPoses(burn.id)") < burn_completion.index("cardState.remainingUses"),
+           "hand animation captures cards after the consumed card changes the source layout", errors)
     expect("local PRESET_X_SCALE = .92" in RULES,
            "source hand preset scale is missing", errors)
     expect("x = centerX + pose.x * PRESET_X_SCALE" in card_hand,

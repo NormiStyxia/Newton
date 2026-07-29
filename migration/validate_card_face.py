@@ -21,6 +21,14 @@ def main() -> int:
            "card art does not use the Phaser card-container scale")
     expect("def.symbol" not in main_lua,
            "card face can fall back to unavailable browser glyphs")
+    expect("ruleFlash_.cardId" in main_lua
+           and "painter_:DrawCardSymbol(ruleFlash_.cardId, 0, 0" in main_lua,
+           "rule feedback can fall back to unavailable browser glyphs")
+    expect("painter_:DrawCardSymbol(event.cardId, 0, 0" in main_lua
+           and "painter_:DrawCardSymbol(item.cardId, 0, 0" in main_lua,
+           "replay icon paths can fall back to unavailable browser glyphs")
+    expect("item.symbol" not in main_lua,
+           "replay rule feed still draws unavailable browser glyphs")
     expect("nvgTextLineHeight(self.vg, lineHeight or 1)" in renderer_lua,
            "renderer cannot set source-equivalent card text line height")
     expect('"maker-body", 1.2)' in main_lua,

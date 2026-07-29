@@ -44,12 +44,14 @@ def main() -> int:
     expect("function GoalSensorContainsApple()" in main_lua, "goal fixture overlap fallback is missing")
     expect("local rotation = math.rad(runtimeGoal.node.rotation2D)" in main_lua,
            "goal overlap does not account for fixture rotation")
-    expect("return offsetX * offsetX + offsetY * offsetY <= apple_.radius * apple_.radius" in main_lua,
-           "goal overlap does not use the apple fixture radius")
+    expect("local radius = apple_.radius + GOAL_CONTACT_SKIN" in main_lua
+           and "return offsetX * offsetX + offsetY * offsetY <= radius * radius" in main_lua,
+           "goal overlap does not include the Box2D/Matter contact skin")
     expect("UpdateSpringExits()\n    RefreshGoalContact()\n    UpdateExperiment" in main_lua,
            "goal overlap is not refreshed before the physics-time stay counter")
-    expect("if not GoalSensorContainsApple() then ResetGoal() end" in main_lua,
-           "trigger EndContact still unconditionally clears the goal timer")
+    end_contact = main_lua[main_lua.index("function HandleCollisionEnd"):main_lua.index("function HandleRender")]
+    expect("ResetGoal()" not in end_contact,
+           "trigger EndContact resets the goal timer before PhysicsPostStep can read final contact state")
 
     if errors:
         print("GOAL_SENSOR_VALIDATE fail")

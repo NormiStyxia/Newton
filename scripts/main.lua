@@ -214,23 +214,13 @@ function RuleFeedbackText(id, candidate)
     return "苹果获得一次相位充能，下一次可穿过玻璃相位墙。"
 end
 
-function RuleFlashSymbol(id, candidate)
-    local sideSymbols = { LEFT = "←", RIGHT = "→", UP = "↑", DOWN = "↓" }
-    if id == "feather-gravity" then return "g½" end
-    if id == "side-gravity" then return sideSymbols[candidate] or "↓" end
-    if id == "hooke-bounce" then return "↗" end
-    if id == "up-impulse" then return "↑" end
-    if id == "mirror-motion" then return candidate == "VERTICAL" and "↕" or "↔" end
-    return "∞"
-end
-
 function StartRuleFeedback(id, candidate, accent)
     observation_ = RuleFeedbackText(id, candidate)
     rulePulse_ = { elapsed = 0, duration = .22, color = accent or Renderer2D.COLORS.primaryActive }
     ruleFlash_ = {
         elapsed = 0,
         duration = .48,
-        symbol = RuleFlashSymbol(id, candidate),
+        cardId = id,
         color = id == "quantum-phase" and Renderer2D.COLORS.quantum or Renderer2D.COLORS.primaryActive,
     }
 end
@@ -1693,9 +1683,9 @@ function BeginGoalContact(recordEntry)
 end
 
 -- Phaser recalculates its hand only after the burn completes, then tweens the
--- surviving cards to their new slots for 160ms. Capture their displayed poses
+-- surviving cards to their new slots for 160ms. Preserve the rendered poses
 -- before consumption so the count change does not produce a visual jump.
-function AnimateHandAfterBurn(removedId)
+function CaptureHandVisualPoses(removedId)
     local entries = CardEntries()
     local currentPoses = Rules.CardHand(#entries, frame_.playfieldX + frame_.playfieldWidth * .5, frame_.cardHandY, frame_.playfieldWidth)
     local displayed = {}
@@ -1704,7 +1694,10 @@ function AnimateHandAfterBurn(removedId)
             displayed[card.cardId] = CardVisualPose(card.cardId, currentPoses[i])
         end
     end
+    return displayed
+end
 
+function AnimateHandAfterBurn(displayed)
     local remaining = CardEntries()
     local targetPoses = Rules.CardHand(#remaining, frame_.playfieldX + frame_.playfieldWidth * .5, frame_.cardHandY, frame_.playfieldWidth)
     for i, card in ipairs(remaining) do
@@ -2101,16 +2094,11 @@ function DrawRuleFlash()
     local progress = math.max(0, math.min(1, ruleFlash_.elapsed / ruleFlash_.duration))
     local x, y = AppleScreenPosition()
     local scale = 1 + progress * .2
-    painter_:Text(
-        x,
-        y - 18 - progress * 72,
-        ruleFlash_.symbol,
-        50 * scale,
-        ruleFlash_.color,
-        NVG_ALIGN_CENTER + NVG_ALIGN_MIDDLE,
-        "maker-display",
-        math.floor((1 - progress) * 255)
-    )
+    nvgSave(painter_.vg)
+    nvgTranslate(painter_.vg, x, y - 18 - progress * 72)
+    nvgScale(painter_.vg, .78 * scale, .78 * scale)
+    painter_:DrawCardSymbol(ruleFlash_.cardId, 0, 0, ruleFlash_.color, math.floor((1 - progress) * 255))
+    nvgRestore(painter_.vg)
 end
 
 function DrawReplay()
@@ -2192,7 +2180,15 @@ function DrawReplay()
             local card = event.cardId and Rules.CARDS[event.cardId] or nil
             local accent = card and card.accent or Renderer2D.COLORS.warning
             painter_:Circle(x, y, 15, Renderer2D.COLORS.panel, accent, 2, 245)
-            painter_:Text(x, y - 7, card and card.symbol or "N", 13, card and Renderer2D.COLORS.text or Renderer2D.COLORS.warning, NVG_ALIGN_CENTER + NVG_ALIGN_TOP, "maker-display")
+            if card then
+                nvgSave(painter_.vg)
+                nvgTranslate(painter_.vg, x, y)
+                nvgScale(painter_.vg, .22, .22)
+                painter_:DrawCardSymbol(event.cardId, 0, 0, Renderer2D.COLORS.text)
+                nvgRestore(painter_.vg)
+            else
+                painter_:Text(x, y - 7, "N", 13, Renderer2D.COLORS.warning, NVG_ALIGN_CENTER + NVG_ALIGN_TOP, "maker-display")
+            end
             painter_:Circle(x + 11, y - 11, 8, Renderer2D.COLORS.dark, nil, nil, 255)
             painter_:Text(x + 11, y - 15, tostring(sequence), 9, Renderer2D.COLORS.white, NVG_ALIGN_CENTER + NVG_ALIGN_TOP, "maker-display")
         end
@@ -2226,8 +2222,17 @@ function DrawReplay()
     for i = start, #feedItems do
         local item = feedItems[i]
         local row = i - start
-        painter_:Circle(feedX + 22, feedY + 52 + row * 34, 11, item.accent, nil, nil, item.active and 242 or 107)
-        painter_:Text(feedX + 22, feedY + 45 + row * 34, item.symbol, 10, Renderer2D.COLORS.dark, NVG_ALIGN_CENTER + NVG_ALIGN_TOP, "maker-display")
+        local iconX, iconY = feedX + 22, feedY + 52 + row * 34
+        painter_:Circle(iconX, iconY, 11, item.accent, nil, nil, item.active and 242 or 107)
+        if item.cardId then
+            nvgSave(painter_.vg)
+            nvgTranslate(painter_.vg, iconX, iconY)
+            nvgScale(painter_.vg, .18, .18)
+            painter_:DrawCardSymbol(item.cardId, 0, 0, Renderer2D.COLORS.dark, item.active and 255 or 145)
+            nvgRestore(painter_.vg)
+        else
+            painter_:Text(iconX, iconY - 7, "N", 10, Renderer2D.COLORS.dark, NVG_ALIGN_CENTER + NVG_ALIGN_TOP, "maker-display")
+        end
         painter_:Text(feedX + 42, feedY + 42 + row * 34, item.title, 13, Renderer2D.COLORS.white, NVG_ALIGN_LEFT + NVG_ALIGN_TOP, "maker-display")
         painter_:Text(feedX + 42, feedY + 58 + row * 34, item.status, 10, item.active and Renderer2D.COLORS.greenSecondary or Renderer2D.COLORS.secondary)
     end
@@ -2253,8 +2258,8 @@ function DrawHUD()
     local function DrawNavigationButton(x, key)
         local hovered = hoveredNavigation_ == key
         painter_:FillRect(x, 23, 46, 46, hovered and Renderer2D.COLORS.darkSecondary or Renderer2D.COLORS.dark, hovered and 255 or 107)
-        painter_:StrokeRect(x, 23, 46, 46, hovered and Renderer2D.COLORS.greenLight or Renderer2D.COLORS.background, 2, hovered and 230 or 115)
-        painter_:DrawNavigationIcon(key == "pause" and (isPaused_ and "play" or "pause") or key, x + 23, 46, Renderer2D.COLORS.background)
+        painter_:StrokeRect(x, 23, 46, 46, hovered and Renderer2D.COLORS.greenLight or Renderer2D.COLORS.white, 2, hovered and 230 or 115)
+        painter_:DrawNavigationIcon(key == "pause" and (isPaused_ and "play" or "pause") or key, x + 23, 46, Renderer2D.COLORS.white)
     end
     DrawNavigationButton(titleX + 255, "back")
     DrawNavigationButton(titleX + 315, "reset")
@@ -2692,11 +2697,9 @@ function HandleUpdate(_eventType, eventData)
             burn.applied = ApplyCardResolution(burn.id, burn.candidate)
         end
         if burn.elapsed >= burn.totalDuration then
-            -- Record the old hand before a consumed card changes its layout.
-            -- Its state update below then lets AnimateHandAfterBurn derive the
-            -- same target slots as Phaser's finishBurn -> layoutCardHand flow.
             local shouldReflow = burn.applied and cardStates_[burn.id]
                 and cardStates_[burn.id].usageMode ~= "REUSABLE"
+            local displayed = shouldReflow and CaptureHandVisualPoses(burn.id) or nil
             if burn.applied then
                 local cardState = cardStates_[burn.id]
                 if cardState and cardState.usageMode ~= "REUSABLE" then
@@ -2704,7 +2707,7 @@ function HandleUpdate(_eventType, eventData)
                     cardState.consumed = cardState.remainingUses == 0
                 end
             end
-            if shouldReflow then AnimateHandAfterBurn(burn.id) end
+            if displayed then AnimateHandAfterBurn(displayed) end
             burningCardIds_[burn.id] = nil
             table.remove(cardBurns_, i)
         end
@@ -2879,10 +2882,9 @@ function HandleCollisionEnd(_eventType, eventData)
         return
     end
     if IsAppleGoalPair(nodeA, nodeB) then
-        -- Some Box2D trigger contacts end while the fixtures are still
-        -- overlapping. Keep the source-style collisionactive state alive
-        -- until the same circle-vs-rectangle test says the apple has left.
-        if not GoalSensorContainsApple() then ResetGoal() end
+        -- Contact callbacks can arrive before the final solver transform is
+        -- synchronized. PhysicsPostStep owns the circle-vs-rotated-box test
+        -- and is the only place that may reset the continuous stay timer.
         return
     end
     if not nodeA or not nodeB or not runtime_ or not IsAppleNode(nodeA) and not IsAppleNode(nodeB) then return end

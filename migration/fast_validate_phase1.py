@@ -357,7 +357,7 @@ def main() -> int:
            "a direct card press no longer preserves its actual rendered pose")
     expect("function CardBadgeText" in main_lua and "停稳后选方向" in main_lua and "松手确认" in main_lua and "燃烧" in main_lua,
            "card interaction states are not reflected by the status badge")
-    expect("nvgTextBounds(painter_.vg, 0, 0, value)" in main_lua and "-51 * CARD_TEXT_SCALE" in main_lua,
+    expect("nvgTextBounds(painter_.vg, 0, 0, value)" in main_lua and "local right = 51 * CARD_TEXT_SCALE" in main_lua,
            "card badge sizing or description text geometry differs from Phaser scaling")
     expect("local clipPoints" in main_lua and "DrawCardSurface(burn.id, def, card, cardState, \"燃烧\", true, false)" in main_lua
            and "startScale" in main_lua,
