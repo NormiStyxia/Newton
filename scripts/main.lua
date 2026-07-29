@@ -2430,13 +2430,11 @@ function DrawPlayfieldOverlay()
     end
     if isPaused_ then
         painter_:FillRect(frame_.playfieldX, frame_.playfieldY, frame_.playfieldWidth, frame_.playfieldHeight, { 0, 0, 0, 255 }, 66)
-        painter_:Text(frame_.playfieldX + frame_.playfieldWidth - 24, frame_.playfieldY + 18, "实验暂停 · 规则卡可操作", 13, Renderer2D.COLORS.text, NVG_ALIGN_RIGHT + NVG_ALIGN_TOP)
     end
 end
 
--- The shade is emitted with the playfield (Phaser depth 53); this label is
--- emitted after ordinary cards (Phaser depth 67). The opaque label surface
--- also prevents the lower shade-label pass from leaking through the hand.
+-- The shade is emitted with the playfield (Phaser depth 53). The label is a
+-- separate depth-67 element and must not be painted into this lower pass.
 function DrawPauseStatus()
     if replayMode_ ~= "none" or not isPaused_ then return end
     local right = frame_.playfieldX + frame_.playfieldWidth - 24

@@ -269,6 +269,9 @@ def main() -> int:
            < render_loop.index("DrawPauseStatus()") < render_loop.index("DrawCardParameterSelector()")
            < render_loop.index("DrawCards(72, nil, false)"),
            "pause shade, cards, pause status, selector, and active cards no longer follow Phaser depth bands")
+    pause_overlay = main_lua.split("function DrawPlayfieldOverlay()", 1)[1].split("function DrawPauseStatus()", 1)[0]
+    expect("实验暂停 · 规则卡可操作" not in pause_overlay,
+           "pause label is drawn with the depth-53 shade instead of at Phaser depth 67")
     expect(render_loop.index("DrawAimPrediction()") < render_loop.index("DrawAim()") < render_loop.index("painter_:DrawApple"),
            "aim tether is not drawn above the shared trajectory preview and below the apple")
     expect(render_loop.index("DrawCards(72, nil, false)") < render_loop.index("if replayActive_ then DrawReplay() end"),

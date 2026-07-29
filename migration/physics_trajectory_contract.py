@@ -51,14 +51,14 @@ CASE_SPECS: dict[str, dict[str, Any]] = {
         "tolerance": Tolerance(1.5, 0.15, 4.0, 16.667),
     },
     "ground_slide": {
-        "description": "Apple resting on the laboratory floor with horizontal speed.",
+        "description": "Apple tangent to the probe floor top at y=580/700*596, with horizontal speed.",
         "duration_ms": 1000.0,
         "expected_contacts": 1,
-        "initial_lab_viewport": {"x": 510.0, "y": 519.0, "vx": 12.0, "vy": 0.0},
+        "initial_lab_viewport": {"x": 510.0, "y": 466.8285714285714, "vx": 12.0, "vy": 0.0},
         "tolerance": Tolerance(10.0, 0.55, 7.0, 20.0),
     },
     "right_wall": {
-        "description": "Zero-restitution collision with the standard right boundary.",
+        "description": "Zero-restitution collision with the 24px probe wall centered at x=1486.",
         "duration_ms": 500.0,
         "expected_contacts": 1,
         "initial_lab_viewport": {"x": 1410.0, "y": 298.0, "vx": 18.0, "vy": 0.0},
@@ -72,6 +72,12 @@ CASE_SPECS: dict[str, dict[str, Any]] = {
         "tolerance": Tolerance(18.0, 1.80, 12.0, 35.0),
     },
 }
+
+REQUIRED_SUITE_KEYS = frozenset(
+    (case, time_scale)
+    for case in CASE_SPECS
+    for time_scale in (0.05, 1.0)
+)
 
 
 BASELINE_MATERIAL = {
@@ -111,10 +117,10 @@ REFERENCE_RECORDS = [
         "material": BASELINE_MATERIAL,
         "samples": [
             sample(0.0, 310.0, 238.0, 12.0, -8.0, 0.0),
-            sample(16.667, 321.88, 230.3717, 11.88, -7.6283, 0.0),
-            sample(250.0, 476.2507, 160.5847, 10.3207, -2.7988, 0.0),
-            sample(500.0, 619.236, 155.2275, 8.8764, 1.6745, 0.0),
-            sample(1000.0, 847.9779, 321.7629, 6.5659, 8.8307, 0.0),
+            sample(16.667, 321.88, 230.357778, 11.88, -7.642222, 0.0),
+            sample(250.0, 476.250675, 158.993359, 10.3207, -2.993199, 0.0),
+            sample(500.0, 619.235956, 149.352056, 8.876404, 1.312942, 0.0),
+            sample(1000.0, 847.977909, 300.695494, 6.56588, 8.201729, 0.0),
         ],
         "events": [],
     },
@@ -126,11 +132,11 @@ REFERENCE_RECORDS = [
         "coordinate_space": "lab-viewport-px",
         "material": BASELINE_MATERIAL,
         "samples": [
-            sample(0.0, 510.0, 519.0, 12.0, 0.0, 0.0),
-            sample(16.667, 521.88, 519.1134, 11.48, 0.0, 0.0),
-            sample(250.0, 636.515, 519.1996, 4.7401, -0.315, 0.0),
-            sample(500.0, 686.2687, 519.1291, 2.7706, -0.1761, 0.0),
-            sample(1000.0, 754.1571, 519.1316, 1.8299, 0.0041, 0.0),
+            sample(0.0, 510.0, 466.828571, 12.0, 0.0, 0.0),
+            sample(16.667, 521.88, 466.903029, 11.08, 0.0, 0.0),
+            sample(250.0, 606.273052, 466.946068, 3.364391, 0.07459, 72.930014),
+            sample(500.0, 652.254747, 466.967747, 2.78933, 0.189126, 170.577025),
+            sample(1000.0, 720.213243, 466.940416, 1.817253, -0.097017, 315.406415),
         ],
         "events": [{"t_ms": 16.667, "phase": "begin", "other": "world-floor"}],
     },
@@ -143,11 +149,11 @@ REFERENCE_RECORDS = [
         "material": BASELINE_MATERIAL,
         "samples": [
             sample(0.0, 1410.0, 298.0, 18.0, 0.0, 0.0),
-            sample(16.667, 1427.82, 298.2917, 17.82, 0.2917, 0.0),
-            sample(250.0, 1439.9298, 317.5849, -0.0365, 2.3705, 0.0),
-            sample(500.0, 1439.4236, 383.8452, -0.0314, 6.1204, 0.0),
+            sample(16.667, 1427.82, 298.277778, 17.82, 0.277778, 0.0),
+            sample(250.0, 1446.852008, 314.949405, -0.038198, 2.334474, -15.633814),
+            sample(500.0, 1446.322801, 379.118868, -0.032853, 5.895052, -38.332662),
         ],
-        "events": [{"t_ms": 33.333, "phase": "begin", "other": "world-right"}],
+        "events": [{"t_ms": 50.0, "phase": "begin", "other": "world-right"}],
     },
     {
         "schema_version": SCHEMA_VERSION,
@@ -158,9 +164,9 @@ REFERENCE_RECORDS = [
         "material": BASELINE_MATERIAL,
         "samples": [
             sample(0.0, 510.0, 288.0, 0.0, 20.0, 0.0),
-            sample(16.667, 510.0, 308.0917, 0.0, 20.0917, 0.0),
-            sample(250.0, 508.3236, 320.2679, -0.1791, -7.0516, 0.0),
-            sample(500.0, 505.8426, 255.9922, -0.154, -1.9831, 0.0),
+            sample(16.667, 510.0, 308.077778, 0.0, 20.077778, 0.0),
+            sample(250.0, 506.708026, 388.732131, -0.333667, -0.036093, -7.682984),
+            sample(500.0, 502.50474, 388.641049, -0.26383, 0.01281, -16.627067),
         ],
         "events": [{"t_ms": 83.333, "phase": "begin", "other": "spring"}],
     },
@@ -428,11 +434,32 @@ def angular_distance(first: float, second: float) -> float:
     return abs((first - second + 180.0) % 360.0 - 180.0)
 
 
-def find_matching_event(events: Iterable[dict[str, Any]], expected: dict[str, Any]) -> dict[str, Any] | None:
-    for event in events:
-        if event["phase"] == expected["phase"] and event["other"] == expected["other"]:
-            return event
-    return None
+def event_key(event: dict[str, Any]) -> tuple[str, str]:
+    return event["phase"], event["other"]
+
+
+def match_contact_events(
+    expected_events: Iterable[dict[str, Any]], actual_events: Iterable[dict[str, Any]]
+) -> Iterable[tuple[dict[str, Any], dict[str, Any] | None, int]]:
+    """Match each phase/other contact occurrence to its next Maker occurrence.
+
+    Matter may emit repeated begin events for a resting contact at slow time
+    scales.  A lookup by just phase/other would repeatedly select the first
+    Maker event and hide drift in all later occurrences, so matching keeps a
+    separate occurrence cursor for every contact key.
+    """
+    actual_by_key: dict[tuple[str, str], list[dict[str, Any]]] = {}
+    for event in actual_events:
+        actual_by_key.setdefault(event_key(event), []).append(event)
+
+    expected_occurrences: dict[tuple[str, str], int] = {}
+    for expected in expected_events:
+        key = event_key(expected)
+        occurrence = expected_occurrences.get(key, 0) + 1
+        expected_occurrences[key] = occurrence
+        candidates = actual_by_key.get(key, [])
+        actual = candidates[occurrence - 1] if occurrence <= len(candidates) else None
+        yield expected, actual, occurrence
 
 
 def compare_records(source_raw: dict[str, Any], maker_raw: dict[str, Any]) -> dict[str, Any]:
@@ -475,17 +502,21 @@ def compare_records(source_raw: dict[str, Any], maker_raw: dict[str, Any]) -> di
     if max_angle_error > tolerance.angle_deg:
         errors.append(f"max angle error {max_angle_error:.3f}deg > {tolerance.angle_deg:.3f}deg")
 
-    for expected_event in source["events"]:
-        actual_event = find_matching_event(maker["events"], expected_event)
+    for expected_event, actual_event, occurrence in match_contact_events(source["events"], maker["events"]):
         if actual_event is None:
-            errors.append(f"missing contact {expected_event['phase']}:{expected_event['other']}")
+            errors.append(
+                f"missing contact {expected_event['phase']}:{expected_event['other']} occurrence {occurrence}"
+            )
         elif abs(float(expected_event["t_ms"]) - float(actual_event["t_ms"])) > tolerance.contact_time_ms:
             errors.append(
-                f"contact {expected_event['other']} at {actual_event['t_ms']:.3f}ms differs from "
+                f"contact {expected_event['phase']}:{expected_event['other']} occurrence {occurrence} at "
+                f"{actual_event['t_ms']:.3f}ms differs from "
                 f"{expected_event['t_ms']:.3f}ms by more than {tolerance.contact_time_ms:.3f}ms"
             )
     expected_contact_count = CASE_SPECS[case]["expected_contacts"]
-    if len(maker["events"]) < expected_contact_count:
+    if expected_contact_count == 0 and maker["events"]:
+        errors.append(f"Maker emitted {len(maker['events'])} unexpected contacts; expected 0")
+    elif len(maker["events"]) < expected_contact_count:
         errors.append(f"Maker emitted {len(maker['events'])} contacts; expected at least {expected_contact_count}")
 
     for key, expected_value in BASELINE_MATERIAL.items():
@@ -518,16 +549,37 @@ def compare_suites(source_records: list[dict[str, Any]], maker_records: list[dic
     source_by_key = records_by_key(source_records)
     maker_by_key = records_by_key(maker_records)
     results: list[dict[str, Any]] = []
-    missing = sorted(set(source_by_key) ^ set(maker_by_key))
-    for case, scale in missing:
-        results.append({"case": case, "time_scale": scale, "status": "fail", "errors": ["record missing from one suite"]})
-    for key in sorted(set(source_by_key) & set(maker_by_key)):
-        results.append(compare_records(source_by_key[key], maker_by_key[key]))
+    missing_source = sorted(REQUIRED_SUITE_KEYS - set(source_by_key))
+    missing_maker = sorted(REQUIRED_SUITE_KEYS - set(maker_by_key))
+    for case, scale in sorted(REQUIRED_SUITE_KEYS):
+        source = source_by_key.get((case, scale))
+        maker = maker_by_key.get((case, scale))
+        if source is None or maker is None:
+            missing_sides = []
+            if source is None:
+                missing_sides.append("Phaser")
+            if maker is None:
+                missing_sides.append("Maker")
+            results.append(
+                {
+                    "case": case,
+                    "time_scale": scale,
+                    "status": "fail",
+                    "errors": [f"required record missing from {' and '.join(missing_sides)} suite"],
+                }
+            )
+            continue
+        results.append(compare_records(source, maker))
     errors = [error for result in results for error in result.get("errors", [])]
     return {
         "mode": "PHYSICS_TRAJECTORY_COMPARE",
         "schema_version": SCHEMA_VERSION,
         "status": "pass" if not errors else "fail",
+        "required_records": len(REQUIRED_SUITE_KEYS),
+        "source_record_count": len(source_by_key),
+        "maker_record_count": len(maker_by_key),
+        "missing_source_keys": [f"{case}@{scale}x" for case, scale in missing_source],
+        "missing_maker_keys": [f"{case}@{scale}x" for case, scale in missing_maker],
         "results": results,
     }
 
@@ -569,6 +621,16 @@ def self_test() -> dict[str, Any]:
     records = [validate_record(item, f"reference[{index}]") for index, item in enumerate(REFERENCE_RECORDS)]
     expect(len(records) == len(CASE_SPECS), "reference does not cover every case")
     expect({record["case"] for record in records} == set(CASE_SPECS), "reference case IDs differ")
+    ground_reference = next(record for record in records if record["case"] == "ground_slide")
+    expected_ground_y = 580.0 / PLAYFIELD_HEIGHT * LAB_HEIGHT - BASELINE_MATERIAL["apple_radius_px"]
+    expect(
+        math.isclose(CASE_SPECS["ground_slide"]["initial_lab_viewport"]["y"], expected_ground_y, abs_tol=1e-12),
+        "ground-slide specification no longer matches the probe floor geometry",
+    )
+    expect(
+        math.isclose(float(ground_reference["samples"][0]["y"]), expected_ground_y, abs_tol=1e-6),
+        "built-in ground-slide reference no longer matches the Phaser capture geometry",
+    )
     maker_free = validate_record(
         {
             "schema_version": SCHEMA_VERSION,
@@ -630,6 +692,65 @@ def self_test() -> dict[str, Any]:
     source_free = next(record for record in records if record["case"] == "free_flight")
     identical = compare_records(source_free, {**source_free, "engine": "maker-box2d"})
     expect(identical["status"] == "pass", "reference cannot compare to canonical coordinates")
+
+    duplicate_contact_source = {
+        **ground_reference,
+        "events": [
+            {"t_ms": 10.0, "phase": "begin", "other": "world-floor"},
+            {"t_ms": 20.0, "phase": "begin", "other": "world-floor"},
+        ],
+    }
+    duplicate_contact_maker = {
+        **duplicate_contact_source,
+        "engine": "maker-box2d",
+        "events": [
+            {"t_ms": 10.0, "phase": "begin", "other": "world-floor"},
+            {"t_ms": 60.0, "phase": "begin", "other": "world-floor"},
+        ],
+    }
+    duplicate_contact_result = compare_records(duplicate_contact_source, duplicate_contact_maker)
+    expect(
+        duplicate_contact_result["status"] == "fail"
+        and any("occurrence 2 at 60.000ms" in error for error in duplicate_contact_result["errors"]),
+        "repeated contacts reuse the first Maker event instead of matching in occurrence order",
+    )
+
+    unexpected_contact_result = compare_records(
+        source_free,
+        {
+            **source_free,
+            "engine": "maker-box2d",
+            "events": [{"t_ms": 10.0, "phase": "begin", "other": "world-floor"}],
+        },
+    )
+    expect(
+        unexpected_contact_result["status"] == "fail"
+        and "expected 0" in "\n".join(unexpected_contact_result["errors"]),
+        "no-contact cases accept unexpected Maker contacts",
+    )
+
+    full_source_records: list[dict[str, Any]] = []
+    full_maker_records: list[dict[str, Any]] = []
+    for record in records:
+        for time_scale in (0.05, 1.0):
+            source_record = {**record, "time_scale": time_scale}
+            full_source_records.append(source_record)
+            full_maker_records.append({**source_record, "engine": "maker-box2d"})
+    full_suite_result = compare_suites(full_source_records, full_maker_records)
+    expect(
+        full_suite_result["status"] == "pass"
+        and full_suite_result["required_records"] == 8
+        and len(full_suite_result["results"]) == 8,
+        "complete eight-record suites do not compare successfully",
+    )
+    common_subset_result = compare_suites(full_source_records[:1], full_maker_records[:1])
+    expect(
+        common_subset_result["status"] == "fail"
+        and len(common_subset_result["results"]) == 8
+        and len(common_subset_result["missing_source_keys"]) == 7
+        and len(common_subset_result["missing_maker_keys"]) == 7,
+        "a common one-record subset can pass without all four cases at both time scales",
+    )
     return {
         "mode": "PHYSICS_TRAJECTORY_CONTRACT_SELF_TEST",
         "schema_version": SCHEMA_VERSION,
