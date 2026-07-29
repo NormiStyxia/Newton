@@ -30,7 +30,10 @@ function View.New(options)
     self.companionZone = nil
     self.visible = true
     self.enabled = true
-    self.flipX = false
+    -- The current sprite source faces left.  Keep this asset convention in
+    -- the View/config boundary so the portable controller can continue to
+    -- express logical LEFT/RIGHT without knowing how the frames were drawn.
+    self.flipX = self.config.ui.sourceFacing == "LEFT"
     self.characterRect = nil
     self.bubbleRect = nil
     self.choiceRects = {}
@@ -96,7 +99,8 @@ function View:getPosition()
 end
 
 function View:setFacingRight(facingRight)
-    self.flipX = facingRight == false
+    local sourceFacesRight = self.config.ui.sourceFacing ~= "LEFT"
+    self.flipX = (facingRight == true) ~= sourceFacesRight
 end
 
 function View:setFacing(facing)

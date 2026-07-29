@@ -186,6 +186,8 @@ def main() -> int:
     workspace_layout_lua = (MAKER_ROOT / "scripts/game/layout/WorkspaceLayout.lua").read_text(encoding="utf-8")
     card_hand_layout_lua = (MAKER_ROOT / "scripts/game/layout/CardHandLayout.lua").read_text(encoding="utf-8")
     companion_controller_lua = (MAKER_ROOT / "scripts/green_assistant/CompanionController.lua").read_text(encoding="utf-8")
+    green_assist_config_lua = (MAKER_ROOT / "scripts/green_assistant/GreenAssistConfig.lua").read_text(encoding="utf-8")
+    green_assist_view_lua = (MAKER_ROOT / "scripts/green_assistant/GreenAssistView.lua").read_text(encoding="utf-8")
     app_runtime_lua = (MAKER_ROOT / "scripts/game/AppRuntime.lua").read_text(encoding="utf-8")
     synth_audio_lua = (MAKER_ROOT / "scripts/game/audio/Audio.lua").read_text(encoding="utf-8")
     trajectory_lua = (MAKER_ROOT / "scripts/game/physics/Trajectory.lua").read_text(encoding="utf-8")
@@ -388,6 +390,9 @@ def main() -> int:
            and "Tween" not in companion_controller_lua
            and "nvg" not in companion_controller_lua,
            "CompanionController is coupled to host layout, physics, tween, or renderer")
+    expect('sourceFacing = "LEFT"' in green_assist_config_lua
+           and 'self.flipX = (facingRight == true) ~= sourceFacesRight' in green_assist_view_lua,
+           "Companion sprite facing is not derived from the left-facing source asset")
     expect(re.search(r"RefreshWorkspaceLayout\(\)\s+UpdateGreenAssistant\(dt\)", app_runtime_lua) is not None,
            "CompanionZone is not refreshed before Companion update")
     expect(has_main_function("UpdateCardHoverStates") and has_main_function("FindTopCardAt"), "card hover or depth-aware hit testing is missing")

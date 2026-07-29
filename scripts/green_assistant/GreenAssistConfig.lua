@@ -110,6 +110,7 @@ GreenAssistConfig.DEFAULTS = {
         offsetX = 76,
         offsetY = -18,
         scale = 1,
+        sourceFacing = "LEFT",
         spriteHeight = 210,
         hitboxWidth = 112,
         hitboxHeight = 218,
