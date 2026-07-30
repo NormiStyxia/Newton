@@ -374,6 +374,8 @@ def main() -> int:
     expect("depth = 54 + (1 - normalized) * 4" in rules_lua, "card hand depth differs from CardHandLayout")
     expect("CardHandLayout.Bounds" in workspace_layout_lua
            and "bounds.left - config.cardSafeGap" in workspace_layout_lua
+           and "local dragTop = assert(frame.groundY" in workspace_layout_lua
+           and "frame.logicalHeight - config.dragBottomPadding" in workspace_layout_lua
            and "frame.companionZone = companionZone" in workspace_layout_lua,
            "layout does not derive CompanionZone from nominal cardHandBounds")
     expect("RotatedHalfExtents" in card_hand_layout_lua and "pose.angle" in card_hand_layout_lua,
@@ -388,6 +390,9 @@ def main() -> int:
            and "pointerX + candidate.grabOffsetX" in companion_controller_lua
            and "function Controller:_captureGrabOffset" in companion_controller_lua,
            "immediate rigid drag or tap/settle flow is missing")
+    expect("Clamp(pointerX, self.zone.left, self.zone.right)" in companion_controller_lua
+           and "Clamp(pointerY, self.zone.top, self.zone.bottom)" in companion_controller_lua,
+           "semantic drag hotspot is not clamped to the layout-owned CompanionZone rectangle")
     expect("local function ConfigureDragGrab" in green_assistant_lua
            and "semanticAnchors.dragGrab" in green_assistant_lua
            and "ConfigureDragGrab(self.config)" in green_assistant_lua,

@@ -16,7 +16,6 @@ local DEFAULTS = {
     cardSafeGap = 32,
     minimumZoneWidth = 180,
     dragThreshold = 10,
-    dragTopPadding = 58,
     dragBottomPadding = 2,
     settleDuration = 0.16,
     baselineBottomInset = 18,

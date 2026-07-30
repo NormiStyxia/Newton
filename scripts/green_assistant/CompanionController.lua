@@ -267,7 +267,7 @@ function Controller:_updateDragging(pointerX, pointerY)
         -- During the lifted pose the pointer owns the cloth-tip anchor, not
         -- the foot/root.  Constrain that hotspot to CompanionZone and derive
         -- the root from it so a bottom-edge pointer is not pushed off the tip.
-        local hotspotX = Clamp(pointerX, self.validMinX, self.validMaxX)
+        local hotspotX = Clamp(pointerX, self.zone.left, self.zone.right)
         local hotspotY = Clamp(pointerY, self.zone.top, self.zone.bottom)
         self.x = hotspotX + candidate.grabOffsetX
         self.y = hotspotY + candidate.grabOffsetY

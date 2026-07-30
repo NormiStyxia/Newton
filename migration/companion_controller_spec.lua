@@ -128,9 +128,15 @@ expect(leftGrab.x == 186 and leftGrab.y == 274,
 expect(leftGrab:getSnapshot().dragGrabOffsetX == -14 and leftGrab:getSnapshot().dragGrabOffsetY == 174,
     "LEFT drag did not preserve the rigid root-to-pointer offset")
 expect(leftGrab:getSnapshot().usesSemanticGrab, "LEFT drag did not use the semantic hotspot")
-leftGrab:handlePointer({ x = 200, y = 490, down = true, pressed = false, released = false }, false)
-expect(leftGrab.y == 664 and leftGrab.y - 174 == 490,
-    "bottom-edge drag clamped the foot/root instead of keeping the lifted-cloth tip under the pointer")
+leftGrab:handlePointer({ x = -50, y = -50, down = true, pressed = false, released = false }, false)
+expect(leftGrab.x == -14 and leftGrab.y == 174 and leftGrab.x + 14 == 0 and leftGrab.y - 174 == 0,
+    "drag hotspot did not reach the CompanionZone top-left corner")
+leftGrab:handlePointer({ x = 999, y = 999, down = true, pressed = false, released = false }, false)
+expect(leftGrab.x == 486 and leftGrab.y == 674 and leftGrab.x + 14 == 500 and leftGrab.y - 174 == 500,
+    "drag hotspot did not reach the CompanionZone bottom-right corner")
+leftGrab:handlePointer({ x = 999, y = 999, down = false, pressed = false, released = true }, false)
+expect(leftGrab.x == leftGrab.validMaxX,
+    "drag release did not return the foot/root to its normal horizontal range")
 local rightGrab = hotspotController(CompanionController.Facing.RIGHT)
 expect(rightGrab.x == 214 and rightGrab.y == 274,
     "RIGHT drag did not mirror the lifted-cloth tip around the foot anchor")
@@ -143,6 +149,7 @@ local frame = {
     workspaceX = 24,
     playfieldX = 323,
     playfieldWidth = 1500,
+    groundY = 584,
     cardHandY = 719,
 }
 local previousLeft, previousRight
@@ -151,6 +158,8 @@ for _, count in ipairs({ 1, 3, 6, 10 }) do
     local zone, bounds = WorkspaceLayout.Apply(frame, poses, 144, 202.064516129)
     expect(bounds and zone.right == math.min(frame.logicalWidth - 18, bounds.left - 32),
         "CompanionZone right is not derived from cardHandBounds.left")
+    expect(zone.left == frame.workspaceX and zone.top == frame.groundY and zone.bottom == frame.logicalHeight - 2,
+        "CompanionZone drag rectangle is not bounded by workspace, ground, and bottom edges")
     if previousLeft then
         expect(bounds.left < previousLeft, "more cards did not expand cardHandBounds leftward")
         expect(zone.right < previousRight, "more cards did not shrink CompanionZone")

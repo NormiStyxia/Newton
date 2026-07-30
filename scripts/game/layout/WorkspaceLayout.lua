@@ -16,12 +16,14 @@ function WorkspaceLayout.Apply(frame, cardHandPoses, cardWidth, cardHeight, over
         right = math.min(rightLimit, frame.playfieldX + frame.playfieldWidth - config.emptyHandRightInset)
     end
     local baselineY = frame.logicalHeight - config.baselineBottomInset
+    local dragTop = assert(frame.groundY, "layout frame groundY is required")
+    local dragBottom = math.max(dragTop, frame.logicalHeight - config.dragBottomPadding)
     local width = math.max(0, right - left)
     local companionZone = {
         left = left,
         right = right,
-        top = baselineY - config.dragTopPadding,
-        bottom = baselineY + config.dragBottomPadding,
+        top = dragTop,
+        bottom = dragBottom,
         baselineY = baselineY,
         fallbackX = left + config.characterHalfWidth + config.edgePadding,
         walkingAllowed = width >= config.minimumZoneWidth,
