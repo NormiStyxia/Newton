@@ -6,6 +6,19 @@ local function InterpolateAngle(from, to, progress)
     return from + delta * progress
 end
 
+---@param playhead number
+---@param duration number
+---@param frameDeltaMs number
+---@param speed number
+---@return number
+function ReplayTimeline.Advance(playhead, duration, frameDeltaMs, speed)
+    local boundedDuration = math.max(0, duration or 0)
+    local start = math.max(0, math.min(boundedDuration, playhead or 0))
+    local delta = math.max(0, frameDeltaMs or 0)
+    local playbackSpeed = math.max(0, speed or 0)
+    return math.min(boundedDuration, start + delta * playbackSpeed)
+end
+
 ---@param samples table[]
 ---@param playhead number
 ---@return table|nil

@@ -277,19 +277,26 @@ def main() -> int:
     expect("UpdateMatterStaticFriction" not in main_lua and "TrackApplePhysicalContact" not in main_lua and "AppleFixtureFrictionForMatterStaticContact" not in main_lua, "Box2D still mutates the apple fixture to fake Matter static friction")
     expect("apple_.body.angularDamping = MatterCalibration.Box2DLinearDamping" in main_lua, "Matter frictionAir is not applied to angular motion")
     expect('SubscribeToEvent("PhysicsPreStep", "HandlePhysicsPreStep")' in main_lua and 'SubscribeToEvent("PhysicsPostStep", "HandlePhysicsPostStep")' in main_lua, "physics step event wiring missing")
-    expect("applePreSolveVelocity_" in main_lua and "local v = applePreSolveVelocity_ or apple_.body.linearVelocity" in main_lua, "spring does not retain pre-solve velocity")
+    expect("local collisionVelocity = apple_.body.linearVelocity" in main_lua
+           and "local v = Vector2(collisionVelocity.x, collisionVelocity.y)" in main_lua
+           and "applePreSolveVelocity_" not in main_lua,
+           "spring does not snapshot collisionStart velocity from the current physics step")
     expect("object.impulseStrength * Rules.GetGravityMultiplier(rules_, level_.rules.initialGravity)" in main_lua
-           and "* CurrentMatterVelocityToWorld()" in main_lua,
+           and "* CurrentMatterVelocityToWorld(CurrentPhysicsStepScale())" in main_lua,
            "spring impulse no longer follows the source gravity multiplier")
-    expect("CapAppleSpeed()\n    apple_.body.linearDamping" in main_lua, "speed cap is not applied before the physics pass")
-    expect("UpdateSpringExits()\n    RefreshGoalContact()\n    UpdateExperiment(eventData:GetFloat(\"TimeStep\") * CurrentPhysicsTimeScale())" in main_lua, "physics post-step timing differs from source bullet time")
+    physics_pre_step = main_lua.split("function HandlePhysicsPreStep", 1)[1].split("function HandlePhysicsPostStep", 1)[0]
+    expect(physics_pre_step.index("CapAppleSpeed()") < physics_pre_step.index("apple_.body.linearDamping"),
+           "speed cap is not applied before the physics pass")
+    expect("physicsStepTimeScale_ = physicsTimeScale" in main_lua
+           and "UpdateExperiment(eventData:GetFloat(\"TimeStep\") * physicsTimeScale)" in main_lua,
+           "physics post-step timing does not retain the scale that advanced the source step")
     expect("uiElapsed_ * 1000 - object.triggeredAt" in main_lua and "uiElapsed_ * 1000 >= object.closeAt" in main_lua, "scene-time cooldown or door delay differs from source")
     expect("if #trail_ > 18" in main_lua and "flightMs_ - lastTrailAt_ > 55" in main_lua and "DrawVelocityArrow" in main_lua, "trail or velocity visualization differs from Phaser")
     expect("input:GetMouseButtonPress(MOUSEB_RIGHT)" in main_lua and "input:GetKeyPress(KEY_ESCAPE)" in main_lua and "ToggleTacticalPause" in main_lua, "source keyboard or cancel interaction is missing")
     expect("replayNextSampleMs_" in main_lua and "while replayNextSampleMs_ <= flightMs_ + .0001 do" in main_lua, "replay no longer interpolates at the source sample cadence")
     expect("replayPreviousSample_" in main_lua and "deltaAngle = ((current.angle - previous.angle + 540) % 360) - 180" in main_lua, "replay angle interpolation differs from Phaser")
     replay_update = main_lua.split("function UpdateReplay(dt)", 1)[1].split("function RegisterFailure()", 1)[0]
-    expect("math.max(0, dt) * 1000 * replaySpeed_" in replay_update
+    expect("ReplayTimeline.Advance(replayTime_, ReplayDuration(), math.max(0, dt) * 1000, replaySpeed_)" in replay_update
            and "replaySpeed_ = .5" in main_lua and "replaySpeed_ = 1" in main_lua and "replaySpeed_ = 2" in main_lua,
            "replay speed no longer advances the original recorded timeline at 0.5x/1x/2x")
     expect("game.replay.Timeline" in main_lua and "ReplayTimeline.SamplesThrough(replaySamples_, replayTime_)" in main_lua,

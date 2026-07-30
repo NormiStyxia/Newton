@@ -27,7 +27,9 @@ function M.Install(context)
         -- Phaser Matter runs this scene with sleeping disabled. Leaving Box2D's
         -- default enabled makes low-speed slide/contact outcomes frame-dependent.
         physicsWorld_:SetAllowSleeping(false)
-        physicsWorld_:SetContinuousPhysics(true)
+        -- Matter uses discrete contacts. Its 25 px/frame source speed cap keeps
+        -- the apple within the fixtures' contact range without Box2D CCD.
+        physicsWorld_:SetContinuousPhysics(physicsProfile_.continuousPhysics)
         physicsWorld_:SetAutoClearForces(true)
         SetGravity()
     end
@@ -57,6 +59,7 @@ function M.Install(context)
         cardPointerSamples_, cardCandidate_, cardGestureDistance_ = {}, nil, 0
         launched_, goalContact_, goalEntryRecorded_ = false, false, false
         goalContactMs_, outsideMs_, flightMs_, stalledMs_ = 0, 0, 0, 0
+        physicsStepTimeScale_ = nil
         goalPulseElapsedMs_, phaseTraversing_ = nil, false
         success_, failed_, absorbing_, absorbElapsedMs_ = false, false, false, 0
         assistedClear_ = false
@@ -119,7 +122,6 @@ function M.Install(context)
         apple_.body.linearDamping = MatterCalibration.Box2DLinearDamping(apple_.baseFrictionAir)
         apple_.body.angularDamping = MatterCalibration.Box2DLinearDamping(apple_.baseFrictionAir)
         apple_.shape.restitution = MatterCalibration.APPLE_INITIAL_RESTITUTION
-        applePreSolveVelocity_ = nil
         apple_.shape.trigger = false
         if runtime_ then
             for _, object in ipairs(runtime_.ordered) do

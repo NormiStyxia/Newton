@@ -88,12 +88,18 @@ function PhysicsProbe:SetFixture(id)
 end
 
 function PhysicsProbe:Material(context)
+    local staticFriction = MatterCalibration.STATIC_FRICTION
+    local appleFriction = context.apple.shape.friction
     return {
-        appleFriction = context.apple.shape.friction,
+        appleFriction = appleFriction,
         appleFrictionAir = context.apple.baseFrictionAir,
         appleRestitution = context.apple.shape.restitution,
         contactFriction = MatterCalibration.APPLE_FRICTION,
         contactRestitution = MatterCalibration.STATIC_RESTITUTION,
+        staticFixtureFriction = staticFriction,
+        box2dMixedFriction = math.sqrt(appleFriction * staticFriction),
+        matterRestingContactFriction = MatterCalibration.MATTER_RESTING_CONTACT_FRICTION,
+        matterRestingTangentSpeed = MatterCalibration.MATTER_RESTING_TANGENT_SPEED,
         matterForceScale = .001,
         matterBaseDeltaMs = 1000 / 60,
         appleRadiusPx = context.apple.radius * context.pixelsPerMeter,

@@ -52,7 +52,7 @@ function PhysicsTelemetry:Begin(caseId, timeScale, material)
         Number(timeScale)
     ))
     print(string.format(
-        '[PhysicsTelemetry] {"type":"material","case":"%s","scale":%s,"material":{"apple_friction":%s,"apple_friction_air":%s,"apple_restitution":%s,"contact_friction":%s,"contact_restitution":%s,"matter_force_scale":%s,"matter_base_delta_ms":%s,"apple_radius_px":%s}}',
+        '[PhysicsTelemetry] {"type":"material","case":"%s","scale":%s,"material":{"apple_friction":%s,"apple_friction_air":%s,"apple_restitution":%s,"contact_friction":%s,"contact_restitution":%s,"static_fixture_friction":%s,"box2d_mixed_friction":%s,"matter_resting_contact_friction":%s,"matter_resting_tangent_speed":%s,"matter_force_scale":%s,"matter_base_delta_ms":%s,"apple_radius_px":%s}}',
         caseId,
         Number(timeScale),
         Number(material.appleFriction),
@@ -60,6 +60,10 @@ function PhysicsTelemetry:Begin(caseId, timeScale, material)
         Number(material.appleRestitution),
         Number(material.contactFriction),
         Number(material.contactRestitution),
+        Number(material.staticFixtureFriction),
+        Number(material.box2dMixedFriction),
+        Number(material.matterRestingContactFriction),
+        Number(material.matterRestingTangentSpeed),
         Number(material.matterForceScale),
         Number(material.matterBaseDeltaMs),
         Number(material.appleRadiusPx)

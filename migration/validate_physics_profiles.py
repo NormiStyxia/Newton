@@ -126,13 +126,13 @@ def main() -> int:
     expect(main_lua.count("MatterCalibration.ApplyAppleMassProperties(apple_.body)") == 1
            and "MatterCalibration.ApplyAppleMassProperties(apple.body)" in (ROOT / "scripts/game/physics/Probe.lua").read_text(encoding="utf-8"),
            "apple mass properties are not restored after every static-to-dynamic transition")
-    expect("BOX2D_CONTACT_FRICTION = MatterCalibration.APPLE_FRICTION" in calibration
+    expect("MATTER_RESTING_CONTACT_FRICTION = MatterCalibration.APPLE_FRICTION" in calibration
            and "* MatterCalibration.APPLE_FRICTION_STATIC" in calibration
            and "* MatterCalibration.MATTER_FRICTION_NORMAL_MULTIPLIER" in calibration,
-           "Matter friction normal multiplier is not mapped into Box2D")
-    expect("STATIC_FRICTION = MatterCalibration.BOX2D_CONTACT_FRICTION" in calibration
-           and "/ MatterCalibration.APPLE_FRICTION" in calibration,
-           "Box2D static fixture friction does not solve the geometric-mean mix")
+           "Matter resting-contact friction evidence is not retained")
+    expect("STATIC_FRICTION = MatterCalibration.APPLE_FRICTION" in calibration
+           and "MATTER_RESTING_CONTACT_FRICTION" in calibration,
+           "Box2D fixture material does not preserve Matter's kinetic contact value")
     expect("STATIC_RESTITUTION = 0" in calibration,
            "static Matter material is not calibrated")
     expect("CARD_RESTITUTION_BASE = 0.36" in calibration, "card restitution baseline is not preserved")
@@ -148,6 +148,8 @@ def main() -> int:
            "bullet time still uses sparse full physics steps")
     expect("physicsWorld_:SetAllowSleeping(false)" in main_lua,
            "Box2D world allows sleeping while the source Matter scene does not")
+    expect("continuousPhysics = false" in profiles and "physicsWorld_:SetContinuousPhysics(physicsProfile_.continuousPhysics)" in main_lua,
+           "standard profile enables Box2D CCD even though the source Matter world is discrete")
     expect("body.allowSleep = false" in factory,
            "apple body allows sleeping while the source Matter body does not")
 
@@ -182,8 +184,12 @@ def main() -> int:
            "Matter velocity reads are not normalized for the active time scale")
     expect("5.52 * CurrentPhysicsTimeScale()" in main_lua,
            "up-impulse is not scaled for Matter bullet time")
-    expect("* CurrentMatterVelocityToWorld()" in main_lua,
-           "spring exit velocity is not scaled for Matter bullet time")
+    expect("* CurrentMatterVelocityToWorld(CurrentPhysicsStepScale())" in main_lua,
+           "spring exit velocity is not scaled by the physics step that produced its pre-solve velocity")
+    expect("local collisionVelocity = apple_.body.linearVelocity" in main_lua
+           and "local v = Vector2(collisionVelocity.x, collisionVelocity.y)" in main_lua
+           and "applePreSolveVelocity_" not in main_lua,
+           "spring exit does not snapshot the current collisionStart velocity")
     expect("object.impulseStrength * Rules.GetGravityMultiplier(rules_, level_.rules.initialGravity)" in main_lua,
            "spring exit impulse does not follow the source gravity multiplier")
     expect("object.impulseStrength * Rules.GetRestitutionMultiplier(rules_)" not in main_lua,
@@ -217,7 +223,8 @@ def main() -> int:
     static_contact = 0.1 * 0.5 * 5
     expect(math.isclose(static_contact, 0.25, rel_tol=0, abs_tol=1e-12),
            "Matter static friction threshold is not 0.25")
-    expect("global fixture swap" in calibration and "AppleFixtureFrictionForMatterStaticContact" not in calibration,
+    expect("global" in calibration and "fixture swap" in calibration
+           and "AppleFixtureFrictionForMatterStaticContact" not in calibration,
            "Matter static-friction cache limitation is not documented")
     expect(math.sqrt(6) > 0.25,
            "Matter tangent resting threshold unexpectedly collapsed into its friction threshold")

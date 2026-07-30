@@ -205,7 +205,7 @@ function M.Install(context)
     end
     function UpdateReplay(dt)
         if replayMode_ ~= "playing" then return end
-        replayTime_ = math.min(ReplayDuration(), replayTime_ + math.max(0, dt) * 1000 * replaySpeed_)
+        replayTime_ = ReplayTimeline.Advance(replayTime_, ReplayDuration(), math.max(0, dt) * 1000, replaySpeed_)
         local state = ReplayStateAt(replayTime_)
         if state and apple_ then
             apple_.body.bodyType = BT_STATIC

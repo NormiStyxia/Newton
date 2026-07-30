@@ -24,6 +24,9 @@ local INCIDENT_GRAVITY_ACCELERATION = MATTER_FORCE_SCALE
 local DEFINITIONS = {
     standard = {
         gravityAcceleration = STANDARD_GRAVITY_ACCELERATION,
+        -- Matter does not enable Box2D-style CCD. The source speed cap keeps
+        -- the apple inside the ordinary discrete-contact range.
+        continuousPhysics = false,
         boundaries = {
             floor = true,
             ceiling = true,
@@ -33,6 +36,7 @@ local DEFINITIONS = {
     },
     incident_codex_migration_01 = {
         gravityAcceleration = INCIDENT_GRAVITY_ACCELERATION,
+        continuousPhysics = false,
         boundaries = {
             floor = true,
             ceiling = false,
@@ -51,6 +55,7 @@ local DEFINITIONS = {
 ---@class PhysicsProfile
 ---@field id string
 ---@field gravityAcceleration number
+---@field continuousPhysics boolean
 ---@field boundaries PhysicsProfileBoundaries
 
 ---@param id any
@@ -67,6 +72,7 @@ function PhysicsProfiles.Resolve(requestedId)
     return {
         id = id,
         gravityAcceleration = definition.gravityAcceleration,
+        continuousPhysics = definition.continuousPhysics == true,
         boundaries = {
             floor = definition.boundaries.floor,
             ceiling = definition.boundaries.ceiling,

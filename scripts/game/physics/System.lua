@@ -10,13 +10,20 @@ function M.Install(context)
         return bulletTimeActive_ and CONFIG.bulletTimeScale or 1
     end
 
+    -- Physics events can be dispatched after UI input has resolved a card and
+    -- changed bullet time. A post-step must retain the scale that drove its
+    -- matching pre-step, exactly like Matter's afterupdate event.delta.
+    function CurrentPhysicsStepScale()
+        return physicsStepTimeScale_ or CurrentPhysicsTimeScale()
+    end
+
     -- Matter's body.speed is the velocity produced by its current integration
     -- delta. Box2D already has the corresponding slow-motion velocity after
     -- SetBulletTimeActive rescales it, so convert with the fixed 60 Hz reference
     -- only. Dividing by timeScale again makes the source 4.8 sensor threshold
     -- twenty times too strict during bullet time.
-    function CurrentMatterVelocityToWorld()
-        return CONFIG.matterVelocityToWorld * CurrentPhysicsTimeScale()
+    function CurrentMatterVelocityToWorld(timeScale)
+        return CONFIG.matterVelocityToWorld * (timeScale or CurrentPhysicsTimeScale())
     end
     function CurrentMatterSpeedFromWorld(velocity)
         return math.sqrt(velocity.x * velocity.x + velocity.y * velocity.y) / CONFIG.matterVelocityToWorld

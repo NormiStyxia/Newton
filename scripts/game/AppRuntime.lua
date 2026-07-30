@@ -125,29 +125,33 @@ function M.Install(context)
     ---@param eventData PhysicsPreStepEventData
     function HandlePhysicsPreStep(_eventType, eventData)
         if not apple_ or not launched_ or replayActive_ or apple_.body.bodyType ~= BT_DYNAMIC then
-            applePreSolveVelocity_ = nil
+            physicsStepTimeScale_ = nil
             return
         end
         -- Phaser caps before Matter runs the next integration and collision pass.
         CapAppleSpeed()
+        local physicsTimeScale = CurrentPhysicsTimeScale()
+        physicsStepTimeScale_ = physicsTimeScale
         apple_.body.linearDamping = MatterCalibration.Box2DLinearDamping(
             apple_.baseFrictionAir,
-            CurrentPhysicsTimeScale(),
+            physicsTimeScale,
             eventData:GetFloat("TimeStep")
         )
         apple_.body.angularDamping = MatterCalibration.Box2DLinearDamping(
             apple_.baseFrictionAir,
-            CurrentPhysicsTimeScale(),
+            physicsTimeScale,
             eventData:GetFloat("TimeStep")
         )
-        local velocity = apple_.body.linearVelocity
-        applePreSolveVelocity_ = Vector2(velocity.x, velocity.y)
     end
 
     ---@param _eventType string
     ---@param eventData PhysicsPostStepEventData
     function HandlePhysicsPostStep(_eventType, eventData)
-        if not launched_ or replayActive_ or isPaused_ then return end
+        if not launched_ or replayActive_ or isPaused_ then
+            physicsStepTimeScale_ = nil
+            return
+        end
+        local physicsTimeScale = CurrentPhysicsStepScale()
         local physicsProbe = level_ and level_.physicsProbe or nil
         if physicsProbe and physicsProbe:IsActive() then
             UpdateSpringExits()
@@ -156,13 +160,15 @@ function M.Install(context)
                 pixelsPerMeter = CONFIG.pixelsPerMeter,
                 matterVelocityToWorld = CONFIG.matterVelocityToWorld,
             }, eventData:GetFloat("TimeStep"))
+            physicsStepTimeScale_ = nil
             return
         end
         -- The original applies a spring's pre-solve exit velocity after Matter's
         -- collision resolution, then advances runtime mechanisms in physics time.
         UpdateSpringExits()
         RefreshGoalContact()
-        UpdateExperiment(eventData:GetFloat("TimeStep") * CurrentPhysicsTimeScale())
+        UpdateExperiment(eventData:GetFloat("TimeStep") * physicsTimeScale)
+        physicsStepTimeScale_ = nil
     end
     function HandleScreenMode()
         frame_ = design_:Frame()
@@ -176,8 +182,8 @@ function M.Install(context)
         local nodeB = eventData:GetPtr("NodeB")
         local physicsProbe = level_ and level_.physicsProbe or nil
         if physicsProbe and physicsProbe:IsActive() then
-            if IsAppleNode(nodeA) then physicsProbe:OnContactBegin(nodeB, applePreSolveVelocity_, { apple = apple_, matterVelocityToWorld = CONFIG.matterVelocityToWorld })
-            elseif IsAppleNode(nodeB) then physicsProbe:OnContactBegin(nodeA, applePreSolveVelocity_, { apple = apple_, matterVelocityToWorld = CONFIG.matterVelocityToWorld }) end
+            if IsAppleNode(nodeA) then physicsProbe:OnContactBegin(nodeB, apple_.body.linearVelocity, { apple = apple_, matterVelocityToWorld = CONFIG.matterVelocityToWorld })
+            elseif IsAppleNode(nodeB) then physicsProbe:OnContactBegin(nodeA, apple_.body.linearVelocity, { apple = apple_, matterVelocityToWorld = CONFIG.matterVelocityToWorld }) end
             return
         end
         if ActivateGoalContact(nodeA, nodeB, true) then return end
@@ -188,7 +194,12 @@ function M.Install(context)
         if not object then return end
         if object.type == "spring" and object.enabled and object.channelEnabled and not object.spent
             and uiElapsed_ * 1000 - object.triggeredAt >= object.cooldown then
-            local v = applePreSolveVelocity_ or apple_.body.linearVelocity
+            -- Matter fires collisionStart after Body.update has integrated this
+            -- step and before Solver resolves it. UrhoX emits this callback at
+            -- the equivalent contact phase, so snapshot the current velocity
+            -- here instead of the prior PhysicsPreStep velocity.
+            local collisionVelocity = apple_.body.linearVelocity
+            local v = Vector2(collisionVelocity.x, collisionVelocity.y)
             local direction = object.direction
             local ix, iy = 0, 0
             if direction == "UP" then iy = 1 elseif direction == "DOWN" then iy = -1 elseif direction == "LEFT" then ix = -1 else ix = 1 end
@@ -196,7 +207,7 @@ function M.Install(context)
             -- multiplier. Hooke changes restitution only; Feather changes this
             -- impulse together with gravity.
             local impulse = object.impulseStrength * Rules.GetGravityMultiplier(rules_, level_.rules.initialGravity)
-                * CurrentMatterVelocityToWorld()
+                * CurrentMatterVelocityToWorld(CurrentPhysicsStepScale())
             object.pendingExitVelocity = Vector2(v.x + ix * impulse, v.y + iy * impulse)
             object.triggeredAt = uiElapsed_ * 1000
             object.spent = object.oneShot
