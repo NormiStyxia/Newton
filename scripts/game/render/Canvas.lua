@@ -19,6 +19,10 @@ local COLORS = {
     greenSoft = { 232, 241, 222, 255 },
     greenLight = { 165, 202, 139, 255 },
     greenStrong = { 95, 143, 104, 255 },
+    -- Match the source theme's primary color. WorldView uses this for the
+    -- trajectory dots and flight trail; keeping it explicit avoids a nil fill
+    -- color silently dropping those primitives.
+    primary = { 95, 143, 104, 255 },
     primaryActive = { 117, 180, 110, 255 },
     greenSecondary = { 208, 221, 151, 255 },
     text = { 47, 73, 56, 255 },

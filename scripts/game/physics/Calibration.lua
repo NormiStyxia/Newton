@@ -14,7 +14,15 @@ MatterCalibration.MATTER_FRICTION_NORMAL_MULTIPLIER = 5
 MatterCalibration.MATTER_RESTING_TANGENT_SPEED = math.sqrt(6)
 MatterCalibration.APPLE_FRICTION_AIR = 0.01
 MatterCalibration.APPLE_INITIAL_RESTITUTION = 0
-MatterCalibration.STATIC_FRICTION = 0.1
+-- Matter multiplies the normal impulse used by its friction solver before
+-- applying the apple/static pair's coefficients. Box2D combines fixture
+-- friction as sqrt(a * b), so solve for the static fixture value that gives
+-- the same effective contact coefficient with the apple's .1 fixture.
+MatterCalibration.BOX2D_CONTACT_FRICTION = MatterCalibration.APPLE_FRICTION
+    * MatterCalibration.APPLE_FRICTION_STATIC
+    * MatterCalibration.MATTER_FRICTION_NORMAL_MULTIPLIER
+MatterCalibration.STATIC_FRICTION = MatterCalibration.BOX2D_CONTACT_FRICTION
+    * MatterCalibration.BOX2D_CONTACT_FRICTION / MatterCalibration.APPLE_FRICTION
 MatterCalibration.STATIC_RESTITUTION = 0
 MatterCalibration.CARD_RESTITUTION_BASE = 0.36
 MatterCalibration.MATTER_FRAMES_PER_SECOND = 60
@@ -54,7 +62,8 @@ end
 
 -- Matter's frictionStatic branch is a per-pair cached tangent impulse, not a
 -- material coefficient. Box2D exposes no equivalent pair cache, so the
--- production adapter keeps both fixtures at their observed .1 material. A
--- global fixture swap would corrupt corners, rolling contacts and springs.
+-- production adapter uses the calibrated contact coefficient for every
+-- static fixture. A global fixture swap on the apple would corrupt corners,
+-- rolling contacts and springs.
 
 return MatterCalibration

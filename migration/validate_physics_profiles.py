@@ -126,7 +126,14 @@ def main() -> int:
     expect(main_lua.count("MatterCalibration.ApplyAppleMassProperties(apple_.body)") == 1
            and "MatterCalibration.ApplyAppleMassProperties(apple.body)" in (ROOT / "scripts/game/physics/Probe.lua").read_text(encoding="utf-8"),
            "apple mass properties are not restored after every static-to-dynamic transition")
-    expect("STATIC_FRICTION = 0.1" in calibration and "STATIC_RESTITUTION = 0" in calibration,
+    expect("BOX2D_CONTACT_FRICTION = MatterCalibration.APPLE_FRICTION" in calibration
+           and "* MatterCalibration.APPLE_FRICTION_STATIC" in calibration
+           and "* MatterCalibration.MATTER_FRICTION_NORMAL_MULTIPLIER" in calibration,
+           "Matter friction normal multiplier is not mapped into Box2D")
+    expect("STATIC_FRICTION = MatterCalibration.BOX2D_CONTACT_FRICTION" in calibration
+           and "/ MatterCalibration.APPLE_FRICTION" in calibration,
+           "Box2D static fixture friction does not solve the geometric-mean mix")
+    expect("STATIC_RESTITUTION = 0" in calibration,
            "static Matter material is not calibrated")
     expect("CARD_RESTITUTION_BASE = 0.36" in calibration, "card restitution baseline is not preserved")
     expect("MatterCalibration.APPLE_FRICTION" in factory and "MatterCalibration.STATIC_FRICTION" in factory,
@@ -200,11 +207,13 @@ def main() -> int:
     expect("[Replay]" in main_lua and "ReplayLog(\"start\")" in main_lua and "ReplayLog(\"finished\")" in main_lua,
            "replay lifecycle has no runtime audit markers")
 
-    # Matter combines contact friction with min(a, b); Box2D uses sqrt(a*b).
-    # Giving each Box2D fixture 0.1 yields the same apple/static baseline,
-    # while restitution keeps the source's max(a, b) behavior.
-    expect(math.isclose(math.sqrt(0.1 * 0.1), min(0.1, 1.0), rel_tol=0, abs_tol=1e-12),
-           "Box2D fixture friction does not reproduce Matter apple/static friction")
+    # Matter's friction solver applies its normal multiplier before the
+    # coefficient; Box2D uses sqrt(a*b), so the static fixture is intentionally
+    # above 1.0 to produce the same effective apple/static coefficient.
+    matter_effective_friction = 0.1 * 0.5 * 5
+    box2d_static_friction = matter_effective_friction * matter_effective_friction / 0.1
+    expect(math.isclose(math.sqrt(0.1 * box2d_static_friction), matter_effective_friction, rel_tol=0, abs_tol=1e-12),
+           "Box2D fixture friction does not reproduce Matter's scaled apple/static friction")
     static_contact = 0.1 * 0.5 * 5
     expect(math.isclose(static_contact, 0.25, rel_tol=0, abs_tol=1e-12),
            "Matter static friction threshold is not 0.25")
