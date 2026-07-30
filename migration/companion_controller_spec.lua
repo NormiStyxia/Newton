@@ -27,6 +27,7 @@ local controller = CompanionController.new({
         characterHalfWidth = 20,
         edgePadding = 5,
         dragThreshold = 8,
+        dragHoldDuration = 0.3,
         settleDuration = 0.15,
     },
     onEvent = function(name) events[#events + 1] = name end,
@@ -61,18 +62,25 @@ expect(controller:moveTo(controller.validMaxX), "walk could not be started befor
 local grabbedX, grabbedY = controller.x, controller.y
 local pointer = { x = grabbedX + 6, y = grabbedY - 12, down = true, pressed = true, released = false }
 local consumed, result = controller:handlePointer(pointer, true)
-expect(consumed and result.kind == "drag-started", "pointer down did not enter DRAGGING immediately")
-expect(controller:getState() == CompanionController.State.DRAGGING, "DRAGGING state missing")
+expect(consumed and result.kind == "press-pending", "pointer down did not create a pending press")
+expect(controller:getState() == CompanionController.State.IDLE, "pointer down entered DRAGGING before the hold threshold")
 expect(controller.targetX == nil and controller.velocityX == 0 and controller.velocityY == 0,
-    "DRAGGING did not clear movement target and velocity")
+    "pending press did not interrupt movement target and velocity")
 expect(controller.x == grabbedX and controller.y == grabbedY, "pointer down changed the captured UI origin")
-expect(controller:getRequestedAnimation() == "drag", "DRAGGING semantic animation missing")
+expect(controller:getRequestedAnimation() == "idle_base", "pending press incorrectly requested the drag animation")
+controller:update(0.29, true)
+expect(controller:getState() == CompanionController.State.IDLE, "short press crossed the hold threshold early")
 local dragFacing = controller.facing
 pointer = { x = pointer.x + 30, y = pointer.y - 25, down = true, pressed = false, released = false }
 consumed, result = controller:handlePointer(pointer, false)
-expect(consumed and result.kind == "dragging", "active DRAGGING pointer was not captured")
+expect(consumed and result.kind == "press-pending", "pre-hold pointer movement was not captured")
+expect(controller.x == grabbedX and controller.y == grabbedY,
+    "pre-hold pointer movement displaced the character")
+controller:update(0.02, true)
+expect(controller:getState() == CompanionController.State.DRAGGING, "long press did not enter DRAGGING")
+expect(controller:getRequestedAnimation() == "drag", "long press did not request the drag animation")
 expect(controller.x == grabbedX + 30 and controller.y == grabbedY - 25,
-    "DRAGGING did not preserve the pointer-to-origin grab offset")
+    "long-press slide did not preserve the pointer-to-origin grab offset")
 local rigidX, rigidY = controller.x, controller.y
 controller:update(0.5, true)
 expect(controller.x == rigidX and controller.y == rigidY,
@@ -94,16 +102,33 @@ expect(controller:getState() == CompanionController.State.IDLE and controller.y 
     "drag settle did not return to baseline IDLE")
 
 local tapOriginX, tapOriginY = controller.x, controller.y
+local tapEventStart = #events + 1
 pointer = { x = tapOriginX, y = tapOriginY, down = true, pressed = true, released = false }
-controller:handlePointer(pointer, true)
-expect(controller:getState() == CompanionController.State.DRAGGING,
-    "tap candidate did not temporarily acquire highest-priority DRAGGING")
+consumed, result = controller:handlePointer(pointer, true)
+expect(consumed and result.kind == "press-pending", "tap did not remain pending until release")
+controller:update(0.1, true)
+expect(controller:getState() == CompanionController.State.IDLE,
+    "tap candidate triggered DRAGGING before release")
 pointer = { x = tapOriginX + 2, y = tapOriginY - 2, down = false, pressed = false, released = true }
 consumed, result = controller:handlePointer(pointer, true)
 expect(consumed and result.kind == "tap", "tap was not preserved separately from drag")
 expect(controller:getState() == CompanionController.State.IDLE, "tap release did not restore IDLE")
 expect(controller.x == tapOriginX and controller.y == dragZone.baselineY,
     "sub-threshold tap left a drag displacement behind")
+for index = tapEventStart, #events do
+    expect(events[index] ~= "dragStarted", "tap emitted dragStarted")
+end
+
+pointer = { x = tapOriginX, y = tapOriginY, down = true, pressed = true, released = false }
+controller:handlePointer(pointer, true)
+pointer = { x = tapOriginX + 20, y = tapOriginY, down = true, pressed = false, released = false }
+consumed, result = controller:handlePointer(pointer, false)
+expect(consumed and result.kind == "press-pending", "early slide was not retained as a pending press")
+pointer.down, pointer.released = false, true
+consumed, result = controller:handlePointer(pointer, false)
+expect(consumed and result.kind == "press-cancelled", "early slide release was misclassified as tap or drag")
+expect(controller:getState() == CompanionController.State.IDLE,
+    "cancelled pre-hold slide changed the companion state")
 
 local function hotspotController(facing)
     local instance = CompanionController.new({
@@ -119,6 +144,9 @@ local function hotspotController(facing)
     })
     instance:setZone({ left = 0, right = 500, top = 0, bottom = 500, baselineY = 400, fallbackX = 100 })
     instance:handlePointer({ x = 200, y = 100, down = true, pressed = true, released = false }, true)
+    expect(instance.x == 100 and instance.y == 400,
+        "semantic pointer down displaced the companion before the hold threshold")
+    instance:update(instance.config.dragHoldDuration, true)
     return instance
 end
 

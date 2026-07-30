@@ -185,6 +185,7 @@ def main() -> int:
     design_lua = (MAKER_ROOT / "scripts/game/layout/DesignSpace.lua").read_text(encoding="utf-8")
     workspace_layout_lua = (MAKER_ROOT / "scripts/game/layout/WorkspaceLayout.lua").read_text(encoding="utf-8")
     card_hand_layout_lua = (MAKER_ROOT / "scripts/game/layout/CardHandLayout.lua").read_text(encoding="utf-8")
+    companion_config_lua = (MAKER_ROOT / "scripts/green_assistant/CompanionConfig.lua").read_text(encoding="utf-8")
     companion_controller_lua = (MAKER_ROOT / "scripts/green_assistant/CompanionController.lua").read_text(encoding="utf-8")
     green_assistant_lua = (MAKER_ROOT / "scripts/green_assistant/GreenAssistant.lua").read_text(encoding="utf-8")
     green_assist_config_lua = (MAKER_ROOT / "scripts/green_assistant/GreenAssistConfig.lua").read_text(encoding="utf-8")
@@ -386,10 +387,14 @@ def main() -> int:
            "portable CompanionController states are incomplete")
     expect("pointerCandidate" in companion_controller_lua
            and "dragThreshold" in companion_controller_lua
+           and "dragHoldDuration" in companion_config_lua
+           and "candidate.holdElapsed" in companion_controller_lua
+           and 'kind = "press-pending"' in companion_controller_lua
+           and '"press-cancelled"' in companion_controller_lua
            and "settleDuration" in companion_controller_lua
            and "pointerX + candidate.grabOffsetX" in companion_controller_lua
            and "function Controller:_captureGrabOffset" in companion_controller_lua,
-           "immediate rigid drag or tap/settle flow is missing")
+           "click, long-press drag, or tap/settle flow is missing")
     expect("Clamp(pointerX, self.zone.left, self.zone.right)" in companion_controller_lua
            and "Clamp(pointerY, self.zone.top, self.zone.bottom)" in companion_controller_lua,
            "semantic drag hotspot is not clamped to the layout-owned CompanionZone rectangle")

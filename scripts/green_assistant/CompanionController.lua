@@ -254,13 +254,21 @@ function Controller:_beginDragging(pointerX, pointerY)
     self:_updateDragging(pointerX, pointerY)
 end
 
-function Controller:_updateDragging(pointerX, pointerY)
+function Controller:_trackPointerCandidate(pointerX, pointerY)
     local candidate = self.pointerCandidate
-    if not candidate or not self.zone then return end
+    if not candidate then return end
+    candidate.currentX = pointerX
+    candidate.currentY = pointerY
     local dx, dy = pointerX - candidate.startX, pointerY - candidate.startY
     if dx * dx + dy * dy >= self.config.dragThreshold * self.config.dragThreshold then
         candidate.moved = true
     end
+end
+
+function Controller:_updateDragging(pointerX, pointerY)
+    local candidate = self.pointerCandidate
+    if not candidate or not self.zone then return end
+    self:_trackPointerCandidate(pointerX, pointerY)
     -- Rigid screen-space drag: the grab offset is captured once on pointerDown
     -- and is never replaced by animation, facing, velocity, or layout data.
     if candidate.usesSemanticGrab then
@@ -310,46 +318,56 @@ function Controller:handlePointer(pointer, hitCharacter)
     local candidate = self.pointerCandidate
     if not candidate then
         if pointer.pressed ~= true or hitCharacter ~= true then return false, nil end
+        if self.state == Controller.State.WALK then
+            self:_finishWalk(true, "pointer-pressed")
+        end
         local grabOffsetX, grabOffsetY, usesSemanticGrab = self:_captureGrabOffset(pointer.x, pointer.y)
         self.pointerCandidate = {
             startX = pointer.x,
             startY = pointer.y,
-            originX = self.x,
-            originY = self.y,
+            currentX = pointer.x,
+            currentY = pointer.y,
             grabOffsetX = grabOffsetX,
             grabOffsetY = grabOffsetY,
             usesSemanticGrab = usesSemanticGrab,
             moved = false,
+            holdElapsed = 0,
         }
-        self:_beginDragging(pointer.x, pointer.y)
-        return true, { kind = "drag-started" }
+        return true, { kind = "press-pending" }
     end
 
+    self:_trackPointerCandidate(pointer.x, pointer.y)
     if pointer.released == true or pointer.down == false then
-        self:_updateDragging(pointer.x, pointer.y)
-        local wasTap = candidate.moved ~= true
-        if wasTap then
-            -- A tap temporarily acquires DRAGGING priority, but must not leave
-            -- a sub-threshold visual displacement before the tap reaction.
-            self.x = Clamp(candidate.originX, self.validMinX, self.validMaxX)
-            self.y = self.zone.baselineY
+        if self.state == Controller.State.DRAGGING then
+            self:_updateDragging(pointer.x, pointer.y)
+            self.pointerCandidate = nil
+            self:_releaseDragging()
+            return true, { kind = "drag-released" }
         end
+        local wasTap = candidate.moved ~= true
         self.pointerCandidate = nil
-        self:_releaseDragging()
-        return true, { kind = wasTap and "tap" or "drag-released" }
+        return true, { kind = wasTap and "tap" or "press-cancelled" }
     end
 
     if self.state == Controller.State.DRAGGING then
         self:_updateDragging(pointer.x, pointer.y)
         return true, { kind = "dragging" }
     end
-    return true, { kind = "dragging" }
+    return true, { kind = "press-pending" }
 end
 
 function Controller:update(dt, allowAutonomy)
     if not self.initialized then return end
     dt = math.max(0, dt or 0)
-    if self.state == Controller.State.DRAGGING or self.pointerCandidate then return end
+    if self.state == Controller.State.DRAGGING then return end
+    if self.pointerCandidate then
+        local candidate = self.pointerCandidate
+        candidate.holdElapsed = candidate.holdElapsed + dt
+        if candidate.holdElapsed >= math.max(0, self.config.dragHoldDuration) then
+            self:_beginDragging(candidate.currentX, candidate.currentY)
+        end
+        return
+    end
 
     if self.settle then
         local settle = self.settle
@@ -412,6 +430,8 @@ function Controller:getSnapshot()
         velocityX = self.velocityX,
         velocityY = self.velocityY,
         dragging = self.state == Controller.State.DRAGGING,
+        pressPending = self.pointerCandidate ~= nil and self.state ~= Controller.State.DRAGGING,
+        pressHoldElapsed = self.pointerCandidate and self.pointerCandidate.holdElapsed or nil,
         settling = self.settle ~= nil,
         dragGrabOffsetX = self.pointerCandidate and self.pointerCandidate.grabOffsetX or nil,
         dragGrabOffsetY = self.pointerCandidate and self.pointerCandidate.grabOffsetY or nil,
