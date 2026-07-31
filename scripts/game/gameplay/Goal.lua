@@ -1,7 +1,10 @@
 -- gameplay/Goal: private runtime functions installed into the App context.
 local M = {}
 
+---@param context GameContext
 function M.Install(context)
+    local LevelData = context.LevelData
+    local GOAL_CONTACT_SKIN = context.GOAL_CONTACT_SKIN
     local _ENV = context
     function IsAppleGoalPair(nodeA, nodeB)
         if not nodeA or not nodeB or not runtime_ then return false end

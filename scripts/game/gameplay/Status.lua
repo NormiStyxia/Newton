@@ -1,6 +1,7 @@
 -- gameplay/Status: private runtime functions installed into the App context.
 local M = {}
 
+---@param context GameContext
 function M.Install(context)
     local _ENV = context
     function SetStatus(value)
@@ -8,7 +9,7 @@ function M.Install(context)
         print("[Migration] " .. value)
     end
 
-    ---@param mode "none"|"playing"|"paused"|"finished"
+    ---@param kind string
     function PlaySound(kind)
         if audio_ then audio_:Play(kind) end
     end
@@ -32,7 +33,7 @@ function M.Install(context)
     end
     function RegisterFailure(reason)
         failureCount_ = failureCount_ + 1
-        if level_ then failureCountsByLevel_[level_.levelId] = failureCount_ end
+        if level_ then context.failureCountsByLevel_[level_.levelId] = failureCount_ end
         observation_ = "轨迹停止。重置后再次发射。"
         if level_ then level_.resultOverlayVisible = true end
         SetStatus("FAILED · 实验未成立")

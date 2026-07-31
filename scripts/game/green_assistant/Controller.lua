@@ -3,6 +3,7 @@ local NewtonGreenAssistAdapter = require("game.green_assistant.NewtonGreenAssist
 
 local M = {}
 
+---@param context GameContext
 function M.Install(context)
     local _ENV = context
 

@@ -1,4 +1,34 @@
 -- Domain-owned mutable state exposed through a private compatibility environment.
+---@class GameContext
+---@field State any
+---@field LevelData any
+---@field CoordinateMapper any
+---@field DesignSpace any
+---@field WorkspaceLayout any
+---@field MatterCalibration any
+---@field PhysicsProfiles any
+---@field PhysicsProbe any
+---@field Rules any
+---@field RuntimeFactory any
+---@field Renderer2D any
+---@field SynthAudio any
+---@field TrajectoryPrediction any
+---@field ReplayTimeline any
+---@field ReplayFeed any
+---@field ReplayMode any
+---@field CONFIG table
+---@field CARD_DESIGN_WIDTH number
+---@field CARD_DESIGN_HEIGHT number
+---@field CARD_TEXT_SCALE number
+---@field CARD_RENDER_WIDTH number
+---@field CARD_RENDER_HEIGHT number
+---@field GOAL_CONTACT_SKIN number
+---@field LEVEL_META table
+---@field design_ any
+---@field debugDraw_ boolean
+---@field failureCountsByLevel_ table<string, integer>
+---@field assistantInputLocked_ boolean
+---@field pointer_ table
 local State = {}
 
 local OWNERS = {}
@@ -74,11 +104,13 @@ local function refreshModes(domains)
     domains.replay.businessMode = domains.replay.replayBusinessMode_ or 0
 end
 
+---@return GameContext
 function State.New(dependencies, constants)
     local domains = {
         runtime = {}, layout = {}, experiment = {}, goal = {}, mechanisms = {}, input = {}, cards = {}, replay = {},
         assistant = {},
     }
+    ---@type GameContext
     local context = {}
     setmetatable(context, {
         __index = function(_, key)

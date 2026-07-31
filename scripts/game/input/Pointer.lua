@@ -1,6 +1,7 @@
 -- input/Pointer: private runtime functions installed into the App context.
 local M = {}
 
+---@param context GameContext
 function M.Install(context)
     local _ENV = context
     function DesignPointer(screenX, screenY)
@@ -8,7 +9,7 @@ function M.Install(context)
             local mouse = input.mousePosition
             screenX, screenY = mouse.x, mouse.y
         end
-        local x, y = design_:ScreenToLogical(screenX, screenY)
+        local x, y = context.design_:ScreenToLogical(screenX, screenY)
         return x, y
     end
 
@@ -17,17 +18,17 @@ function M.Install(context)
     -- more than one game action on mobile devices.
     ---@return table PointerFrame { x, y, down, pressed, released }
     function PointerState()
-        if pointer_.activeTouchId ~= nil or pointer_.touchPressed or pointer_.touchReleased then
-            local x, y = DesignPointer(pointer_.touchX, pointer_.touchY)
+        if context.pointer_.activeTouchId ~= nil or context.pointer_.touchPressed or context.pointer_.touchReleased then
+            local x, y = DesignPointer(context.pointer_.touchX, context.pointer_.touchY)
             local frame = {
                 x = x,
                 y = y,
-                down = pointer_.activeTouchId ~= nil,
-                pressed = pointer_.touchPressed,
-                released = pointer_.touchReleased,
+                down = context.pointer_.activeTouchId ~= nil,
+                pressed = context.pointer_.touchPressed,
+                released = context.pointer_.touchReleased,
             }
-            pointer_.touchPressed = false
-            pointer_.touchReleased = false
+            context.pointer_.touchPressed = false
+            context.pointer_.touchReleased = false
             return frame
         end
         local x, y = DesignPointer()
@@ -40,33 +41,30 @@ function M.Install(context)
         }
     end
     function HandleTouchBegin(_eventType, eventData)
-        if pointer_.activeTouchId ~= nil then return end
-        pointer_.activeTouchId = eventData:GetInt("TouchID")
-        pointer_.touchX = eventData:GetInt("X")
-        pointer_.touchY = eventData:GetInt("Y")
-        pointer_.touchPressed = true
+        if context.pointer_.activeTouchId ~= nil then return end
+        context.pointer_.activeTouchId = eventData:GetInt("TouchID")
+        context.pointer_.touchX = eventData:GetInt("X")
+        context.pointer_.touchY = eventData:GetInt("Y")
+        context.pointer_.touchPressed = true
     end
 
     ---@param _eventType string
     ---@param eventData TouchMoveEventData
     function HandleTouchMove(_eventType, eventData)
-        if eventData:GetInt("TouchID") ~= pointer_.activeTouchId then return end
-        pointer_.touchX = eventData:GetInt("X")
-        pointer_.touchY = eventData:GetInt("Y")
+        if eventData:GetInt("TouchID") ~= context.pointer_.activeTouchId then return end
+        context.pointer_.touchX = eventData:GetInt("X")
+        context.pointer_.touchY = eventData:GetInt("Y")
     end
 
     ---@param _eventType string
     ---@param eventData TouchEndEventData
     function HandleTouchEnd(_eventType, eventData)
-        if eventData:GetInt("TouchID") ~= pointer_.activeTouchId then return end
-        pointer_.touchX = eventData:GetInt("X")
-        pointer_.touchY = eventData:GetInt("Y")
-        pointer_.activeTouchId = nil
-        pointer_.touchReleased = true
+        if eventData:GetInt("TouchID") ~= context.pointer_.activeTouchId then return end
+        context.pointer_.touchX = eventData:GetInt("X")
+        context.pointer_.touchY = eventData:GetInt("Y")
+        context.pointer_.activeTouchId = nil
+        context.pointer_.touchReleased = true
     end
-
-    ---@param _eventType string
-    ---@param eventData PhysicsBeginContact2DEventData
 end
 
 return M

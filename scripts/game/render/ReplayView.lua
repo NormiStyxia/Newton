@@ -1,7 +1,12 @@
 -- render/ReplayView: private runtime functions installed into the App context.
 local M = {}
 
+---@param context GameContext
 function M.Install(context)
+    local ReplayMode = context.ReplayMode
+    local ReplayTimeline = context.ReplayTimeline
+    local ReplayFeed = context.ReplayFeed
+    local Rules = context.Rules
     local _ENV = context
     function DrawReplay()
         local state = ReplayStateAt(replayTime_)
@@ -14,8 +19,8 @@ function M.Install(context)
         if #samples > 0 then
             for i = 2, #samples do
                 local from, to = samples[i - 1], samples[i]
-                local fromX, fromY = design_:WorldToLogical(from.x, from.y)
-                local toX, toY = design_:WorldToLogical(to.x, to.y)
+                local fromX, fromY = context.design_:WorldToLogical(from.x, from.y)
+                local toX, toY = context.design_:WorldToLogical(to.x, to.y)
                 local recent = replayTime_ - to.t <= 1300
                 nvgStrokeWidth(painter_.vg, recent and 4 or 2)
                 nvgStrokeColor(painter_.vg, nvgRGBA(95, 143, 104, recent and 204 or 64))
@@ -25,14 +30,14 @@ function M.Install(context)
                 nvgStroke(painter_.vg)
             end
 
-            local startX, startY = design_:WorldToLogical(samples[1].x, samples[1].y)
+            local startX, startY = context.design_:WorldToLogical(samples[1].x, samples[1].y)
             painter_:Circle(startX, startY, 10, nil, Renderer2D.COLORS.darkPrimary, 3, 209)
 
             local traversed, nextArrow = 0, 110
             for i = 2, #samples do
                 local from, to = samples[i - 1], samples[i]
-                local fromX, fromY = design_:WorldToLogical(from.x, from.y)
-                local toX, toY = design_:WorldToLogical(to.x, to.y)
+                local fromX, fromY = context.design_:WorldToLogical(from.x, from.y)
+                local toX, toY = context.design_:WorldToLogical(to.x, to.y)
                 local dx, dy = toX - fromX, toY - fromY
                 local length = math.sqrt(dx * dx + dy * dy)
                 if length >= .001 then
@@ -58,7 +63,7 @@ function M.Install(context)
 
             if replayFinished_ then
                 local finishSample = samples[#samples]
-                local endX, endY = design_:WorldToLogical(finishSample.x, finishSample.y)
+                local endX, endY = context.design_:WorldToLogical(finishSample.x, finishSample.y)
                 painter_:Circle(endX, endY, 7, Renderer2D.COLORS.darkPrimary, nil, nil, 230)
                 nvgStrokeColor(painter_.vg, nvgRGBA(47, 73, 56, 230))
                 nvgStrokeWidth(painter_.vg, 2)
@@ -82,7 +87,7 @@ function M.Install(context)
                 sequence = sequence + 1
             end
             if event.t <= replayTime_ and (event.type == "CARD_PLAYED" or event.type == "NEWTON_PUNCH") then
-                local x, y = design_:WorldToLogical(event.x, event.y)
+                local x, y = context.design_:WorldToLogical(event.x, event.y)
                 local card = event.cardId and Rules.CARDS[event.cardId] or nil
                 local accent = card and card.accent or Renderer2D.COLORS.warning
                 painter_:Circle(x, y, 15, Renderer2D.COLORS.panel, accent, 2, 245)
@@ -100,7 +105,7 @@ function M.Install(context)
             end
         end
 
-        local appleX, appleY = design_:WorldToLogical(state.x, state.y)
+        local appleX, appleY = context.design_:WorldToLogical(state.x, state.y)
         painter_:Circle(appleX, appleY, 37, Renderer2D.COLORS.primaryActive, nil, nil, 48)
         painter_:Circle(appleX, appleY, 37, nil, Renderer2D.COLORS.primaryActive, 2, 122)
         painter_:Image(painter_.images.apple, appleX, appleY, 64, 64, 1, math.rad(state.angle or 0))

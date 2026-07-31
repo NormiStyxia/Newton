@@ -1,7 +1,12 @@
 -- render/CardView: private runtime functions installed into the App context.
 local M = {}
 
+---@param context GameContext
 function M.Install(context)
+    local Rules = context.Rules
+    local CARD_TEXT_SCALE = context.CARD_TEXT_SCALE
+    local CARD_DESIGN_WIDTH = context.CARD_DESIGN_WIDTH
+    local CARD_DESIGN_HEIGHT = context.CARD_DESIGN_HEIGHT
     local _ENV = context
     function CardUseLabel(usage, remaining)
         return usage == "REUSABLE" and "可重复" or (tostring(remaining) .. " 次")

@@ -1,7 +1,12 @@
 -- physics/System: private runtime functions installed into the App context.
 local M = {}
 
+---@param context GameContext
 function M.Install(context)
+    local MatterCalibration = context.MatterCalibration
+    local Rules = context.Rules
+    local RuntimeFactory = context.RuntimeFactory
+    local CONFIG = context.CONFIG
     local _ENV = context
     function CurrentPhysicsTimeScale()
         if level_ and level_.physicsProbe and level_.physicsProbe:IsActive() then

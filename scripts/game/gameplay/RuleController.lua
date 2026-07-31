@@ -1,7 +1,9 @@
 -- gameplay/RuleController: private runtime functions installed into the App context.
 local M = {}
 
+---@param context GameContext
 function M.Install(context)
+    local Rules = context.Rules
     local _ENV = context
     function RuleFeedbackText(id, candidate)
         if id == "feather-gravity" then return "场地重力强度已减弱，当前重力方向保持不变。" end

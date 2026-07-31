@@ -1,7 +1,18 @@
 -- level/LevelSession: private runtime functions installed into the App context.
 local M = {}
 
+---@param context GameContext
 function M.Install(context)
+    local LevelData = context.LevelData
+    local DesignSpace = context.DesignSpace
+    local Rules = context.Rules
+    local PhysicsProfiles = context.PhysicsProfiles
+    local CoordinateMapper = context.CoordinateMapper
+    local SynthAudio = context.SynthAudio
+    local RuntimeFactory = context.RuntimeFactory
+    local MatterCalibration = context.MatterCalibration
+    local CONFIG = context.CONFIG
+    local LEVEL_META = context.LEVEL_META
     local _ENV = context
     function LoadLevel(index)
         index = math.max(1, math.min(CONFIG.levelCount, index))
@@ -83,7 +94,7 @@ function M.Install(context)
     function BuildLevel(index)
         level_ = LoadLevel(index)
         physicsProfile_ = PhysicsProfiles.Resolve(level_.physicsProfile)
-        failureCount_ = failureCountsByLevel_[level_.levelId] or 0
+        failureCount_ = context.failureCountsByLevel_[level_.levelId] or 0
         observation_ = level_.observation or ""
         mapper_ = CoordinateMapper.New({
             levelWidth = level_.playfield.width,

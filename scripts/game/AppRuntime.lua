@@ -1,7 +1,17 @@
 -- AppRuntime: private runtime functions installed into the App context.
 local M = {}
 
+---@param context GameContext
 function M.Install(context)
+    local Rules = context.Rules
+    local WorkspaceLayout = context.WorkspaceLayout
+    local MatterCalibration = context.MatterCalibration
+    local Renderer2D = context.Renderer2D
+    local ReplayMode = context.ReplayMode
+    local State = context.State
+    local CONFIG = context.CONFIG
+    local CARD_RENDER_WIDTH = context.CARD_RENDER_WIDTH
+    local CARD_RENDER_HEIGHT = context.CARD_RENDER_HEIGHT
     local _ENV = context
     function RefreshWorkspaceLayout()
         if not frame_ then return end
@@ -16,7 +26,7 @@ function M.Install(context)
     function Start()
         graphics.windowTitle = CONFIG.title
         painter_ = Renderer2D.New()
-        frame_ = design_:Frame()
+        frame_ = context.design_:Frame()
         InitializeGreenAssistant()
         BuildLevel(1)
         RefreshWorkspaceLayout()
@@ -46,7 +56,7 @@ function M.Install(context)
         if audio_ then audio_:Update(dt) end
         uiElapsed_ = uiElapsed_ + dt
         UpdateRuleFeedback(dt)
-        frame_ = design_:Frame()
+        frame_ = context.design_:Frame()
         RefreshWorkspaceLayout()
         -- Sample once, then give the screen-space Companion first chance to
         -- apply a rigid drag before its animation/update and before rendering.
@@ -60,7 +70,7 @@ function M.Install(context)
             if replayBusinessMode_ == ReplayMode.PLAYER_REPLAY and input:GetKeyPress(KEY_ESCAPE) then StopReplay() end
             SyncPhysicsUpdateEnabled()
             if replayActive_ then UpdateReplay(dt) end
-            if debugDraw_ and physicsWorld_ then physicsWorld_:DrawDebugGeometry() end
+            if context.debugDraw_ and physicsWorld_ then physicsWorld_:DrawDebugGeometry() end
             return
         end
         local physicsProbe = level_ and level_.physicsProbe or nil
@@ -85,7 +95,7 @@ function M.Install(context)
                 local probeResult = physicsProbe:Update(probeContext)
                 SyncPhysicsUpdateEnabled()
                 if probeResult == "finished" then ResetExperiment(false) end
-                if debugDraw_ and physicsWorld_ then physicsWorld_:DrawDebugGeometry() end
+                if context.debugDraw_ and physicsWorld_ then physicsWorld_:DrawDebugGeometry() end
                 return
             end
         end
@@ -96,7 +106,7 @@ function M.Install(context)
         if replayActive_ then
             SyncPhysicsUpdateEnabled()
             UpdateReplay(dt)
-            if debugDraw_ and physicsWorld_ then physicsWorld_:DrawDebugGeometry() end
+            if context.debugDraw_ and physicsWorld_ then physicsWorld_:DrawDebugGeometry() end
             return
         end
         UpdateCardParameter(dt)
@@ -118,7 +128,7 @@ function M.Install(context)
         elseif not isPaused_ and absorbing_ then
             UpdateExperiment(dt)
         end
-        if debugDraw_ and physicsWorld_ then physicsWorld_:DrawDebugGeometry() end
+        if context.debugDraw_ and physicsWorld_ then physicsWorld_:DrawDebugGeometry() end
     end
 
     ---@param _eventType string
@@ -171,7 +181,7 @@ function M.Install(context)
         physicsStepTimeScale_ = nil
     end
     function HandleScreenMode()
-        frame_ = design_:Frame()
+        frame_ = context.design_:Frame()
         RefreshWorkspaceLayout()
     end
 
@@ -262,14 +272,14 @@ function M.Install(context)
             painter_:DrawNewton(frame_, level_, anger_, observation_)
             painter_:DrawGround(frame_)
             local goalPulseProgress = goalPulseElapsedMs_ and math.max(0, math.min(1, goalPulseElapsedMs_ / 460)) or nil
-            if runtime_ then for _, object in ipairs(runtime_.ordered) do painter_:DrawObject(frame_, object, { sensorAngle = sensorAngle_, success = success_ and not replayActive_, goalPulseProgress = goalPulseProgress }, design_, mapper_) end end
+            if runtime_ then for _, object in ipairs(runtime_.ordered) do painter_:DrawObject(frame_, object, { sensorAngle = sensorAngle_, success = success_ and not replayActive_, goalPulseProgress = goalPulseProgress }, context.design_, mapper_) end end
             if not replayActive_ then
                 DrawTrail()
                 DrawCardPrediction()
                 DrawAim()
                 DrawLaunchHint()
                 local absorbProgress = absorbing_ and math.max(0, math.min(1, absorbElapsedMs_ / 520)) or 0
-                painter_:DrawApple(frame_, apple_, 1 - absorbProgress * .65, 1 - absorbProgress * .65, design_)
+                painter_:DrawApple(frame_, apple_, 1 - absorbProgress * .65, 1 - absorbProgress * .65, context.design_)
                 DrawVelocityArrow()
                 DrawPlayfieldOverlay()
                 DrawPauseShade()

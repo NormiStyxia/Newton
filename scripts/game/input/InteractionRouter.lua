@@ -1,7 +1,11 @@
 -- input/InteractionRouter: private runtime functions installed into the App context.
 local M = {}
 
+---@param context GameContext
 function M.Install(context)
+    local Rules = context.Rules
+    local ReplayMode = context.ReplayMode
+    local CONFIG = context.CONFIG
     local _ENV = context
     function PointerInPlayfield(x, y)
         return x >= frame_.playfieldX + 18 and x <= frame_.playfieldX + frame_.playfieldWidth - 18
@@ -60,7 +64,7 @@ function M.Install(context)
             return
         end
         UpdateHoverState(x, y)
-        if assistantInputLocked_ then return end
+        if context.assistantInputLocked_ then return end
         if replayActive_ then
             if replayBusinessMode_ == ReplayMode.PLAYER_REPLAY then HandleReplayPointer(x, y, press) end
             return

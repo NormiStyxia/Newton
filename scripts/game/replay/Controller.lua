@@ -1,7 +1,11 @@
 -- replay/Controller: private runtime functions installed into the App context.
 local M = {}
 
+---@param context GameContext
 function M.Install(context)
+    local ReplayMode = context.ReplayMode
+    local ReplayTimeline = context.ReplayTimeline
+    local CONFIG = context.CONFIG
     local _ENV = context
     function SetReplayMode(mode, businessMode)
         assert(mode == "none" or mode == "playing" or mode == "paused" or mode == "finished",

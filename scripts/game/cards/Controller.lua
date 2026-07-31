@@ -1,7 +1,11 @@
 -- cards/Controller: private runtime functions installed into the App context.
 local M = {}
 
+---@param context GameContext
 function M.Install(context)
+    local Rules = context.Rules
+    local CARD_RENDER_WIDTH = context.CARD_RENDER_WIDTH
+    local CARD_RENDER_HEIGHT = context.CARD_RENDER_HEIGHT
     local _ENV = context
     function InitializeCards()
         cardStates_ = {}

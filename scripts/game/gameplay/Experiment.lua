@@ -1,14 +1,19 @@
 -- gameplay/Experiment: private runtime functions installed into the App context.
 local M = {}
 
+---@param context GameContext
 function M.Install(context)
+    local MatterCalibration = context.MatterCalibration
+    local Rules = context.Rules
+    local LevelData = context.LevelData
+    local CONFIG = context.CONFIG
     local _ENV = context
     function PointerToWorld(x, y)
-        return design_:LogicalToWorld(x, y)
+        return context.design_:LogicalToWorld(x, y)
     end
     function AppleScreenPosition()
         local p = apple_.node.position2D
-        return design_:WorldToLogical(p.x, p.y)
+        return context.design_:WorldToLogical(p.x, p.y)
     end
     function IsNearApple(x, y)
         local ax, ay = AppleScreenPosition()
@@ -18,7 +23,7 @@ function M.Install(context)
     function UpdateAppleDrag(x, y)
         local launcher = apple_.launcher
         local launcherWorldX, launcherWorldY = mapper_:LevelToWorld(launcher.spawnLevelX, launcher.spawnLevelY)
-        local lx, ly = design_:WorldToLogical(launcherWorldX, launcherWorldY)
+        local lx, ly = context.design_:WorldToLogical(launcherWorldX, launcherWorldY)
         local dx, dy = x - lx, y - ly
         local length = math.sqrt(dx * dx + dy * dy)
         if length > 98 then dx, dy = dx * 98 / length, dy * 98 / length end
@@ -109,7 +114,7 @@ function M.Install(context)
         RecordReplay(dt)
         UpdatePhaseTraversal()
         local p = apple_.node.position2D
-        local screenX, screenY = design_:WorldToLogical(p.x, p.y)
+        local screenX, screenY = context.design_:WorldToLogical(p.x, p.y)
         if flightMs_ - lastTrailAt_ > 55 then
             trail_[#trail_ + 1] = { x = screenX, y = screenY }
             if #trail_ > 18 then table.remove(trail_, 1) end

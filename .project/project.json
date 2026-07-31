@@ -5,9 +5,9 @@
     "id": "1838934907"
   },
   "entry": "main.lua",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "taptap_publish": {
-    "title": "牛顿实验室",
+    "title": "不经典力学.NEWTONignore",
     "description": "<game description>",
     "category": "puzzle",
     "screen_orientation": "landscape",
@@ -25,10 +25,10 @@
     "promotional_image": ""
   },
   "test_qrcode": {
-    "url": "https://tapcode-sce.spark.xd.com/qrcode/p_ss8c_1785284266360.png",
-    "generated_at": "2026-07-29T00:17:46.484Z"
+    "url": "https://tapcode-sce.spark.xd.com/qrcode/p_ss8c_1785534499796.png",
+    "generated_at": "2026-07-31T21:48:19.916Z"
   },
   "metadata": {
-    "updated_at": "2026-07-29T00:17:46.484Z"
+    "updated_at": "2026-07-31T21:48:19.916Z"
   }
 }

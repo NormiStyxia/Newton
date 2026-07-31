@@ -1,7 +1,10 @@
 -- gameplay/Mechanisms: private runtime functions installed into the App context.
 local M = {}
 
+---@param context GameContext
 function M.Install(context)
+    local Rules = context.Rules
+    local CONFIG = context.CONFIG
     local _ENV = context
     function DoorOpenVector(object)
         local distance = object.openDistance * mapper_.objectScale / CONFIG.pixelsPerMeter

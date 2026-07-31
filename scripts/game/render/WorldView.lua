@@ -1,7 +1,11 @@
 -- render/WorldView: private runtime functions installed into the App context.
 local M = {}
 
+---@param context GameContext
 function M.Install(context)
+    local Rules = context.Rules
+    local TrajectoryPrediction = context.TrajectoryPrediction
+    local MatterCalibration = context.MatterCalibration
     local _ENV = context
     function DrawPrediction(direction, alpha, x, y, velocityX, velocityY)
         if not apple_ or not level_ then return end
@@ -85,7 +89,7 @@ function M.Install(context)
         if launched_ or draggedApple_ or absorbing_ or success_ or failed_ or not apple_ then return end
         local launcher = apple_.launcher
         local launcherWorldX, launcherWorldY = mapper_:LevelToWorld(launcher.spawnLevelX, launcher.spawnLevelY)
-        local lx, ly = design_:WorldToLogical(launcherWorldX, launcherWorldY)
+        local lx, ly = context.design_:WorldToLogical(launcherWorldX, launcherWorldY)
         local hintX, hintY = lx + 76, ly - 60
         painter_:RoundedRect(hintX - 78, hintY - 18, 156, 36, 0, Renderer2D.COLORS.panel, nil, nil, 232)
         painter_:Text(hintX, hintY - 7, "拖动苹果，松开发射", 14, Renderer2D.COLORS.secondary, NVG_ALIGN_CENTER + NVG_ALIGN_TOP)
