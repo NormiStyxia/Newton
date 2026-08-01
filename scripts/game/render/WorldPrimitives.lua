@@ -1,15 +1,91 @@
 local M = {}
 
 function M.Install(Renderer, COLORS, color, tint)
+    local function imageReady(image)
+        return image ~= nil and image >= 0
+    end
+
+    local function skinReady(skin)
+        return skin and imageReady(skin.topLeft) and imageReady(skin.top)
+            and imageReady(skin.topRight) and imageReady(skin.left)
+            and imageReady(skin.center) and imageReady(skin.right)
+            and imageReady(skin.bottomLeft) and imageReady(skin.bottom)
+            and imageReady(skin.bottomRight)
+    end
+
+    local GAMEPLAY_BORDER = { left = 155, right = 146, top = 167, bottom = 159 }
+    local HUD_SCALE = 94 / 121
+    local HUD_BORDER = {
+        left = 60 * HUD_SCALE,
+        right = 66 * HUD_SCALE,
+        top = 45 * HUD_SCALE,
+        bottom = 50 * HUD_SCALE,
+    }
+    local WALL_SCALE = 80 / 230
+    local WALL_BORDER = {
+        left = 74 * WALL_SCALE,
+        right = 65 * WALL_SCALE,
+        top = 67 * WALL_SCALE,
+        bottom = 72 * WALL_SCALE,
+    }
+
+    local function drawGameplayFrameOverlay(self, frame)
+        local x, y, w, h = frame.playfieldX, frame.playfieldY, frame.playfieldWidth, frame.playfieldHeight
+        nvgLineCap(self.vg, NVG_ROUND); nvgLineJoin(self.vg, NVG_ROUND)
+        nvgStrokeColor(self.vg, color(COLORS.darkPrimary, 255)); nvgStrokeWidth(self.vg, 3)
+        nvgBeginPath(self.vg); nvgRoundedRect(self.vg, x + 2, y + 2, w - 4, h - 4, 10); nvgStroke(self.vg)
+        nvgStrokeColor(self.vg, color(COLORS.fieldCardBorder, 255)); nvgStrokeWidth(self.vg, 2)
+        nvgBeginPath(self.vg); nvgRoundedRect(self.vg, x + 10, y + 10, w - 20, h - 20, 7); nvgStroke(self.vg)
+        nvgStrokeColor(self.vg, color(COLORS.wallBrassEdge, 122)); nvgStrokeWidth(self.vg, 2)
+        nvgBeginPath(self.vg); nvgRoundedRect(self.vg, x + 17, y + 17, w - 34, h - 34, 5); nvgStroke(self.vg)
+
+        nvgStrokeColor(self.vg, color(COLORS.wallBrassEdge, 128)); nvgStrokeWidth(self.vg)
+        nvgBeginPath(self.vg)
+        nvgMoveTo(self.vg, x + 18, y + 18); nvgLineTo(self.vg, x + 46, y + 18); nvgLineTo(self.vg, x + 18, y + 46)
+        nvgMoveTo(self.vg, x + w - 18, y + 18); nvgLineTo(self.vg, x + w - 46, y + 18); nvgLineTo(self.vg, x + w - 18, y + 46)
+        nvgMoveTo(self.vg, x + 18, y + h - 18); nvgLineTo(self.vg, x + 46, y + h - 18); nvgLineTo(self.vg, x + 18, y + h - 46)
+        nvgMoveTo(self.vg, x + w - 18, y + h - 18); nvgLineTo(self.vg, x + w - 46, y + h - 18); nvgLineTo(self.vg, x + w - 18, y + h - 46)
+        nvgStroke(self.vg)
+
+        local centerX = x + w * .5
+        nvgStrokeColor(self.vg, color(COLORS.instant, 255)); nvgStrokeWidth(self.vg, 2)
+        nvgBeginPath(self.vg)
+        nvgMoveTo(self.vg, centerX - 18, y + 10); nvgLineTo(self.vg, centerX + 18, y + 10)
+        nvgMoveTo(self.vg, centerX - 18, y + h - 10); nvgLineTo(self.vg, centerX + 18, y + h - 10)
+        nvgStroke(self.vg)
+        nvgBeginPath(self.vg)
+        nvgMoveTo(self.vg, centerX - 8, y + 10); nvgLineTo(self.vg, centerX, y + 2); nvgLineTo(self.vg, centerX + 8, y + 10)
+        nvgLineTo(self.vg, centerX, y + 18); nvgClosePath(self.vg)
+        nvgMoveTo(self.vg, centerX - 8, y + h - 10); nvgLineTo(self.vg, centerX, y + h - 18); nvgLineTo(self.vg, centerX + 8, y + h - 10)
+        nvgLineTo(self.vg, centerX, y + h - 2); nvgClosePath(self.vg)
+        nvgFillColor(self.vg, color(COLORS.playfieldAccent, 255)); nvgFill(self.vg)
+        nvgStroke(self.vg)
+    end
+
     function Renderer:DrawBackground(frame)
         self:FillRect(0, 0, frame.logicalWidth, frame.logicalHeight, COLORS.background)
-        self:FillRect(0, 0, frame.logicalWidth, 94, COLORS.panel, 250)
-        self:FillRect(0, 92, frame.logicalWidth, 2, COLORS.greenLight, 230)
-        self:RoundedRect(frame.workspaceX - 55, -18, 448, 112, 20, COLORS.darkPrimary)
+        if skinReady(self.skins and self.skins.hud) then
+            self:NineSlice(self.skins.hud, 0, 0, frame.logicalWidth, 94, HUD_BORDER)
+        elseif imageReady(self.images.ui and self.images.ui.hudFrame) then
+            self:ImageRect(self.images.ui.hudFrame, 0, 0, frame.logicalWidth, 94, 1)
+        else
+            self:FillRect(0, 0, frame.logicalWidth, 94, COLORS.panel, 250)
+            self:FillRect(0, 92, frame.logicalWidth, 2, COLORS.greenLight, 230)
+        end
+        if imageReady(self.images.ui and self.images.ui.titlePlaque) then
+            self:ImageRect(self.images.ui.titlePlaque, frame.workspaceX - 55, -18, 448, 112, 1)
+        else
+            self:RoundedRect(frame.workspaceX - 55, -18, 448, 112, 20, COLORS.darkPrimary)
+        end
         self:RoundedRect(frame.newtonX + 6, frame.newtonY + 6, frame.newtonWidth, frame.newtonHeight, 7, COLORS.floor, nil, nil, 20)
         self:RoundedRect(frame.playfieldX + 7, frame.playfieldY + 9, frame.playfieldWidth, frame.playfieldHeight, 7, COLORS.floor, nil, nil, 20)
-        self:RoundedRect(frame.playfieldX, frame.playfieldY, frame.playfieldWidth, frame.playfieldHeight, 7, COLORS.playfield, COLORS.darkPrimary, 4)
-        self:RoundedRect(frame.playfieldX + 8, frame.playfieldY + 8, frame.playfieldWidth - 16, frame.playfieldHeight - 16, 5, nil, COLORS.greenLight, 2)
+        if imageReady(self.images.ui and self.images.ui.gameplayFrame) then
+            self:ImageRect(self.images.ui.gameplayFrame, frame.playfieldX, frame.playfieldY,
+                frame.playfieldWidth, frame.playfieldHeight, 1)
+        else
+            self:RoundedRect(frame.playfieldX, frame.playfieldY, frame.playfieldWidth, frame.playfieldHeight, 7, COLORS.playfield, COLORS.darkPrimary, 4)
+            self:RoundedRect(frame.playfieldX + 8, frame.playfieldY + 8, frame.playfieldWidth - 16, frame.playfieldHeight - 16, 5, nil, COLORS.greenLight, 2)
+        end
         self:DrawGrid(frame)
         self:DrawFormulas(frame)
     end
@@ -120,6 +196,35 @@ function M.Install(Renderer, COLORS, color, tint)
 
     function Renderer:DrawNewton(frame, level, anger, observation)
         local x, y, w, h = frame.newtonX, frame.newtonY, frame.newtonWidth, frame.newtonHeight
+        local angerLevel = math.max(0, math.min(100, anger or 0))
+        local angerKey = angerLevel >= 100 and 100 or angerLevel >= 75 and 75 or angerLevel >= 50 and 50 or angerLevel >= 25 and 25 or 0
+        local angerPanel = self.images.newtonAnger and self.images.newtonAnger[angerKey]
+        if imageReady(angerPanel) then
+            -- Phaser aligns the panel's border lines, so the source artwork
+            -- intentionally extends beyond the logical panel bounds.
+            local sourceWidth, sourceHeight = 346, 785
+            local assetPadding, bottomBorderY = 8, 745
+            local verticalScale = h / (bottomBorderY - assetPadding)
+            local horizontalScale = h / (sourceHeight - assetPadding * 2)
+            local imageY = y + (sourceHeight * .5 - assetPadding) * verticalScale
+            self:Image(angerPanel, x + w * .5, imageY,
+                sourceWidth * horizontalScale, sourceHeight * verticalScale, 1, nil, .5, .5)
+            self:Text(x + 36, y + 40, "ISAAC NEWTON", 9, COLORS.ash)
+            self:Text(x + 36, y + 55, "牛顿 · 经典定律维护者", 15, COLORS.darkPrimary, NVG_ALIGN_LEFT + NVG_ALIGN_TOP, "maker-display")
+            self:TextBox(x + 36, y + 128, w - 72, "“" .. (observation or (level and level.observation) or "先观察抛物线，再谈万有引力。") .. "”", 11, COLORS.body)
+            if angerLevel >= 50 and imageReady(self.images.newtonAnger.icon) then
+                self:Image(self.images.newtonAnger.icon, x + 82, y + 216, 34, 35, 1)
+            end
+            self:Text(x + 34, y + h - 103, "牛顿怒气", 14, COLORS.darkPrimary)
+            self:RoundedRect(x + 44, y + 529, 162, 12, 6, COLORS.greenSoft)
+            self:RoundedRect(x + 44, y + 529, 162, 12, 6, nil, COLORS.darkSecondary, 2, 230)
+            self:RoundedRect(x + 47, y + 532, 156 * angerLevel / 100, 7, 3, COLORS.newtonAngerProgress)
+            if imageReady(self.images.apple) then
+                self:Image(self.images.apple, x + 47 + 156 * angerLevel / 100, y + 535, 34, 34, 1)
+            end
+            self:Text(x + w - 34, y + h - 103, string.format("%d%%", math.floor(angerLevel + .5)), 14, COLORS.warning, NVG_ALIGN_RIGHT + NVG_ALIGN_TOP)
+            return
+        end
         self:RoundedRect(x, y, w, h, 7, COLORS.panel, COLORS.greenLight, 2)
         self:RoundedRect(x + 8, y + 8, w - 16, h - 16, 5, nil, COLORS.panelSecondary, 1)
         self:RoundedRect(x + 18, y + 12, w - 36, 58, 6, COLORS.dark)
@@ -147,8 +252,63 @@ function M.Install(Renderer, COLORS, color, tint)
     end
 
     function Renderer:DrawGround(frame)
-        self:FillRect(frame.playfieldX + 17, frame.groundY + 7, frame.playfieldWidth - 34, 14, COLORS.floor)
-        self:FillRect(frame.playfieldX + 17, frame.groundY + 2, frame.playfieldWidth - 34, 4, COLORS.darkSecondary)
+        local x, y = frame.playfieldX + 17, frame.groundY
+        local w = frame.playfieldWidth - 34
+        local h = frame.playfieldY + frame.playfieldHeight - 17 - y
+        if w <= 0 or h <= 0 then return end
+        local sx, sy = w / 1500, h / 106
+        local rulerHeight = 27 * sy
+        local strokeScale = (sx + sy) * .5
+        local ground = { 237, 226, 194, 255 }
+        local ruler = { 217, 201, 149, 255 }
+        local rulerTick = { 111, 102, 93, 255 }
+        local gold = { 159, 137, 84, 255 }
+
+        self:FillRect(x, y + rulerHeight, w, h - rulerHeight, ground, 235)
+        self:FillRect(x, y, w, rulerHeight, ruler)
+
+        nvgStrokeColor(self.vg, color(rulerTick, 219)); nvgStrokeWidth(self.vg, 1.4 * strokeScale)
+        nvgBeginPath(self.vg)
+        for offset = 0, 1500, 24 do
+            local px = x + offset * sx
+            nvgMoveTo(self.vg, px, y + 3 * sy); nvgLineTo(self.vg, px, y + 23 * sy)
+            if offset + 6 <= 1500 then nvgMoveTo(self.vg, px + 6 * sx, y + 3 * sy); nvgLineTo(self.vg, px + 6 * sx, y + 11 * sy) end
+            if offset + 12 <= 1500 then nvgMoveTo(self.vg, px + 12 * sx, y + 3 * sy); nvgLineTo(self.vg, px + 12 * sx, y + 16 * sy) end
+            if offset + 18 <= 1500 then nvgMoveTo(self.vg, px + 18 * sx, y + 3 * sy); nvgLineTo(self.vg, px + 18 * sx, y + 11 * sy) end
+        end
+        nvgStroke(self.vg)
+        nvgStrokeColor(self.vg, color(gold, 179)); nvgStrokeWidth(self.vg, strokeScale)
+        nvgBeginPath(self.vg)
+        for offset = 0, 1500, 12 do
+            local px = x + offset * sx
+            nvgMoveTo(self.vg, px, y + 15 * sy); nvgLineTo(self.vg, px, y + 25 * sy)
+            if offset + 6 <= 1500 then nvgMoveTo(self.vg, px + 6 * sx, y + 15 * sy); nvgLineTo(self.vg, px + 6 * sx, y + 20 * sy) end
+        end
+        nvgStroke(self.vg)
+
+        nvgStrokeColor(self.vg, color(COLORS.darkPrimary, 255)); nvgStrokeWidth(self.vg, 3 * strokeScale)
+        nvgBeginPath(self.vg); nvgMoveTo(self.vg, x, y + sy); nvgLineTo(self.vg, x + w, y + sy); nvgMoveTo(self.vg, x, y + 26 * sy); nvgLineTo(self.vg, x + w, y + 26 * sy); nvgStroke(self.vg)
+        nvgStrokeColor(self.vg, color(gold, 255)); nvgStrokeWidth(self.vg, 1.5 * strokeScale)
+        nvgBeginPath(self.vg); nvgMoveTo(self.vg, x, y + 4 * sy); nvgLineTo(self.vg, x + w, y + 4 * sy); nvgMoveTo(self.vg, x, y + 22 * sy); nvgLineTo(self.vg, x + w, y + 22 * sy); nvgStroke(self.vg)
+        nvgStrokeColor(self.vg, color(gold, 148)); nvgStrokeWidth(self.vg, 2 * strokeScale)
+        nvgBeginPath(self.vg); nvgMoveTo(self.vg, x, y + 34 * sy); nvgLineTo(self.vg, x + w, y + 34 * sy); nvgMoveTo(self.vg, x, y + 98 * sy); nvgLineTo(self.vg, x + w, y + 98 * sy); nvgStroke(self.vg)
+        nvgStrokeColor(self.vg, color(COLORS.white, 133)); nvgStrokeWidth(self.vg, 2 * strokeScale)
+        nvgBeginPath(self.vg); nvgMoveTo(self.vg, x, y + 40 * sy); nvgLineTo(self.vg, x + w, y + 40 * sy); nvgMoveTo(self.vg, x, y + 92 * sy); nvgLineTo(self.vg, x + w, y + 92 * sy); nvgStroke(self.vg)
+        drawGameplayFrameOverlay(self, frame)
+    end
+
+    function Renderer:DrawGameplayFrameChrome(frame)
+        if skinReady(self.skins and self.skins.gameplay) then
+            self:NineSlice(self.skins.gameplay, frame.playfieldX, frame.playfieldY,
+                frame.playfieldWidth, frame.playfieldHeight, GAMEPLAY_BORDER)
+        end
+    end
+
+    function Renderer:DrawGameplayDecor(frame)
+        local overlay = self.images.ui and self.images.ui.gameplayDecorOverlay
+        if not imageReady(overlay) then return end
+        local scale = frame.logicalWidth / 2559
+        self:Image(overlay, 0, 0, 2559 * scale, 1149 * scale, 1, 0, 0, 0)
     end
 
     local GOAL_SCANNER_SEGMENTS = {
@@ -168,7 +328,7 @@ function M.Install(Renderer, COLORS, color, tint)
 
     function Renderer:DrawGoalFallbackPortrait(x, y, radius, active, progress)
         self:Circle(x, y, radius, active and COLORS.greenSoft or COLORS.greenSoft, nil, nil, math.floor((.72 + progress * .22) * 255))
-        local hair = COLORS.wall
+        local hair = COLORS.neutralObject
         self:Circle(x - radius * .56, y - radius * .38, radius * .3, hair)
         self:Circle(x + radius * .56, y - radius * .38, radius * .3, hair)
         self:Circle(x - radius * .35, y - radius * .66, radius * .27, hair)
@@ -176,10 +336,10 @@ function M.Install(Renderer, COLORS, color, tint)
         self:Circle(x, y - radius * .72, radius * .3, hair)
         nvgBeginPath(self.vg); nvgEllipse(self.vg, x, y, radius * 1.2, radius * 1.42); nvgFillColor(self.vg, color(COLORS.panel)); nvgFill(self.vg)
         nvgStrokeColor(self.vg, color(COLORS.darkSecondary, 199)); nvgStrokeWidth(self.vg, 1.2); nvgStroke(self.vg)
-        nvgStrokeColor(self.vg, color(COLORS.dark, 214)); nvgStrokeWidth(self.vg, 1.4)
+        nvgStrokeColor(self.vg, color(COLORS.darkPrimary, 214)); nvgStrokeWidth(self.vg, 1.4)
         nvgBeginPath(self.vg); nvgMoveTo(self.vg, x - radius * .34, y - radius * .18); nvgLineTo(self.vg, x - radius * .1, y - radius * .22); nvgMoveTo(self.vg, x + radius * .1, y - radius * .22); nvgLineTo(self.vg, x + radius * .34, y - radius * .18); nvgStroke(self.vg)
-        self:Circle(x - radius * .22, y - radius * .08, math.max(1.1, radius * .055), COLORS.dark, nil, nil, 230)
-        self:Circle(x + radius * .22, y - radius * .08, math.max(1.1, radius * .055), COLORS.dark, nil, nil, 230)
+        self:Circle(x - radius * .22, y - radius * .08, math.max(1.1, radius * .055), COLORS.darkPrimary, nil, nil, 230)
+        self:Circle(x + radius * .22, y - radius * .08, math.max(1.1, radius * .055), COLORS.darkPrimary, nil, nil, 230)
         nvgStrokeColor(self.vg, color(COLORS.darkSecondary, 184)); nvgStrokeWidth(self.vg, 1.2)
         nvgBeginPath(self.vg); nvgMoveTo(self.vg, x, y - radius * .02); nvgLineTo(self.vg, x - radius * .05, y + radius * .18); nvgStroke(self.vg)
         nvgBeginPath(self.vg); nvgEllipse(self.vg, x - radius * .13, y + radius * .25, radius * .32, radius * .15); nvgFillColor(self.vg, color(COLORS.darkSecondary, 230)); nvgFill(self.vg)
@@ -192,7 +352,8 @@ function M.Install(Renderer, COLORS, color, tint)
         local scannerRadius, innerRadius, portraitRadius = outerRadius * .77, outerRadius * .64, outerRadius * .62
         local active = state.active == true
         local progress = state.contactProgress or 0
-        self:Circle(x, y, outerRadius, COLORS.panel, COLORS.dark, 3, 117)
+        self:Circle(x, y, outerRadius, COLORS.panel, nil, nil, 117)
+        self:Circle(x, y, outerRadius, nil, COLORS.darkPrimary, 3, 245)
         self:Circle(x, y, outerRadius - 5, nil, COLORS.greenLight, 1, 163)
         nvgStrokeColor(self.vg, color(COLORS.darkSecondary, 184)); nvgStrokeWidth(self.vg, 2)
         for _, a in ipairs({ -1.18, .42, 2.42 }) do
@@ -241,9 +402,13 @@ function M.Install(Renderer, COLORS, color, tint)
             nvgSave(self.vg)
             nvgTranslate(self.vg, x, y)
             nvgRotate(self.vg, rotation)
-            self:FillRect(-w * .5, -h * .5, w, h, fill, object.phaseable and 173 or 255)
-            self:StrokeRect(-w * .5, -h * .5, w, h, edge, 3, 240)
-            self:FillRect(-w * .28 - 2, -math.max(12, h - 16) * .5, 4, math.max(12, h - 16), object.phaseable and COLORS.glass or COLORS.panel, 97)
+            if not object.phaseable and skinReady(self.skins and self.skins.wall) then
+                self:NineSlice(self.skins.wall, -w * .5, -h * .5, w, h, WALL_BORDER)
+            else
+                self:FillRect(-w * .5, -h * .5, w, h, fill, object.phaseable and 173 or 255)
+                self:StrokeRect(-w * .5, -h * .5, w, h, edge, 3, 240)
+                self:FillRect(-w * .28 - 2, -math.max(12, h - 16) * .5, 4, math.max(12, h - 16), object.phaseable and COLORS.glass or COLORS.panel, 97)
+            end
             nvgRestore(self.vg)
         elseif object.type == "door" then
             local alpha = object.openness == 1 and 51 or 255
@@ -251,7 +416,7 @@ function M.Install(Renderer, COLORS, color, tint)
             nvgTranslate(self.vg, x, y)
             nvgRotate(self.vg, rotation)
             self:FillRect(-w * .5, -h * .5, w, h, COLORS.darkSecondary, alpha)
-            self:StrokeRect(-w * .5, -h * .5, w, h, COLORS.darkPrimary, 3, alpha)
+            self:StrokeRect(-w * .5, -h * .5, w, h, COLORS.darkSurface, 3, alpha)
             nvgRestore(self.vg)
         elseif object.type == "launcher" then
             self:Image(self.images.launcher, x, y, w, w * 190 / 150, 1, rotation, .5, 36 / 190)

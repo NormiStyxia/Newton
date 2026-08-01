@@ -31,17 +31,18 @@ function M.Install(context)
         if primedCardId_ == id then return "0.05" end
         return usage == "REUSABLE" and "∞" or tostring(remaining)
     end
-    function DrawCardBadge(value, edge)
+    function DrawCardBadge(value, edge, alpha)
         local size = 10 * CARD_TEXT_SCALE
         local horizontalPadding = 5 * CARD_TEXT_SCALE
+        local opacity = alpha or 1
         nvgFontFace(painter_.vg, "maker-body")
         nvgFontSize(painter_.vg, size)
         local width = math.max(25, nvgTextBounds(painter_.vg, 0, 0, value) + horizontalPadding * 2)
         local right = 51 * CARD_TEXT_SCALE
-        painter_:RoundedRect(right - width, -94, width, 20, 4, edge)
-        painter_:Text(right - width * .5, -91, value, size, Renderer2D.COLORS.white, NVG_ALIGN_CENTER + NVG_ALIGN_TOP)
+        painter_:RoundedRect(right - width, -94, width, 20, 4, edge, nil, nil, math.floor(opacity * 255))
+        painter_:Text(right - width * .5, -91, value, size, Renderer2D.COLORS.white, NVG_ALIGN_CENTER + NVG_ALIGN_TOP, nil, math.floor(opacity * 255))
     end
-    function DrawCardSurface(id, def, card, cardState, badgeText, active, hovered)
+    function DrawCardSurface(id, def, card, cardState, badgeText, active, hovered, alpha)
         local field = def.kind == "field"
         local usage = cardState and cardState.usageMode or card.usageMode
         local remaining = cardState and cardState.remainingUses or card.count
@@ -49,26 +50,39 @@ function M.Install(context)
             or (field and (hovered and Renderer2D.COLORS.fieldCardSurfaceHover or Renderer2D.COLORS.fieldCardSurface)
                 or (hovered and Renderer2D.COLORS.decisionCardSurfaceHover or Renderer2D.COLORS.decisionCardSurface))
         local edge = id == "quantum-phase" and Renderer2D.COLORS.quantum or (field and Renderer2D.COLORS.fieldCardBorder or Renderer2D.COLORS.decisionCardBorder)
+        local accent = def.accent or (id == "quantum-phase" and Renderer2D.COLORS.quantum or (field and Renderer2D.COLORS.primary or Renderer2D.COLORS.instant))
         local titleColor = field and Renderer2D.COLORS.text or Renderer2D.COLORS.decisionCardText
         local bodyColor = field and Renderer2D.COLORS.body or Renderer2D.COLORS.decisionCardBody
         local scale = CARD_TEXT_SCALE
-        painter_:RoundedRect(-60 * scale, -83 * scale, CARD_DESIGN_WIDTH * scale, CARD_DESIGN_HEIGHT * scale, 7 * scale, Renderer2D.COLORS.dark, nil, nil, hovered and 41 or 26)
-        painter_:RoundedRect(-62 * scale, -87 * scale, CARD_DESIGN_WIDTH * scale, CARD_DESIGN_HEIGHT * scale, 7 * scale, edge)
-        painter_:RoundedRect(-57 * scale, -82 * scale, 114 * scale, 164 * scale, 5 * scale, fill)
-        painter_:RoundedRect(-57 * scale, -82 * scale, 114 * scale, 21 * scale, 5 * scale, edge, nil, nil, 36)
-        painter_:RoundedRect(-49 * scale, -32 * scale, 98 * scale, 76 * scale, 4 * scale, Renderer2D.COLORS.panel, edge, 1 * scale, 107)
-        painter_:StrokeRect(-49 * scale, 51 * scale, 98 * scale, 0, edge, 1 * scale, 133)
-        painter_:RoundedRect(-62 * scale, -87 * scale, CARD_DESIGN_WIDTH * scale, CARD_DESIGN_HEIGHT * scale, 7 * scale, nil, active and Renderer2D.COLORS.primaryActive or edge, (active and 3 or 2) * scale)
-        painter_:Text(-58, -85, (field and "场地 · " or "决策 · ") .. CardUseLabel(usage, remaining), 9 * CARD_TEXT_SCALE, edge)
-        painter_:Text(0, -58, def.name, 16 * CARD_TEXT_SCALE, titleColor, NVG_ALIGN_CENTER + NVG_ALIGN_TOP, "maker-display")
+        local opacity = alpha or 1
+        local opaque = math.floor(opacity * 255)
+        local function alphaValue(value)
+            return math.floor((value or 255) * opacity)
+        end
+        local cardSkin = id == "quantum-phase" and painter_.images.ui.cardQuantum
+            or (field and painter_.images.ui.cardField or painter_.images.ui.cardDecision)
+        if not cardSkin or cardSkin < 0 then
+            painter_:RoundedRect(-60 * scale, -83 * scale, CARD_DESIGN_WIDTH * scale, CARD_DESIGN_HEIGHT * scale, 7 * scale, Renderer2D.COLORS.dark, nil, nil, alphaValue(hovered and 41 or 26))
+            painter_:RoundedRect(-62 * scale, -87 * scale, CARD_DESIGN_WIDTH * scale, CARD_DESIGN_HEIGHT * scale, 7 * scale, edge, nil, nil, opaque)
+            painter_:RoundedRect(-57 * scale, -82 * scale, 114 * scale, 164 * scale, 5 * scale, fill, nil, nil, opaque)
+            painter_:RoundedRect(-57 * scale, -82 * scale, 114 * scale, 21 * scale, 5 * scale, accent, nil, nil, alphaValue(36))
+            painter_:RoundedRect(-49 * scale, -32 * scale, 98 * scale, 76 * scale, 4 * scale, Renderer2D.COLORS.panel, edge, 1 * scale, alphaValue(107))
+            painter_:StrokeRect(-49 * scale, 51 * scale, 98 * scale, 0, edge, 1 * scale, alphaValue(133))
+        else
+            painter_:Image(cardSkin, 0, 0, CARD_DESIGN_WIDTH * scale, CARD_DESIGN_HEIGHT * scale, (hovered and 1 or .96) * opacity)
+        end
+        local borderAlpha = cardSkin and ((active or hovered) and 255 or 61) or 255
+        painter_:RoundedRect(-62 * scale, -87 * scale, CARD_DESIGN_WIDTH * scale, CARD_DESIGN_HEIGHT * scale, 7 * scale, nil, active and Renderer2D.COLORS.primaryActive or edge, (active and 3 or 2) * scale, alphaValue(borderAlpha))
+        painter_:Text(-58, -85, (field and "场地 · " or "决策 · ") .. CardUseLabel(usage, remaining), 9 * CARD_TEXT_SCALE, accent, nil, nil, opaque)
+        painter_:Text(0, -58, def.name, 16 * CARD_TEXT_SCALE, titleColor, NVG_ALIGN_CENTER + NVG_ALIGN_TOP, "maker-display", opaque)
         nvgSave(painter_.vg)
         nvgScale(painter_.vg, CARD_TEXT_SCALE, CARD_TEXT_SCALE)
-        painter_:DrawCardSymbol(id, 0, 7, titleColor)
+        painter_:DrawCardSymbol(id, 0, 7, titleColor, opaque)
         nvgRestore(painter_.vg)
         -- Phaser uses a 10 px description with 2 px lineSpacing before the card
         -- container scale is applied. Its final NanoVG line-height is 1.2.
-        painter_:TextBox(-51 * scale, 59 * scale, 102 * scale, def.description, 10 * scale, bodyColor, NVG_ALIGN_CENTER + NVG_ALIGN_TOP, "maker-body", 1.2)
-        DrawCardBadge(badgeText or CardBadgeText(id, usage, remaining), edge)
+        painter_:TextBox(-51 * scale, 59 * scale, 102 * scale, def.description, 10 * scale, bodyColor, NVG_ALIGN_CENTER + NVG_ALIGN_TOP, "maker-body", 1.2, opaque)
+        DrawCardBadge(badgeText or CardBadgeText(id, usage, remaining), accent, opacity)
     end
 
     -- Cards and the direction selector occupy distinct Phaser depth bands. Keep
@@ -105,7 +119,8 @@ function M.Install(context)
                 local usage = cardState and cardState.usageMode or card.usageMode
                 local remaining = cardState and cardState.remainingUses or card.count
                 local faceActive = primed or (active and activeCardDeploying_)
-                DrawCardSurface(card.cardId, Rules.CARDS[card.cardId], card, cardState, CardBadgeText(card.cardId, usage, remaining), faceActive, hovered)
+                local cardAlpha = (success_ or failed_) and .48 or 1
+                DrawCardSurface(card.cardId, Rules.CARDS[card.cardId], card, cardState, CardBadgeText(card.cardId, usage, remaining), faceActive, hovered, cardAlpha)
                 nvgRestore(painter_.vg)
         end
         if not includePunch then return end
@@ -117,9 +132,17 @@ function M.Install(context)
         local punchReady = Rules.CanPunch(rules_) and not success_ and not failed_ and not replayActive_
         local punchAlpha = punchReady and 255 or math.floor(255 * .62)
         local punchColor = punchReady and Renderer2D.COLORS.warningActive or Renderer2D.COLORS.warning
-        painter_:Circle(cx + 2, cy + 3, 40, Renderer2D.COLORS.darkPrimary, nil, nil, math.floor(punchAlpha * .12))
-        painter_:Circle(cx, cy, 35, punchReady and punchHovered_ and Renderer2D.COLORS.warningSoft or Renderer2D.COLORS.playfield, nil, nil, punchAlpha)
-        painter_:Circle(cx, cy, 37.5, nil, Renderer2D.COLORS.warningLow, 5, math.floor(punchAlpha * .42))
+        local punchSkin = painter_.images.ui and painter_.images.ui.punchMedallion
+        if punchSkin and punchSkin >= 0 then
+            painter_:Image(punchSkin, cx, cy, 80, 80, punchAlpha / 255)
+            if punchHovered_ and punchReady then
+                painter_:Circle(cx, cy, 31, Renderer2D.COLORS.warningSoft, nil, nil, 82)
+            end
+        else
+            painter_:Circle(cx + 2, cy + 3, 40, Renderer2D.COLORS.darkPrimary, nil, nil, math.floor(punchAlpha * .12))
+            painter_:Circle(cx, cy, 35, punchReady and punchHovered_ and Renderer2D.COLORS.warningSoft or Renderer2D.COLORS.playfield, nil, nil, punchAlpha)
+            painter_:Circle(cx, cy, 37.5, nil, Renderer2D.COLORS.warningLow, 5, math.floor(punchAlpha * .42))
+        end
         if anger_ > 0 then
             local progress = math.max(0, math.min(1, anger_ / 100))
             nvgStrokeColor(painter_.vg, nvgRGBA(Renderer2D.COLORS.warningActive[1], Renderer2D.COLORS.warningActive[2], Renderer2D.COLORS.warningActive[3], math.floor(punchAlpha * (punchReady and 1 or .72))))

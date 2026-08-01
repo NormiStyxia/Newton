@@ -34,6 +34,7 @@ local COLORS = {
     warningSoft = { 247, 227, 221, 255 },
     warningActive = { 201, 108, 89, 255 },
     warningLow = { 217, 170, 161, 255 },
+    newtonAngerProgress = { 217, 130, 118, 255 },
     quantum = { 128, 118, 181, 255 },
     quantumSoft = { 232, 227, 244, 255 },
     glass = { 216, 214, 232, 255 },
@@ -55,6 +56,8 @@ local COLORS = {
     quantumCardSurfaceHover = { 240, 236, 248, 255 },
     wall = { 175, 196, 157, 255 },
     wallEdge = { 82, 117, 93, 255 },
+    wallBrassEdge = { 159, 137, 84, 255 },
+    neutralObject = { 197, 209, 199, 255 },
 }
 
 Renderer.COLORS = COLORS
@@ -93,6 +96,62 @@ function Renderer:Init()
         apple = nvgCreateImage(self.vg, "image/phase1/apple.png", 0),
         launcher = nvgCreateImage(self.vg, "image/phase1/launcher.png", 0),
         portrait = nvgCreateImage(self.vg, "image/newton-portrait.png", 0),
+        goalRing = nvgCreateImage(self.vg, "image/phase1/goal-ring.png", 0),
+        ui = {
+            titlePlaque = nvgCreateImage(self.vg, "image/ui_svg/runtime/title_plaque@2x.png", 0),
+            hudFrame = nvgCreateImage(self.vg, "image/ui_svg/runtime/hud_frame@2x.png", 0),
+            gameplayFrame = nvgCreateImage(self.vg, "image/ui_svg/runtime/gameplay_frame@2x.png", 0),
+            gameplayDecorOverlay = nvgCreateImage(self.vg, "image/ui/gameplay_decor_overlay.png", 0),
+            buttonFrame = nvgCreateImage(self.vg, "image/ui_svg/runtime/button_frame@2x.png", 0),
+            punchMedallion = nvgCreateImage(self.vg, "image/ui_svg/runtime/punch_medallion@2x.png", 0),
+            progressNode = nvgCreateImage(self.vg, "image/ui_svg/runtime/progress_node@2x.png", 0),
+            cardField = nvgCreateImage(self.vg, "image/ui_svg/runtime/card_field@2x.png", 0),
+            cardDecision = nvgCreateImage(self.vg, "image/ui_svg/runtime/card_decision@2x.png", 0),
+            cardQuantum = nvgCreateImage(self.vg, "image/ui_svg/runtime/card_quantum@2x.png", 0),
+        },
+        newtonAnger = {
+            [0] = nvgCreateImage(self.vg, "image/ui/newton_panel/runtime/newton_anger_000.png", 0),
+            [25] = nvgCreateImage(self.vg, "image/ui/newton_panel/runtime/newton_anger_025.png", 0),
+            [50] = nvgCreateImage(self.vg, "image/ui/newton_panel/runtime/newton_anger_050.png", 0),
+            [75] = nvgCreateImage(self.vg, "image/ui/newton_panel/runtime/newton_anger_075.png", 0),
+            [100] = nvgCreateImage(self.vg, "image/ui/newton_panel/runtime/newton_anger_100.png", 0),
+            icon = nvgCreateImage(self.vg, "image/ui/newton_panel/runtime/anger_icon.png", 0),
+        },
+    }
+    self.skins = {
+        gameplay = {
+            topLeft = nvgCreateImage(self.vg, "image/skins/gameplay_frame_runtime/top_left.png", 0),
+            top = nvgCreateImage(self.vg, "image/skins/gameplay_frame_runtime/top.png", 0),
+            topRight = nvgCreateImage(self.vg, "image/skins/gameplay_frame_runtime/top_right.png", 0),
+            left = nvgCreateImage(self.vg, "image/skins/gameplay_frame_runtime/left.png", 0),
+            center = nvgCreateImage(self.vg, "image/skins/gameplay_frame_runtime/center.png", 0),
+            right = nvgCreateImage(self.vg, "image/skins/gameplay_frame_runtime/right.png", 0),
+            bottomLeft = nvgCreateImage(self.vg, "image/skins/gameplay_frame_runtime/bottom_left.png", 0),
+            bottom = nvgCreateImage(self.vg, "image/skins/gameplay_frame_runtime/bottom.png", 0),
+            bottomRight = nvgCreateImage(self.vg, "image/skins/gameplay_frame_runtime/bottom_right.png", 0),
+        },
+        hud = {
+            topLeft = nvgCreateImage(self.vg, "image/skins/hud_info_runtime/top_left.png", 0),
+            top = nvgCreateImage(self.vg, "image/skins/hud_info_runtime/top.png", 0),
+            topRight = nvgCreateImage(self.vg, "image/skins/hud_info_runtime/top_right.png", 0),
+            left = nvgCreateImage(self.vg, "image/skins/hud_info_runtime/left.png", 0),
+            center = nvgCreateImage(self.vg, "image/skins/hud_info_runtime/center.png", 0),
+            right = nvgCreateImage(self.vg, "image/skins/hud_info_runtime/right.png", 0),
+            bottomLeft = nvgCreateImage(self.vg, "image/skins/hud_info_runtime/bottom_left.png", 0),
+            bottom = nvgCreateImage(self.vg, "image/skins/hud_info_runtime/bottom.png", 0),
+            bottomRight = nvgCreateImage(self.vg, "image/skins/hud_info_runtime/bottom_right.png", 0),
+        },
+        wall = {
+            topLeft = nvgCreateImage(self.vg, "image/skins/wall_green_runtime/top_left.png", 0),
+            top = nvgCreateImage(self.vg, "image/skins/wall_green_runtime/top.png", 0),
+            topRight = nvgCreateImage(self.vg, "image/skins/wall_green_runtime/top_right.png", 0),
+            left = nvgCreateImage(self.vg, "image/skins/wall_green_runtime/left.png", 0),
+            center = nvgCreateImage(self.vg, "image/skins/wall_green_runtime/center.png", 0),
+            right = nvgCreateImage(self.vg, "image/skins/wall_green_runtime/right.png", 0),
+            bottomLeft = nvgCreateImage(self.vg, "image/skins/wall_green_runtime/bottom_left.png", 0),
+            bottom = nvgCreateImage(self.vg, "image/skins/wall_green_runtime/bottom.png", 0),
+            bottomRight = nvgCreateImage(self.vg, "image/skins/wall_green_runtime/bottom_right.png", 0),
+        },
     }
 end
 
@@ -150,12 +209,12 @@ function Renderer:Text(x, y, value, size, c, align, font, alpha)
     nvgText(self.vg, x, y, value, nil)
 end
 
-function Renderer:TextBox(x, y, width, value, size, c, align, font, lineHeight)
+function Renderer:TextBox(x, y, width, value, size, c, align, font, lineHeight, alpha)
     nvgFontFace(self.vg, font or "maker-body")
     nvgFontSize(self.vg, size)
     nvgTextLineHeight(self.vg, lineHeight or 1)
     nvgTextAlign(self.vg, align or (NVG_ALIGN_LEFT + NVG_ALIGN_TOP))
-    nvgFillColor(self.vg, color(c or COLORS.text))
+    nvgFillColor(self.vg, color(c or COLORS.text, alpha))
     nvgTextBox(self.vg, x, y, width, value, nil)
 end
 
@@ -271,6 +330,40 @@ function Renderer:Image(image, x, y, w, h, alpha, angle, originX, originY)
     nvgFillPaint(self.vg, nvgImagePattern(self.vg, -w * originX, -h * originY, w, h, 0, image, alpha or 1))
     nvgFill(self.vg)
     nvgRestore(self.vg)
+end
+
+function Renderer:ImageRect(image, x, y, w, h, alpha)
+    if not image or image < 0 or w <= 0 or h <= 0 then return end
+    nvgBeginPath(self.vg)
+    nvgRect(self.vg, x, y, w, h)
+    nvgFillPaint(self.vg, nvgImagePattern(self.vg, x, y, w, h, 0, image, alpha or 1))
+    nvgFill(self.vg)
+end
+
+function Renderer:NineSlice(skin, x, y, w, h, border, alpha)
+    if not skin or w <= 0 or h <= 0 then return false end
+    local left, right = border.left, border.right
+    local top, bottom = border.top, border.bottom
+    if w < left + right then
+        local scale = w / math.max(1, left + right)
+        left, right = left * scale, right * scale
+    end
+    if h < top + bottom then
+        local scale = h / math.max(1, top + bottom)
+        top, bottom = top * scale, bottom * scale
+    end
+    local centerWidth = math.max(0, w - left - right)
+    local centerHeight = math.max(0, h - top - bottom)
+    self:ImageRect(skin.topLeft, x, y, left, top, alpha)
+    self:ImageRect(skin.top, x + left, y, centerWidth, top, alpha)
+    self:ImageRect(skin.topRight, x + left + centerWidth, y, right, top, alpha)
+    self:ImageRect(skin.left, x, y + top, left, centerHeight, alpha)
+    self:ImageRect(skin.center, x + left, y + top, centerWidth, centerHeight, alpha)
+    self:ImageRect(skin.right, x + left + centerWidth, y + top, right, centerHeight, alpha)
+    self:ImageRect(skin.bottomLeft, x, y + top + centerHeight, left, bottom, alpha)
+    self:ImageRect(skin.bottom, x + left, y + top + centerHeight, centerWidth, bottom, alpha)
+    self:ImageRect(skin.bottomRight, x + left + centerWidth, y + top + centerHeight, right, bottom, alpha)
+    return true
 end
 
 require("game.render.WorldPrimitives").Install(Renderer, COLORS, color, tint)

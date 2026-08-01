@@ -14,7 +14,11 @@ function M.Install(context)
         local function DrawNavigationButton(x, key)
             local hovered = hoveredNavigation_ == key
             painter_:FillRect(x, 23, 46, 46, hovered and Renderer2D.COLORS.darkSecondary or Renderer2D.COLORS.dark, hovered and 255 or 107)
-            painter_:StrokeRect(x, 23, 46, 46, hovered and Renderer2D.COLORS.greenLight or Renderer2D.COLORS.white, 2, hovered and 230 or 115)
+            if painter_.images.ui and painter_.images.ui.buttonFrame and painter_.images.ui.buttonFrame >= 0 then
+                painter_:ImageRect(painter_.images.ui.buttonFrame, x - 1, 22, 48, 48, 1)
+            else
+                painter_:StrokeRect(x, 23, 46, 46, hovered and Renderer2D.COLORS.greenLight or Renderer2D.COLORS.white, 2, hovered and 230 or 115)
+            end
             painter_:DrawNavigationIcon(key == "pause" and (isPaused_ and "play" or "pause") or key, x + 23, 46, Renderer2D.COLORS.white)
         end
         DrawNavigationButton(titleX + 255, "back")
@@ -30,7 +34,11 @@ function M.Install(context)
         for i = 1, CONFIG.levelCount do
             local x = f.playfieldX + f.playfieldWidth - 290 + (i - 1) * 27
             local scale = hoveredLevelIndex_ == i and 1.14 or 1
-            painter_:Circle(x, 46, 10 * scale, i == levelIndex_ and Renderer2D.COLORS.greenStrong or Renderer2D.COLORS.panelSecondary, i == levelIndex_ and Renderer2D.COLORS.primaryActive or Renderer2D.COLORS.greenLight, 1)
+            if painter_.images.ui and painter_.images.ui.progressNode and painter_.images.ui.progressNode >= 0 then
+                painter_:Image(painter_.images.ui.progressNode, x, 46, 22 * scale, 22 * scale, 1)
+            else
+                painter_:Circle(x, 46, 10 * scale, i == levelIndex_ and Renderer2D.COLORS.greenStrong or Renderer2D.COLORS.panelSecondary, i == levelIndex_ and Renderer2D.COLORS.primaryActive or Renderer2D.COLORS.greenLight, 1)
+            end
             painter_:Text(x, 46, tostring(i), 10 * scale, i == levelIndex_ and Renderer2D.COLORS.white or Renderer2D.COLORS.secondary, NVG_ALIGN_CENTER + NVG_ALIGN_MIDDLE)
         end
     end

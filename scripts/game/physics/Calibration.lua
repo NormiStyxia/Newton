@@ -14,20 +14,26 @@ MatterCalibration.MATTER_FRICTION_NORMAL_MULTIPLIER = 5
 MatterCalibration.MATTER_RESTING_TANGENT_SPEED = math.sqrt(6)
 MatterCalibration.APPLE_FRICTION_AIR = 0.01
 MatterCalibration.APPLE_INITIAL_RESTITUTION = 0
--- Matter uses this coefficient only when its cached tangent impulse selects
--- the resting-contact branch. Box2D has no equivalent per-contact cache, so
--- keep it as diagnostic evidence rather than applying it to every fixture.
+-- Matter's runtime probe reports these values after every static body has
+-- passed through Body.setStatic(true). The constructor values on floor,
+-- ceiling, wall, and spring are not the values used by the solver.
+MatterCalibration.SOURCE_STATIC_FRICTION = 1
+MatterCalibration.SOURCE_STATIC_RESTITUTION = 0
+-- Matter uses the lower kinetic coefficient for a sliding pair. Its static
+-- branch has a separate threshold, so do not fold that threshold into the
+-- Box2D fixture material or every landing becomes too sticky.
 MatterCalibration.MATTER_RESTING_CONTACT_FRICTION = MatterCalibration.APPLE_FRICTION
     * MatterCalibration.APPLE_FRICTION_STATIC
     * MatterCalibration.MATTER_FRICTION_NORMAL_MULTIPLIER
--- Phaser static bodies resolve to friction 1 after Body.setStatic, but Matter
--- takes the apple/static pair's lower .1 coefficient. With the apple also at
--- .1, Box2D needs a .1 static fixture for its geometric mean to produce the
--- same kinetic contact coefficient. The previous .625 fixture value forced
--- .25 friction on every landing and materially shortened slides before a
--- spring or wall.
-MatterCalibration.STATIC_FRICTION = MatterCalibration.APPLE_FRICTION
-MatterCalibration.STATIC_RESTITUTION = 0
+-- Box2D combines fixture friction as sqrt(a * b). Use the source pair's
+-- kinetic coefficient for both fixtures so sqrt(.1 * .1) remains .1, matching
+-- Matter's min(.1, 1) sliding pair coefficient.
+MatterCalibration.BOX2D_CONTACT_FRICTION = math.min(
+    MatterCalibration.APPLE_FRICTION,
+    MatterCalibration.SOURCE_STATIC_FRICTION
+)
+MatterCalibration.STATIC_FRICTION = MatterCalibration.BOX2D_CONTACT_FRICTION
+MatterCalibration.STATIC_RESTITUTION = MatterCalibration.SOURCE_STATIC_RESTITUTION
 MatterCalibration.CARD_RESTITUTION_BASE = 0.36
 MatterCalibration.MATTER_FRAMES_PER_SECOND = 60
 MatterCalibration.PIXELS_PER_METER = 100
@@ -65,9 +71,9 @@ function MatterCalibration.CardRestitution(multiplier)
 end
 
 -- Matter's frictionStatic branch is a per-pair cached tangent impulse, not a
--- material coefficient. Box2D exposes no equivalent pair cache; a global
--- fixture swap on the shared apple mid-contact would corrupt corners, rolling
--- contacts, and spring exits. The adapter therefore preserves the source kinetic
--- material, which is the observable branch for a new landing or impact.
+-- material coefficient. Box2D exposes no equivalent pair cache, so the
+-- production adapter keeps the kinetic coefficient on every static fixture.
+-- A global fixture swap on the shared apple would corrupt corners, rolling
+-- contacts, and spring exits.
 
 return MatterCalibration

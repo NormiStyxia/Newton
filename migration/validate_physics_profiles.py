@@ -119,6 +119,9 @@ def main() -> int:
     expect("APPLE_FRICTION_STATIC = 0.5" in calibration, "Matter static-friction multiplier is not calibrated")
     expect("APPLE_FRICTION_AIR = 0.01" in calibration, "apple effective air friction is not calibrated")
     expect("APPLE_INITIAL_RESTITUTION = 0" in calibration, "apple initial restitution is not calibrated")
+    expect("SOURCE_STATIC_FRICTION = 1" in calibration
+           and "SOURCE_STATIC_RESTITUTION = 0" in calibration,
+           "Matter static-body probe results are not retained")
     expect("APPLE_MATTER_INERTIA_PX2 = 1443.867317" in calibration
            and "APPLE_INERTIA = MatterCalibration.APPLE_MATTER_INERTIA_PX2" in calibration
            and "function MatterCalibration.ApplyAppleMassProperties" in calibration,
@@ -129,11 +132,13 @@ def main() -> int:
     expect("MATTER_RESTING_CONTACT_FRICTION = MatterCalibration.APPLE_FRICTION" in calibration
            and "* MatterCalibration.APPLE_FRICTION_STATIC" in calibration
            and "* MatterCalibration.MATTER_FRICTION_NORMAL_MULTIPLIER" in calibration,
-           "Matter resting-contact friction evidence is not retained")
-    expect("STATIC_FRICTION = MatterCalibration.APPLE_FRICTION" in calibration
-           and "MATTER_RESTING_CONTACT_FRICTION" in calibration,
-           "Box2D fixture material does not preserve Matter's kinetic contact value")
-    expect("STATIC_RESTITUTION = 0" in calibration,
+           "Matter static-friction threshold is not retained as diagnostic data")
+    expect("BOX2D_CONTACT_FRICTION = math.min(" in calibration
+           and "MatterCalibration.SOURCE_STATIC_FRICTION" in calibration,
+           "Box2D contact friction does not preserve Matter's kinetic pair coefficient")
+    expect("STATIC_FRICTION = MatterCalibration.BOX2D_CONTACT_FRICTION" in calibration,
+           "Box2D static fixture friction does not preserve the kinetic contact coefficient")
+    expect("STATIC_RESTITUTION = MatterCalibration.SOURCE_STATIC_RESTITUTION" in calibration,
            "static Matter material is not calibrated")
     expect("CARD_RESTITUTION_BASE = 0.36" in calibration, "card restitution baseline is not preserved")
     expect("MatterCalibration.APPLE_FRICTION" in factory and "MatterCalibration.STATIC_FRICTION" in factory,
@@ -213,13 +218,13 @@ def main() -> int:
     expect("[Replay]" in main_lua and "ReplayLog(\"start\")" in main_lua and "ReplayLog(\"finished\")" in main_lua,
            "replay lifecycle has no runtime audit markers")
 
-    # Matter's friction solver applies its normal multiplier before the
-    # coefficient; Box2D uses sqrt(a*b), so the static fixture is intentionally
-    # above 1.0 to produce the same effective apple/static coefficient.
-    matter_effective_friction = 0.1 * 0.5 * 5
-    box2d_static_friction = matter_effective_friction * matter_effective_friction / 0.1
-    expect(math.isclose(math.sqrt(0.1 * box2d_static_friction), matter_effective_friction, rel_tol=0, abs_tol=1e-12),
-           "Box2D fixture friction does not reproduce Matter's scaled apple/static friction")
+    # Matter uses min(apple.friction, static.friction) for sliding contacts;
+    # frictionStatic * frictionNormalMultiplier only defines its low-speed
+    # sticking threshold. Keep those two behaviors separate in Box2D.
+    matter_kinetic_friction = min(0.1, 1.0)
+    box2d_static_friction = 0.1
+    expect(math.isclose(math.sqrt(0.1 * box2d_static_friction), matter_kinetic_friction, rel_tol=0, abs_tol=1e-12),
+           "Box2D fixture friction does not reproduce Matter's kinetic contact coefficient")
     static_contact = 0.1 * 0.5 * 5
     expect(math.isclose(static_contact, 0.25, rel_tol=0, abs_tol=1e-12),
            "Matter static friction threshold is not 0.25")

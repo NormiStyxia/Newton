@@ -1,0 +1,1850 @@
+{
+  "schemaVersion": 1,
+  "purpose": "Phaser experiment visual asset migration audit",
+  "designSpace": {
+    "width": 1880,
+    "height": 840,
+    "origin": "top-left",
+    "filterMode": "default smooth filter"
+  },
+  "alphaChannelPolicy": "All 43 copied runtime PNGs retain an alpha channel; a null alphaBounds value means the alpha plane is fully transparent.",
+  "source": {
+    "branch": "experiment/svg-art-nouveau-ui",
+    "revision": "d0d3a31",
+    "baseline": "main"
+  },
+  "entries": [
+    {
+      "family": "ui_svg",
+      "sourceAsset": "public/assets/ui_svg/runtime/button_frame@2x.png",
+      "sourceBranch": "experiment/svg-art-nouveau-ui",
+      "sourceRevision": "d0d3a31",
+      "sourceHash": "77b1295cfca275cca7e9e8dc5992fcdc4c2a17e33448bbffaee4029fec76e2ed",
+      "sourceWidth": 96,
+      "sourceHeight": 96,
+      "alphaBounds": {
+        "source": [
+          1,
+          1,
+          95,
+          95
+        ],
+        "target": [
+          1,
+          1,
+          95,
+          95
+        ]
+      },
+      "targetAsset": "assets/image/ui_svg/runtime/button_frame@2x.png",
+      "targetHash": "77b1295cfca275cca7e9e8dc5992fcdc4c2a17e33448bbffaee4029fec76e2ed",
+      "targetWidth": 96,
+      "targetHeight": 96,
+      "usage": "mixed runtime UI skins",
+      "sourceDisplayRect": "Per asset; 2x source PNGs displayed at design-space sizes.",
+      "targetDisplayRect": "Same design-space sizes.",
+      "anchor": "component-specific",
+      "origin": "component-specific",
+      "layer": "HUD, cards, ability, or gameplay frame",
+      "scalingMode": "display-size",
+      "filterMode": "default smooth filter",
+      "notes": "Loader-only hud_frame/newton_panel assets are recorded but are not active draw calls in the experiment skin.",
+      "status": "EXACT_BINARY_COPY"
+    },
+    {
+      "family": "ui_svg",
+      "sourceAsset": "public/assets/ui_svg/runtime/card_decision@2x.png",
+      "sourceBranch": "experiment/svg-art-nouveau-ui",
+      "sourceRevision": "d0d3a31",
+      "sourceHash": "6d11726bb945e84efa3b5019b849c331629130d898df499a87ff4a0d6e31416b",
+      "sourceWidth": 248,
+      "sourceHeight": 348,
+      "alphaBounds": {
+        "source": [
+          1,
+          1,
+          247,
+          347
+        ],
+        "target": [
+          1,
+          1,
+          247,
+          347
+        ]
+      },
+      "targetAsset": "assets/image/ui_svg/runtime/card_decision@2x.png",
+      "targetHash": "6d11726bb945e84efa3b5019b849c331629130d898df499a87ff4a0d6e31416b",
+      "targetWidth": 248,
+      "targetHeight": 348,
+      "usage": "mixed runtime UI skins",
+      "sourceDisplayRect": "Per asset; 2x source PNGs displayed at design-space sizes.",
+      "targetDisplayRect": "Same design-space sizes.",
+      "anchor": "component-specific",
+      "origin": "component-specific",
+      "layer": "HUD, cards, ability, or gameplay frame",
+      "scalingMode": "display-size",
+      "filterMode": "default smooth filter",
+      "notes": "Loader-only hud_frame/newton_panel assets are recorded but are not active draw calls in the experiment skin.",
+      "status": "EXACT_BINARY_COPY"
+    },
+    {
+      "family": "ui_svg",
+      "sourceAsset": "public/assets/ui_svg/runtime/card_field@2x.png",
+      "sourceBranch": "experiment/svg-art-nouveau-ui",
+      "sourceRevision": "d0d3a31",
+      "sourceHash": "cd4899e82bbc62637e34185c8b18d14b26ff34e079ddb03b54770bded068f86b",
+      "sourceWidth": 248,
+      "sourceHeight": 348,
+      "alphaBounds": {
+        "source": [
+          1,
+          1,
+          247,
+          347
+        ],
+        "target": [
+          1,
+          1,
+          247,
+          347
+        ]
+      },
+      "targetAsset": "assets/image/ui_svg/runtime/card_field@2x.png",
+      "targetHash": "cd4899e82bbc62637e34185c8b18d14b26ff34e079ddb03b54770bded068f86b",
+      "targetWidth": 248,
+      "targetHeight": 348,
+      "usage": "mixed runtime UI skins",
+      "sourceDisplayRect": "Per asset; 2x source PNGs displayed at design-space sizes.",
+      "targetDisplayRect": "Same design-space sizes.",
+      "anchor": "component-specific",
+      "origin": "component-specific",
+      "layer": "HUD, cards, ability, or gameplay frame",
+      "scalingMode": "display-size",
+      "filterMode": "default smooth filter",
+      "notes": "Loader-only hud_frame/newton_panel assets are recorded but are not active draw calls in the experiment skin.",
+      "status": "EXACT_BINARY_COPY"
+    },
+    {
+      "family": "ui_svg",
+      "sourceAsset": "public/assets/ui_svg/runtime/card_quantum@2x.png",
+      "sourceBranch": "experiment/svg-art-nouveau-ui",
+      "sourceRevision": "d0d3a31",
+      "sourceHash": "562c923f302502ad5c7cb169acdc43a2a011404f17fd832a7dfef95857529f75",
+      "sourceWidth": 248,
+      "sourceHeight": 348,
+      "alphaBounds": {
+        "source": [
+          1,
+          1,
+          247,
+          347
+        ],
+        "target": [
+          1,
+          1,
+          247,
+          347
+        ]
+      },
+      "targetAsset": "assets/image/ui_svg/runtime/card_quantum@2x.png",
+      "targetHash": "562c923f302502ad5c7cb169acdc43a2a011404f17fd832a7dfef95857529f75",
+      "targetWidth": 248,
+      "targetHeight": 348,
+      "usage": "mixed runtime UI skins",
+      "sourceDisplayRect": "Per asset; 2x source PNGs displayed at design-space sizes.",
+      "targetDisplayRect": "Same design-space sizes.",
+      "anchor": "component-specific",
+      "origin": "component-specific",
+      "layer": "HUD, cards, ability, or gameplay frame",
+      "scalingMode": "display-size",
+      "filterMode": "default smooth filter",
+      "notes": "Loader-only hud_frame/newton_panel assets are recorded but are not active draw calls in the experiment skin.",
+      "status": "EXACT_BINARY_COPY"
+    },
+    {
+      "family": "ui_svg",
+      "sourceAsset": "public/assets/ui_svg/runtime/gameplay_frame@2x.png",
+      "sourceBranch": "experiment/svg-art-nouveau-ui",
+      "sourceRevision": "d0d3a31",
+      "sourceHash": "63862b4ed26b1219f1dac80dd4c39f61089245f876b8434421ad4617b1a812c0",
+      "sourceWidth": 3000,
+      "sourceHeight": 1192,
+      "alphaBounds": {
+        "source": [
+          1,
+          1,
+          2999,
+          1191
+        ],
+        "target": [
+          1,
+          1,
+          2999,
+          1191
+        ]
+      },
+      "targetAsset": "assets/image/ui_svg/runtime/gameplay_frame@2x.png",
+      "targetHash": "63862b4ed26b1219f1dac80dd4c39f61089245f876b8434421ad4617b1a812c0",
+      "targetWidth": 3000,
+      "targetHeight": 1192,
+      "usage": "mixed runtime UI skins",
+      "sourceDisplayRect": "Per asset; 2x source PNGs displayed at design-space sizes.",
+      "targetDisplayRect": "Same design-space sizes.",
+      "anchor": "component-specific",
+      "origin": "component-specific",
+      "layer": "HUD, cards, ability, or gameplay frame",
+      "scalingMode": "display-size",
+      "filterMode": "default smooth filter",
+      "notes": "Loader-only hud_frame/newton_panel assets are recorded but are not active draw calls in the experiment skin.",
+      "status": "EXACT_BINARY_COPY"
+    },
+    {
+      "family": "ui_svg",
+      "sourceAsset": "public/assets/ui_svg/runtime/hud_frame@2x.png",
+      "sourceBranch": "experiment/svg-art-nouveau-ui",
+      "sourceRevision": "d0d3a31",
+      "sourceHash": "30178cf94a46958d34140fae9542d0870afca5d3a25a110063bacb225e38ca42",
+      "sourceWidth": 3760,
+      "sourceHeight": 188,
+      "alphaBounds": {
+        "source": [
+          0,
+          0,
+          3760,
+          188
+        ],
+        "target": [
+          0,
+          0,
+          3760,
+          188
+        ]
+      },
+      "targetAsset": "assets/image/ui_svg/runtime/hud_frame@2x.png",
+      "targetHash": "30178cf94a46958d34140fae9542d0870afca5d3a25a110063bacb225e38ca42",
+      "targetWidth": 3760,
+      "targetHeight": 188,
+      "usage": "mixed runtime UI skins",
+      "sourceDisplayRect": "Per asset; 2x source PNGs displayed at design-space sizes.",
+      "targetDisplayRect": "Same design-space sizes.",
+      "anchor": "component-specific",
+      "origin": "component-specific",
+      "layer": "HUD, cards, ability, or gameplay frame",
+      "scalingMode": "display-size",
+      "filterMode": "default smooth filter",
+      "notes": "Loader-only hud_frame/newton_panel assets are recorded but are not active draw calls in the experiment skin.",
+      "status": "EXACT_BINARY_COPY"
+    },
+    {
+      "family": "ui_svg",
+      "sourceAsset": "public/assets/ui_svg/runtime/newton_panel@2x.png",
+      "sourceBranch": "experiment/svg-art-nouveau-ui",
+      "sourceRevision": "d0d3a31",
+      "sourceHash": "184da268d4802e7fc97ae9799a1e30203e8113d877892dc21663acbf2d246594",
+      "sourceWidth": 500,
+      "sourceHeight": 1192,
+      "alphaBounds": {
+        "source": [
+          1,
+          1,
+          499,
+          1191
+        ],
+        "target": [
+          1,
+          1,
+          499,
+          1191
+        ]
+      },
+      "targetAsset": "assets/image/ui_svg/runtime/newton_panel@2x.png",
+      "targetHash": "184da268d4802e7fc97ae9799a1e30203e8113d877892dc21663acbf2d246594",
+      "targetWidth": 500,
+      "targetHeight": 1192,
+      "usage": "mixed runtime UI skins",
+      "sourceDisplayRect": "Per asset; 2x source PNGs displayed at design-space sizes.",
+      "targetDisplayRect": "Same design-space sizes.",
+      "anchor": "component-specific",
+      "origin": "component-specific",
+      "layer": "HUD, cards, ability, or gameplay frame",
+      "scalingMode": "display-size",
+      "filterMode": "default smooth filter",
+      "notes": "Loader-only hud_frame/newton_panel assets are recorded but are not active draw calls in the experiment skin.",
+      "status": "EXACT_BINARY_COPY"
+    },
+    {
+      "family": "ui_svg",
+      "sourceAsset": "public/assets/ui_svg/runtime/progress_node@2x.png",
+      "sourceBranch": "experiment/svg-art-nouveau-ui",
+      "sourceRevision": "d0d3a31",
+      "sourceHash": "c61ebea450f5ec85e52f4c7b2eb62b7f6b15426cf92d89fe6427234bf2b6b752",
+      "sourceWidth": 44,
+      "sourceHeight": 44,
+      "alphaBounds": {
+        "source": [
+          0,
+          0,
+          44,
+          44
+        ],
+        "target": [
+          0,
+          0,
+          44,
+          44
+        ]
+      },
+      "targetAsset": "assets/image/ui_svg/runtime/progress_node@2x.png",
+      "targetHash": "c61ebea450f5ec85e52f4c7b2eb62b7f6b15426cf92d89fe6427234bf2b6b752",
+      "targetWidth": 44,
+      "targetHeight": 44,
+      "usage": "mixed runtime UI skins",
+      "sourceDisplayRect": "Per asset; 2x source PNGs displayed at design-space sizes.",
+      "targetDisplayRect": "Same design-space sizes.",
+      "anchor": "component-specific",
+      "origin": "component-specific",
+      "layer": "HUD, cards, ability, or gameplay frame",
+      "scalingMode": "display-size",
+      "filterMode": "default smooth filter",
+      "notes": "Loader-only hud_frame/newton_panel assets are recorded but are not active draw calls in the experiment skin.",
+      "status": "EXACT_BINARY_COPY"
+    },
+    {
+      "family": "ui_svg",
+      "sourceAsset": "public/assets/ui_svg/runtime/punch_medallion@2x.png",
+      "sourceBranch": "experiment/svg-art-nouveau-ui",
+      "sourceRevision": "d0d3a31",
+      "sourceHash": "0c35abea4f73e014fa57b828f5fbb218b2cf126f27321dda9345619191923527",
+      "sourceWidth": 160,
+      "sourceHeight": 160,
+      "alphaBounds": {
+        "source": [
+          3,
+          3,
+          157,
+          157
+        ],
+        "target": [
+          3,
+          3,
+          157,
+          157
+        ]
+      },
+      "targetAsset": "assets/image/ui_svg/runtime/punch_medallion@2x.png",
+      "targetHash": "0c35abea4f73e014fa57b828f5fbb218b2cf126f27321dda9345619191923527",
+      "targetWidth": 160,
+      "targetHeight": 160,
+      "usage": "mixed runtime UI skins",
+      "sourceDisplayRect": "Per asset; 2x source PNGs displayed at design-space sizes.",
+      "targetDisplayRect": "Same design-space sizes.",
+      "anchor": "component-specific",
+      "origin": "component-specific",
+      "layer": "HUD, cards, ability, or gameplay frame",
+      "scalingMode": "display-size",
+      "filterMode": "default smooth filter",
+      "notes": "Loader-only hud_frame/newton_panel assets are recorded but are not active draw calls in the experiment skin.",
+      "status": "EXACT_BINARY_COPY"
+    },
+    {
+      "family": "ui_svg",
+      "sourceAsset": "public/assets/ui_svg/runtime/title_plaque@2x.png",
+      "sourceBranch": "experiment/svg-art-nouveau-ui",
+      "sourceRevision": "d0d3a31",
+      "sourceHash": "dafd9d188728e32c931fca5f07f905855aec2976e9c3ddc40c456c479ea9fa55",
+      "sourceWidth": 896,
+      "sourceHeight": 224,
+      "alphaBounds": {
+        "source": [
+          3,
+          3,
+          881,
+          217
+        ],
+        "target": [
+          3,
+          3,
+          881,
+          217
+        ]
+      },
+      "targetAsset": "assets/image/ui_svg/runtime/title_plaque@2x.png",
+      "targetHash": "dafd9d188728e32c931fca5f07f905855aec2976e9c3ddc40c456c479ea9fa55",
+      "targetWidth": 896,
+      "targetHeight": 224,
+      "usage": "mixed runtime UI skins",
+      "sourceDisplayRect": "Per asset; 2x source PNGs displayed at design-space sizes.",
+      "targetDisplayRect": "Same design-space sizes.",
+      "anchor": "component-specific",
+      "origin": "component-specific",
+      "layer": "HUD, cards, ability, or gameplay frame",
+      "scalingMode": "display-size",
+      "filterMode": "default smooth filter",
+      "notes": "Loader-only hud_frame/newton_panel assets are recorded but are not active draw calls in the experiment skin.",
+      "status": "EXACT_BINARY_COPY"
+    },
+    {
+      "family": "newton_panel",
+      "sourceAsset": "public/assets/ui/newton_panel/runtime/anger_icon.png",
+      "sourceBranch": "experiment/svg-art-nouveau-ui",
+      "sourceRevision": "d0d3a31",
+      "sourceHash": "88e165997b9fc43e2d58782adc1a8ff4bd678eb0ac24b09b9dd6b25cf6da625b",
+      "sourceWidth": 80,
+      "sourceHeight": 83,
+      "alphaBounds": {
+        "source": [
+          8,
+          8,
+          72,
+          75
+        ],
+        "target": [
+          8,
+          8,
+          72,
+          75
+        ]
+      },
+      "targetAsset": "assets/image/ui/newton_panel/runtime/anger_icon.png",
+      "targetHash": "88e165997b9fc43e2d58782adc1a8ff4bd678eb0ac24b09b9dd6b25cf6da625b",
+      "targetWidth": 80,
+      "targetHeight": 83,
+      "usage": "Newton anger state panel",
+      "sourceDisplayRect": "x=newtonX+newtonWidth/2; y=newtonY+(785/2-8)*scaleY; width=346*scaleX; height=785*scaleY",
+      "targetDisplayRect": "Same source-aligned formula.",
+      "anchor": "Newton panel center",
+      "origin": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "layer": "Newton panel frame",
+      "scalingMode": "source-aligned display-size",
+      "filterMode": "default smooth filter",
+      "notes": "scaleY=panelHeight/(745-8); scaleX=panelHeight/(785-16).",
+      "status": "EXACT_BINARY_COPY"
+    },
+    {
+      "family": "newton_panel",
+      "sourceAsset": "public/assets/ui/newton_panel/runtime/newton_anger_000.png",
+      "sourceBranch": "experiment/svg-art-nouveau-ui",
+      "sourceRevision": "d0d3a31",
+      "sourceHash": "6c6a9e9b6b5d664d4e837a600bd0056fe34c4b8b22d0ea1335c8023eff6a5dda",
+      "sourceWidth": 346,
+      "sourceHeight": 785,
+      "alphaBounds": {
+        "source": [
+          8,
+          8,
+          338,
+          777
+        ],
+        "target": [
+          8,
+          8,
+          338,
+          777
+        ]
+      },
+      "targetAsset": "assets/image/ui/newton_panel/runtime/newton_anger_000.png",
+      "targetHash": "6c6a9e9b6b5d664d4e837a600bd0056fe34c4b8b22d0ea1335c8023eff6a5dda",
+      "targetWidth": 346,
+      "targetHeight": 785,
+      "usage": "Newton anger state panel",
+      "sourceDisplayRect": "x=newtonX+newtonWidth/2; y=newtonY+(785/2-8)*scaleY; width=346*scaleX; height=785*scaleY",
+      "targetDisplayRect": "Same source-aligned formula.",
+      "anchor": "Newton panel center",
+      "origin": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "layer": "Newton panel frame",
+      "scalingMode": "source-aligned display-size",
+      "filterMode": "default smooth filter",
+      "notes": "scaleY=panelHeight/(745-8); scaleX=panelHeight/(785-16).",
+      "status": "EXACT_BINARY_COPY"
+    },
+    {
+      "family": "newton_panel",
+      "sourceAsset": "public/assets/ui/newton_panel/runtime/newton_anger_025.png",
+      "sourceBranch": "experiment/svg-art-nouveau-ui",
+      "sourceRevision": "d0d3a31",
+      "sourceHash": "69c4d297014e544cfccba80f878aebdcf9758c1ed2856b911a8a8ad4b39815da",
+      "sourceWidth": 346,
+      "sourceHeight": 785,
+      "alphaBounds": {
+        "source": [
+          8,
+          8,
+          338,
+          777
+        ],
+        "target": [
+          8,
+          8,
+          338,
+          777
+        ]
+      },
+      "targetAsset": "assets/image/ui/newton_panel/runtime/newton_anger_025.png",
+      "targetHash": "69c4d297014e544cfccba80f878aebdcf9758c1ed2856b911a8a8ad4b39815da",
+      "targetWidth": 346,
+      "targetHeight": 785,
+      "usage": "Newton anger state panel",
+      "sourceDisplayRect": "x=newtonX+newtonWidth/2; y=newtonY+(785/2-8)*scaleY; width=346*scaleX; height=785*scaleY",
+      "targetDisplayRect": "Same source-aligned formula.",
+      "anchor": "Newton panel center",
+      "origin": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "layer": "Newton panel frame",
+      "scalingMode": "source-aligned display-size",
+      "filterMode": "default smooth filter",
+      "notes": "scaleY=panelHeight/(745-8); scaleX=panelHeight/(785-16).",
+      "status": "EXACT_BINARY_COPY"
+    },
+    {
+      "family": "newton_panel",
+      "sourceAsset": "public/assets/ui/newton_panel/runtime/newton_anger_050.png",
+      "sourceBranch": "experiment/svg-art-nouveau-ui",
+      "sourceRevision": "d0d3a31",
+      "sourceHash": "951a22c2729299ad67504744288daaf3d8906017f3543c5e5ce09a23f287c6e2",
+      "sourceWidth": 346,
+      "sourceHeight": 785,
+      "alphaBounds": {
+        "source": [
+          8,
+          8,
+          338,
+          777
+        ],
+        "target": [
+          8,
+          8,
+          338,
+          777
+        ]
+      },
+      "targetAsset": "assets/image/ui/newton_panel/runtime/newton_anger_050.png",
+      "targetHash": "951a22c2729299ad67504744288daaf3d8906017f3543c5e5ce09a23f287c6e2",
+      "targetWidth": 346,
+      "targetHeight": 785,
+      "usage": "Newton anger state panel",
+      "sourceDisplayRect": "x=newtonX+newtonWidth/2; y=newtonY+(785/2-8)*scaleY; width=346*scaleX; height=785*scaleY",
+      "targetDisplayRect": "Same source-aligned formula.",
+      "anchor": "Newton panel center",
+      "origin": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "layer": "Newton panel frame",
+      "scalingMode": "source-aligned display-size",
+      "filterMode": "default smooth filter",
+      "notes": "scaleY=panelHeight/(745-8); scaleX=panelHeight/(785-16).",
+      "status": "EXACT_BINARY_COPY"
+    },
+    {
+      "family": "newton_panel",
+      "sourceAsset": "public/assets/ui/newton_panel/runtime/newton_anger_075.png",
+      "sourceBranch": "experiment/svg-art-nouveau-ui",
+      "sourceRevision": "d0d3a31",
+      "sourceHash": "6f161addfa5295dc07579abd94af5ba15230aa9b26f8affd80b292d55b61f3fb",
+      "sourceWidth": 346,
+      "sourceHeight": 785,
+      "alphaBounds": {
+        "source": [
+          8,
+          8,
+          338,
+          777
+        ],
+        "target": [
+          8,
+          8,
+          338,
+          777
+        ]
+      },
+      "targetAsset": "assets/image/ui/newton_panel/runtime/newton_anger_075.png",
+      "targetHash": "6f161addfa5295dc07579abd94af5ba15230aa9b26f8affd80b292d55b61f3fb",
+      "targetWidth": 346,
+      "targetHeight": 785,
+      "usage": "Newton anger state panel",
+      "sourceDisplayRect": "x=newtonX+newtonWidth/2; y=newtonY+(785/2-8)*scaleY; width=346*scaleX; height=785*scaleY",
+      "targetDisplayRect": "Same source-aligned formula.",
+      "anchor": "Newton panel center",
+      "origin": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "layer": "Newton panel frame",
+      "scalingMode": "source-aligned display-size",
+      "filterMode": "default smooth filter",
+      "notes": "scaleY=panelHeight/(745-8); scaleX=panelHeight/(785-16).",
+      "status": "EXACT_BINARY_COPY"
+    },
+    {
+      "family": "newton_panel",
+      "sourceAsset": "public/assets/ui/newton_panel/runtime/newton_anger_100.png",
+      "sourceBranch": "experiment/svg-art-nouveau-ui",
+      "sourceRevision": "d0d3a31",
+      "sourceHash": "1f6901062f73ecace3d97d4d5b2d7ae92c9526afd9caf15d4c71eac20d023e79",
+      "sourceWidth": 346,
+      "sourceHeight": 785,
+      "alphaBounds": {
+        "source": [
+          8,
+          8,
+          338,
+          777
+        ],
+        "target": [
+          8,
+          8,
+          338,
+          777
+        ]
+      },
+      "targetAsset": "assets/image/ui/newton_panel/runtime/newton_anger_100.png",
+      "targetHash": "1f6901062f73ecace3d97d4d5b2d7ae92c9526afd9caf15d4c71eac20d023e79",
+      "targetWidth": 346,
+      "targetHeight": 785,
+      "usage": "Newton anger state panel",
+      "sourceDisplayRect": "x=newtonX+newtonWidth/2; y=newtonY+(785/2-8)*scaleY; width=346*scaleX; height=785*scaleY",
+      "targetDisplayRect": "Same source-aligned formula.",
+      "anchor": "Newton panel center",
+      "origin": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "layer": "Newton panel frame",
+      "scalingMode": "source-aligned display-size",
+      "filterMode": "default smooth filter",
+      "notes": "scaleY=panelHeight/(745-8); scaleX=panelHeight/(785-16).",
+      "status": "EXACT_BINARY_COPY"
+    },
+    {
+      "family": "wall_green",
+      "sourceAsset": "public/assets/skins/wall_green/runtime/bottom.png",
+      "sourceBranch": "experiment/svg-art-nouveau-ui",
+      "sourceRevision": "d0d3a31",
+      "sourceHash": "b70d4a2fd95da4dd3731a99b7a37661da3769bb6e4c76a248a46d6c1f3181925",
+      "sourceWidth": 672,
+      "sourceHeight": 72,
+      "alphaBounds": {
+        "source": [
+          0,
+          0,
+          672,
+          72
+        ],
+        "target": [
+          0,
+          0,
+          672,
+          72
+        ]
+      },
+      "targetAsset": "assets/image/skins/wall_green_runtime/bottom.png",
+      "targetHash": "b70d4a2fd95da4dd3731a99b7a37661da3769bb6e4c76a248a46d6c1f3181925",
+      "targetWidth": 672,
+      "targetHeight": 72,
+      "usage": "normal wall skin nine-slice",
+      "sourceDisplayRect": "wall transform bounds",
+      "targetDisplayRect": "same wall transform bounds",
+      "anchor": "wall body center",
+      "origin": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "layer": "world wall",
+      "scalingMode": "nine-slice, visualScale 80/230",
+      "filterMode": "default smooth filter",
+      "notes": "Only the normal wall draw layer changes; collider and transform stay unchanged.",
+      "status": "EXACT_BINARY_COPY"
+    },
+    {
+      "family": "wall_green",
+      "sourceAsset": "public/assets/skins/wall_green/runtime/bottom_left.png",
+      "sourceBranch": "experiment/svg-art-nouveau-ui",
+      "sourceRevision": "d0d3a31",
+      "sourceHash": "fdb45bd3898d0cf33d91a9e3b8d66e6ba9d681f1b318bda546fe3a13533bf03b",
+      "sourceWidth": 74,
+      "sourceHeight": 72,
+      "alphaBounds": {
+        "source": [
+          0,
+          0,
+          74,
+          72
+        ],
+        "target": [
+          0,
+          0,
+          74,
+          72
+        ]
+      },
+      "targetAsset": "assets/image/skins/wall_green_runtime/bottom_left.png",
+      "targetHash": "fdb45bd3898d0cf33d91a9e3b8d66e6ba9d681f1b318bda546fe3a13533bf03b",
+      "targetWidth": 74,
+      "targetHeight": 72,
+      "usage": "normal wall skin nine-slice",
+      "sourceDisplayRect": "wall transform bounds",
+      "targetDisplayRect": "same wall transform bounds",
+      "anchor": "wall body center",
+      "origin": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "layer": "world wall",
+      "scalingMode": "nine-slice, visualScale 80/230",
+      "filterMode": "default smooth filter",
+      "notes": "Only the normal wall draw layer changes; collider and transform stay unchanged.",
+      "status": "EXACT_BINARY_COPY"
+    },
+    {
+      "family": "wall_green",
+      "sourceAsset": "public/assets/skins/wall_green/runtime/bottom_right.png",
+      "sourceBranch": "experiment/svg-art-nouveau-ui",
+      "sourceRevision": "d0d3a31",
+      "sourceHash": "9db907512ed878287412d9826d7327f9f388fb38af8ac49e681ff801664f6462",
+      "sourceWidth": 65,
+      "sourceHeight": 72,
+      "alphaBounds": {
+        "source": [
+          0,
+          0,
+          65,
+          72
+        ],
+        "target": [
+          0,
+          0,
+          65,
+          72
+        ]
+      },
+      "targetAsset": "assets/image/skins/wall_green_runtime/bottom_right.png",
+      "targetHash": "9db907512ed878287412d9826d7327f9f388fb38af8ac49e681ff801664f6462",
+      "targetWidth": 65,
+      "targetHeight": 72,
+      "usage": "normal wall skin nine-slice",
+      "sourceDisplayRect": "wall transform bounds",
+      "targetDisplayRect": "same wall transform bounds",
+      "anchor": "wall body center",
+      "origin": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "layer": "world wall",
+      "scalingMode": "nine-slice, visualScale 80/230",
+      "filterMode": "default smooth filter",
+      "notes": "Only the normal wall draw layer changes; collider and transform stay unchanged.",
+      "status": "EXACT_BINARY_COPY"
+    },
+    {
+      "family": "wall_green",
+      "sourceAsset": "public/assets/skins/wall_green/runtime/center.png",
+      "sourceBranch": "experiment/svg-art-nouveau-ui",
+      "sourceRevision": "d0d3a31",
+      "sourceHash": "58974b97a6ca30e895250405e8656a362e975e0f93f6e985660fbde0aa971659",
+      "sourceWidth": 672,
+      "sourceHeight": 91,
+      "alphaBounds": {
+        "source": [
+          0,
+          0,
+          672,
+          91
+        ],
+        "target": [
+          0,
+          0,
+          672,
+          91
+        ]
+      },
+      "targetAsset": "assets/image/skins/wall_green_runtime/center.png",
+      "targetHash": "58974b97a6ca30e895250405e8656a362e975e0f93f6e985660fbde0aa971659",
+      "targetWidth": 672,
+      "targetHeight": 91,
+      "usage": "normal wall skin nine-slice",
+      "sourceDisplayRect": "wall transform bounds",
+      "targetDisplayRect": "same wall transform bounds",
+      "anchor": "wall body center",
+      "origin": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "layer": "world wall",
+      "scalingMode": "nine-slice, visualScale 80/230",
+      "filterMode": "default smooth filter",
+      "notes": "Only the normal wall draw layer changes; collider and transform stay unchanged.",
+      "status": "EXACT_BINARY_COPY"
+    },
+    {
+      "family": "wall_green",
+      "sourceAsset": "public/assets/skins/wall_green/runtime/left.png",
+      "sourceBranch": "experiment/svg-art-nouveau-ui",
+      "sourceRevision": "d0d3a31",
+      "sourceHash": "c423b1854b09ce0447b3a74ef08ef82bc628fb005f20202f53782077362c5fec",
+      "sourceWidth": 74,
+      "sourceHeight": 91,
+      "alphaBounds": {
+        "source": [
+          0,
+          0,
+          74,
+          91
+        ],
+        "target": [
+          0,
+          0,
+          74,
+          91
+        ]
+      },
+      "targetAsset": "assets/image/skins/wall_green_runtime/left.png",
+      "targetHash": "c423b1854b09ce0447b3a74ef08ef82bc628fb005f20202f53782077362c5fec",
+      "targetWidth": 74,
+      "targetHeight": 91,
+      "usage": "normal wall skin nine-slice",
+      "sourceDisplayRect": "wall transform bounds",
+      "targetDisplayRect": "same wall transform bounds",
+      "anchor": "wall body center",
+      "origin": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "layer": "world wall",
+      "scalingMode": "nine-slice, visualScale 80/230",
+      "filterMode": "default smooth filter",
+      "notes": "Only the normal wall draw layer changes; collider and transform stay unchanged.",
+      "status": "EXACT_BINARY_COPY"
+    },
+    {
+      "family": "wall_green",
+      "sourceAsset": "public/assets/skins/wall_green/runtime/right.png",
+      "sourceBranch": "experiment/svg-art-nouveau-ui",
+      "sourceRevision": "d0d3a31",
+      "sourceHash": "b493dd0b1ba73e483bf1f4022aac0f99c113306b97b648d7a006a6bbb44c062d",
+      "sourceWidth": 65,
+      "sourceHeight": 91,
+      "alphaBounds": {
+        "source": [
+          0,
+          0,
+          65,
+          91
+        ],
+        "target": [
+          0,
+          0,
+          65,
+          91
+        ]
+      },
+      "targetAsset": "assets/image/skins/wall_green_runtime/right.png",
+      "targetHash": "b493dd0b1ba73e483bf1f4022aac0f99c113306b97b648d7a006a6bbb44c062d",
+      "targetWidth": 65,
+      "targetHeight": 91,
+      "usage": "normal wall skin nine-slice",
+      "sourceDisplayRect": "wall transform bounds",
+      "targetDisplayRect": "same wall transform bounds",
+      "anchor": "wall body center",
+      "origin": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "layer": "world wall",
+      "scalingMode": "nine-slice, visualScale 80/230",
+      "filterMode": "default smooth filter",
+      "notes": "Only the normal wall draw layer changes; collider and transform stay unchanged.",
+      "status": "EXACT_BINARY_COPY"
+    },
+    {
+      "family": "wall_green",
+      "sourceAsset": "public/assets/skins/wall_green/runtime/top.png",
+      "sourceBranch": "experiment/svg-art-nouveau-ui",
+      "sourceRevision": "d0d3a31",
+      "sourceHash": "3b2f61a95ee2d6d2d9335d449237d89f79c399c4e0aa83cfd66b730fbac1219a",
+      "sourceWidth": 672,
+      "sourceHeight": 67,
+      "alphaBounds": {
+        "source": [
+          0,
+          0,
+          672,
+          67
+        ],
+        "target": [
+          0,
+          0,
+          672,
+          67
+        ]
+      },
+      "targetAsset": "assets/image/skins/wall_green_runtime/top.png",
+      "targetHash": "3b2f61a95ee2d6d2d9335d449237d89f79c399c4e0aa83cfd66b730fbac1219a",
+      "targetWidth": 672,
+      "targetHeight": 67,
+      "usage": "normal wall skin nine-slice",
+      "sourceDisplayRect": "wall transform bounds",
+      "targetDisplayRect": "same wall transform bounds",
+      "anchor": "wall body center",
+      "origin": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "layer": "world wall",
+      "scalingMode": "nine-slice, visualScale 80/230",
+      "filterMode": "default smooth filter",
+      "notes": "Only the normal wall draw layer changes; collider and transform stay unchanged.",
+      "status": "EXACT_BINARY_COPY"
+    },
+    {
+      "family": "wall_green",
+      "sourceAsset": "public/assets/skins/wall_green/runtime/top_left.png",
+      "sourceBranch": "experiment/svg-art-nouveau-ui",
+      "sourceRevision": "d0d3a31",
+      "sourceHash": "92270970db4a1cd861cd3d33258b2065d4a1763594f89ce89947f21579fd1c62",
+      "sourceWidth": 74,
+      "sourceHeight": 67,
+      "alphaBounds": {
+        "source": [
+          0,
+          0,
+          74,
+          67
+        ],
+        "target": [
+          0,
+          0,
+          74,
+          67
+        ]
+      },
+      "targetAsset": "assets/image/skins/wall_green_runtime/top_left.png",
+      "targetHash": "92270970db4a1cd861cd3d33258b2065d4a1763594f89ce89947f21579fd1c62",
+      "targetWidth": 74,
+      "targetHeight": 67,
+      "usage": "normal wall skin nine-slice",
+      "sourceDisplayRect": "wall transform bounds",
+      "targetDisplayRect": "same wall transform bounds",
+      "anchor": "wall body center",
+      "origin": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "layer": "world wall",
+      "scalingMode": "nine-slice, visualScale 80/230",
+      "filterMode": "default smooth filter",
+      "notes": "Only the normal wall draw layer changes; collider and transform stay unchanged.",
+      "status": "EXACT_BINARY_COPY"
+    },
+    {
+      "family": "wall_green",
+      "sourceAsset": "public/assets/skins/wall_green/runtime/top_right.png",
+      "sourceBranch": "experiment/svg-art-nouveau-ui",
+      "sourceRevision": "d0d3a31",
+      "sourceHash": "355d7e2a2ebf8c59c63b06fec88659b18adebc6ad0c0e6ec27396bd23fb10148",
+      "sourceWidth": 65,
+      "sourceHeight": 67,
+      "alphaBounds": {
+        "source": [
+          0,
+          0,
+          65,
+          67
+        ],
+        "target": [
+          0,
+          0,
+          65,
+          67
+        ]
+      },
+      "targetAsset": "assets/image/skins/wall_green_runtime/top_right.png",
+      "targetHash": "355d7e2a2ebf8c59c63b06fec88659b18adebc6ad0c0e6ec27396bd23fb10148",
+      "targetWidth": 65,
+      "targetHeight": 67,
+      "usage": "normal wall skin nine-slice",
+      "sourceDisplayRect": "wall transform bounds",
+      "targetDisplayRect": "same wall transform bounds",
+      "anchor": "wall body center",
+      "origin": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "layer": "world wall",
+      "scalingMode": "nine-slice, visualScale 80/230",
+      "filterMode": "default smooth filter",
+      "notes": "Only the normal wall draw layer changes; collider and transform stay unchanged.",
+      "status": "EXACT_BINARY_COPY"
+    },
+    {
+      "family": "gameplay_frame",
+      "sourceAsset": "public/assets/skins/gameplay_frame/runtime/bottom.png",
+      "sourceBranch": "experiment/svg-art-nouveau-ui",
+      "sourceRevision": "d0d3a31",
+      "sourceHash": "09b41659914602aecb4c3763b111933fea014ca672e76ae92930cac60162f73c",
+      "sourceWidth": 1032,
+      "sourceHeight": 159,
+      "alphaBounds": {
+        "source": [
+          0,
+          125,
+          1032,
+          159
+        ],
+        "target": [
+          0,
+          125,
+          1032,
+          159
+        ]
+      },
+      "targetAsset": "assets/image/skins/gameplay_frame_runtime/bottom.png",
+      "targetHash": "09b41659914602aecb4c3763b111933fea014ca672e76ae92930cac60162f73c",
+      "targetWidth": 1032,
+      "targetHeight": 159,
+      "usage": "gameplay frame nine-slice",
+      "sourceDisplayRect": {
+        "x": 290,
+        "y": 112,
+        "width": 1500,
+        "height": 596
+      },
+      "targetDisplayRect": "playfield frame bounds",
+      "anchor": "playfield top-left",
+      "origin": {
+        "x": 0,
+        "y": 0
+      },
+      "layer": "gameplay frame",
+      "scalingMode": "nine-slice",
+      "filterMode": "default smooth filter",
+      "notes": "Border left/right/top/bottom = 155/146/167/159 design pixels.",
+      "status": "EXACT_BINARY_COPY"
+    },
+    {
+      "family": "gameplay_frame",
+      "sourceAsset": "public/assets/skins/gameplay_frame/runtime/bottom_left.png",
+      "sourceBranch": "experiment/svg-art-nouveau-ui",
+      "sourceRevision": "d0d3a31",
+      "sourceHash": "ac7b153b505750f1f0a0b91de3f419cab1f92f598c7a906cc587be2035a83c75",
+      "sourceWidth": 155,
+      "sourceHeight": 159,
+      "alphaBounds": {
+        "source": [
+          0,
+          0,
+          155,
+          159
+        ],
+        "target": [
+          0,
+          0,
+          155,
+          159
+        ]
+      },
+      "targetAsset": "assets/image/skins/gameplay_frame_runtime/bottom_left.png",
+      "targetHash": "ac7b153b505750f1f0a0b91de3f419cab1f92f598c7a906cc587be2035a83c75",
+      "targetWidth": 155,
+      "targetHeight": 159,
+      "usage": "gameplay frame nine-slice",
+      "sourceDisplayRect": {
+        "x": 290,
+        "y": 112,
+        "width": 1500,
+        "height": 596
+      },
+      "targetDisplayRect": "playfield frame bounds",
+      "anchor": "playfield top-left",
+      "origin": {
+        "x": 0,
+        "y": 0
+      },
+      "layer": "gameplay frame",
+      "scalingMode": "nine-slice",
+      "filterMode": "default smooth filter",
+      "notes": "Border left/right/top/bottom = 155/146/167/159 design pixels.",
+      "status": "EXACT_BINARY_COPY"
+    },
+    {
+      "family": "gameplay_frame",
+      "sourceAsset": "public/assets/skins/gameplay_frame/runtime/bottom_right.png",
+      "sourceBranch": "experiment/svg-art-nouveau-ui",
+      "sourceRevision": "d0d3a31",
+      "sourceHash": "61e03976be17e3732476456cd6d5c430632848fd7065bb0fe2b670afdeed83e6",
+      "sourceWidth": 146,
+      "sourceHeight": 159,
+      "alphaBounds": {
+        "source": [
+          0,
+          0,
+          146,
+          158
+        ],
+        "target": [
+          0,
+          0,
+          146,
+          158
+        ]
+      },
+      "targetAsset": "assets/image/skins/gameplay_frame_runtime/bottom_right.png",
+      "targetHash": "61e03976be17e3732476456cd6d5c430632848fd7065bb0fe2b670afdeed83e6",
+      "targetWidth": 146,
+      "targetHeight": 159,
+      "usage": "gameplay frame nine-slice",
+      "sourceDisplayRect": {
+        "x": 290,
+        "y": 112,
+        "width": 1500,
+        "height": 596
+      },
+      "targetDisplayRect": "playfield frame bounds",
+      "anchor": "playfield top-left",
+      "origin": {
+        "x": 0,
+        "y": 0
+      },
+      "layer": "gameplay frame",
+      "scalingMode": "nine-slice",
+      "filterMode": "default smooth filter",
+      "notes": "Border left/right/top/bottom = 155/146/167/159 design pixels.",
+      "status": "EXACT_BINARY_COPY"
+    },
+    {
+      "family": "gameplay_frame",
+      "sourceAsset": "public/assets/skins/gameplay_frame/runtime/center.png",
+      "sourceBranch": "experiment/svg-art-nouveau-ui",
+      "sourceRevision": "d0d3a31",
+      "sourceHash": "7d4b3c8e0c649877f92a8735efb8aa7af27dfc022c9cf0f209d92cd3ec98f1eb",
+      "sourceWidth": 1032,
+      "sourceHeight": 235,
+      "alphaBounds": {
+        "source": null,
+        "target": null
+      },
+      "targetAsset": "assets/image/skins/gameplay_frame_runtime/center.png",
+      "targetHash": "7d4b3c8e0c649877f92a8735efb8aa7af27dfc022c9cf0f209d92cd3ec98f1eb",
+      "targetWidth": 1032,
+      "targetHeight": 235,
+      "usage": "gameplay frame nine-slice",
+      "sourceDisplayRect": {
+        "x": 290,
+        "y": 112,
+        "width": 1500,
+        "height": 596
+      },
+      "targetDisplayRect": "playfield frame bounds",
+      "anchor": "playfield top-left",
+      "origin": {
+        "x": 0,
+        "y": 0
+      },
+      "layer": "gameplay frame",
+      "scalingMode": "nine-slice",
+      "filterMode": "default smooth filter",
+      "notes": "Border left/right/top/bottom = 155/146/167/159 design pixels.",
+      "status": "EXACT_BINARY_COPY"
+    },
+    {
+      "family": "gameplay_frame",
+      "sourceAsset": "public/assets/skins/gameplay_frame/runtime/left.png",
+      "sourceBranch": "experiment/svg-art-nouveau-ui",
+      "sourceRevision": "d0d3a31",
+      "sourceHash": "65d064bd3aad611121b6408223f75b5cf0dca70b4a942893e7e264d8fb97bd49",
+      "sourceWidth": 155,
+      "sourceHeight": 235,
+      "alphaBounds": {
+        "source": [
+          0,
+          0,
+          15,
+          235
+        ],
+        "target": [
+          0,
+          0,
+          15,
+          235
+        ]
+      },
+      "targetAsset": "assets/image/skins/gameplay_frame_runtime/left.png",
+      "targetHash": "65d064bd3aad611121b6408223f75b5cf0dca70b4a942893e7e264d8fb97bd49",
+      "targetWidth": 155,
+      "targetHeight": 235,
+      "usage": "gameplay frame nine-slice",
+      "sourceDisplayRect": {
+        "x": 290,
+        "y": 112,
+        "width": 1500,
+        "height": 596
+      },
+      "targetDisplayRect": "playfield frame bounds",
+      "anchor": "playfield top-left",
+      "origin": {
+        "x": 0,
+        "y": 0
+      },
+      "layer": "gameplay frame",
+      "scalingMode": "nine-slice",
+      "filterMode": "default smooth filter",
+      "notes": "Border left/right/top/bottom = 155/146/167/159 design pixels.",
+      "status": "EXACT_BINARY_COPY"
+    },
+    {
+      "family": "gameplay_frame",
+      "sourceAsset": "public/assets/skins/gameplay_frame/runtime/right.png",
+      "sourceBranch": "experiment/svg-art-nouveau-ui",
+      "sourceRevision": "d0d3a31",
+      "sourceHash": "0af901d1811984cfe159695969ad1e203c6a313cf76fa2599f97915afe80258d",
+      "sourceWidth": 146,
+      "sourceHeight": 235,
+      "alphaBounds": {
+        "source": [
+          130,
+          0,
+          144,
+          235
+        ],
+        "target": [
+          130,
+          0,
+          144,
+          235
+        ]
+      },
+      "targetAsset": "assets/image/skins/gameplay_frame_runtime/right.png",
+      "targetHash": "0af901d1811984cfe159695969ad1e203c6a313cf76fa2599f97915afe80258d",
+      "targetWidth": 146,
+      "targetHeight": 235,
+      "usage": "gameplay frame nine-slice",
+      "sourceDisplayRect": {
+        "x": 290,
+        "y": 112,
+        "width": 1500,
+        "height": 596
+      },
+      "targetDisplayRect": "playfield frame bounds",
+      "anchor": "playfield top-left",
+      "origin": {
+        "x": 0,
+        "y": 0
+      },
+      "layer": "gameplay frame",
+      "scalingMode": "nine-slice",
+      "filterMode": "default smooth filter",
+      "notes": "Border left/right/top/bottom = 155/146/167/159 design pixels.",
+      "status": "EXACT_BINARY_COPY"
+    },
+    {
+      "family": "gameplay_frame",
+      "sourceAsset": "public/assets/skins/gameplay_frame/runtime/top.png",
+      "sourceBranch": "experiment/svg-art-nouveau-ui",
+      "sourceRevision": "d0d3a31",
+      "sourceHash": "aa0df9a9c0e6a30f9aad3d5fb8dde475c7e3deaf8b48503230ca4a3f47f53753",
+      "sourceWidth": 1032,
+      "sourceHeight": 167,
+      "alphaBounds": {
+        "source": [
+          0,
+          0,
+          1032,
+          16
+        ],
+        "target": [
+          0,
+          0,
+          1032,
+          16
+        ]
+      },
+      "targetAsset": "assets/image/skins/gameplay_frame_runtime/top.png",
+      "targetHash": "aa0df9a9c0e6a30f9aad3d5fb8dde475c7e3deaf8b48503230ca4a3f47f53753",
+      "targetWidth": 1032,
+      "targetHeight": 167,
+      "usage": "gameplay frame nine-slice",
+      "sourceDisplayRect": {
+        "x": 290,
+        "y": 112,
+        "width": 1500,
+        "height": 596
+      },
+      "targetDisplayRect": "playfield frame bounds",
+      "anchor": "playfield top-left",
+      "origin": {
+        "x": 0,
+        "y": 0
+      },
+      "layer": "gameplay frame",
+      "scalingMode": "nine-slice",
+      "filterMode": "default smooth filter",
+      "notes": "Border left/right/top/bottom = 155/146/167/159 design pixels.",
+      "status": "EXACT_BINARY_COPY"
+    },
+    {
+      "family": "gameplay_frame",
+      "sourceAsset": "public/assets/skins/gameplay_frame/runtime/top_left.png",
+      "sourceBranch": "experiment/svg-art-nouveau-ui",
+      "sourceRevision": "d0d3a31",
+      "sourceHash": "1b39d221801a18ecc6780fd0f4708b2f78440e672a00584eb3b9630bfead1557",
+      "sourceWidth": 155,
+      "sourceHeight": 167,
+      "alphaBounds": {
+        "source": [
+          1,
+          1,
+          155,
+          167
+        ],
+        "target": [
+          1,
+          1,
+          155,
+          167
+        ]
+      },
+      "targetAsset": "assets/image/skins/gameplay_frame_runtime/top_left.png",
+      "targetHash": "1b39d221801a18ecc6780fd0f4708b2f78440e672a00584eb3b9630bfead1557",
+      "targetWidth": 155,
+      "targetHeight": 167,
+      "usage": "gameplay frame nine-slice",
+      "sourceDisplayRect": {
+        "x": 290,
+        "y": 112,
+        "width": 1500,
+        "height": 596
+      },
+      "targetDisplayRect": "playfield frame bounds",
+      "anchor": "playfield top-left",
+      "origin": {
+        "x": 0,
+        "y": 0
+      },
+      "layer": "gameplay frame",
+      "scalingMode": "nine-slice",
+      "filterMode": "default smooth filter",
+      "notes": "Border left/right/top/bottom = 155/146/167/159 design pixels.",
+      "status": "EXACT_BINARY_COPY"
+    },
+    {
+      "family": "gameplay_frame",
+      "sourceAsset": "public/assets/skins/gameplay_frame/runtime/top_right.png",
+      "sourceBranch": "experiment/svg-art-nouveau-ui",
+      "sourceRevision": "d0d3a31",
+      "sourceHash": "4d071beaf97dff25542db7c0617552cac28274275af148aed6626e117317347b",
+      "sourceWidth": 146,
+      "sourceHeight": 167,
+      "alphaBounds": {
+        "source": [
+          0,
+          0,
+          144,
+          167
+        ],
+        "target": [
+          0,
+          0,
+          144,
+          167
+        ]
+      },
+      "targetAsset": "assets/image/skins/gameplay_frame_runtime/top_right.png",
+      "targetHash": "4d071beaf97dff25542db7c0617552cac28274275af148aed6626e117317347b",
+      "targetWidth": 146,
+      "targetHeight": 167,
+      "usage": "gameplay frame nine-slice",
+      "sourceDisplayRect": {
+        "x": 290,
+        "y": 112,
+        "width": 1500,
+        "height": 596
+      },
+      "targetDisplayRect": "playfield frame bounds",
+      "anchor": "playfield top-left",
+      "origin": {
+        "x": 0,
+        "y": 0
+      },
+      "layer": "gameplay frame",
+      "scalingMode": "nine-slice",
+      "filterMode": "default smooth filter",
+      "notes": "Border left/right/top/bottom = 155/146/167/159 design pixels.",
+      "status": "EXACT_BINARY_COPY"
+    },
+    {
+      "family": "hud_info",
+      "sourceAsset": "public/assets/skins/hud_info/runtime/bottom.png",
+      "sourceBranch": "experiment/svg-art-nouveau-ui",
+      "sourceRevision": "d0d3a31",
+      "sourceHash": "a4e71d4d388164f40bf9012d7c19f45a60cd9553238be62eb3fc4034d8046e78",
+      "sourceWidth": 1149,
+      "sourceHeight": 50,
+      "alphaBounds": {
+        "source": [
+          0,
+          0,
+          1149,
+          50
+        ],
+        "target": [
+          0,
+          0,
+          1149,
+          50
+        ]
+      },
+      "targetAsset": "assets/image/skins/hud_info_runtime/bottom.png",
+      "targetHash": "a4e71d4d388164f40bf9012d7c19f45a60cd9553238be62eb3fc4034d8046e78",
+      "targetWidth": 1149,
+      "targetHeight": 50,
+      "usage": "HUD info frame nine-slice",
+      "sourceDisplayRect": {
+        "x": 0,
+        "y": 0,
+        "width": "viewport.width",
+        "height": 94
+      },
+      "targetDisplayRect": {
+        "x": 0,
+        "y": 0,
+        "width": "logicalWidth",
+        "height": 94
+      },
+      "anchor": "viewport top-left",
+      "origin": {
+        "x": 0,
+        "y": 0
+      },
+      "layer": "HUD frame",
+      "scalingMode": "nine-slice, visualScale 94/121",
+      "filterMode": "default smooth filter",
+      "notes": "Border 60/66/45/50 scaled by 94/121.",
+      "status": "EXACT_BINARY_COPY"
+    },
+    {
+      "family": "hud_info",
+      "sourceAsset": "public/assets/skins/hud_info/runtime/bottom_left.png",
+      "sourceBranch": "experiment/svg-art-nouveau-ui",
+      "sourceRevision": "d0d3a31",
+      "sourceHash": "47d010cdd52689089d0e6991ffe75a7c7d78c44dc0fcb75bea92cfb9a8ce47f0",
+      "sourceWidth": 60,
+      "sourceHeight": 50,
+      "alphaBounds": {
+        "source": [
+          0,
+          0,
+          60,
+          50
+        ],
+        "target": [
+          0,
+          0,
+          60,
+          50
+        ]
+      },
+      "targetAsset": "assets/image/skins/hud_info_runtime/bottom_left.png",
+      "targetHash": "47d010cdd52689089d0e6991ffe75a7c7d78c44dc0fcb75bea92cfb9a8ce47f0",
+      "targetWidth": 60,
+      "targetHeight": 50,
+      "usage": "HUD info frame nine-slice",
+      "sourceDisplayRect": {
+        "x": 0,
+        "y": 0,
+        "width": "viewport.width",
+        "height": 94
+      },
+      "targetDisplayRect": {
+        "x": 0,
+        "y": 0,
+        "width": "logicalWidth",
+        "height": 94
+      },
+      "anchor": "viewport top-left",
+      "origin": {
+        "x": 0,
+        "y": 0
+      },
+      "layer": "HUD frame",
+      "scalingMode": "nine-slice, visualScale 94/121",
+      "filterMode": "default smooth filter",
+      "notes": "Border 60/66/45/50 scaled by 94/121.",
+      "status": "EXACT_BINARY_COPY"
+    },
+    {
+      "family": "hud_info",
+      "sourceAsset": "public/assets/skins/hud_info/runtime/bottom_right.png",
+      "sourceBranch": "experiment/svg-art-nouveau-ui",
+      "sourceRevision": "d0d3a31",
+      "sourceHash": "cb75e2485d73844d13b3776432f1a6e4523b8e45a1421633bc6fc5fb85f18728",
+      "sourceWidth": 66,
+      "sourceHeight": 50,
+      "alphaBounds": {
+        "source": [
+          0,
+          0,
+          66,
+          50
+        ],
+        "target": [
+          0,
+          0,
+          66,
+          50
+        ]
+      },
+      "targetAsset": "assets/image/skins/hud_info_runtime/bottom_right.png",
+      "targetHash": "cb75e2485d73844d13b3776432f1a6e4523b8e45a1421633bc6fc5fb85f18728",
+      "targetWidth": 66,
+      "targetHeight": 50,
+      "usage": "HUD info frame nine-slice",
+      "sourceDisplayRect": {
+        "x": 0,
+        "y": 0,
+        "width": "viewport.width",
+        "height": 94
+      },
+      "targetDisplayRect": {
+        "x": 0,
+        "y": 0,
+        "width": "logicalWidth",
+        "height": 94
+      },
+      "anchor": "viewport top-left",
+      "origin": {
+        "x": 0,
+        "y": 0
+      },
+      "layer": "HUD frame",
+      "scalingMode": "nine-slice, visualScale 94/121",
+      "filterMode": "default smooth filter",
+      "notes": "Border 60/66/45/50 scaled by 94/121.",
+      "status": "EXACT_BINARY_COPY"
+    },
+    {
+      "family": "hud_info",
+      "sourceAsset": "public/assets/skins/hud_info/runtime/center.png",
+      "sourceBranch": "experiment/svg-art-nouveau-ui",
+      "sourceRevision": "d0d3a31",
+      "sourceHash": "1f02932669a11c2b9a6578a51fa30157cee585baaf0d7262a58d58a244eabf77",
+      "sourceWidth": 1149,
+      "sourceHeight": 26,
+      "alphaBounds": {
+        "source": [
+          0,
+          0,
+          1149,
+          26
+        ],
+        "target": [
+          0,
+          0,
+          1149,
+          26
+        ]
+      },
+      "targetAsset": "assets/image/skins/hud_info_runtime/center.png",
+      "targetHash": "1f02932669a11c2b9a6578a51fa30157cee585baaf0d7262a58d58a244eabf77",
+      "targetWidth": 1149,
+      "targetHeight": 26,
+      "usage": "HUD info frame nine-slice",
+      "sourceDisplayRect": {
+        "x": 0,
+        "y": 0,
+        "width": "viewport.width",
+        "height": 94
+      },
+      "targetDisplayRect": {
+        "x": 0,
+        "y": 0,
+        "width": "logicalWidth",
+        "height": 94
+      },
+      "anchor": "viewport top-left",
+      "origin": {
+        "x": 0,
+        "y": 0
+      },
+      "layer": "HUD frame",
+      "scalingMode": "nine-slice, visualScale 94/121",
+      "filterMode": "default smooth filter",
+      "notes": "Border 60/66/45/50 scaled by 94/121.",
+      "status": "EXACT_BINARY_COPY"
+    },
+    {
+      "family": "hud_info",
+      "sourceAsset": "public/assets/skins/hud_info/runtime/left.png",
+      "sourceBranch": "experiment/svg-art-nouveau-ui",
+      "sourceRevision": "d0d3a31",
+      "sourceHash": "b59d93738b0713c7c72d6d1c133c379f6199a796632f51c9031f4616cfe26275",
+      "sourceWidth": 60,
+      "sourceHeight": 26,
+      "alphaBounds": {
+        "source": [
+          0,
+          0,
+          60,
+          26
+        ],
+        "target": [
+          0,
+          0,
+          60,
+          26
+        ]
+      },
+      "targetAsset": "assets/image/skins/hud_info_runtime/left.png",
+      "targetHash": "b59d93738b0713c7c72d6d1c133c379f6199a796632f51c9031f4616cfe26275",
+      "targetWidth": 60,
+      "targetHeight": 26,
+      "usage": "HUD info frame nine-slice",
+      "sourceDisplayRect": {
+        "x": 0,
+        "y": 0,
+        "width": "viewport.width",
+        "height": 94
+      },
+      "targetDisplayRect": {
+        "x": 0,
+        "y": 0,
+        "width": "logicalWidth",
+        "height": 94
+      },
+      "anchor": "viewport top-left",
+      "origin": {
+        "x": 0,
+        "y": 0
+      },
+      "layer": "HUD frame",
+      "scalingMode": "nine-slice, visualScale 94/121",
+      "filterMode": "default smooth filter",
+      "notes": "Border 60/66/45/50 scaled by 94/121.",
+      "status": "EXACT_BINARY_COPY"
+    },
+    {
+      "family": "hud_info",
+      "sourceAsset": "public/assets/skins/hud_info/runtime/right.png",
+      "sourceBranch": "experiment/svg-art-nouveau-ui",
+      "sourceRevision": "d0d3a31",
+      "sourceHash": "0aae4c09622053d799d41959f873efb10e0c0170fdf9cf1898cf669bf5202e4f",
+      "sourceWidth": 66,
+      "sourceHeight": 26,
+      "alphaBounds": {
+        "source": [
+          0,
+          0,
+          66,
+          26
+        ],
+        "target": [
+          0,
+          0,
+          66,
+          26
+        ]
+      },
+      "targetAsset": "assets/image/skins/hud_info_runtime/right.png",
+      "targetHash": "0aae4c09622053d799d41959f873efb10e0c0170fdf9cf1898cf669bf5202e4f",
+      "targetWidth": 66,
+      "targetHeight": 26,
+      "usage": "HUD info frame nine-slice",
+      "sourceDisplayRect": {
+        "x": 0,
+        "y": 0,
+        "width": "viewport.width",
+        "height": 94
+      },
+      "targetDisplayRect": {
+        "x": 0,
+        "y": 0,
+        "width": "logicalWidth",
+        "height": 94
+      },
+      "anchor": "viewport top-left",
+      "origin": {
+        "x": 0,
+        "y": 0
+      },
+      "layer": "HUD frame",
+      "scalingMode": "nine-slice, visualScale 94/121",
+      "filterMode": "default smooth filter",
+      "notes": "Border 60/66/45/50 scaled by 94/121.",
+      "status": "EXACT_BINARY_COPY"
+    },
+    {
+      "family": "hud_info",
+      "sourceAsset": "public/assets/skins/hud_info/runtime/top.png",
+      "sourceBranch": "experiment/svg-art-nouveau-ui",
+      "sourceRevision": "d0d3a31",
+      "sourceHash": "a1c3beab4517cc004325e7c08adbf1309c09931019e9a9ad59a9cb70bcee6322",
+      "sourceWidth": 1149,
+      "sourceHeight": 45,
+      "alphaBounds": {
+        "source": [
+          0,
+          0,
+          1149,
+          45
+        ],
+        "target": [
+          0,
+          0,
+          1149,
+          45
+        ]
+      },
+      "targetAsset": "assets/image/skins/hud_info_runtime/top.png",
+      "targetHash": "a1c3beab4517cc004325e7c08adbf1309c09931019e9a9ad59a9cb70bcee6322",
+      "targetWidth": 1149,
+      "targetHeight": 45,
+      "usage": "HUD info frame nine-slice",
+      "sourceDisplayRect": {
+        "x": 0,
+        "y": 0,
+        "width": "viewport.width",
+        "height": 94
+      },
+      "targetDisplayRect": {
+        "x": 0,
+        "y": 0,
+        "width": "logicalWidth",
+        "height": 94
+      },
+      "anchor": "viewport top-left",
+      "origin": {
+        "x": 0,
+        "y": 0
+      },
+      "layer": "HUD frame",
+      "scalingMode": "nine-slice, visualScale 94/121",
+      "filterMode": "default smooth filter",
+      "notes": "Border 60/66/45/50 scaled by 94/121.",
+      "status": "EXACT_BINARY_COPY"
+    },
+    {
+      "family": "hud_info",
+      "sourceAsset": "public/assets/skins/hud_info/runtime/top_left.png",
+      "sourceBranch": "experiment/svg-art-nouveau-ui",
+      "sourceRevision": "d0d3a31",
+      "sourceHash": "ba04e6cb9909f46508d1c26c4aa8ff115e4a50aa877e000a5032e0a2bf73d850",
+      "sourceWidth": 60,
+      "sourceHeight": 45,
+      "alphaBounds": {
+        "source": [
+          0,
+          0,
+          60,
+          45
+        ],
+        "target": [
+          0,
+          0,
+          60,
+          45
+        ]
+      },
+      "targetAsset": "assets/image/skins/hud_info_runtime/top_left.png",
+      "targetHash": "ba04e6cb9909f46508d1c26c4aa8ff115e4a50aa877e000a5032e0a2bf73d850",
+      "targetWidth": 60,
+      "targetHeight": 45,
+      "usage": "HUD info frame nine-slice",
+      "sourceDisplayRect": {
+        "x": 0,
+        "y": 0,
+        "width": "viewport.width",
+        "height": 94
+      },
+      "targetDisplayRect": {
+        "x": 0,
+        "y": 0,
+        "width": "logicalWidth",
+        "height": 94
+      },
+      "anchor": "viewport top-left",
+      "origin": {
+        "x": 0,
+        "y": 0
+      },
+      "layer": "HUD frame",
+      "scalingMode": "nine-slice, visualScale 94/121",
+      "filterMode": "default smooth filter",
+      "notes": "Border 60/66/45/50 scaled by 94/121.",
+      "status": "EXACT_BINARY_COPY"
+    },
+    {
+      "family": "hud_info",
+      "sourceAsset": "public/assets/skins/hud_info/runtime/top_right.png",
+      "sourceBranch": "experiment/svg-art-nouveau-ui",
+      "sourceRevision": "d0d3a31",
+      "sourceHash": "86b6c60a733e76454f39634954a1d6f4189a7ece02d97fbe578c8fa00232c931",
+      "sourceWidth": 66,
+      "sourceHeight": 45,
+      "alphaBounds": {
+        "source": [
+          0,
+          0,
+          66,
+          45
+        ],
+        "target": [
+          0,
+          0,
+          66,
+          45
+        ]
+      },
+      "targetAsset": "assets/image/skins/hud_info_runtime/top_right.png",
+      "targetHash": "86b6c60a733e76454f39634954a1d6f4189a7ece02d97fbe578c8fa00232c931",
+      "targetWidth": 66,
+      "targetHeight": 45,
+      "usage": "HUD info frame nine-slice",
+      "sourceDisplayRect": {
+        "x": 0,
+        "y": 0,
+        "width": "viewport.width",
+        "height": 94
+      },
+      "targetDisplayRect": {
+        "x": 0,
+        "y": 0,
+        "width": "logicalWidth",
+        "height": 94
+      },
+      "anchor": "viewport top-left",
+      "origin": {
+        "x": 0,
+        "y": 0
+      },
+      "layer": "HUD frame",
+      "scalingMode": "nine-slice, visualScale 94/121",
+      "filterMode": "default smooth filter",
+      "notes": "Border 60/66/45/50 scaled by 94/121.",
+      "status": "EXACT_BINARY_COPY"
+    }
+  ],
+  "protectedModules": [
+    "scripts/green_assistant/**"
+  ],
+  "excludedBehavior": [
+    "Gameplay Physics",
+    "Collider",
+    "Level Data Semantics",
+    "Rules",
+    "Cards Behavior",
+    "Newton Punch Logic",
+    "Replay",
+    "Editor",
+    "Input",
+    "Camera",
+    "Gameplay Viewport",
+    "Green Assistant"
+  ]
+}

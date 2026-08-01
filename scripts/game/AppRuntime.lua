@@ -284,6 +284,8 @@ function M.Install(context)
                 DrawPlayfieldOverlay()
                 DrawPauseShade()
             end
+            painter_:DrawGameplayFrameChrome(frame_)
+            painter_:DrawGameplayDecor(frame_)
             DrawHUD()
             DrawCards(nil, 71.999, true)
             DrawPauseStatus()
