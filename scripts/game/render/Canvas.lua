@@ -1,8 +1,16 @@
+---@class RendererImageSet
+---@field apple integer
+---@field launcher integer
+---@field portrait integer
+---@field goalRing integer
+---@field ui table<string, integer>
+---@field newtonAnger table<integer|string, integer>
+
 ---@class Renderer2D
 ---@field vg unknown
 ---@field fontBody integer
 ---@field fontDisplay integer
----@field images table<string, integer>
+---@field images RendererImageSet
 local Renderer = {}
 Renderer.__index = Renderer
 

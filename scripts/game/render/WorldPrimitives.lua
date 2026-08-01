@@ -39,7 +39,7 @@ function M.Install(Renderer, COLORS, color, tint)
         nvgStrokeColor(self.vg, color(COLORS.wallBrassEdge, 122)); nvgStrokeWidth(self.vg, 2)
         nvgBeginPath(self.vg); nvgRoundedRect(self.vg, x + 17, y + 17, w - 34, h - 34, 5); nvgStroke(self.vg)
 
-        nvgStrokeColor(self.vg, color(COLORS.wallBrassEdge, 128)); nvgStrokeWidth(self.vg)
+        nvgStrokeColor(self.vg, color(COLORS.wallBrassEdge, 128)); nvgStrokeWidth(self.vg, 2)
         nvgBeginPath(self.vg)
         nvgMoveTo(self.vg, x + 18, y + 18); nvgLineTo(self.vg, x + 46, y + 18); nvgLineTo(self.vg, x + 18, y + 46)
         nvgMoveTo(self.vg, x + w - 18, y + 18); nvgLineTo(self.vg, x + w - 46, y + 18); nvgLineTo(self.vg, x + w - 18, y + 46)
