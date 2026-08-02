@@ -21,6 +21,14 @@ function M.Install(Renderer, COLORS, color, tint)
         top = 45 * HUD_SCALE,
         bottom = 50 * HUD_SCALE,
     }
+    local WALL_SCALE = 80 / 230
+    local WALL_BORDER = {
+        left = 74 * WALL_SCALE,
+        right = 65 * WALL_SCALE,
+        top = 67 * WALL_SCALE,
+        bottom = 72 * WALL_SCALE,
+    }
+
     local function drawGameplayFrameOverlay(self, frame)
         local x, y, w, h = frame.playfieldX, frame.playfieldY, frame.playfieldWidth, frame.playfieldHeight
         nvgLineCap(self.vg, NVG_ROUND); nvgLineJoin(self.vg, NVG_ROUND)
@@ -394,13 +402,13 @@ function M.Install(Renderer, COLORS, color, tint)
             nvgSave(self.vg)
             nvgTranslate(self.vg, x, y)
             nvgRotate(self.vg, rotation)
-            -- Phaser's WallObject is a plain rectangle at the exact transformed
-            -- size.  Keep that geometry for every wall, especially narrow walls:
-            -- the migrated NineSlice skin has fixed insets and collapses when
-            -- width/height is smaller than the combined border thickness.
-            self:FillRect(-w * .5, -h * .5, w, h, fill, object.phaseable and 173 or 255)
-            self:StrokeRect(-w * .5, -h * .5, w, h, edge, 3, 240)
-            self:FillRect(-w * .28 - 2, -math.max(12, h - 16) * .5, 4, math.max(12, h - 16), object.phaseable and COLORS.glass or COLORS.panel, 97)
+            if not object.phaseable and skinReady(self.skins and self.skins.wall) then
+                self:NineSlice(self.skins.wall, -w * .5, -h * .5, w, h, WALL_BORDER)
+            else
+                self:FillRect(-w * .5, -h * .5, w, h, fill, object.phaseable and 173 or 255)
+                self:StrokeRect(-w * .5, -h * .5, w, h, edge, 3, 240)
+                self:FillRect(-w * .28 - 2, -math.max(12, h - 16) * .5, 4, math.max(12, h - 16), object.phaseable and COLORS.glass or COLORS.panel, 97)
+            end
             nvgRestore(self.vg)
         elseif object.type == "door" then
             local alpha = object.openness == 1 and 51 or 255
