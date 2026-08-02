@@ -99,7 +99,11 @@ function runCase(caseId, timeScale) {
 
   const events = [];
   let pendingSpringExit = null;
+  let applePreSolveVelocity = { x: apple.velocity.x, y: apple.velocity.y };
   Events.on(engine, "beforeUpdate", () => {
+    // PlayScene.preparePhysicsStep captures this before applying custom
+    // gravity and before Matter integrates or solves the upcoming contacts.
+    applePreSolveVelocity = { x: apple.velocity.x, y: apple.velocity.y };
     Body.applyForce(apple, apple.position, { x: 0, y: MATERIAL.matter_force_scale * apple.mass });
   });
   Events.on(engine, "collisionStart", event => {
@@ -108,7 +112,7 @@ function runCase(caseId, timeScale) {
       if (!other || !other.label) continue;
       events.push({ t_ms: Number(engine.timing.timestamp.toFixed(6)), phase: "begin", other: other.label });
       if (other.label === "spring") {
-        pendingSpringExit = { x: apple.velocity.x, y: apple.velocity.y - 10 };
+        pendingSpringExit = { x: applePreSolveVelocity.x, y: applePreSolveVelocity.y - 10 };
       }
     }
   });

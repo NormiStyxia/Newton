@@ -141,6 +141,11 @@ function M.Install(context)
         end
         -- Phaser caps before Matter runs the next integration and collision pass.
         CapAppleSpeed()
+        -- PlayScene.preparePhysicsStep snapshots body.velocity in Matter's
+        -- beforeupdate hook. Collision callbacks must consume this exact value,
+        -- before gravity integration and contact solving mutate the velocity.
+        local velocity = apple_.body.linearVelocity
+        applePreSolveVelocity_ = Vector2(velocity.x, velocity.y)
         local physicsTimeScale = CurrentPhysicsTimeScale()
         physicsStepTimeScale_ = physicsTimeScale
         apple_.body.linearDamping = MatterCalibration.Box2DLinearDamping(
@@ -159,6 +164,7 @@ function M.Install(context)
     ---@param eventData PhysicsPostStepEventData
     function HandlePhysicsPostStep(_eventType, eventData)
         if not launched_ or replayActive_ or isPaused_ then
+            applePreSolveVelocity_ = nil
             physicsStepTimeScale_ = nil
             return
         end
@@ -171,6 +177,7 @@ function M.Install(context)
                 pixelsPerMeter = CONFIG.pixelsPerMeter,
                 matterVelocityToWorld = CONFIG.matterVelocityToWorld,
             }, eventData:GetFloat("TimeStep"))
+            applePreSolveVelocity_ = nil
             physicsStepTimeScale_ = nil
             return
         end
@@ -179,6 +186,7 @@ function M.Install(context)
         UpdateSpringExits()
         RefreshGoalContact()
         UpdateExperiment(eventData:GetFloat("TimeStep") * physicsTimeScale)
+        applePreSolveVelocity_ = nil
         physicsStepTimeScale_ = nil
     end
     function HandleScreenMode()
@@ -187,14 +195,14 @@ function M.Install(context)
     end
 
     ---@param _eventType string
-    ---@param eventData TouchBeginEventData
+    ---@param eventData PhysicsBeginContact2DEventData
     function HandleCollisionBegin(_eventType, eventData)
         local nodeA = eventData:GetPtr("NodeA")
         local nodeB = eventData:GetPtr("NodeB")
         local physicsProbe = level_ and level_.physicsProbe or nil
         if physicsProbe and physicsProbe:IsActive() then
-            if IsAppleNode(nodeA) then physicsProbe:OnContactBegin(nodeB, apple_.body.linearVelocity, { apple = apple_, matterVelocityToWorld = CONFIG.matterVelocityToWorld })
-            elseif IsAppleNode(nodeB) then physicsProbe:OnContactBegin(nodeA, apple_.body.linearVelocity, { apple = apple_, matterVelocityToWorld = CONFIG.matterVelocityToWorld }) end
+            if IsAppleNode(nodeA) then physicsProbe:OnContactBegin(nodeB, applePreSolveVelocity_, { apple = apple_, matterVelocityToWorld = CONFIG.matterVelocityToWorld })
+            elseif IsAppleNode(nodeB) then physicsProbe:OnContactBegin(nodeA, applePreSolveVelocity_, { apple = apple_, matterVelocityToWorld = CONFIG.matterVelocityToWorld }) end
             return
         end
         if ActivateGoalContact(nodeA, nodeB, true) then return end
@@ -248,10 +256,10 @@ function M.Install(context)
             elseif IsAppleNode(nodeB) then physicsProbe:OnContactEnd(nodeA) end
             return
         end
-        if IsAppleGoalPair(nodeA, nodeB) then
+        if DeactivateGoalContact(nodeA, nodeB) then
             -- Contact callbacks can arrive before the final solver transform is
-            -- synchronized. PhysicsPostStep owns the circle-vs-rotated-box test
-            -- and is the only place that may reset the continuous stay timer.
+            -- synchronized. PhysicsPostStep applies the one-step debounce and
+            -- is the only place that may reset the continuous stay timer.
             return
         end
         if not nodeA or not nodeB or not runtime_ or not IsAppleNode(nodeA) and not IsAppleNode(nodeB) then return end

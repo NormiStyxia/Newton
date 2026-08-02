@@ -278,13 +278,15 @@ def main() -> int:
     expect("apple_.body.angularDamping = MatterCalibration.Box2DLinearDamping" in main_lua, "Matter frictionAir is not applied to angular motion")
     expect('SubscribeToEvent("PhysicsPreStep", "HandlePhysicsPreStep")' in main_lua and 'SubscribeToEvent("PhysicsPostStep", "HandlePhysicsPostStep")' in main_lua, "physics step event wiring missing")
     expect("applePreSolveVelocity_" in main_lua
+           and "applePreSolveVelocity_ = Vector2(velocity.x, velocity.y)" in main_lua
            and "local v = applePreSolveVelocity_ or apple_.body.linearVelocity" in main_lua,
            "spring does not use Phaser's beforeupdate pre-solve velocity snapshot")
     expect("object.impulseStrength * Rules.GetGravityMultiplier(rules_, level_.rules.initialGravity)" in main_lua
            and "* CurrentMatterVelocityToWorld(CurrentPhysicsStepScale())" in main_lua,
            "spring impulse no longer follows the source gravity multiplier")
     physics_pre_step = main_lua.split("function HandlePhysicsPreStep", 1)[1].split("function HandlePhysicsPostStep", 1)[0]
-    expect(physics_pre_step.index("CapAppleSpeed()") < physics_pre_step.index("apple_.body.linearDamping"),
+    expect(physics_pre_step.index("CapAppleSpeed()") < physics_pre_step.index("applePreSolveVelocity_ = Vector2")
+           < physics_pre_step.index("apple_.body.linearDamping"),
            "speed cap is not applied before the physics pass")
     expect("physicsStepTimeScale_ = physicsTimeScale" in main_lua
            and "UpdateExperiment(eventData:GetFloat(\"TimeStep\") * physicsTimeScale)" in main_lua,
@@ -453,7 +455,7 @@ def main() -> int:
            "goal Sensor enter/update lifecycle does not preserve a single active stay timer")
     expect("if recordEntry and not goalEntryRecorded_ then" in main_lua and "goalEntryRecorded_ = false" in main_lua
            and "RecordReplayEvent(\"GOAL_ENTER\")" in main_lua
-           and "if goalContactMs_ >= requiredStayTime and matterSpeed <= 4.8 then" in main_lua,
+           and "if goalContactConfirmed_ and goalContactMs_ >= requiredStayTime and matterSpeed <= 4.8 then" in main_lua,
            "goal Sensor does not enforce one enter event and the source completion threshold")
 
     result = {

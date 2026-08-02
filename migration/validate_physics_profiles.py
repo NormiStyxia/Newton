@@ -26,6 +26,8 @@ def main() -> int:
     state_lua = (ROOT / "scripts/game/State.lua").read_text(encoding="utf-8")
     factory = (ROOT / "scripts/game/level/RuntimeFactory.lua").read_text(encoding="utf-8")
     calibration = (ROOT / "scripts/game/physics/Calibration.lua").read_text(encoding="utf-8")
+    probe = (ROOT / "scripts/game/physics/Probe.lua").read_text(encoding="utf-8")
+    generator = (ROOT / "migration/generate_phaser_matter_reference.cjs").read_text(encoding="utf-8")
     level_data = (ROOT / "scripts/game/level/LevelData.lua").read_text(encoding="utf-8")
 
     def has_main_function(name: str) -> bool:
@@ -191,9 +193,20 @@ def main() -> int:
            "up-impulse is not scaled for Matter bullet time")
     expect("* CurrentMatterVelocityToWorld(CurrentPhysicsStepScale())" in main_lua,
            "spring exit velocity is not scaled by the physics step that produced its pre-solve velocity")
-    expect("applePreSolveVelocity_" in main_lua
+    physics_pre_step = main_lua.split("function HandlePhysicsPreStep", 1)[1].split("function HandlePhysicsPostStep", 1)[0]
+    expect("local velocity = apple_.body.linearVelocity" in physics_pre_step
+           and "applePreSolveVelocity_ = Vector2(velocity.x, velocity.y)" in physics_pre_step
+           and physics_pre_step.index("applePreSolveVelocity_ = Vector2") < physics_pre_step.index("apple_.body.linearDamping")
            and "local v = applePreSolveVelocity_ or apple_.body.linearVelocity" in main_lua,
            "spring exit does not use Phaser's beforeupdate pre-solve velocity snapshot")
+    expect("physicsProbe:OnContactBegin(nodeB, applePreSolveVelocity_" in main_lua
+           and "physicsProbe:OnContactBegin(nodeA, applePreSolveVelocity_" in main_lua,
+           "runtime probe does not consume the same pre-solve snapshot as production springs")
+    expect("velocity.y + 10 * context.matterVelocityToWorld * self.timeScale" in probe,
+           "Maker probe applies the upward spring impulse in the wrong world-Y direction")
+    expect("applePreSolveVelocity = { x: apple.velocity.x, y: apple.velocity.y }" in generator
+           and "pendingSpringExit = { x: applePreSolveVelocity.x, y: applePreSolveVelocity.y - 10 }" in generator,
+           "Phaser reference generator samples spring velocity after integration instead of beforeupdate")
     expect("object.impulseStrength * Rules.GetGravityMultiplier(rules_, level_.rules.initialGravity)" in main_lua,
            "spring exit impulse does not follow the source gravity multiplier")
     expect("object.impulseStrength * Rules.GetRestitutionMultiplier(rules_)" not in main_lua,

@@ -121,7 +121,9 @@ function M.Install(context)
             lastTrailAt_ = flightMs_
         end
         if goalContact_ then
-            goalContactMs_ = goalContactMs_ + dt * 1000
+            -- Preserve the accumulated stay across one adapter dropout, but do
+            -- not count or complete an unconfirmed step as source contact time.
+            if goalContactConfirmed_ then goalContactMs_ = goalContactMs_ + dt * 1000 end
             local goal = LevelData.FindFirst(level_, "goal_sensor")
             local runtimeGoal = goal and runtime_.byId[goal.id] or nil
             local requiredStayTime = runtimeGoal and runtimeGoal.requiredStayTime or 700
@@ -132,7 +134,7 @@ function M.Install(context)
             end
             local velocity = apple_.body.linearVelocity
             local matterSpeed = CurrentMatterSpeedFromWorld(velocity)
-            if goalContactMs_ >= requiredStayTime and matterSpeed <= 4.8 then
+            if goalContactConfirmed_ and goalContactMs_ >= requiredStayTime and matterSpeed <= 4.8 then
                 CaptureReplayFinalSample()
                 absorbing_ = true
                 absorbElapsedMs_ = 0

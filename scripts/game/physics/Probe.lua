@@ -183,9 +183,11 @@ function PhysicsProbe:OnContactBegin(other, preSolveVelocity, context)
     self.telemetry:BeginContact(id)
     if id == "spring" and not self.pendingExitVelocity then
         local velocity = preSolveVelocity or context.apple.body.linearVelocity
+        -- Phaser UP subtracts from its screen-down Y velocity. UrhoX world Y
+        -- points up, so the equivalent exit adds the converted impulse.
         self.pendingExitVelocity = Vector2(
             velocity.x,
-            velocity.y - 10 * context.matterVelocityToWorld * self.timeScale
+            velocity.y + 10 * context.matterVelocityToWorld * self.timeScale
         )
     end
 end

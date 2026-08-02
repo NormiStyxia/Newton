@@ -49,7 +49,10 @@ own("experiment", {
     "phaseTraversing_", "stalledMs_", "trail_", "lastTrailAt_", "rulePulse_", "ruleFlash_",
     "ruleDeployCount_",
 })
-own("goal", { "goalContact_", "goalContactMs_", "goalEntryRecorded_", "goalPulseElapsedMs_" })
+own("goal", {
+    "goalContact_", "goalContactMs_", "goalEntryRecorded_", "goalPulseElapsedMs_",
+    "goalContactEventSeen_", "goalContactEndSeen_", "goalContactConfirmed_", "goalContactMissSteps_",
+})
 own("mechanisms", { "channelStates_" })
 own("input", { "pointer_", "hoveredLevelIndex_", "hoveredNavigation_", "punchHovered_" })
 own("cards", {
@@ -157,6 +160,8 @@ function State.New(dependencies, constants)
     context.hoveredLevelIndex_, context.hoveredNavigation_, context.punchHovered_ = nil, nil, false
     context.pointer_ = { activeTouchId = nil, touchX = 0, touchY = 0, touchPressed = false, touchReleased = false }
     context.launched_, context.goalContact_, context.goalContactMs_, context.goalEntryRecorded_ = false, false, 0, false
+    context.goalContactEventSeen_, context.goalContactEndSeen_ = false, false
+    context.goalContactConfirmed_, context.goalContactMissSteps_ = false, 0
     context.goalPulseElapsedMs_, context.outsideMs_, context.flightMs_ = nil, 0, 0
     context.status_, context.isPaused_, context.bulletTimeActive_, context.debugDraw_ = "READY · 等待发射", false, false, false
     context.success_, context.failed_, context.absorbing_, context.absorbElapsedMs_ = false, false, false, 0

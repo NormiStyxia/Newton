@@ -1,6 +1,11 @@
 -- gameplay/Goal: private runtime functions installed into the App context.
 local M = {}
 
+-- One unconfirmed physics step is tolerated. This is long enough to bridge
+-- UrhoX's contact-callback/node-transform handoff, but a real exit still clears
+-- on the next step. The grace step never advances or completes the stay timer.
+local GOAL_CONTACT_MISS_LIMIT = 2
+
 ---@param context GameContext
 function M.Install(context)
     local LevelData = context.LevelData
@@ -48,6 +53,10 @@ function M.Install(context)
         goalContact_ = false
         goalContactMs_ = 0
         goalEntryRecorded_ = false
+        goalContactEventSeen_ = false
+        goalContactEndSeen_ = false
+        goalContactConfirmed_ = false
+        goalContactMissSteps_ = 0
         local goal = level_ and LevelData.FindFirst(level_, "goal_sensor") or nil
         local runtimeGoal = goal and runtime_ and runtime_.byId[goal.id] or nil
         if runtimeGoal then
@@ -59,6 +68,8 @@ function M.Install(context)
     function BeginGoalContact(recordEntry)
         if not launched_ or replayActive_ or absorbing_ or success_ or failed_ then return false end
         goalContact_ = true
+        goalContactConfirmed_ = true
+        goalContactMissSteps_ = 0
         goalContactMs_ = math.max(1, goalContactMs_)
         local goal = LevelData.FindFirst(level_, "goal_sensor")
         local runtimeGoal = goal and runtime_ and runtime_.byId[goal.id] or nil
@@ -76,14 +87,37 @@ function M.Install(context)
     -- before consumption so the count change does not produce a visual jump.
     function ActivateGoalContact(nodeA, nodeB, recordEntry)
         if not IsAppleGoalPair(nodeA, nodeB) then return false end
+        -- PhysicsBegin/UpdateContact2D are sampled by the matching post-step.
+        -- Keep the bit set even if EndContact churns later in the same solver
+        -- pass; the post-step geometry check remains the independent fallback.
+        goalContactEventSeen_ = true
         return BeginGoalContact(recordEntry)
+    end
+    function DeactivateGoalContact(nodeA, nodeB)
+        if not IsAppleGoalPair(nodeA, nodeB) then return false end
+        -- EndContact is authoritative for this step, but ResetGoal is delayed
+        -- until post-step so a premature callback becomes a frozen grace step.
+        goalContactEndSeen_ = true
+        return true
     end
     function RefreshGoalContact()
         if not launched_ or replayActive_ or absorbing_ or success_ or failed_ then return end
-        if GoalSensorContainsApple() then
+        -- A begin/update in the same solver pass wins over an end. Otherwise an
+        -- end wins over the one-frame-old node transform, preventing a real
+        -- exit from gaining stay time just because visual synchronization lags.
+        local contactConfirmed = goalContactEventSeen_
+            or (not goalContactEndSeen_ and GoalSensorContainsApple())
+        goalContactEventSeen_ = false
+        goalContactEndSeen_ = false
+        if contactConfirmed then
             BeginGoalContact(true)
         elseif goalContact_ then
-            ResetGoal()
+            goalContactConfirmed_ = false
+            goalContactMissSteps_ = goalContactMissSteps_ + 1
+            if goalContactMissSteps_ >= GOAL_CONTACT_MISS_LIMIT then ResetGoal() end
+        else
+            goalContactConfirmed_ = false
+            goalContactMissSteps_ = 0
         end
     end
 end

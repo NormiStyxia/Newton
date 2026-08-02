@@ -28,7 +28,7 @@ LEGACY_ORDER = (
     "CardHoverProgress", "FindTopCardAt", "UpdateHoverState", "TryCardPress", "ClearCardInteraction",
     "UpdateCardParameter", "ResolveActiveCard", "IsResultOverlayVisible", "HandleReplayPointer", "HandlePointer",
     "ResetGoal", "BeginGoalContact", "CaptureHandVisualPoses", "AnimateHandAfterBurn", "UpdateCardAnimations", "ActivateGoalContact",
-    "RefreshGoalContact", "RecordReplay", "CaptureReplayFinalSample", "RecordReplayEvent", "ReplayDuration",
+    "DeactivateGoalContact", "RefreshGoalContact", "RecordReplay", "CaptureReplayFinalSample", "RecordReplayEvent", "ReplayDuration",
     "CanReplay", "ReplayStateAt", "StartReplay", "StopReplay", "UpdateReplay", "RegisterFailure",
     "UpdateExperiment", "DrawPrediction", "DrawAim", "DrawAimPrediction", "DrawCardPrediction", "DrawLaunchHint",
     "DrawTrail", "DrawVelocityArrow", "DrawRulePulse", "DrawRuleFlash", "DrawReplay", "DrawHUD",
