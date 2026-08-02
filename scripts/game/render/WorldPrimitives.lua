@@ -416,7 +416,7 @@ function M.Install(Renderer, COLORS, color, tint)
             nvgTranslate(self.vg, x, y)
             nvgRotate(self.vg, rotation)
             self:FillRect(-w * .5, -h * .5, w, h, COLORS.darkSecondary, alpha)
-            self:StrokeRect(-w * .5, -h * .5, w, h, COLORS.darkSurface, 3, alpha)
+            self:StrokeRect(-w * .5, -h * .5, w, h, COLORS.darkPrimary, 3, alpha)
             nvgRestore(self.vg)
         elseif object.type == "launcher" then
             self:Image(self.images.launcher, x, y, w, w * 190 / 150, 1, rotation, .5, 36 / 190)
