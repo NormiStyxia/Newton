@@ -191,10 +191,9 @@ def main() -> int:
            "up-impulse is not scaled for Matter bullet time")
     expect("* CurrentMatterVelocityToWorld(CurrentPhysicsStepScale())" in main_lua,
            "spring exit velocity is not scaled by the physics step that produced its pre-solve velocity")
-    expect("local collisionVelocity = apple_.body.linearVelocity" in main_lua
-           and "local v = Vector2(collisionVelocity.x, collisionVelocity.y)" in main_lua
-           and "applePreSolveVelocity_" not in main_lua,
-           "spring exit does not snapshot the current collisionStart velocity")
+    expect("applePreSolveVelocity_" in main_lua
+           and "local v = applePreSolveVelocity_ or apple_.body.linearVelocity" in main_lua,
+           "spring exit does not use Phaser's beforeupdate pre-solve velocity snapshot")
     expect("object.impulseStrength * Rules.GetGravityMultiplier(rules_, level_.rules.initialGravity)" in main_lua,
            "spring exit impulse does not follow the source gravity multiplier")
     expect("object.impulseStrength * Rules.GetRestitutionMultiplier(rules_)" not in main_lua,

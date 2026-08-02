@@ -135,6 +135,7 @@ function M.Install(context)
     ---@param eventData PhysicsPreStepEventData
     function HandlePhysicsPreStep(_eventType, eventData)
         if not apple_ or not launched_ or replayActive_ or apple_.body.bodyType ~= BT_DYNAMIC then
+            applePreSolveVelocity_ = nil
             physicsStepTimeScale_ = nil
             return
         end
@@ -204,12 +205,10 @@ function M.Install(context)
         if not object then return end
         if object.type == "spring" and object.enabled and object.channelEnabled and not object.spent
             and uiElapsed_ * 1000 - object.triggeredAt >= object.cooldown then
-            -- Matter fires collisionStart after Body.update has integrated this
-            -- step and before Solver resolves it. UrhoX emits this callback at
-            -- the equivalent contact phase, so snapshot the current velocity
-            -- here instead of the prior PhysicsPreStep velocity.
-            local collisionVelocity = apple_.body.linearVelocity
-            local v = Vector2(collisionVelocity.x, collisionVelocity.y)
+            -- The Phaser runtime captures body.velocity in beforeupdate and
+            -- SpringObject consumes that exact pre-solve snapshot in
+            -- collisionStart. Keep the same observable hook on UrhoX.
+            local v = applePreSolveVelocity_ or apple_.body.linearVelocity
             local direction = object.direction
             local ix, iy = 0, 0
             if direction == "UP" then iy = 1 elseif direction == "DOWN" then iy = -1 elseif direction == "LEFT" then ix = -1 else ix = 1 end

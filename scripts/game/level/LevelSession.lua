@@ -70,6 +70,7 @@ function M.Install(context)
         cardPointerSamples_, cardCandidate_, cardGestureDistance_ = {}, nil, 0
         launched_, goalContact_, goalEntryRecorded_ = false, false, false
         goalContactMs_, outsideMs_, flightMs_, stalledMs_ = 0, 0, 0, 0
+        applePreSolveVelocity_ = nil
         physicsStepTimeScale_ = nil
         goalPulseElapsedMs_, phaseTraversing_ = nil, false
         success_, failed_, absorbing_, absorbElapsedMs_ = false, false, false, 0

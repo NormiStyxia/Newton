@@ -277,10 +277,9 @@ def main() -> int:
     expect("UpdateMatterStaticFriction" not in main_lua and "TrackApplePhysicalContact" not in main_lua and "AppleFixtureFrictionForMatterStaticContact" not in main_lua, "Box2D still mutates the apple fixture to fake Matter static friction")
     expect("apple_.body.angularDamping = MatterCalibration.Box2DLinearDamping" in main_lua, "Matter frictionAir is not applied to angular motion")
     expect('SubscribeToEvent("PhysicsPreStep", "HandlePhysicsPreStep")' in main_lua and 'SubscribeToEvent("PhysicsPostStep", "HandlePhysicsPostStep")' in main_lua, "physics step event wiring missing")
-    expect("local collisionVelocity = apple_.body.linearVelocity" in main_lua
-           and "local v = Vector2(collisionVelocity.x, collisionVelocity.y)" in main_lua
-           and "applePreSolveVelocity_" not in main_lua,
-           "spring does not snapshot collisionStart velocity from the current physics step")
+    expect("applePreSolveVelocity_" in main_lua
+           and "local v = applePreSolveVelocity_ or apple_.body.linearVelocity" in main_lua,
+           "spring does not use Phaser's beforeupdate pre-solve velocity snapshot")
     expect("object.impulseStrength * Rules.GetGravityMultiplier(rules_, level_.rules.initialGravity)" in main_lua
            and "* CurrentMatterVelocityToWorld(CurrentPhysicsStepScale())" in main_lua,
            "spring impulse no longer follows the source gravity multiplier")
@@ -367,7 +366,7 @@ def main() -> int:
     expect("decisionCardSurface = { 249, 222, 121, 255 }" in renderer_lua and "decisionCardBorder = { 208, 181, 86, 255 }" in renderer_lua, "decision card palette differs from LightLabTheme")
     expect("decisionCardText = { 73, 63, 39, 255 }" in renderer_lua and "decisionCardBody = { 101, 90, 52, 255 }" in renderer_lua, "decision card typography palette differs from LightLabTheme")
     expect("Renderer2D.COLORS.fieldCardSurface" in main_lua and "Renderer2D.COLORS.decisionCardSurface" in main_lua, "rule cards do not use source-specific surfaces")
-    expect("function Renderer:DrawCardSymbol" in renderer_lua and "painter_:DrawCardSymbol(id, 0, 7, titleColor)" in main_lua,
+    expect("function Renderer:DrawCardSymbol" in renderer_lua and "painter_:DrawCardSymbol(id, 0, 7, titleColor" in main_lua,
            "card symbols still depend on unavailable browser fallback glyphs")
     expect("function Renderer:DrawNavigationIcon" in renderer_lua and "painter_:DrawNavigationIcon" in main_lua,
            "navigation icons still depend on unavailable browser fallback glyphs")

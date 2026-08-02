@@ -42,6 +42,26 @@ record has these required fields:
 `0.05`.  The case IDs are `free_flight`, `ground_slide`, `right_wall`, and
 `spring_exit`.
 
+## Effective material and spring timing
+
+The material values in the level JSON are declarative inputs, not always the
+values used by the Phaser solver.  In the current source, `setCircle` replaces
+the apple body and restores Matter's effective dynamic baseline
+`friction=.1`, `frictionAir=.01`, `restitution=0`; `Body.setStatic(true)` changes
+static laboratory bodies to `friction=1`, `restitution=0`.  Therefore the
+sliding contact coefficient is Matter's `min(.1, 1)=.1`.
+
+UrhoX keeps the apple at `.1/.01/0` and gives static fixtures `.1/0`.  Box2D's
+mixed friction `sqrt(.1 * .1)=.1` then matches Matter's kinetic pair.  Matter's
+low-speed `frictionStatic * frictionNormalMultiplier` threshold is a separate
+cached contact branch with no direct Box2D fixture equivalent; it is emitted
+as diagnostic telemetry rather than baked into the fixture material.
+
+For spring exits, the current Phaser runtime captures `body.velocity` in its
+`beforeupdate` hook and consumes that pre-solve snapshot from `collisionStart`.
+Maker comparisons must use the same snapshot, not the post-solver velocity or
+an independently sampled later frame.
+
 Phaser captures may use `lab-viewport-px` directly or `phaser-playfield`
 (1400 x 700).  Maker manual captures may use `maker-world-m`.  The current
 `PhysicsTelemetry` helper uses `maker-centered-px`: `x = world.x * 100`,

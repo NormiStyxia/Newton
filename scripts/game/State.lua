@@ -39,7 +39,7 @@ end
 
 own("runtime", {
     "scene_", "camera_", "viewport_", "physicsWorld_", "level_", "physicsProfile_", "runtime_",
-    "laboratoryBoundaries_", "apple_", "physicsStepTimeScale_", "mapper_", "audio_", "levelIndex_",
+    "laboratoryBoundaries_", "apple_", "applePreSolveVelocity_", "physicsStepTimeScale_", "mapper_", "audio_", "levelIndex_",
 })
 own("layout", { "design_", "frame_", "painter_", "sensorAngle_", "debugDraw_" })
 own("experiment", {
@@ -141,7 +141,7 @@ function State.New(dependencies, constants)
 
     context.scene_, context.camera_, context.viewport_, context.physicsWorld_ = nil, nil, nil, nil
     context.level_, context.physicsProfile_, context.runtime_, context.laboratoryBoundaries_ = nil, nil, nil, nil
-    context.apple_, context.physicsStepTimeScale_ = nil, nil
+    context.apple_, context.applePreSolveVelocity_, context.physicsStepTimeScale_ = nil, nil, nil
     context.mapper_, context.frame_, context.audio_ = nil, nil, nil
     context.levelIndex_ = 1
     context.design_ = dependencies.DesignSpace.New(constants.CONFIG.pixelsPerMeter)
