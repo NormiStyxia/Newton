@@ -1,9 +1,7 @@
 local View = {}
 
 local PANEL_ASPECT = 308 / 450
-local PANEL_HEIGHT = 700
-local SKIP_ASPECT = 76 / 37
-local CLOSE_ASPECT = 103 / 48
+local PANEL_HEIGHT = 660
 local FONT = "maker-body"
 
 local COLORS = {
@@ -24,13 +22,17 @@ local COLORS = {
     historyHover = { 82, 117, 93, 255 },
     historyText = { 255, 253, 248, 255 },
     unread = { 220, 91, 72, 255 },
+    buttonClose = { 218, 111, 94, 255 },
+    buttonSkip = { 242, 207, 133, 255 },
+    buttonStroke = { 76, 66, 45, 255 },
+    buttonHighlight = { 255, 224, 174, 255 },
 }
 
 local function panelRect(frame)
     local height = math.min(PANEL_HEIGHT, frame.logicalHeight - 124)
     local width = height * PANEL_ASPECT
     return {
-        x = math.max(10, frame.workspaceX - 8),
+        x = math.max(16, frame.workspaceX - 28),
         y = math.max(88, frame.newtonY - 16),
         w = width,
         h = height,
@@ -153,24 +155,53 @@ local function drawPanelBackground(painter, rect)
     end
 end
 
-local function buttonRect(rect, kind)
-    local height = kind == "close" and 46 or 47
-    local width = height * (kind == "close" and CLOSE_ASPECT or SKIP_ASPECT)
-    return { x = rect.x + rect.w - width - 25, y = rect.y + 18, w = width, h = height }
+local function buttonRect(rect)
+    return {
+        x = rect.x + rect.w * 0.66,
+        y = rect.y + rect.h * 0.057,
+        w = rect.w * 0.27,
+        h = rect.h * 0.058,
+    }
+end
+
+local function drawButtonGlyph(painter, rect, kind)
+    local vg = painter.vg
+    nvgBeginPath(vg)
+    nvgStrokeColor(vg, nvgRGBA(COLORS.buttonStroke[1], COLORS.buttonStroke[2],
+        COLORS.buttonStroke[3], COLORS.buttonStroke[4]))
+    nvgStrokeWidth(vg, 2)
+    if kind == "close" then
+        local centerX = rect.x + rect.w * 0.8
+        local centerY = rect.y + rect.h * 0.5
+        local radius = math.min(6, rect.h * 0.17)
+        nvgMoveTo(vg, centerX - radius, centerY - radius)
+        nvgLineTo(vg, centerX + radius, centerY + radius)
+        nvgMoveTo(vg, centerX + radius, centerY - radius)
+        nvgLineTo(vg, centerX - radius, centerY + radius)
+    else
+        local startX = rect.x + rect.w * 0.75
+        local centerY = rect.y + rect.h * 0.5
+        local radius = math.min(6, rect.h * 0.17)
+        for offset = 0, radius * 1.05, radius * 1.05 do
+            nvgMoveTo(vg, startX + offset - radius * 0.55, centerY - radius)
+            nvgLineTo(vg, startX + offset + radius * 0.45, centerY)
+            nvgLineTo(vg, startX + offset - radius * 0.55, centerY + radius)
+        end
+    end
+    nvgStroke(vg)
 end
 
 local function drawPanelButton(painter, rect, kind)
-    local ui = painter.images.ui or {}
-    local image = kind == "close" and ui.dialogueClose or ui.dialogueSkip
-    if image and image >= 0 then
-        painter:ImageRect(image, rect.x, rect.y, rect.w, rect.h, 1)
-        return
-    end
-    painter:RoundedRect(rect.x, rect.y, rect.w, rect.h, 5,
-        kind == "close" and COLORS.unread or COLORS.cream, COLORS.dark, 2)
-    painter:Text(rect.x + rect.w * 0.5, rect.y + rect.h * 0.5,
-        kind == "close" and "关闭" or "跳过", 16, COLORS.dark,
+    local fill = kind == "close" and COLORS.buttonClose or COLORS.buttonSkip
+    local radius = math.min(8, rect.h * 0.24)
+    painter:RoundedRect(rect.x, rect.y, rect.w, rect.h, radius,
+        fill, COLORS.buttonStroke, 2.5)
+    painter:RoundedRect(rect.x + 3, rect.y + 3, rect.w - 6, rect.h - 6,
+        math.max(2, radius - 3), nil, COLORS.buttonHighlight, 1)
+    painter:Text(rect.x + rect.w * 0.42, rect.y + rect.h * 0.5,
+        kind == "close" and "关闭" or "跳过", 16, COLORS.buttonStroke,
         NVG_ALIGN_CENTER + NVG_ALIGN_MIDDLE, FONT)
+    drawButtonGlyph(painter, rect, kind)
 end
 
 local function drawMessage(painter, controller, entry, index, viewport, scrollOffset, panelAlpha)
@@ -256,7 +287,7 @@ function View.Draw(painter, frame, controller)
 
     local rect = panelRect(frame)
     local centerX, centerY = rect.x + rect.w * 0.5, rect.y + rect.h * 0.5
-    local button = buttonRect(rect, model.buttonKind)
+    local button = buttonRect(rect)
     local viewport = {
         x = rect.x + 24,
         y = rect.y + rect.h * 0.132,
