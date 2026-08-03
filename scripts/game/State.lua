@@ -29,6 +29,13 @@
 ---@field failureCountsByLevel_ table<string, integer>
 ---@field assistantInputLocked_ boolean
 ---@field pointer_ table
+---@field dialogueController_ table|nil
+---@field InitializeDialogue fun()
+---@field DestroyDialogue fun()
+---@field NotifyDialogueLevelReady fun(levelId: string)
+---@field UpdateDialogue fun(dt: number, pointerFrame: table): boolean
+---@field DrawDialogueHistoryButton fun()
+---@field DrawDialogueOverlay fun()
 local State = {}
 
 local OWNERS = {}

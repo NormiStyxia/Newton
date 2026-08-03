@@ -121,6 +121,7 @@ function M.Install(context)
         level_.physicsProbe = require("game.physics.Probe").New()
         ResetSessionState(true)
         NotifyGreenAssistantLevelChanged(level_.levelId)
+        context.NotifyDialogueLevelReady(level_.levelId)
     end
     function ResetExperiment(playResetSound)
         if not apple_ or not level_ then return end

@@ -22,7 +22,7 @@ local INSTALLERS = {
     "game.gameplay.Goal", "game.gameplay.Experiment", "game.input.Pointer",
     "game.cards.Controller", "game.input.InteractionRouter", "game.render.WorldView",
     "game.render.ReplayView", "game.render.OverlayView", "game.render.CardView",
-    "game.green_assistant.Controller", "game.AppRuntime",
+    "game.green_assistant.Controller", "game.dialogue.DialogueController", "game.AppRuntime",
 }
 
 local App = {}

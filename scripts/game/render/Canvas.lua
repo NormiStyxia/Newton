@@ -124,6 +124,9 @@ function Renderer:Init()
             cardField = nvgCreateImage(self.vg, "image/ui_svg/runtime/card_field@2x.png", 0),
             cardDecision = nvgCreateImage(self.vg, "image/ui_svg/runtime/card_decision@2x.png", 0),
             cardQuantum = nvgCreateImage(self.vg, "image/ui_svg/runtime/card_quantum@2x.png", 0),
+            dialoguePanel = nvgCreateImage(self.vg, "image/ui/dialogue_overlay/panel.png", 0),
+            dialogueSkip = nvgCreateImage(self.vg, "image/ui/dialogue_overlay/skip.png", 0),
+            dialogueClose = nvgCreateImage(self.vg, "image/ui/dialogue_overlay/close.png", 0),
         },
         newtonAnger = {
             [0] = nvgCreateImage(self.vg, "image/ui/newton_panel/runtime/newton_anger_000.png", 0),

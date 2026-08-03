@@ -40,6 +40,7 @@ function M.Install(context)
         graphics.windowTitle = CONFIG.title
         painter_ = Renderer2D.New()
         frame_ = context.design_:Frame()
+        context.InitializeDialogue()
         InitializeGreenAssistant()
         BuildLevel(1)
         RefreshWorkspaceLayout()
@@ -58,6 +59,7 @@ function M.Install(context)
     end
     function Stop()
         if level_ and level_.physicsProbe then level_.physicsProbe:Stop({ apple = apple_ }) end
+        context.DestroyDialogue()
         DestroyGreenAssistant()
         if painter_ then painter_:Destroy(); painter_ = nil end
     end
@@ -66,14 +68,17 @@ function M.Install(context)
     ---@param eventData UpdateEventData
     function HandleUpdate(_eventType, eventData)
         local dt = eventData:GetFloat("TimeStep")
+        frame_ = context.design_:Frame()
+        RefreshWorkspaceLayout()
+        local pointerFrame = PointerState()
+        -- Dialogue owns the complete input/update frame while open. This keeps
+        -- the exact pre-open gameplay state intact until the closing tween ends.
+        if context.UpdateDialogue(dt, pointerFrame) then return end
         if audio_ then audio_:Update(dt) end
         uiElapsed_ = uiElapsed_ + dt
         UpdateRuleFeedback(dt)
-        frame_ = context.design_:Frame()
-        RefreshWorkspaceLayout()
         -- Sample once, then give the screen-space Companion first chance to
         -- apply a rigid drag before its animation/update and before rendering.
-        local pointerFrame = PointerState()
         local assistantPointerConsumed = HandleGreenAssistantPointer(pointerFrame.x, pointerFrame.y, pointerFrame)
         UpdateGreenAssistant(dt)
         -- Replay owns the input/update frame. Do not let cards, reset shortcuts,
@@ -324,6 +329,7 @@ function M.Install(context)
             painter_:DrawGameplayFrameChrome(frame_)
             painter_:DrawGameplayDecor(frame_)
             DrawHUD()
+            context.DrawDialogueHistoryButton()
             DrawCards(nil, 71.999, true)
             DrawPauseStatus()
             if not replayActive_ then DrawRulePulse() end
@@ -335,6 +341,7 @@ function M.Install(context)
             if replayActive_ then DrawReplay() end
             DrawResultOverlay()
             DrawGreenAssistant()
+            context.DrawDialogueOverlay()
             painter_:Finish()
         end)
         State.EndGameSnapshot(context)
