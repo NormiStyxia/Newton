@@ -16,6 +16,7 @@
 ---@field ReplayTimeline any
 ---@field ReplayFeed any
 ---@field ReplayMode any
+---@field PhaseWallEffects any
 ---@field CONFIG table
 ---@field CARD_DESIGN_WIDTH number
 ---@field CARD_DESIGN_HEIGHT number
@@ -53,7 +54,7 @@ own("experiment", {
     "rules_", "draggedApple_", "aimPreview_", "launched_", "outsideMs_", "flightMs_", "status_",
     "isPaused_", "bulletTimeActive_", "success_", "failed_", "absorbing_", "absorbElapsedMs_",
     "assistedClear_", "failureCount_", "failureCountsByLevel_", "observation_", "uiElapsed_", "anger_",
-    "phaseTraversing_", "stalledMs_", "trail_", "lastTrailAt_", "rulePulse_", "ruleFlash_",
+    "phaseTraversing_", "phaseWallTraversal_", "stalledMs_", "trail_", "lastTrailAt_", "rulePulse_", "ruleFlash_",
     "ruleDeployCount_",
 })
 own("goal", {
@@ -181,7 +182,7 @@ function State.New(dependencies, constants)
     context.greenAssistant_, context.greenAssistantAdapter_ = nil, nil
     context.assistantInputLocked_, context.assistSceneActive_ = false, false
     context.trail_, context.lastTrailAt_, context.sensorAngle_, context.uiElapsed_, context.anger_ = {}, 0, 0, 0, 0
-    context.phaseTraversing_, context.stalledMs_, context.channelStates_ = false, 0, {}
+    context.phaseTraversing_, context.phaseWallTraversal_, context.stalledMs_, context.channelStates_ = false, nil, 0, {}
     context.cardStates_, context.cardDeckById_, context.handOrder_ = {}, {}, {}
     context.cardHomeMotions_, context.cardHandReordering_ = {}, false
     context.cardBurns_, context.cardBurnParticles_, context.burningCardIds_ = {}, {}, {}

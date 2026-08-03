@@ -8,6 +8,7 @@ function M.Install(context)
     local MatterCalibration = context.MatterCalibration
     local Renderer2D = context.Renderer2D
     local ReplayMode = context.ReplayMode
+    local PhaseWallEffects = context.PhaseWallEffects
     local State = context.State
     local CONFIG = context.CONFIG
     local CARD_RENDER_WIDTH = context.CARD_RENDER_WIDTH
@@ -77,6 +78,7 @@ function M.Install(context)
         if audio_ then audio_:Update(dt) end
         uiElapsed_ = uiElapsed_ + dt
         UpdateRuleFeedback(dt)
+        UpdatePhaseWallEffects(dt)
         -- Sample once, then give the screen-space Companion first chance to
         -- apply a rigid drag before its animation/update and before rendering.
         local assistantPointerConsumed = HandleGreenAssistantPointer(pointerFrame.x, pointerFrame.y, pointerFrame)
@@ -245,6 +247,13 @@ function M.Install(context)
         local object = runtime_.byId[other.name]
         if launched_ and not replayActive_ then PlaySound("impact") end
         if not object then return end
+        if object.type == "wall" and object.phaseable then
+            -- A charged apple skips this contact through its collision mask;
+            -- uncharged impacts use the existing begin-contact event for ripples.
+            local position = apple_.node.position2D
+            PhaseWallEffects.TriggerImpact(object, position.x, position.y,
+                applePreSolveVelocity_ or apple_.body.linearVelocity, 0.78)
+        end
         if object.type == "spring" and object.enabled and object.channelEnabled and not object.spent
             and uiElapsed_ * 1000 - object.triggeredAt >= object.cooldown then
             -- The Phaser runtime captures body.velocity in beforeupdate and

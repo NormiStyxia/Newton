@@ -4,8 +4,8 @@ DesignSpace.__index = DesignSpace
 
 DesignSpace.BASE_WIDTH = 1880
 DesignSpace.BASE_HEIGHT = 840
-DesignSpace.LAB = { x = 290, y = 112, width = 1500, height = 596 }
-DesignSpace.NEWTON = { x = 24, y = 112, width = 250, height = 596 }
+DesignSpace.LAB = { x = 323, y = 112, width = 1500, height = 596 }
+DesignSpace.NEWTON = { x = 57, y = 112, width = 250, height = 596 }
 DesignSpace.GROUND_LOCAL_Y = 580
 DesignSpace.PLAYFIELD_HEIGHT = 700
 
@@ -29,7 +29,7 @@ function DesignSpace:Init(pixelsPerMeter)
     self.renderScale = 1
     self.logicalWidth = DesignSpace.BASE_WIDTH
     self.logicalHeight = DesignSpace.BASE_HEIGHT
-    self.workspaceX = 24
+    self.workspaceX = DesignSpace.NEWTON.x
     self.playfieldX = DesignSpace.LAB.x
     self.cardHandY = 800
 end
@@ -55,8 +55,8 @@ function DesignSpace:UpdateFromGraphics()
     self.physicalHeight = physicalHeight
     self.dpr = dpr
 
-    local workspaceWidth = DesignSpace.NEWTON.width + 16 + DesignSpace.LAB.width
-    self.workspaceX = math.max(24, (self.logicalWidth - workspaceWidth) * 0.5)
+    -- Preserve the authored 1880-wide alignment when wider viewports expose extra space.
+    self.workspaceX = DesignSpace.NEWTON.x
     self.playfieldX = self.workspaceX + DesignSpace.NEWTON.width + 16
     local playfieldBottom = DesignSpace.LAB.y + DesignSpace.LAB.height
     local groundY = DesignSpace.LAB.y + (DesignSpace.GROUND_LOCAL_Y / DesignSpace.PLAYFIELD_HEIGHT) * DesignSpace.LAB.height

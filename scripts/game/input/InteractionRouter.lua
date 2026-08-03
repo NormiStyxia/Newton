@@ -123,6 +123,7 @@ function M.Install(context)
                 if rules_.phaseActive then removedRules[#removedRules + 1] = "quantum-phase" end
                 if Rules.Punch(rules_) then
                     phaseTraversing_ = false
+                    phaseWallTraversal_ = nil
                     SetGravity()
                     ApplyAppleCardMaterial()
                     UpdateAngerFromRules()

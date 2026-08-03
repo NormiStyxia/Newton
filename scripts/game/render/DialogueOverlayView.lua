@@ -1,8 +1,11 @@
 local View = {}
 
-local PANEL_ASPECT = 308 / 450
+local PANEL_ASPECT = 1343 / 2002
 local PANEL_HEIGHT = 660
 local FONT = "maker-body"
+local MESSAGE_RIGHT_RATIO = 0.70
+local SCROLLBAR_CENTER_RATIO = 0.75
+local FOOTER_RIGHT_RATIO = 0.82
 
 local COLORS = {
     dark = { 47, 73, 56, 255 },
@@ -87,7 +90,7 @@ local function wrapText(painter, value, maxWidth, font, size)
 end
 
 local function layoutMessages(painter, messages, visibleCount, viewport)
-    local bubbleWidth = math.max(190, viewport.w * 0.75)
+    local bubbleWidth = math.max(120, viewport.w - 55)
     local entries = {}
     local cursorY = 6
     local font = FONT
@@ -157,9 +160,9 @@ end
 
 local function buttonRect(rect)
     return {
-        x = rect.x + rect.w * 0.66,
+        x = rect.x + rect.w * 0.60,
         y = rect.y + rect.h * 0.057,
-        w = rect.w * 0.27,
+        w = rect.w * 0.22,
         h = rect.h * 0.058,
     }
 end
@@ -259,8 +262,8 @@ end
 
 local function drawFooter(painter, rect, model)
     local footerY = rect.y + rect.h * 0.858
-    local labelX = rect.x + 78
-    local right = rect.x + rect.w - 26
+    local labelX = rect.x + rect.w * 0.18
+    local right = rect.x + rect.w * FOOTER_RIGHT_RATIO
     local anger = math.max(0, math.min(model.maxAnger, model.anger))
     local progress = model.maxAnger > 0 and anger / model.maxAnger or 0
 
@@ -269,7 +272,7 @@ local function drawFooter(painter, rect, model)
     painter:Text(right, footerY + 14, string.format("%d%%", math.floor(progress * 100 + 0.5)), 15,
         COLORS.unread, NVG_ALIGN_RIGHT + NVG_ALIGN_TOP, FONT)
 
-    local barX = labelX + 28
+    local barX = rect.x + rect.w * 0.24
     local barY = footerY + 48
     local barW = math.max(80, right - barX)
     painter:RoundedRect(barX, barY, barW, 13, 6.5, COLORS.angerTrack, COLORS.creamStroke, 1.5)
@@ -288,14 +291,15 @@ function View.Draw(painter, frame, controller)
     local rect = panelRect(frame)
     local centerX, centerY = rect.x + rect.w * 0.5, rect.y + rect.h * 0.5
     local button = buttonRect(rect)
+    local messageRight = rect.x + rect.w * MESSAGE_RIGHT_RATIO
     local viewport = {
         x = rect.x + 24,
         y = rect.y + rect.h * 0.132,
-        w = rect.w - 66,
+        w = messageRight - (rect.x + 24),
         h = rect.h * 0.704,
     }
     local track = {
-        x = rect.x + rect.w - 35,
+        x = rect.x + rect.w * SCROLLBAR_CENTER_RATIO - 5,
         y = viewport.y + 12,
         w = 10,
         h = viewport.h - 24,

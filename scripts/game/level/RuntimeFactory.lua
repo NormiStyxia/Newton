@@ -1,5 +1,6 @@
 local RuntimeFactory = {}
 local MatterCalibration = require("game.physics.Calibration")
+local PhaseWallEffects = require("game.render.PhaseWallEffects")
 
 local CATEGORY_APPLE = 0x0001
 local CATEGORY_WORLD = 0x0002
@@ -50,6 +51,7 @@ FACTORIES.wall = function(context, data)
     local category = phaseable and CATEGORY_PHASEABLE or CATEGORY_WORLD
     local runtime = createBox(context, data, category, MASK_ALL, false)
     runtime.phaseable = phaseable
+    if phaseable then PhaseWallEffects.Initialize(runtime) end
     runtime.collisionEnabled = props.collisionEnabled ~= false
     -- SetBody + setStatic reset Phaser's declared wall material. Keep the
     -- runtime-effective values here, while preserving source values in JSON.

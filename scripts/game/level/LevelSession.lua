@@ -11,6 +11,7 @@ function M.Install(context)
     local SynthAudio = context.SynthAudio
     local RuntimeFactory = context.RuntimeFactory
     local MatterCalibration = context.MatterCalibration
+    local PhaseWallEffects = context.PhaseWallEffects
     local CONFIG = context.CONFIG
     local LEVEL_META = context.LEVEL_META
     local _ENV = context
@@ -75,7 +76,7 @@ function M.Install(context)
         applePreSolveVelocity_ = nil
         pendingMatterRestitutions_ = nil
         physicsStepTimeScale_ = nil
-        goalPulseElapsedMs_, phaseTraversing_ = nil, false
+        goalPulseElapsedMs_, phaseTraversing_, phaseWallTraversal_ = nil, false, nil
         success_, failed_, absorbing_, absorbElapsedMs_ = false, false, false, 0
         assistedClear_ = false
         assistSceneActive_ = false
@@ -140,6 +141,7 @@ function M.Install(context)
         apple_.shape.restitution = MatterCalibration.APPLE_INITIAL_RESTITUTION
         apple_.shape.trigger = false
         if runtime_ then
+            PhaseWallEffects.ResetRuntime(runtime_)
             for _, object in ipairs(runtime_.ordered) do
                 object.contactMs = 0
                 if object.type == "goal_sensor" then

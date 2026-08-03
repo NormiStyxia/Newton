@@ -1,4 +1,5 @@
 local M = {}
+local PhaseWallEffects = require("game.render.PhaseWallEffects")
 
 function M.Install(Renderer, COLORS, color, tint)
     local function imageReady(image)
@@ -449,7 +450,14 @@ function M.Install(Renderer, COLORS, color, tint)
             local isNarrow = math.min(t.width or 0, t.height or 0) <= NARROW_WALL_MAX_THICKNESS
             local wallSkin = isNarrow and self.skins.wallNarrow or self.skins.wall
             local wallBorder = isNarrow and NARROW_WALL_BORDER or WALL_BORDER
-            if not object.phaseable and skinReady(wallSkin) then
+            if object.phaseable then
+                -- Keep the readable glass body rectangular. PhaseWallEffects
+                -- rebuilds only the membrane border and transient feedback.
+                self:FillRect(-w * .5, -h * .5, w, h, fill, 158)
+                self:FillRect(-w * .28 - 2, -math.max(12, h - 16) * .5,
+                    4, math.max(12, h - 16), COLORS.panel, 82)
+                PhaseWallEffects.Draw(self, object, w, h, COLORS)
+            elseif skinReady(wallSkin) then
                 -- The narrow source PNG is horizontal. Match Phaser's
                 -- WallObject by composing it in source orientation and
                 -- rotating only vertical narrow walls by 90 degrees.

@@ -4,6 +4,7 @@ local M = {}
 ---@param context GameContext
 function M.Install(context)
     local Rules = context.Rules
+    local PhaseWallEffects = context.PhaseWallEffects
     local _ENV = context
     function RuleFeedbackText(id, candidate)
         if id == "feather-gravity" then return "场地重力强度已减弱，当前重力方向保持不变。" end
@@ -38,26 +39,34 @@ function M.Install(context)
             if ruleFlash_.elapsed >= ruleFlash_.duration then ruleFlash_ = nil end
         end
     end
+    function UpdatePhaseWallEffects(dt)
+        PhaseWallEffects.UpdateRuntime(runtime_, dt)
+    end
     function IsInsidePhaseableWall(worldX, worldY)
-        if not runtime_ then return false end
-        for _, object in ipairs(runtime_.ordered) do
-            if object.type == "wall" and object.phaseable then
-                local rotation = math.rad(object.node.rotation2D)
-                local dx, dy = worldX - object.worldX, worldY - object.worldY
-                local localX = math.cos(rotation) * dx + math.sin(rotation) * dy
-                local localY = -math.sin(rotation) * dx + math.cos(rotation) * dy
-                if math.abs(localX) <= object.worldWidth * 0.5 and math.abs(localY) <= object.worldHeight * 0.5 then return true end
-            end
-        end
-        return false
+        return PhaseWallEffects.FindContainingWall(runtime_, worldX, worldY) ~= nil
     end
     function UpdatePhaseTraversal()
         if not apple_ or not rules_.phaseActive then return end
         local position = apple_.node.position2D
-        if IsInsidePhaseableWall(position.x, position.y) then
-            phaseTraversing_ = true
+        local wall = PhaseWallEffects.FindContainingWall(runtime_, position.x, position.y)
+        if wall then
+            if not phaseTraversing_ then
+                -- The gameplay transition is unchanged; these calls only attach
+                -- an entry ripple and a local membrane opening to that transition.
+                phaseTraversing_ = true
+                phaseWallTraversal_ = wall
+                PhaseWallEffects.TriggerPass(wall, position.x, position.y,
+                    apple_.body.linearVelocity, "enter")
+            end
         elseif phaseTraversing_ then
+            -- Reaching the far side is the existing phase-consumption point.
+            -- Project the exit effect back onto the traversed wall surface.
+            if phaseWallTraversal_ then
+                PhaseWallEffects.TriggerPass(phaseWallTraversal_, position.x, position.y,
+                    apple_.body.linearVelocity, "exit")
+            end
             phaseTraversing_ = false
+            phaseWallTraversal_ = nil
             Rules.EndPhase(rules_)
             RecordReplayEvent("RULE_REMOVED", "quantum-phase")
             SetGravity()
@@ -89,6 +98,7 @@ function M.Install(context)
             end
         elseif id == "quantum-phase" then
             phaseTraversing_ = false
+            phaseWallTraversal_ = nil
             SetGravity()
         end
         ruleDeployCount_ = ruleDeployCount_ + 1
