@@ -259,8 +259,9 @@ def main() -> int:
            and "if apple_ and apple_.shape and not probeActive then" in main_lua
            and "apple.shape.maskBits = PROBE_CATEGORY" in physics_probe_lua,
            "physics probe does not isolate apple contacts from level fixtures")
-    expect("input:GetKeyDown(KEY_CTRL) and input:GetKeyDown(KEY_ALT) and input:GetKeyPress(KEY_T)" in main_lua,
-           "physics probe no longer has an explicit development capture trigger")
+    expect("input:GetKeyDown(KEY_CTRL) and input:GetKeyDown(KEY_ALT) and input:GetKeyPress(KEY_T)" in main_lua
+           and "input:GetMouseButtonPress(MOUSEB_MIDDLE)" in main_lua,
+           "physics probe no longer exposes its keyboard and iframe-safe development triggers")
     expect("self.sampleEveryStep = timeScale <= .05" in physics_telemetry_lua
            and "not self.sampleEveryStep and self.simulationTime + .0001 < self.nextSample" in physics_telemetry_lua,
            "slow-motion physics telemetry no longer records every Box2D post-step")

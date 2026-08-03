@@ -118,6 +118,12 @@ layer, disables ordinary level
 collisions, and destroys its fixtures before resetting the normal experiment.
 A missing sample, material field, or contact event is a comparison failure.
 
+For Maker's cross-origin browser preview, where automation cannot reliably
+forward keyboard chords into the game iframe, a middle click on the focused
+game canvas is an equivalent diagnostics-only trigger. Normal gameplay uses
+left/right clicks, and the `Ctrl+Alt+T` trigger remains authoritative for
+interactive use.
+
 At `.05x`, the probe records every `PhysicsPostStep` so a low-speed contact is
 not downsampled to 60Hz. Contact comparison uses begin/end lifecycle semantics:
 repeated Matter begin notifications for a single resting pair do not count as

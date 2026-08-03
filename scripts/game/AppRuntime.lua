@@ -88,7 +88,13 @@ function M.Install(context)
             }
             -- Deliberately hard to trigger during a normal game, but independent
             -- of the disabled physics debug renderer so captures remain possible.
-            if input:GetKeyDown(KEY_CTRL) and input:GetKeyDown(KEY_ALT) and input:GetKeyPress(KEY_T) then
+            local keyboardProbeRequested = input:GetKeyDown(KEY_CTRL) and input:GetKeyDown(KEY_ALT) and input:GetKeyPress(KEY_T)
+            -- Maker embeds the Web runtime in a cross-origin iframe where browser
+            -- automation cannot always forward keyboard chords. Keep a deliberately
+            -- middle-click as an equivalent diagnostics-only trigger. Normal
+            -- gameplay uses left/right clicks and is therefore unaffected.
+            local pointerProbeRequested = input:GetMouseButtonPress(MOUSEB_MIDDLE)
+            if keyboardProbeRequested or pointerProbeRequested then
                 physicsProbe:Start(probeContext)
             end
             if physicsProbe:IsActive() then
