@@ -3,6 +3,7 @@
 ---@field launcher integer
 ---@field portrait integer
 ---@field goalRing integer
+---@field goalObserver integer
 ---@field ui table<string, integer>
 ---@field newtonAnger table<integer|string, integer>
 
@@ -112,6 +113,7 @@ function Renderer:Init()
         launcher = nvgCreateImage(self.vg, "image/phase1/launcher.png", 0),
         portrait = nvgCreateImage(self.vg, "image/newton-portrait.png", 0),
         goalRing = nvgCreateImage(self.vg, "image/phase1/goal-ring.png", 0),
+        goalObserver = nvgCreateImage(self.vg, "image/goal/einstein_observer.png", 0),
         ui = {
             titlePlaque = nvgCreateImage(self.vg, "image/ui_svg/runtime/title_plaque@2x.png", 0),
             hudFrame = nvgCreateImage(self.vg, "image/ui_svg/runtime/hud_frame@2x.png", 0),

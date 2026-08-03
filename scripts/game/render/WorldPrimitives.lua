@@ -1,5 +1,6 @@
 local M = {}
 local PhaseWallEffects = require("game.render.PhaseWallEffects")
+local EinsteinObserver = require("game.render.EinsteinObserver")
 
 function M.Install(Renderer, COLORS, color, tint)
     local function imageReady(image)
@@ -350,81 +351,23 @@ function M.Install(Renderer, COLORS, color, tint)
         self:Image(overlay, 0, 0, 2559 * scale, 1149 * scale, 1, 0, 0, 0)
     end
 
-    local GOAL_SCANNER_SEGMENTS = {
-        { .03, .48, "strong" }, { .72, .24, "soft" }, { 1.12, .66, "normal" }, { 2.04, .31, "strong" },
-        { 2.62, .86, "normal" }, { 3.77, .39, "soft" }, { 4.43, .58, "strong" }, { 5.34, .47, "normal" },
-    }
-
-    local GOAL_INNER_SEGMENTS = {
-        { .36, .28, "soft" }, { 1.78, .42, "normal" }, { 3.5, .24, "soft" }, { 4.82, .36, "normal" },
-    }
-
-    local function goalSegmentStyle(emphasis, inner)
-        if emphasis == "strong" then return inner and 1.8 or 3.1, COLORS.greenLight, inner and .7 or .94 end
-        if emphasis == "normal" then return inner and 1.5 or 2.4, COLORS.greenStrong, inner and .58 or .8 end
-        return inner and 1.2 or 1.7, COLORS.darkSecondary, inner and .42 or .52
-    end
-
-    function Renderer:DrawGoalFallbackPortrait(x, y, radius, active, progress)
-        self:Circle(x, y, radius, active and COLORS.greenSoft or COLORS.greenSoft, nil, nil, math.floor((.72 + progress * .22) * 255))
-        local hair = COLORS.neutralObject
-        self:Circle(x - radius * .56, y - radius * .38, radius * .3, hair)
-        self:Circle(x + radius * .56, y - radius * .38, radius * .3, hair)
-        self:Circle(x - radius * .35, y - radius * .66, radius * .27, hair)
-        self:Circle(x + radius * .35, y - radius * .66, radius * .27, hair)
-        self:Circle(x, y - radius * .72, radius * .3, hair)
-        nvgBeginPath(self.vg); nvgEllipse(self.vg, x, y, radius * 1.2, radius * 1.42); nvgFillColor(self.vg, color(COLORS.panel)); nvgFill(self.vg)
-        nvgStrokeColor(self.vg, color(COLORS.darkSecondary, 199)); nvgStrokeWidth(self.vg, 1.2); nvgStroke(self.vg)
-        nvgStrokeColor(self.vg, color(COLORS.darkPrimary, 214)); nvgStrokeWidth(self.vg, 1.4)
-        nvgBeginPath(self.vg); nvgMoveTo(self.vg, x - radius * .34, y - radius * .18); nvgLineTo(self.vg, x - radius * .1, y - radius * .22); nvgMoveTo(self.vg, x + radius * .1, y - radius * .22); nvgLineTo(self.vg, x + radius * .34, y - radius * .18); nvgStroke(self.vg)
-        self:Circle(x - radius * .22, y - radius * .08, math.max(1.1, radius * .055), COLORS.darkPrimary, nil, nil, 230)
-        self:Circle(x + radius * .22, y - radius * .08, math.max(1.1, radius * .055), COLORS.darkPrimary, nil, nil, 230)
-        nvgStrokeColor(self.vg, color(COLORS.darkSecondary, 184)); nvgStrokeWidth(self.vg, 1.2)
-        nvgBeginPath(self.vg); nvgMoveTo(self.vg, x, y - radius * .02); nvgLineTo(self.vg, x - radius * .05, y + radius * .18); nvgStroke(self.vg)
-        nvgBeginPath(self.vg); nvgEllipse(self.vg, x - radius * .13, y + radius * .25, radius * .32, radius * .15); nvgFillColor(self.vg, color(COLORS.darkSecondary, 230)); nvgFill(self.vg)
-        nvgBeginPath(self.vg); nvgEllipse(self.vg, x + radius * .13, y + radius * .25, radius * .32, radius * .15); nvgFillColor(self.vg, color(COLORS.darkSecondary, 230)); nvgFill(self.vg)
-    end
-
     function Renderer:DrawGoalSensor(x, y, w, h, state)
         local usableDiameter = math.max(48, math.min(w * .8, h))
         local outerRadius = usableDiameter * .5
-        local scannerRadius, innerRadius, portraitRadius = outerRadius * .77, outerRadius * .64, outerRadius * .62
         local active = state.active == true
-        local progress = state.contactProgress or 0
         local requiredStayTime = math.max(1, state.requiredStayTime or 1000)
         local contactMs = math.max(0, state.contactMs or 0)
         local remainingMs = math.max(0, requiredStayTime - contactMs)
         self:Text(x, y - outerRadius - 20, string.format("%.1fs", remainingMs / 1000), 14,
             active and COLORS.primaryActive or COLORS.secondary,
             NVG_ALIGN_CENTER + NVG_ALIGN_MIDDLE, "maker-display", 240)
-        self:Circle(x, y, outerRadius, COLORS.panel, nil, nil, 117)
-        self:Circle(x, y, outerRadius, nil, COLORS.darkPrimary, 3, 245)
-        self:Circle(x, y, outerRadius - 5, nil, COLORS.greenLight, 1, 163)
-        nvgStrokeColor(self.vg, color(COLORS.darkSecondary, 184)); nvgStrokeWidth(self.vg, 2)
-        for _, a in ipairs({ -1.18, .42, 2.42 }) do
-            nvgBeginPath(self.vg); nvgMoveTo(self.vg, x + math.cos(a) * (outerRadius + 2), y + math.sin(a) * (outerRadius + 2)); nvgLineTo(self.vg, x + math.cos(a) * (outerRadius + 6), y + math.sin(a) * (outerRadius + 6)); nvgStroke(self.vg)
-        end
-        local outerAlpha = active and 1 or .68
-        for _, segment in ipairs(GOAL_SCANNER_SEGMENTS) do
-            local width, c, alpha = goalSegmentStyle(segment[3], false)
-            nvgStrokeColor(self.vg, color(c, math.floor(alpha * outerAlpha * 255))); nvgStrokeWidth(self.vg, width)
-            nvgBeginPath(self.vg); nvgArc(self.vg, x, y, scannerRadius, segment[1] + (state.sensorAngle or 0), segment[1] + segment[2] + (state.sensorAngle or 0), NVG_CW); nvgStroke(self.vg)
-        end
-        local innerAlpha = active and .76 or .48
-        for _, segment in ipairs(GOAL_INNER_SEGMENTS) do
-            local width, c, alpha = goalSegmentStyle(segment[3], true)
-            nvgStrokeColor(self.vg, color(c, math.floor(alpha * innerAlpha * 255))); nvgStrokeWidth(self.vg, width)
-            nvgBeginPath(self.vg); nvgArc(self.vg, x, y, innerRadius, segment[1] - (state.sensorAngle or 0) * .58, segment[1] + segment[2] - (state.sensorAngle or 0) * .58, NVG_CW); nvgStroke(self.vg)
-        end
-        self:Circle(x + scannerRadius, y, 2.2, COLORS.playfieldAccent, nil, nil, 214)
-        self:Circle(x - scannerRadius * .72, y + scannerRadius * .69, 1.7, COLORS.greenLight, nil, nil, 209)
-        self:DrawGoalFallbackPortrait(x, y, portraitRadius, active, progress)
-        self:Circle(x, y, portraitRadius + 1, nil, COLORS.darkSecondary, 2, active and 224 or 189)
-        self:Circle(x, y, portraitRadius - 3, nil, COLORS.greenLight, 1, active and 173 or 135)
         if state.goalPulseProgress ~= nil then
             local progress = math.max(0, math.min(1, state.goalPulseProgress))
-            self:Circle(x, y, outerRadius * .88 * (1 + progress * .22), nil, COLORS.primaryActive, 2, math.floor(.78 * (1 - progress) * 255))
+            -- The portrait now fills the sensor diameter. Keep the success
+            -- pulse on its outer edge instead of hiding it behind the image.
+            self:Circle(x, y, outerRadius * (1 + progress * .088), nil, COLORS.primaryActive, 2, math.floor(.78 * (1 - progress) * 255))
         end
+        EinsteinObserver.Draw(self, self.images.goalObserver, x, y, usableDiameter, state.observer)
     end
 
     function Renderer:DrawObject(frame, object, state, design, mapper)
@@ -493,8 +436,8 @@ function M.Install(Renderer, COLORS, color, tint)
                 contactProgress = object.contactProgress,
                 contactMs = object.contactMs,
                 requiredStayTime = object.requiredStayTime,
-                sensorAngle = state.sensorAngle,
                 goalPulseProgress = state.goalPulseProgress,
+                observer = object,
             })
         elseif object.type == "spring" then
             nvgSave(self.vg); nvgTranslate(self.vg, x, y); nvgRotate(self.vg, rotation)

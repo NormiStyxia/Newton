@@ -1,5 +1,6 @@
 -- AppRuntime: private runtime functions installed into the App context.
 local M = {}
+local EinsteinObserver = require("game.render.EinsteinObserver")
 
 ---@param context GameContext
 function M.Install(context)
@@ -149,6 +150,7 @@ function M.Install(context)
         if input:GetKeyPress(KEY_ESCAPE) then
             if replayActive_ then StopReplay() else ToggleTacticalPause() end
         end
+        EinsteinObserver.Update(runtime_, apple_, dt, isPaused_)
         SyncPhysicsUpdateEnabled()
         if replayActive_ then
             UpdateReplay(dt)
