@@ -220,11 +220,13 @@ function M.Install(Renderer, COLORS, color, tint)
 
         local lineArt = self.images.ui and self.images.ui.noticeLineArt
         if imageReady(lineArt) then
+            -- Keep the source line art's authored 957x999 aspect ratio. The
+            -- previous independent height caused visible vertical squashing.
             local lineArtWidth = frame.playfieldWidth * .15
-            local lineArtHeight = frame.playfieldHeight * .36
+            local lineArtHeight = lineArtWidth * 999 / 957
             local lineArtX = frame.playfieldX + frame.playfieldWidth * .56
             local lineArtY = frame.playfieldY + frame.playfieldHeight * .37
-            self:Image(lineArt, lineArtX, lineArtY, lineArtWidth, lineArtHeight, .42)
+            self:Image(lineArt, lineArtX, lineArtY, lineArtWidth, lineArtHeight, .58)
         end
 
         nvgRestore(self.vg)
