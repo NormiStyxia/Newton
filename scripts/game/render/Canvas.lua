@@ -98,8 +98,8 @@ end
 function Renderer:Init()
     self.vg = nvgCreate(1)
     if not self.vg then error("NanoVG context 创建失败") end
-    self.fontBody = nvgCreateFont(self.vg, "maker-body", "Fonts/MiSans-Regular.ttf")
-    self.fontDisplay = nvgCreateFont(self.vg, "maker-display", "Fonts/MiSans-Regular.ttf")
+    self.fontBody = nvgCreateFont(self.vg, "maker-body", "Fonts/FutureRound-Regular.ttf")
+    self.fontDisplay = nvgCreateFont(self.vg, "maker-display", "Fonts/FutureRound-Regular.ttf")
     self.images = {
         apple = nvgCreateImage(self.vg, "image/phase1/apple.png", 0),
         launcher = nvgCreateImage(self.vg, "image/phase1/launcher.png", 0),
