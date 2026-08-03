@@ -28,6 +28,14 @@ function M.Install(Renderer, COLORS, color, tint)
         top = 67 * WALL_SCALE,
         bottom = 72 * WALL_SCALE,
     }
+    local NARROW_WALL_SCALE = 17 / 49
+    local NARROW_WALL_BORDER = {
+        left = 80 * NARROW_WALL_SCALE,
+        right = 78 * NARROW_WALL_SCALE,
+        top = 24 * NARROW_WALL_SCALE,
+        bottom = 25 * NARROW_WALL_SCALE,
+    }
+    local NARROW_WALL_MAX_THICKNESS = 40
 
     local function drawGameplayFrameOverlay(self, frame)
         local x, y, w, h = frame.playfieldX, frame.playfieldY, frame.playfieldWidth, frame.playfieldHeight
@@ -402,8 +410,21 @@ function M.Install(Renderer, COLORS, color, tint)
             nvgSave(self.vg)
             nvgTranslate(self.vg, x, y)
             nvgRotate(self.vg, rotation)
-            if not object.phaseable and skinReady(self.skins and self.skins.wall) then
-                self:NineSlice(self.skins.wall, -w * .5, -h * .5, w, h, WALL_BORDER)
+            local isNarrow = math.min(t.width or 0, t.height or 0) <= NARROW_WALL_MAX_THICKNESS
+            local wallSkin = isNarrow and self.skins.wallNarrow or self.skins.wall
+            local wallBorder = isNarrow and NARROW_WALL_BORDER or WALL_BORDER
+            if not object.phaseable and skinReady(wallSkin) then
+                -- The narrow source PNG is horizontal. Match Phaser's
+                -- WallObject by composing it in source orientation and
+                -- rotating only vertical narrow walls by 90 degrees.
+                if isNarrow and t.height > t.width then
+                    nvgSave(self.vg)
+                    nvgRotate(self.vg, math.pi * .5)
+                    self:NineSlice(wallSkin, -h * .5, -w * .5, h, w, wallBorder)
+                    nvgRestore(self.vg)
+                else
+                    self:NineSlice(wallSkin, -w * .5, -h * .5, w, h, wallBorder)
+                end
             else
                 self:FillRect(-w * .5, -h * .5, w, h, fill, object.phaseable and 173 or 255)
                 self:StrokeRect(-w * .5, -h * .5, w, h, edge, 3, 240)
@@ -458,7 +479,11 @@ function M.Install(Renderer, COLORS, color, tint)
         local p = apple.node.position2D
         local x, y = design:WorldToLogical(p.x, p.y)
         local r = (apple.displayRadius or 32) * (scale or 1)
-        local angle = apple.node.rotation2D and math.rad(apple.node.rotation2D) or 0
+        -- UrhoX stores the apple angle in Y-up world space, while NanoVG
+        -- renders in screen-space Y-down. Flip only the presentation angle so
+        -- the apple keeps its physics state but visibly turns clockwise like
+        -- Phaser's Matter sprite.
+        local angle = apple.node.rotation2D and math.rad(-apple.node.rotation2D) or 0
         if self.images.apple and self.images.apple >= 0 then self:Image(self.images.apple, x, y, r * 2, r * 2, alpha or 1, angle) else self:Circle(x, y, r, COLORS.warningActive, COLORS.warning, nil, math.floor((alpha or 1) * 255)) end
     end
 

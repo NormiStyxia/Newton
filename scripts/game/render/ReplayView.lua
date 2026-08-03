@@ -108,7 +108,9 @@ function M.Install(context)
         local appleX, appleY = context.design_:WorldToLogical(state.x, state.y)
         painter_:Circle(appleX, appleY, 37, Renderer2D.COLORS.primaryActive, nil, nil, 48)
         painter_:Circle(appleX, appleY, 37, nil, Renderer2D.COLORS.primaryActive, 2, 122)
-        painter_:Image(painter_.images.apple, appleX, appleY, 64, 64, 1, math.rad(state.angle or 0))
+        -- Replay angles are recorded from the UrhoX Y-up body; mirror the
+        -- presentation sign for the same clockwise screen-space motion.
+        painter_:Image(painter_.images.apple, appleX, appleY, 64, 64, 1, math.rad(-(state.angle or 0)))
 
         if replayBusinessMode_ == ReplayMode.ASSIST_TAKEOVER then
             local labelX = frame_.playfieldX + frame_.playfieldWidth - 158
