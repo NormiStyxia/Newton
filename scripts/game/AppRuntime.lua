@@ -72,16 +72,17 @@ function M.Install(context)
         frame_ = context.design_:Frame()
         RefreshWorkspaceLayout()
         local pointerFrame = PointerState()
-        -- Dialogue owns the complete input/update frame while open. This keeps
-        -- the exact pre-open gameplay state intact until the closing tween ends.
-        if context.UpdateDialogue(dt, pointerFrame) then return end
+        local dialoguePointerConsumed = context.UpdateDialogue(dt, pointerFrame)
         if audio_ then audio_:Update(dt) end
         uiElapsed_ = uiElapsed_ + dt
         UpdateRuleFeedback(dt)
         UpdatePhaseWallEffects(dt)
         -- Sample once, then give the screen-space Companion first chance to
         -- apply a rigid drag before its animation/update and before rendering.
-        local assistantPointerConsumed = HandleGreenAssistantPointer(pointerFrame.x, pointerFrame.y, pointerFrame)
+        local assistantPointerConsumed = dialoguePointerConsumed
+        if not dialoguePointerConsumed then
+            assistantPointerConsumed = HandleGreenAssistantPointer(pointerFrame.x, pointerFrame.y, pointerFrame)
+        end
         UpdateGreenAssistant(dt)
         -- Replay owns the input/update frame. Do not let cards, reset shortcuts,
         -- or normal completion updates mutate the suspended experiment.

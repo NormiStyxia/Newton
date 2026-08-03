@@ -61,8 +61,6 @@ function Controller:Init(context)
     self.messageAges = {}
     self.stateElapsed = 0
     self.messageElapsed = 0
-    self.savedPhysicsEnabled = nil
-    self.savedPhysicsWorld = nil
     self.lastAnger = 0
     self.scrollOffset = 0
     self.maxScroll = 0
@@ -128,22 +126,6 @@ function Controller:SetScrollProgress(progress)
     self.followBottom = self.maxScroll - self.scrollOffset <= 18
 end
 
-function Controller:_FreezeGameplay()
-    local physicsWorld = self.context.physicsWorld_
-    self.savedPhysicsWorld = physicsWorld
-    self.savedPhysicsEnabled = physicsWorld and physicsWorld:IsUpdateEnabled() or nil
-    if physicsWorld then physicsWorld:SetUpdateEnabled(false) end
-end
-
-function Controller:_RestoreGameplay()
-    local physicsWorld = self.savedPhysicsWorld
-    if physicsWorld and self.savedPhysicsEnabled ~= nil then
-        physicsWorld:SetUpdateEnabled(self.savedPhysicsEnabled)
-    end
-    self.savedPhysicsWorld = nil
-    self.savedPhysicsEnabled = nil
-end
-
 function Controller:_BeginOpen(mode)
     if self.state ~= STATE.CLOSED then return false end
     self.openMode = mode
@@ -158,7 +140,6 @@ function Controller:_BeginOpen(mode)
     self.followBottom = true
     self.scrollbarDragging = false
     self.state = STATE.OPENING
-    self:_FreezeGameplay()
     self.log:MarkRead(self.currentLevelId)
     return true
 end
@@ -210,11 +191,9 @@ function Controller:_FinishClose()
     self.messageElapsed = 0
     self.scrollbarDragging = false
     self.viewGeometry = nil
-    self:_RestoreGameplay()
 end
 
 function Controller:Destroy()
-    if self:IsActive() then self:_RestoreGameplay() end
     self.state = STATE.CLOSED
 end
 
@@ -250,8 +229,6 @@ function Controller:_TrackAnger(anger)
 end
 
 function Controller:_AdvanceState(dt)
-    if self.savedPhysicsWorld then self.savedPhysicsWorld:SetUpdateEnabled(false) end
-
     for index = 1, self.visibleCount do
         self.messageAges[index] = math.min(BUBBLE_DURATION, (self.messageAges[index] or 0) + dt)
     end
@@ -283,7 +260,7 @@ end
 
 function Controller:_HandleScrollbar(pointerFrame)
     local geometry = self.viewGeometry
-    if not geometry then return end
+    if not geometry then return false end
     local x, y = pointerFrame.x, pointerFrame.y
 
     if self.scrollbarDragging then
@@ -293,36 +270,43 @@ function Controller:_HandleScrollbar(pointerFrame)
             self:SetScrollProgress((thumbTop - geometry.track.y) / travel)
         end
         if pointerFrame.released or not pointerFrame.down then self.scrollbarDragging = false end
-        return
+        return true
     end
 
     if pointerFrame.pressed and self.maxScroll > 0 then
         if pointIn(geometry.thumb, x, y) then
             self.scrollbarDragging = true
             self.scrollbarGrabY = y - geometry.thumb.y
+            return true
         elseif pointIn(geometry.track, x, y) then
             local travel = math.max(1, geometry.track.h - geometry.thumb.h)
             self:SetScrollProgress((y - geometry.track.y - geometry.thumb.h * 0.5) / travel)
+            return true
         end
     end
 
     local wheel = self.context.input.mouseMoveWheel
     if wheel ~= 0 and pointIn(geometry.viewport, x, y) then
         self:ScrollBy(-wheel * 54)
+        return true
     end
+    return false
 end
 
 function Controller:_HandleOpenPointer(pointerFrame)
-    if self.state == STATE.CLOSING then return end
-    self:_HandleScrollbar(pointerFrame)
+    if self.state == STATE.CLOSING then return false end
+    local consumed = self:_HandleScrollbar(pointerFrame)
     local geometry = self.viewGeometry
-    if not pointerFrame.pressed or not geometry or not pointIn(geometry.button, pointerFrame.x, pointerFrame.y) then return end
+    if not pointerFrame.pressed or not geometry or not pointIn(geometry.button, pointerFrame.x, pointerFrame.y) then
+        return consumed
+    end
 
     if self.openMode == "history" or self.state == STATE.HISTORY or self.state == STATE.REVEALED then
         self:Close()
     else
         self:RevealAll()
     end
+    return true
 end
 
 function Controller:Update(dt, pointerFrame, anger)
@@ -341,8 +325,8 @@ function Controller:Update(dt, pointerFrame, anger)
 
     self.historyHovered = false
     self:_AdvanceState(math.max(0, dt or 0))
-    if self:IsActive() then self:_HandleOpenPointer(pointerFrame) end
-    return true
+    if self:IsActive() then return self:_HandleOpenPointer(pointerFrame) end
+    return false
 end
 
 function Controller:GetPanelPresentation()
