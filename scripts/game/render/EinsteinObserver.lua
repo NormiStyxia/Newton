@@ -28,6 +28,12 @@ M.CONFIG = CONFIG
 local DOT_FILL = { 255, 253, 244, 255 }
 local DOT_EDGE = { 196, 204, 244, 255 }
 
+-- The replacement art includes a decorative halo outside the original
+-- avatar crop. Keep the avatar's source-to-screen mapping fixed while letting
+-- that decoration extend beyond the Sensor visual bounds.
+local ART_CROP = { left = 153, top = 187, width = 937, height = 939 }
+local BASE_CROP = { left = 187, top = 218, width = 876, height = 905 }
+
 local function updateGoalDirection(goal, apple, dt)
     if not goal.node or not apple or not apple.node then return end
     local sensorPosition = goal.node.position2D
@@ -94,16 +100,20 @@ function M.Draw(renderer, image, centerX, centerY, diameter, goal)
     local portraitHeight = portraitWidth * CONFIG.portrait.height / CONFIG.portrait.width
     local portraitLeft = centerX - portraitWidth * CONFIG.portrait.originX
     local portraitTop = centerY - portraitHeight * CONFIG.portrait.originY
+    local imageLeft = portraitLeft - (BASE_CROP.left - ART_CROP.left) * portraitWidth / BASE_CROP.width
+    local imageTop = portraitTop - (BASE_CROP.top - ART_CROP.top) * portraitHeight / BASE_CROP.height
+    local imageWidth = portraitWidth * ART_CROP.width / BASE_CROP.width
+    local imageHeight = portraitHeight * ART_CROP.height / BASE_CROP.height
     renderer:Image(
         image,
-        centerX,
-        centerY,
-        portraitWidth,
-        portraitHeight,
+        imageLeft,
+        imageTop,
+        imageWidth,
+        imageHeight,
         1,
         nil,
-        CONFIG.portrait.originX,
-        CONFIG.portrait.originY
+        0,
+        0
     )
 
     local dirX = goal and goal.einsteinTrackedDirX or 0
