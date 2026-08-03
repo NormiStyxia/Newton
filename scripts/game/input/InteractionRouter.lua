@@ -54,6 +54,10 @@ function M.Install(context)
         pointerFrame = pointerFrame or PointerState()
         local x, y = pointerFrame.x, pointerFrame.y
         local down, press, release = pointerFrame.down, pointerFrame.pressed, pointerFrame.released
+        if IsResultReportVisible and IsResultReportVisible() then
+            HandleResultReportInput(pointerFrame)
+            return
+        end
         local assistantConsumed = assistantHandled
         if assistantConsumed == nil then
             assistantConsumed = HandleGreenAssistantPointer(x, y, pointerFrame)

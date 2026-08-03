@@ -191,7 +191,7 @@ function M.Install(context)
         SetReplayMode("none")
         replayTime_ = 0
         replaySavedApple_ = nil
-        isPaused_ = false
+        isPaused_ = success_ or failed_
         if saved then
             apple_.node:SetPosition2D(saved.x, saved.y)
             apple_.node:SetRotation2D(saved.angle)

@@ -57,6 +57,7 @@ function M.Install(context)
     end
 
     function ResetSessionState(isFreshLevel)
+        if ClearResultReportState then ClearResultReportState() end
         rules_ = Rules.NewState()
         InitializeCards()
         observation_ = level_.observation or ""
@@ -97,6 +98,7 @@ function M.Install(context)
     end
 
     function BuildLevel(index)
+        if ClearResultReportState then ClearResultReportState() end
         level_ = LoadLevel(index)
         physicsProfile_ = PhysicsProfiles.Resolve(level_.physicsProfile)
         failureCount_ = context.failureCountsByLevel_[level_.levelId] or 0
@@ -167,6 +169,7 @@ function M.Install(context)
             level_.assistedClear = assisted
             level_.resultOverlayVisible = true
         end
+        if GenerateResultReport then GenerateResultReport() end
         if apple_ and apple_.body then
             apple_.body.bodyType = BT_STATIC
             apple_.body.linearVelocity = Vector2(0, 0)

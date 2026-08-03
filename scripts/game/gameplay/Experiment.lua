@@ -104,6 +104,7 @@ function M.Install(context)
                 success_ = true
                 assistedClear_ = false
                 if level_ then level_.resultOverlayVisible = true end
+                if GenerateResultReport then GenerateResultReport() end
                 SetStatus("CLEARED · 观测成立")
                 NotifyGreenAssistantAttemptSucceeded()
             end

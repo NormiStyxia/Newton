@@ -44,6 +44,7 @@ function View.New(options)
     self.choiceRects = {}
     self.message = nil
     self.choices = nil
+    self.relocationEffect = nil
     return self
 end
 
@@ -175,15 +176,17 @@ function View:preloadAnimations(animations)
     for _, config in pairs(animations or {}) do self:preloadAnimation(config) end
 end
 
-function View:_spriteRect(frameData)
+function View:_spriteRect(frameData, positionX, positionY)
     local ui = self.config.ui
     local height = ui.spriteHeight * ui.scale * (frameData.scale or 1)
     local _, source = self:_image(FrameTexture(frameData))
     local frameWidth = frameData.frameWidth or source.width
     local frameHeight = frameData.frameHeight or source.height
     local width = height * frameWidth / math.max(1, frameHeight)
-    local x = self.position.x + (frameData.offsetX or 0) - width * (frameData.anchorX or 0.5)
-    local y = self.position.y + (frameData.offsetY or 0) - height * (frameData.anchorY or 1)
+    positionX = positionX or self.position.x
+    positionY = positionY or self.position.y
+    local x = positionX + (frameData.offsetX or 0) - width * (frameData.anchorX or 0.5)
+    local y = positionY + (frameData.offsetY or 0) - height * (frameData.anchorY or 1)
     return { x = x, y = y, width = width, height = height }
 end
 
@@ -247,6 +250,90 @@ function View:_updateBubbleLayout()
     end
 end
 
+function View:startRelocationEffect(effect)
+    assert(type(effect) == "table", "relocation effect is required")
+    self.relocationEffect = {
+        age = 0,
+        from = { x = effect.from.x, y = effect.from.y },
+        to = { x = effect.to.x, y = effect.to.y },
+        exitDuration = math.max(0.01, effect.exitDuration or 0.18),
+        holdDuration = math.max(0, effect.holdDuration or 0.06),
+        enterDuration = math.max(0.01, effect.enterDuration or 0.22),
+        slatCount = math.max(2, math.floor(effect.slatCount or 8)),
+    }
+end
+
+function View:updateRelocationEffect(dt)
+    local effect = self.relocationEffect
+    if not effect then return true end
+    effect.age = effect.age + math.max(0, dt or 0)
+    local duration = effect.exitDuration + effect.holdDuration + effect.enterDuration
+    if effect.age < duration then return false end
+    self.relocationEffect = nil
+    return true
+end
+
+function View:cancelRelocationEffect()
+    self.relocationEffect = nil
+end
+
+local function EaseOut(value)
+    value = math.max(0, math.min(1, value))
+    return 1 - (1 - value) ^ 3
+end
+
+function View:_drawSprite(frameData, positionX, positionY)
+    local texture = FrameTexture(frameData)
+    if not frameData or not texture then return end
+    local handle, imageSize = self:_image(texture)
+    if not handle or handle < 0 then return end
+    local vg = self.renderer.vg
+    local rect = self:_spriteRect(frameData, positionX, positionY)
+    nvgSave(vg)
+    if self.flipX then
+        local pivotX = (positionX or self.position.x) + (frameData.offsetX or 0)
+        local mirrorOrigin = pivotX * 2 - rect.x
+        nvgTranslate(vg, mirrorOrigin, rect.y)
+        nvgScale(vg, -1, 1)
+        self:_drawFrame(vg, handle, imageSize, frameData,
+            { x = 0, y = 0, width = rect.width, height = rect.height })
+    else
+        self:_drawFrame(vg, handle, imageSize, frameData, rect)
+    end
+    nvgRestore(vg)
+end
+
+function View:_drawBlindSprite(frameData, position, progress, slatCount)
+    if not frameData or progress <= 0 then return end
+    local rect = self:_spriteRect(frameData, position.x, position.y)
+    local vg = self.renderer.vg
+    local slatHeight = rect.height / slatCount
+    local clippedWidth = rect.width * math.max(0, math.min(1, progress))
+    if clippedWidth <= 0 then return end
+    for index = 0, slatCount - 1 do
+        local y = rect.y + index * slatHeight
+        local x = index % 2 == 0 and rect.x or rect.x + rect.width - clippedWidth
+        nvgSave(vg)
+        nvgScissor(vg, x, y, clippedWidth, slatHeight + 1)
+        self:_drawSprite(frameData, position.x, position.y)
+        nvgRestore(vg)
+    end
+end
+
+function View:_renderRelocationEffect(frameData)
+    local effect = self.relocationEffect
+    if not effect or not frameData then return end
+    local age = effect.age
+    if age < effect.exitDuration then
+        local progress = EaseOut(age / effect.exitDuration)
+        self:_drawBlindSprite(frameData, effect.from, 1 - progress, effect.slatCount)
+    elseif age >= effect.exitDuration + effect.holdDuration then
+        local enterAge = age - effect.exitDuration - effect.holdDuration
+        local progress = EaseOut(enterAge / effect.enterDuration)
+        self:_drawBlindSprite(frameData, effect.to, progress, effect.slatCount)
+    end
+end
+
 function View:hitTestCharacter(x, y)
     self:_updateHitbox()
     return self.visible and self.enabled and PointInRect(x, y, self.characterRect)
@@ -268,28 +355,13 @@ end
 function View:render(frameData, debugInfo)
     local texture = FrameTexture(frameData)
     if not self.visible or not frameData or not texture then return end
+    if self.relocationEffect then
+        self:_renderRelocationEffect(frameData)
+        return
+    end
     self:_updateHitbox()
     self:_updateBubbleLayout()
-    local handle, imageSize = self:_image(texture)
-    local rect = self:_spriteRect(frameData)
-    if handle and handle >= 0 then
-        local vg = self.renderer.vg
-        nvgSave(vg)
-        if self.flipX then
-            -- Mirror around the logical foot/root anchor, not the cropped
-            -- texture center. Runtime clip crops are intentionally compact,
-            -- so anchorX is not guaranteed to be 0.5.
-            local pivotX = self.position.x + (frameData.offsetX or 0)
-            local mirrorOrigin = pivotX * 2 - rect.x
-            nvgTranslate(vg, mirrorOrigin, rect.y)
-            nvgScale(vg, -1, 1)
-            self:_drawFrame(vg, handle, imageSize, frameData,
-                { x = 0, y = 0, width = rect.width, height = rect.height })
-        else
-            self:_drawFrame(vg, handle, imageSize, frameData, rect)
-        end
-        nvgRestore(vg)
-    end
+    self:_drawSprite(frameData, self.position.x, self.position.y)
 
     if self.bubbleRect then
         local bubble = self.bubbleRect

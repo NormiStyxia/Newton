@@ -91,15 +91,20 @@ expect(controller.x == rigidX and controller.y == rigidY,
     "layout rewrote the active drag transform before the current pointer sample")
 pointer = { x = 999, y = 0, down = true, pressed = false, released = false }
 controller:handlePointer(pointer, false)
-expect(controller.x == controller.validMaxX, "drag escaped the horizontal CompanionZone")
-expect(controller.y == dragZone.top, "drag escaped the vertical CompanionZone")
+expect(controller.x == 993 and controller.y == 12, "drag did not preserve the raw out-of-zone pointer position")
+expect(controller:getSnapshot().relocating == false, "drag entered relocation before pointer release")
 expect(controller.facing == dragFacing, "drag changed the locked facing")
-pointer = { x = controller.x, y = controller.y, down = false, pressed = false, released = true }
+pointer = { x = 999, y = 0, down = false, pressed = false, released = true }
 controller:handlePointer(pointer, false)
-expect(controller:getState() == CompanionController.State.IDLE, "pointer release did not enter IDLE immediately")
-controller:update(0.16, true)
-expect(controller:getState() == CompanionController.State.IDLE and controller.y == dragZone.baselineY,
-    "drag settle did not return to baseline IDLE")
+expect(controller:getState() == CompanionController.State.RELOCATING, "out-of-zone release did not enter RELOCATING")
+local returnX, returnY = controller.lastReachableX, controller.lastReachableY
+controller:update(1, true)
+expect(controller:getState() == CompanionController.State.RELOCATING,
+    "autonomy changed position during relocation")
+expect(controller:finishRelocation(returnX, returnY), "relocation did not accept the last reachable position")
+expect(controller:getState() == CompanionController.State.IDLE
+    and controller.x == returnX and controller.y == returnY,
+    "relocation did not restore the last reachable position")
 
 local tapOriginX, tapOriginY = controller.x, controller.y
 local tapEventStart = #events + 1
@@ -157,14 +162,17 @@ expect(leftGrab:getSnapshot().dragGrabOffsetX == -14 and leftGrab:getSnapshot().
     "LEFT drag did not preserve the rigid root-to-pointer offset")
 expect(leftGrab:getSnapshot().usesSemanticGrab, "LEFT drag did not use the semantic hotspot")
 leftGrab:handlePointer({ x = -50, y = -50, down = true, pressed = false, released = false }, false)
-expect(leftGrab.x == -14 and leftGrab.y == 174 and leftGrab.x + 14 == 0 and leftGrab.y - 174 == 0,
-    "drag hotspot did not reach the CompanionZone top-left corner")
+expect(leftGrab.x == -64 and leftGrab.y == 124 and leftGrab.x + 14 == -50 and leftGrab.y - 174 == -50,
+    "drag hotspot did not preserve the raw top-left out-of-zone position")
 leftGrab:handlePointer({ x = 999, y = 999, down = true, pressed = false, released = false }, false)
-expect(leftGrab.x == 486 and leftGrab.y == 674 and leftGrab.x + 14 == 500 and leftGrab.y - 174 == 500,
-    "drag hotspot did not reach the CompanionZone bottom-right corner")
+expect(leftGrab.x == 985 and leftGrab.y == 1173 and leftGrab.x + 14 == 999 and leftGrab.y - 174 == 999,
+    "drag hotspot did not preserve the raw bottom-right out-of-zone position")
 leftGrab:handlePointer({ x = 999, y = 999, down = false, pressed = false, released = true }, false)
-expect(leftGrab.x == leftGrab.validMaxX,
-    "drag release did not return the foot/root to its normal horizontal range")
+expect(leftGrab:getState() == CompanionController.State.RELOCATING,
+    "semantic out-of-zone release did not enter RELOCATING")
+expect(leftGrab:finishRelocation(leftGrab.lastReachableX, leftGrab.lastReachableY)
+    and leftGrab.x == 186 and leftGrab.y == 274,
+    "semantic relocation did not restore the last reachable root")
 local rightGrab = hotspotController(CompanionController.Facing.RIGHT)
 expect(rightGrab.x == 214 and rightGrab.y == 274,
     "RIGHT drag did not mirror the lifted-cloth tip around the foot anchor")

@@ -53,7 +53,7 @@ function M.Install(context)
     -- Phaser's pause shade is depth 53, below the ordinary hand (54-58). Keep it
     -- in its own pass so later layer changes cannot accidentally dim rule cards.
     function DrawPauseShade()
-        if replayMode_ ~= "none" or not isPaused_ then return end
+        if replayMode_ ~= "none" or not isPaused_ or (IsResultReportVisible and IsResultReportVisible()) then return end
         painter_:FillRect(frame_.playfieldX, frame_.playfieldY, frame_.playfieldWidth, frame_.playfieldHeight, { 0, 0, 0, 255 }, 66)
     end
 
@@ -76,6 +76,10 @@ function M.Install(context)
     function DrawResultOverlay()
         if replayMode_ ~= "none" then return end
         if IsResultOverlayVisible() then
+            if success_ and IsResultReportVisible and IsResultReportVisible() then
+                DrawResultReport()
+                return
+            end
             painter_:FillRect(0, 0, frame_.logicalWidth, frame_.logicalHeight, Renderer2D.COLORS.background, 199)
             local cx, cy = frame_.playfieldX + frame_.playfieldWidth * .5, frame_.playfieldY + frame_.playfieldHeight * .5
             local function overlayButton(x, y, label, secondary)

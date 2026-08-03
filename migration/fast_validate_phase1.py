@@ -411,7 +411,8 @@ def main() -> int:
            "cardHandBounds does not include rotated visual geometry")
     expect('IDLE = "IDLE"' in companion_controller_lua
            and 'WALK = "WALK"' in companion_controller_lua
-           and 'DRAGGING = "DRAGGING"' in companion_controller_lua,
+           and 'DRAGGING = "DRAGGING"' in companion_controller_lua
+           and 'RELOCATING = "RELOCATING"' in companion_controller_lua,
            "portable CompanionController states are incomplete")
     expect("pointerCandidate" in companion_controller_lua
            and "dragThreshold" in companion_controller_lua
@@ -423,9 +424,15 @@ def main() -> int:
            and "pointerX + candidate.grabOffsetX" in companion_controller_lua
            and "function Controller:_captureGrabOffset" in companion_controller_lua,
            "click, long-press drag, or tap/settle flow is missing")
-    expect("Clamp(pointerX, self.zone.left, self.zone.right)" in companion_controller_lua
-           and "Clamp(pointerY, self.zone.top, self.zone.bottom)" in companion_controller_lua,
-           "semantic drag hotspot is not clamped to the layout-owned CompanionZone rectangle")
+    expect("candidate.outsideZone" in companion_controller_lua
+           and "self.lastReachableX" in companion_controller_lua
+           and '"drag-released-outside-zone"' in companion_controller_lua
+           and "finishRelocation" in companion_controller_lua,
+           "out-of-zone drag release does not preserve the last reachable position")
+    expect("nvgScissor" in green_assist_view_lua
+           and "startRelocationEffect" in green_assistant_lua
+           and "updateRelocationEffect" in green_assistant_lua,
+           "Companion relocation blinds effect is not wired through the View")
     expect("local function ConfigureDragGrab" in green_assistant_lua
            and "semanticAnchors.dragGrab" in green_assistant_lua
            and "ConfigureDragGrab(self.config)" in green_assistant_lua,

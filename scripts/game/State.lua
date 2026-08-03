@@ -37,6 +37,7 @@
 ---@field UpdateDialogue fun(dt: number, pointerFrame: table): boolean
 ---@field DrawDialogueHistoryButton fun()
 ---@field DrawDialogueOverlay fun()
+---@field resultReportState_ table|nil
 local State = {}
 
 local OWNERS = {}
@@ -79,6 +80,10 @@ own("replay", {
 own("assistant", {
     "greenAssistant_", "greenAssistantAdapter_", "assistantInputLocked_", "assistSceneActive_",
 })
+own("report", {
+    "resultReportState_", "resultReportClearCounts_", "resultReportHistory_", "resultReportNextId_",
+    "resultReportAnimation_", "resultReportClosing_",
+})
 
 local function refreshModes(domains)
     local experiment = domains.experiment
@@ -119,7 +124,7 @@ end
 function State.New(dependencies, constants)
     local domains = {
         runtime = {}, layout = {}, experiment = {}, goal = {}, mechanisms = {}, input = {}, cards = {}, replay = {},
-        assistant = {},
+        assistant = {}, report = {},
     }
     ---@type GameContext
     local context = {}
@@ -181,6 +186,8 @@ function State.New(dependencies, constants)
     context.replayBusinessMode_ = dependencies.ReplayMode and dependencies.ReplayMode.NONE or 0
     context.greenAssistant_, context.greenAssistantAdapter_ = nil, nil
     context.assistantInputLocked_, context.assistSceneActive_ = false, false
+    context.resultReportState_, context.resultReportClearCounts_, context.resultReportHistory_ = nil, {}, { einstein = {}, green = {} }
+    context.resultReportNextId_, context.resultReportAnimation_, context.resultReportClosing_ = 0, 0, nil
     context.trail_, context.lastTrailAt_, context.sensorAngle_, context.uiElapsed_, context.anger_ = {}, 0, 0, 0, 0
     context.phaseTraversing_, context.phaseWallTraversal_, context.stalledMs_, context.channelStates_ = false, nil, 0, {}
     context.cardStates_, context.cardDeckById_, context.handOrder_ = {}, {}, {}

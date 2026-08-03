@@ -73,7 +73,8 @@ function M.Install(context)
         frame_ = context.design_:Frame()
         RefreshWorkspaceLayout()
         local pointerFrame = PointerState()
-        local dialoguePointerConsumed = context.UpdateDialogue(dt, pointerFrame)
+        local reportVisible = IsResultReportVisible and IsResultReportVisible()
+        local dialoguePointerConsumed = reportVisible and false or context.UpdateDialogue(dt, pointerFrame)
         if audio_ then audio_:Update(dt) end
         uiElapsed_ = uiElapsed_ + dt
         UpdateRuleFeedback(dt)
@@ -81,10 +82,11 @@ function M.Install(context)
         -- Sample once, then give the screen-space Companion first chance to
         -- apply a rigid drag before its animation/update and before rendering.
         local assistantPointerConsumed = dialoguePointerConsumed
-        if not dialoguePointerConsumed then
+        if not dialoguePointerConsumed and not reportVisible then
             assistantPointerConsumed = HandleGreenAssistantPointer(pointerFrame.x, pointerFrame.y, pointerFrame)
         end
-        UpdateGreenAssistant(dt)
+        if not reportVisible then UpdateGreenAssistant(dt) end
+        if UpdateResultReport then UpdateResultReport(dt) end
         -- Replay owns the input/update frame. Do not let cards, reset shortcuts,
         -- or normal completion updates mutate the suspended experiment.
         if replayActive_ then
@@ -351,9 +353,9 @@ function M.Install(context)
             DrawCardBurnParticles()
             DrawRuleFlash()
             if replayActive_ then DrawReplay() end
-            DrawResultOverlay()
             DrawGreenAssistant()
             context.DrawDialogueOverlay()
+            DrawResultOverlay()
             painter_:Finish()
         end)
         State.EndGameSnapshot(context)

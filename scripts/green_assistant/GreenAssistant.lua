@@ -28,11 +28,14 @@ local COMPANION_BEHAVIORS = {
     WALK = true,
     ROAM = true,
     DRAGGING = true,
+    RELOCATING = true,
 }
 
 local function CompanionBehavior(state)
     if state == CompanionController.State.WALK then return BehaviorState.WALK end
-    if state == CompanionController.State.DRAGGING then return BehaviorState.DRAGGING end
+    if state == CompanionController.State.DRAGGING or state == CompanionController.State.RELOCATING then
+        return BehaviorState.DRAGGING
+    end
     return BehaviorState.IDLE
 end
 
@@ -105,6 +108,7 @@ function GreenAssistant.New(options)
     self.blinkTimer = 0
     self.blinkActive = false
     self.blinkJustFinished = false
+    self.relocationEffect = nil
 
     for name, callback in pairs(options.events or {}) do self:on(name, callback) end
 
@@ -244,10 +248,47 @@ function GreenAssistant:_onCompanionEvent(eventName, ...)
         self:_emit("onDragStarted", ...)
     elseif eventName == "dragReleased" then
         self:_emit("onDragReleased", ...)
+        local x, y, _, outsideZone, returnX, returnY = ...
+        if outsideZone then self:_startRelocationEffect(x, y, returnX, returnY) end
     elseif eventName == "dragFinished" then
         self:_emit("onDragFinished", ...)
     end
     self:_syncCompanionView()
+end
+
+function GreenAssistant:_startRelocationEffect(fromX, fromY, toX, toY)
+    if self.relocationEffect then return end
+    local companion = self.config.companion
+    self.relocationEffect = {
+        from = { x = fromX, y = fromY },
+        to = { x = toX, y = toY },
+    }
+    self:_hideMessage()
+    if self.view.startRelocationEffect then
+        self.view:startRelocationEffect({
+            from = self.relocationEffect.from,
+            to = self.relocationEffect.to,
+            exitDuration = companion.relocationExitDuration,
+            holdDuration = companion.relocationHoldDuration,
+            enterDuration = companion.relocationEnterDuration,
+            slatCount = companion.relocationSlatCount,
+        })
+    end
+    self:_emit("onDragRelocationStarted", fromX, fromY, toX, toY)
+end
+
+function GreenAssistant:_updateRelocationEffect(dt)
+    if not self.relocationEffect then return false end
+    local finished = self.view.updateRelocationEffect
+        and self.view:updateRelocationEffect(dt) or true
+    if not finished then return true end
+    local target = self.relocationEffect.to
+    self.relocationEffect = nil
+    if self.view.cancelRelocationEffect then self.view:cancelRelocationEffect() end
+    self.companion:finishRelocation(target.x, target.y)
+    self:_syncCompanionView()
+    self:_emit("onDragRelocationFinished", target.x, target.y)
+    return false
 end
 
 function GreenAssistant:setZone(zone)
@@ -307,6 +348,11 @@ function GreenAssistant:update(dt, frame)
     self.elapsed = self.elapsed + dt
     if frame then self:setFrame(frame) end
     if not self.enabled then return end
+
+    if self:_updateRelocationEffect(dt) then
+        self.animator:update(dt)
+        return
+    end
 
     self.behaviorState:update(dt)
     local behavior = self.behaviorState:get()
@@ -430,6 +476,11 @@ function GreenAssistant:onAttemptSucceeded()
 end
 
 function GreenAssistant:onLevelChanged(levelId)
+    if self.relocationEffect then
+        self.relocationEffect = nil
+        if self.view.cancelRelocationEffect then self.view:cancelRelocationEffect() end
+        self.companion:interrupt("level-changed")
+    end
     if self.takeover:isActive() then self.takeover:cancel() end
     self.levelId = levelId
     self.failureAssist:onLevelChanged()

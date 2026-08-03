@@ -8,6 +8,7 @@ Controller.State = {
     IDLE = "IDLE",
     WALK = "WALK",
     DRAGGING = "DRAGGING",
+    RELOCATING = "RELOCATING",
 }
 -- Backwards-compatible symbolic alias.  Runtime state is always DRAGGING.
 Controller.State.DRAG = Controller.State.DRAGGING
@@ -21,6 +22,7 @@ local ANIMATION_BY_STATE = {
     IDLE = "idle_base",
     WALK = "walk",
     DRAGGING = "drag",
+    RELOCATING = "drag",
 }
 
 local function Clamp(value, minimum, maximum)
@@ -69,6 +71,7 @@ function Controller:Init(options)
     self.idleRemaining = 0
     self.pointerCandidate = nil
     self.settle = nil
+    self.lastReachableX, self.lastReachableY = nil, nil
     self:_scheduleIdle()
 end
 
@@ -139,7 +142,8 @@ function Controller:_chooseTarget()
 end
 
 function Controller:_beginWalk(targetX, reason)
-    if not self.walkingAllowed or self.state == Controller.State.DRAGGING or self.pointerCandidate then
+    if not self.walkingAllowed or self.state == Controller.State.DRAGGING
+        or self.state == Controller.State.RELOCATING or self.pointerCandidate then
         return false
     end
     targetX = targetX or self:_chooseTarget()
@@ -178,6 +182,7 @@ function Controller:setZone(zone)
     if not self.initialized then
         self.x = Clamp(zone.fallbackX or self.validMinX, self.validMinX, self.validMaxX)
         self.y = zone.baselineY
+        self.lastReachableX, self.lastReachableY = self.x, self.y
         self.initialized = true
         self:_emit("positionChanged", self.x, self.y, "initialized")
         return true
@@ -186,7 +191,7 @@ function Controller:setZone(zone)
     -- Layout owns the legal zone, but an active drag owns the transform.  The
     -- current pointer sample below will apply these new bounds without a
     -- second position writer fighting the drag.
-    if self.state == Controller.State.DRAGGING then return true end
+    if self.state == Controller.State.DRAGGING or self.state == Controller.State.RELOCATING then return true end
 
     local previousX, previousY = self.x, self.y
     self.x = Clamp(self.x, self.validMinX, self.validMaxX)
@@ -196,6 +201,7 @@ function Controller:setZone(zone)
     if self.x ~= previousX or self.y ~= previousY then
         self:_emit("positionChanged", self.x, self.y, "zone-clamped")
     end
+    self.lastReachableX, self.lastReachableY = self.x, self.y
 
     if self.state == Controller.State.WALK and not self.walkingAllowed then
         self:_finishWalk(true, "zone-too-small")
@@ -235,12 +241,16 @@ function Controller:interrupt(reason)
     self.settle = nil
     if self.state == Controller.State.WALK then
         self:_finishWalk(true, reason or "interrupted")
+    elseif self.state == Controller.State.RELOCATING then
+        self:_setState(Controller.State.IDLE, reason or "relocation-interrupted")
+        self:_scheduleIdle()
     else
         self:_enterIdle(reason or "interrupted")
     end
 end
 
 function Controller:_beginDragging(pointerX, pointerY)
+    if self.state == Controller.State.RELOCATING then return false end
     if self.state == Controller.State.WALK then
         local oldTarget = self.targetX
         self.targetX = nil
@@ -271,24 +281,45 @@ function Controller:_updateDragging(pointerX, pointerY)
     self:_trackPointerCandidate(pointerX, pointerY)
     -- Rigid screen-space drag: the grab offset is captured once on pointerDown
     -- and is never replaced by animation, facing, velocity, or layout data.
+    local hotspotX, hotspotY
     if candidate.usesSemanticGrab then
         -- During the lifted pose the pointer owns the cloth-tip anchor, not
-        -- the foot/root.  Constrain that hotspot to CompanionZone and derive
-        -- the root from it so a bottom-edge pointer is not pushed off the tip.
-        local hotspotX = Clamp(pointerX, self.zone.left, self.zone.right)
-        local hotspotY = Clamp(pointerY, self.zone.top, self.zone.bottom)
+        -- the foot/root.  Keep the raw hotspot so an out-of-zone release can
+        -- show the transition from the actual pointer position.
+        hotspotX, hotspotY = pointerX, pointerY
         self.x = hotspotX + candidate.grabOffsetX
         self.y = hotspotY + candidate.grabOffsetY
     else
-        self.x = Clamp(pointerX + candidate.grabOffsetX, self.validMinX, self.validMaxX)
-        self.y = Clamp(pointerY + candidate.grabOffsetY, self.zone.top, self.zone.bottom)
+        self.x = pointerX + candidate.grabOffsetX
+        self.y = pointerY + candidate.grabOffsetY
+        hotspotX, hotspotY = self.x, self.y
+    end
+    candidate.outsideZone = hotspotX < self.zone.left or hotspotX > self.zone.right
+        or hotspotY < self.zone.top or hotspotY > self.zone.bottom
+    if not candidate.outsideZone then
+        candidate.lastReachableX, candidate.lastReachableY = self.x, self.y
+        self.lastReachableX, self.lastReachableY = self.x, self.y
     end
     self:_emit("positionChanged", self.x, self.y, "drag")
 end
 
 function Controller:_releaseDragging()
+    local candidate = self.pointerCandidate
+    if candidate and candidate.outsideZone then
+        local returnX = candidate.lastReachableX or self.lastReachableX or self.validMinX
+        local returnY = candidate.lastReachableY or self.lastReachableY or self.zone.baselineY
+        self.targetX = nil
+        self.velocityX, self.velocityY = 0, 0
+        self.settle = nil
+        self.pointerCandidate = nil
+        self:_setState(Controller.State.RELOCATING, "drag-released-outside-zone")
+        self:_emit("dragReleased", self.x, self.y, self.zone.baselineY, true, returnX, returnY)
+        return true
+    end
     local duration = math.max(0, self.config.settleDuration)
     self.x = Clamp(self.x, self.validMinX, self.validMaxX)
+    self.lastReachableX, self.lastReachableY = self.x, self.y
+    self.pointerCandidate = nil
     self:_emit("dragReleased", self.x, self.y, self.zone.baselineY)
     self:_enterIdle("drag-released")
     if duration > 0 and self.y ~= self.zone.baselineY then
@@ -298,6 +329,17 @@ function Controller:_releaseDragging()
         self.settle = nil
         self:_emit("dragFinished", self.x, self.y)
     end
+end
+
+function Controller:finishRelocation(x, y)
+    if self.state ~= Controller.State.RELOCATING then return false end
+    self.x = type(x) == "number" and x or self.lastReachableX or self.validMinX
+    self.y = type(y) == "number" and y or self.lastReachableY or self.zone.baselineY
+    self.lastReachableX, self.lastReachableY = self.x, self.y
+    self:_emit("positionChanged", self.x, self.y, "relocation-finished")
+    self:_enterIdle("relocation-finished")
+    self:_emit("dragFinished", self.x, self.y, true)
+    return true
 end
 
 function Controller:_captureGrabOffset(pointerX, pointerY)
@@ -315,6 +357,10 @@ end
 
 function Controller:handlePointer(pointer, hitCharacter)
     if not pointer or not self.initialized then return false, nil end
+    if self.state == Controller.State.RELOCATING then
+        return pointer.pressed == true or pointer.down == true or pointer.released == true,
+            { kind = "relocating" }
+    end
     local candidate = self.pointerCandidate
     if not candidate then
         if pointer.pressed ~= true or hitCharacter ~= true then return false, nil end
@@ -340,9 +386,8 @@ function Controller:handlePointer(pointer, hitCharacter)
     if pointer.released == true or pointer.down == false then
         if self.state == Controller.State.DRAGGING then
             self:_updateDragging(pointer.x, pointer.y)
-            self.pointerCandidate = nil
             self:_releaseDragging()
-            return true, { kind = "drag-released" }
+            return true, { kind = self.state == Controller.State.RELOCATING and "drag-released-outside" or "drag-released" }
         end
         local wasTap = candidate.moved ~= true
         self.pointerCandidate = nil
@@ -359,7 +404,7 @@ end
 function Controller:update(dt, allowAutonomy)
     if not self.initialized then return end
     dt = math.max(0, dt or 0)
-    if self.state == Controller.State.DRAGGING then return end
+    if self.state == Controller.State.DRAGGING or self.state == Controller.State.RELOCATING then return end
     if self.pointerCandidate then
         local candidate = self.pointerCandidate
         candidate.holdElapsed = candidate.holdElapsed + dt
@@ -436,6 +481,9 @@ function Controller:getSnapshot()
         dragGrabOffsetX = self.pointerCandidate and self.pointerCandidate.grabOffsetX or nil,
         dragGrabOffsetY = self.pointerCandidate and self.pointerCandidate.grabOffsetY or nil,
         usesSemanticGrab = self.pointerCandidate and self.pointerCandidate.usesSemanticGrab == true or false,
+        relocating = self.state == Controller.State.RELOCATING,
+        lastReachableX = self.lastReachableX,
+        lastReachableY = self.lastReachableY,
     }
 end
 
