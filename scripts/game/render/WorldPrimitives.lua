@@ -218,43 +218,14 @@ function M.Install(Renderer, COLORS, color, tint)
             nvgRestore(self.vg)
         end
 
-        local noteX, noteY = formulaPoint(frame, .22, .43)
-        self:Text(noteX, noteY, "实验记录", 18, COLORS.greenStrong,
-            NVG_ALIGN_LEFT + NVG_ALIGN_MIDDLE, "maker-display", 186)
-        nvgStrokeColor(self.vg, color(COLORS.greenStrong, 154)); nvgStrokeWidth(self.vg, 2)
-        nvgBeginPath(self.vg); nvgMoveTo(self.vg, noteX, noteY + 15); nvgLineTo(self.vg, noteX + 116, noteY + 15); nvgStroke(self.vg)
-        nvgStrokeColor(self.vg, color(COLORS.instant, 132)); nvgStrokeWidth(self.vg, 1)
-        nvgBeginPath(self.vg); nvgMoveTo(self.vg, noteX + 8, noteY + 21); nvgLineTo(self.vg, noteX + 102, noteY + 21); nvgStroke(self.vg)
-
-        local observationX, observationY = formulaPoint(frame, .23, .54)
-        self:Text(observationX, observationY, "观测记录", 15, COLORS.darkSecondary,
-            NVG_ALIGN_LEFT + NVG_ALIGN_MIDDLE, "maker-display", 174)
-        self:Text(observationX, observationY + 24, "样本行为偏离预期", 12, COLORS.body,
-            NVG_ALIGN_LEFT + NVG_ALIGN_MIDDLE, "maker-display", 158)
-        self:Text(observationX, observationY + 46, "规则遭到干扰", 12, COLORS.warning,
-            NVG_ALIGN_LEFT + NVG_ALIGN_MIDDLE, "maker-display", 158)
-        nvgStrokeColor(self.vg, color(COLORS.greenStrong, 126)); nvgStrokeWidth(self.vg, 1.5)
-        nvgBeginPath(self.vg); nvgMoveTo(self.vg, observationX, observationY + 62); nvgLineTo(self.vg, observationX + 132, observationY + 62); nvgStroke(self.vg)
-
-        local challengeX, challengeY = formulaPoint(frame, .52, .48)
-        self:Text(challengeX, challengeY, "这不是实验，", 20, COLORS.darkPrimary,
-            NVG_ALIGN_CENTER + NVG_ALIGN_MIDDLE, "maker-display", 202)
-        self:Text(challengeX, challengeY + 30, "这是挑衅。", 20, COLORS.warning,
-            NVG_ALIGN_CENTER + NVG_ALIGN_MIDDLE, "maker-display", 202)
-        nvgStrokeColor(self.vg, color(COLORS.darkPrimary, 154)); nvgStrokeWidth(self.vg, 2)
-        nvgBeginPath(self.vg); nvgMoveTo(self.vg, challengeX - 72, challengeY + 48); nvgLineTo(self.vg, challengeX + 72, challengeY + 48); nvgStroke(self.vg)
-        nvgStrokeColor(self.vg, color(COLORS.warning, 132)); nvgStrokeWidth(self.vg, 1.5)
-        nvgBeginPath(self.vg); nvgMoveTo(self.vg, challengeX - 58, challengeY + 55); nvgLineTo(self.vg, challengeX + 56, challengeY + 55); nvgStroke(self.vg)
-
-        local reportX, reportY = formulaPoint(frame, .72, .56)
-        self:Text(reportX, reportY, "实验批注", 15, COLORS.instant,
-            NVG_ALIGN_LEFT + NVG_ALIGN_MIDDLE, "maker-display", 182)
-        self:Text(reportX, reportY + 24, "理论结果待验证", 12, COLORS.body,
-            NVG_ALIGN_LEFT + NVG_ALIGN_MIDDLE, "maker-display", 158)
-        self:Text(reportX, reportY + 46, "仍需复核", 12, COLORS.darkSecondary,
-            NVG_ALIGN_LEFT + NVG_ALIGN_MIDDLE, "maker-display", 158)
-        nvgStrokeColor(self.vg, color(COLORS.instant, 132)); nvgStrokeWidth(self.vg, 1.5)
-        nvgBeginPath(self.vg); nvgRoundedRect(self.vg, reportX - 10, reportY - 18, 154, 78, 5); nvgStroke(self.vg)
+        local lineArt = self.images.ui and self.images.ui.noticeLineArt
+        if imageReady(lineArt) then
+            local lineArtWidth = frame.playfieldWidth * .15
+            local lineArtHeight = frame.playfieldHeight * .36
+            local lineArtX = frame.playfieldX + frame.playfieldWidth * .56
+            local lineArtY = frame.playfieldY + frame.playfieldHeight * .37
+            self:Image(lineArt, lineArtX, lineArtY, lineArtWidth, lineArtHeight, .42)
+        end
 
         nvgRestore(self.vg)
     end
