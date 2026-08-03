@@ -36,10 +36,11 @@ def main() -> int:
         expect(source_rect in card, f"missing source-scaled card rectangle: {source_rect}", errors)
     expect("CARD_RENDER_HEIGHT * .5" in hit_test,
            "card hit region still uses the oversized interaction height", errors)
-    expect("local radius = apple_.radius + GOAL_CONTACT_SKIN" in sensor,
-           "goal fallback lacks the Box2D/Matter contact skin", errors)
-    expect("matterSpeed <= 4.8" in MAIN,
-           "goal completion no longer preserves the source stability threshold", errors)
+    expect("local sensorRadius = math.max(24 / pixelsPerMeter," in sensor
+           and "local overlapRadius = sensorRadius + apple_.radius" in sensor,
+           "goal fallback no longer uses circular Sensor/apple volume overlap", errors)
+    expect("matterSpeed <= 4.8" not in MAIN,
+           "goal completion still has the removed stability threshold", errors)
     speed_conversion = MAIN[MAIN.index("function CurrentMatterSpeedFromWorld"):MAIN.index("function ApplyAppleCardMaterial")]
     expect("/ CONFIG.matterVelocityToWorld" in speed_conversion
            and "CurrentMatterVelocityToWorld" not in speed_conversion,

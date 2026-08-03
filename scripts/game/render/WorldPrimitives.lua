@@ -37,6 +37,14 @@ function M.Install(Renderer, COLORS, color, tint)
     }
     local NARROW_WALL_MAX_THICKNESS = 40
 
+    local function wallVisualSize(width, height, border)
+        -- Phaser keeps the fixed corner bands at their authored size and grows
+        -- the visual rectangle when a wall is thinner than their minimum span.
+        -- Keep this purely visual; the physics body remains at the source size.
+        return math.max(width, border.left + border.right),
+            math.max(height, border.top + border.bottom)
+    end
+
     local function drawGameplayFrameOverlay(self, frame)
         local x, y, w, h = frame.playfieldX, frame.playfieldY, frame.playfieldWidth, frame.playfieldHeight
         nvgLineCap(self.vg, NVG_ROUND); nvgLineJoin(self.vg, NVG_ROUND)
@@ -178,6 +186,15 @@ function M.Install(Renderer, COLORS, color, tint)
     end
 
     function Renderer:DrawFormulas(frame)
+        -- Keep all notice-board writing inside the central public-wall area.
+        -- The surrounding instruments and lower ruler remain illustration-only.
+        local noticeX = frame.playfieldX + frame.playfieldWidth * .06
+        local noticeY = frame.playfieldY + frame.playfieldHeight * .08
+        local noticeW = frame.playfieldWidth * .88
+        local noticeH = frame.playfieldHeight * .70
+        nvgSave(self.vg)
+        nvgScissor(self.vg, noticeX, noticeY, noticeW, noticeH)
+
         local c = COLORS.greenStrong
         local formulas = {
             { "s = ½gt²", .08, .08, 18, -.025, .15 }, { "v = v₀ + gt", .08, .16, 16, .018, .14 },
@@ -200,6 +217,46 @@ function M.Install(Renderer, COLORS, color, tint)
             self:Text(0, 0, f[1], f[4], f[7] and COLORS.darkPrimary or c, NVG_ALIGN_CENTER + NVG_ALIGN_MIDDLE, "maker-display", math.floor(f[6] * 255))
             nvgRestore(self.vg)
         end
+
+        local noteX, noteY = formulaPoint(frame, .22, .43)
+        self:Text(noteX, noteY, "实验记录", 18, COLORS.greenStrong,
+            NVG_ALIGN_LEFT + NVG_ALIGN_MIDDLE, "maker-display", 186)
+        nvgStrokeColor(self.vg, color(COLORS.greenStrong, 154)); nvgStrokeWidth(self.vg, 2)
+        nvgBeginPath(self.vg); nvgMoveTo(self.vg, noteX, noteY + 15); nvgLineTo(self.vg, noteX + 116, noteY + 15); nvgStroke(self.vg)
+        nvgStrokeColor(self.vg, color(COLORS.instant, 132)); nvgStrokeWidth(self.vg, 1)
+        nvgBeginPath(self.vg); nvgMoveTo(self.vg, noteX + 8, noteY + 21); nvgLineTo(self.vg, noteX + 102, noteY + 21); nvgStroke(self.vg)
+
+        local observationX, observationY = formulaPoint(frame, .23, .54)
+        self:Text(observationX, observationY, "观测记录", 15, COLORS.darkSecondary,
+            NVG_ALIGN_LEFT + NVG_ALIGN_MIDDLE, "maker-display", 174)
+        self:Text(observationX, observationY + 24, "样本行为偏离预期", 12, COLORS.body,
+            NVG_ALIGN_LEFT + NVG_ALIGN_MIDDLE, "maker-display", 158)
+        self:Text(observationX, observationY + 46, "规则遭到干扰", 12, COLORS.warning,
+            NVG_ALIGN_LEFT + NVG_ALIGN_MIDDLE, "maker-display", 158)
+        nvgStrokeColor(self.vg, color(COLORS.greenStrong, 126)); nvgStrokeWidth(self.vg, 1.5)
+        nvgBeginPath(self.vg); nvgMoveTo(self.vg, observationX, observationY + 62); nvgLineTo(self.vg, observationX + 132, observationY + 62); nvgStroke(self.vg)
+
+        local challengeX, challengeY = formulaPoint(frame, .52, .48)
+        self:Text(challengeX, challengeY, "这不是实验，", 20, COLORS.darkPrimary,
+            NVG_ALIGN_CENTER + NVG_ALIGN_MIDDLE, "maker-display", 202)
+        self:Text(challengeX, challengeY + 30, "这是挑衅。", 20, COLORS.warning,
+            NVG_ALIGN_CENTER + NVG_ALIGN_MIDDLE, "maker-display", 202)
+        nvgStrokeColor(self.vg, color(COLORS.darkPrimary, 154)); nvgStrokeWidth(self.vg, 2)
+        nvgBeginPath(self.vg); nvgMoveTo(self.vg, challengeX - 72, challengeY + 48); nvgLineTo(self.vg, challengeX + 72, challengeY + 48); nvgStroke(self.vg)
+        nvgStrokeColor(self.vg, color(COLORS.warning, 132)); nvgStrokeWidth(self.vg, 1.5)
+        nvgBeginPath(self.vg); nvgMoveTo(self.vg, challengeX - 58, challengeY + 55); nvgLineTo(self.vg, challengeX + 56, challengeY + 55); nvgStroke(self.vg)
+
+        local reportX, reportY = formulaPoint(frame, .72, .56)
+        self:Text(reportX, reportY, "实验批注", 15, COLORS.instant,
+            NVG_ALIGN_LEFT + NVG_ALIGN_MIDDLE, "maker-display", 182)
+        self:Text(reportX, reportY + 24, "理论结果待验证", 12, COLORS.body,
+            NVG_ALIGN_LEFT + NVG_ALIGN_MIDDLE, "maker-display", 158)
+        self:Text(reportX, reportY + 46, "仍需复核", 12, COLORS.darkSecondary,
+            NVG_ALIGN_LEFT + NVG_ALIGN_MIDDLE, "maker-display", 158)
+        nvgStrokeColor(self.vg, color(COLORS.instant, 132)); nvgStrokeWidth(self.vg, 1.5)
+        nvgBeginPath(self.vg); nvgRoundedRect(self.vg, reportX - 10, reportY - 18, 154, 78, 5); nvgStroke(self.vg)
+
+        nvgRestore(self.vg)
     end
 
     function Renderer:DrawNewton(frame, level, anger, observation)
@@ -360,6 +417,12 @@ function M.Install(Renderer, COLORS, color, tint)
         local scannerRadius, innerRadius, portraitRadius = outerRadius * .77, outerRadius * .64, outerRadius * .62
         local active = state.active == true
         local progress = state.contactProgress or 0
+        local requiredStayTime = math.max(1, state.requiredStayTime or 1000)
+        local contactMs = math.max(0, state.contactMs or 0)
+        local remainingMs = math.max(0, requiredStayTime - contactMs)
+        self:Text(x, y - outerRadius - 20, string.format("%.1fs", remainingMs / 1000), 14,
+            active and COLORS.primaryActive or COLORS.secondary,
+            NVG_ALIGN_CENTER + NVG_ALIGN_MIDDLE, "maker-display", 240)
         self:Circle(x, y, outerRadius, COLORS.panel, nil, nil, 117)
         self:Circle(x, y, outerRadius, nil, COLORS.darkPrimary, 3, 245)
         self:Circle(x, y, outerRadius - 5, nil, COLORS.greenLight, 1, 163)
@@ -420,10 +483,12 @@ function M.Install(Renderer, COLORS, color, tint)
                 if isNarrow and t.height > t.width then
                     nvgSave(self.vg)
                     nvgRotate(self.vg, math.pi * .5)
-                    self:NineSlice(wallSkin, -h * .5, -w * .5, h, w, wallBorder)
+                    local visualWidth, visualHeight = wallVisualSize(h, w, wallBorder)
+                    self:NineSlice(wallSkin, -visualWidth * .5, -visualHeight * .5, visualWidth, visualHeight, wallBorder)
                     nvgRestore(self.vg)
                 else
-                    self:NineSlice(wallSkin, -w * .5, -h * .5, w, h, wallBorder)
+                    local visualWidth, visualHeight = wallVisualSize(w, h, wallBorder)
+                    self:NineSlice(wallSkin, -visualWidth * .5, -visualHeight * .5, visualWidth, visualHeight, wallBorder)
                 end
             else
                 self:FillRect(-w * .5, -h * .5, w, h, fill, object.phaseable and 173 or 255)
@@ -442,7 +507,14 @@ function M.Install(Renderer, COLORS, color, tint)
         elseif object.type == "launcher" then
             self:Image(self.images.launcher, x, y, w, w * 190 / 150, 1, rotation, .5, 36 / 190)
         elseif object.type == "goal_sensor" then
-            self:DrawGoalSensor(x, y, w, h, { active = object.active, contactProgress = object.contactProgress, sensorAngle = state.sensorAngle, goalPulseProgress = state.goalPulseProgress })
+            self:DrawGoalSensor(x, y, w, h, {
+                active = object.active,
+                contactProgress = object.contactProgress,
+                contactMs = object.contactMs,
+                requiredStayTime = object.requiredStayTime,
+                sensorAngle = state.sensorAngle,
+                goalPulseProgress = state.goalPulseProgress,
+            })
         elseif object.type == "spring" then
             nvgSave(self.vg); nvgTranslate(self.vg, x, y); nvgRotate(self.vg, rotation)
             if object.pulseElapsedMs ~= nil then

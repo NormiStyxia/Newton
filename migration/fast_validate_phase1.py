@@ -471,12 +471,14 @@ def main() -> int:
            and has_main_function("ActivateGoalContact") and has_main_function("HandleCollisionUpdate"),
            "goal Sensor does not subscribe to continuous Box2D contact updates")
     expect("ActivateGoalContact(nodeA, nodeB, true)" in main_lua and "ActivateGoalContact(nodeA, nodeB, false)" in main_lua
-           and "goalContactMs_ = math.max(1, goalContactMs_)" in main_lua,
+           and "goalContactMs_ = math.max(0, goalContactMs_)" in main_lua,
            "goal Sensor enter/update lifecycle does not preserve a single active stay timer")
     expect("if recordEntry and not goalEntryRecorded_ then" in main_lua and "goalEntryRecorded_ = false" in main_lua
            and "RecordReplayEvent(\"GOAL_ENTER\")" in main_lua
-           and "if goalContactConfirmed_ and goalContactMs_ >= requiredStayTime and matterSpeed <= 4.8 then" in main_lua,
-           "goal Sensor does not enforce one enter event and the source completion threshold")
+           and "if goalContactConfirmed_ and goalContactMs_ >= requiredStayTime then" in main_lua
+           and "matterSpeed <= 4.8" not in main_lua
+           and "runtime.requiredStayTime = 1000" in factory_lua,
+           "goal Sensor does not enforce one enter event and the new 1s overlap threshold")
 
     result = {
         "mode": "FAST_VALIDATE",

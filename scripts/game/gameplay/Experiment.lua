@@ -132,9 +132,7 @@ function M.Install(context)
                 runtimeGoal.contactProgress = math.max(0, math.min(1, goalContactMs_ / requiredStayTime))
                 runtimeGoal.active = true
             end
-            local velocity = apple_.body.linearVelocity
-            local matterSpeed = CurrentMatterSpeedFromWorld(velocity)
-            if goalContactConfirmed_ and goalContactMs_ >= requiredStayTime and matterSpeed <= 4.8 then
+            if goalContactConfirmed_ and goalContactMs_ >= requiredStayTime then
                 CaptureReplayFinalSample()
                 absorbing_ = true
                 absorbElapsedMs_ = 0

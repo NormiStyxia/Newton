@@ -84,7 +84,8 @@ end
 
 FACTORIES.goal_sensor = function(context, data)
     local runtime = createBox(context, data, CATEGORY_SENSOR, CATEGORY_APPLE, true)
-    runtime.requiredStayTime = (data.properties and data.properties.requiredStayTime) or 700
+    -- Completion requires one second of circular overlap for every level.
+    runtime.requiredStayTime = 1000
     runtime.contactMs = 0
     runtime.active = false
     return runtime
