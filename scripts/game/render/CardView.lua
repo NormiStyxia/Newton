@@ -35,7 +35,7 @@ function M.Install(context)
         local size = 10 * CARD_TEXT_SCALE
         local horizontalPadding = 5 * CARD_TEXT_SCALE
         local opacity = alpha or 1
-        nvgFontFace(painter_.vg, "maker-body")
+        painter_:UseFont("maker-body")
         nvgFontSize(painter_.vg, size)
         local width = math.max(25, nvgTextBounds(painter_.vg, 0, 0, value) + horizontalPadding * 2)
         local right = 51 * CARD_TEXT_SCALE

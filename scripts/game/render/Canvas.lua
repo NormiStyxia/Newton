@@ -14,6 +14,8 @@
 local Renderer = {}
 Renderer.__index = Renderer
 
+local FUTURE_ROUND_FONT = "Fonts/FutureRound-Regular.ttf"
+
 local COLORS = {
     background = { 248, 250, 228, 255 },
     panel = { 255, 253, 248, 255 },
@@ -98,8 +100,13 @@ end
 function Renderer:Init()
     self.vg = nvgCreate(1)
     if not self.vg then error("NanoVG context 创建失败") end
-    self.fontBody = nvgCreateFont(self.vg, "maker-body", "Fonts/FutureRound-Regular.ttf")
-    self.fontDisplay = nvgCreateFont(self.vg, "maker-display", "Fonts/FutureRound-Regular.ttf")
+    self.fontBody = nvgCreateFont(self.vg, "maker-body", FUTURE_ROUND_FONT)
+    self.fontDisplay = nvgCreateFont(self.vg, "maker-display", FUTURE_ROUND_FONT)
+    print(string.format("[Font] FutureRound path=%s body=%d display=%d",
+        FUTURE_ROUND_FONT, self.fontBody, self.fontDisplay))
+    if self.fontBody == -1 or self.fontDisplay == -1 then
+        error("未来圆字体加载失败: " .. FUTURE_ROUND_FONT)
+    end
     self.images = {
         apple = nvgCreateImage(self.vg, "image/phase1/apple.png", 0),
         launcher = nvgCreateImage(self.vg, "image/phase1/launcher.png", 0),
@@ -175,6 +182,16 @@ function Renderer:Init()
     }
 end
 
+function Renderer:UseFont(font)
+    if font == "maker-display" then
+        nvgFontFaceId(self.vg, self.fontDisplay)
+    elseif not font or font == "maker-body" then
+        nvgFontFaceId(self.vg, self.fontBody)
+    else
+        nvgFontFace(self.vg, font)
+    end
+end
+
 function Renderer:Destroy()
     if self.vg then
         nvgDelete(self.vg)
@@ -222,7 +239,7 @@ function Renderer:Circle(x, y, radius, fill, stroke, width, alpha)
 end
 
 function Renderer:Text(x, y, value, size, c, align, font, alpha)
-    nvgFontFace(self.vg, font or "maker-body")
+    self:UseFont(font)
     nvgFontSize(self.vg, size)
     nvgTextAlign(self.vg, align or (NVG_ALIGN_LEFT + NVG_ALIGN_TOP))
     nvgFillColor(self.vg, color(c or COLORS.text, alpha))
@@ -230,7 +247,7 @@ function Renderer:Text(x, y, value, size, c, align, font, alpha)
 end
 
 function Renderer:TextBox(x, y, width, value, size, c, align, font, lineHeight, alpha)
-    nvgFontFace(self.vg, font or "maker-body")
+    self:UseFont(font)
     nvgFontSize(self.vg, size)
     nvgTextLineHeight(self.vg, lineHeight or 1)
     nvgTextAlign(self.vg, align or (NVG_ALIGN_LEFT + NVG_ALIGN_TOP))
