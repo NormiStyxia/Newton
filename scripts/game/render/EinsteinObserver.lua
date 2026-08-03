@@ -2,8 +2,8 @@ local M = {}
 
 local CONFIG = {
     portrait = {
-        width = 876,
-        height = 905,
+        width = 438,
+        height = 453,
         originX = 0.5,
         originY = 0.5077348066,
     },
