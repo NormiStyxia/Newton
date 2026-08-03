@@ -208,18 +208,16 @@ def main() -> int:
     expect("physicsProbe:OnContactBegin(nodeB, applePreSolveVelocity_" in main_lua
            and "physicsProbe:OnContactBegin(nodeA, applePreSolveVelocity_" in main_lua,
            "runtime probe does not consume the same pre-solve snapshot as production springs")
-    expect("velocity.y + 10 * context.matterVelocityToWorld * self.timeScale" in probe,
-           "Maker probe applies the upward spring impulse in the wrong world-Y direction")
+    expect("velocity.y + 10 * (self.current.springMultiplier or 1)" in probe,
+           "Maker probe does not apply the source spring multiplier in the upward world-Y direction")
     expect("applePreSolveVelocity = { x: apple.velocity.x, y: apple.velocity.y }" in generator
-           and "pendingSpringExit = { x: applePreSolveVelocity.x, y: applePreSolveVelocity.y - 10 }" in generator,
+           and "10 * (spec.springMultiplier || 1)" in generator,
            "Phaser reference generator samples spring velocity after integration instead of beforeupdate")
-    expect("object.impulseStrength * Rules.GetGravityMultiplier(rules_, level_.rules.initialGravity)" in main_lua,
-           "spring exit impulse does not follow the source gravity multiplier")
-    expect("object.impulseStrength * Rules.GetRestitutionMultiplier(rules_)" not in main_lua,
-           "spring exit impulse is incorrectly coupled to Hooke restitution")
+    expect("object.impulseStrength * Rules.GetRestitutionMultiplier(rules_)" in main_lua,
+           "spring exit impulse does not follow the experiment branch Hooke multiplier")
     expect('id = "hooke_wall"' in probe and 'id = "hooke_resting"' in probe
-           and 'hooke_wall:' in generator and 'hooke_resting:' in generator,
-           "trajectory probes do not cover Hooke restitution")
+           and 'id = "spring_exit_hooke"' in probe and 'spring_exit_hooke:' in generator,
+           "trajectory probes do not cover Hooke wall and spring elasticity")
     expect("QueueMatterRestitutionAlignment(other)" in main_lua
            and "ApplyPendingMatterRestitution()" in main_lua,
            "production collision path does not align Matter's restitution threshold")

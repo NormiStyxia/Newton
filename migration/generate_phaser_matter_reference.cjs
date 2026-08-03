@@ -47,6 +47,7 @@ const MATERIAL = {
   apple_radius_px: APPLE_RADIUS,
 };
 const HOOKE_RESTITUTION = 0.88;
+const BASE_RESTITUTION = 0.36;
 
 const floorY = PLAYFIELD.groundY / PLAYFIELD.height * LAB.height;
 const fixtures = {
@@ -65,6 +66,13 @@ const CASES = {
   hooke_wall: { duration: 500, fixture: "right", restitution: HOOKE_RESTITUTION, initial: { x: 1410, y: LAB.height / 2, vx: 18, vy: 0 } },
   hooke_resting: { duration: 500, fixture: "right", restitution: HOOKE_RESTITUTION, initial: { x: 1435, y: LAB.height / 2, vx: 3.5, vy: 0 } },
   spring_exit: { duration: 500, fixture: "spring", initial: { x: 510, y: 288, vx: 0, vy: 20 } },
+  spring_exit_hooke: {
+    duration: 500,
+    fixture: "spring",
+    restitution: HOOKE_RESTITUTION,
+    springMultiplier: HOOKE_RESTITUTION / BASE_RESTITUTION,
+    initial: { x: 510, y: 288, vx: 0, vy: 20 },
+  },
 };
 
 function capture(body, time) {
@@ -128,7 +136,10 @@ function runCase(caseId, timeScale) {
       if (!other || !other.label) continue;
       events.push({ t_ms: Number(engine.timing.timestamp.toFixed(6)), phase: "begin", other: other.label });
       if (other.label === "spring") {
-        pendingSpringExit = { x: applePreSolveVelocity.x, y: applePreSolveVelocity.y - 10 };
+        pendingSpringExit = {
+          x: applePreSolveVelocity.x,
+          y: applePreSolveVelocity.y - 10 * (spec.springMultiplier || 1),
+        };
       }
     }
   });

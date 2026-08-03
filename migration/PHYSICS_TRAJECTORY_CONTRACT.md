@@ -40,7 +40,7 @@ record has these required fields:
 
 `engine` is `phaser-matter` or `maker-box2d`.  `time_scale` must be `1.0` or
 `0.05`.  The case IDs are `free_flight`, `ground_slide`, `right_wall`,
-`hooke_wall`, `hooke_resting`, and `spring_exit`.
+`hooke_wall`, `hooke_resting`, `spring_exit`, and `spring_exit_hooke`.
 
 ## Effective material and spring timing
 
@@ -75,13 +75,17 @@ applies those same values explicitly because it does not boot Phaser itself.
 For spring exits, the current Phaser runtime captures `body.velocity` in its
 `beforeupdate` hook and consumes that pre-solve snapshot from `collisionStart`.
 Maker comparisons must use the same snapshot, not the post-solver velocity or
-an independently sampled later frame.
+an independently sampled later frame. The experiment branch wires
+`getSpringMultiplier` to `worldRule.restitutionMultiplier`, so Hooke multiplies
+the explicit spring impulse by `.88/.36`; Feather changes gravity only and does
+not change spring strength. `spring_exit_hooke` locks this behavior separately
+from ordinary wall restitution.
 
 Phaser captures may use `lab-viewport-px` directly or `phaser-playfield`
 (1400 x 700).  Maker manual captures may use `maker-world-m`.  The current
 `PhysicsTelemetry` helper uses `maker-centered-px`: `x = world.x * 100`,
-`y = -world.y * 100`, while `vx` and `vy` are already normalized Matter frame
-velocities.  The tool maps that form by adding `(750, 298)` to position.  For
+`y = world.y * 100`, while `vx` and `vy` are already normalized Matter frame
+velocities. The tool maps that form as `x = 750 + x`, `y = 298 - y`. For
 raw Maker metres/second it instead reverses the adapter:
 `matterVelocity = worldVelocity / (0.6 * timeScale)`, including Y inversion.
 
@@ -98,7 +102,7 @@ python migration/physics_trajectory_contract.py --compare phaser.json maker.json
 
 `generate_phaser_matter_reference.cjs` imports Phaser 3.90's bundled Matter
 implementation without booting or modifying the Phaser project. It emits the
-six fixed cases at both `1x` and `.05x`. The apple uses the actual
+seven fixed cases at both `1x` and `.05x`. The apple uses the actual
 `setCircle(27)` runtime body, then follows the scene's `setMass(1)` and
 `setStatic(true/false)` sequence.
 
@@ -107,7 +111,7 @@ six fixed cases at both `1x` and `.05x`. The apple uses the actual
 The current Maker runtime only retains replay samples and has no contact-log
 export.  A runtime probe must emit the required fields above at `PhysicsPostStep`
 and `PhysicsBeginContact2D`, including the actual `TimeStep`, active
-`time_scale`, contact phase, and the other node ID. It must capture all six
+`time_scale`, contact phase, and the other node ID. It must capture all seven
 contract cases at `1x` and `.05x`.
 
 `--maker-log` consumes raw lines prefixed with `[PhysicsTelemetry]` and Maker

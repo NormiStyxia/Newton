@@ -290,17 +290,18 @@ def main() -> int:
            and "applePreSolveVelocity_ = Vector2(velocity.x, velocity.y)" in main_lua
            and "local v = applePreSolveVelocity_ or apple_.body.linearVelocity" in main_lua,
            "spring does not use Phaser's beforeupdate pre-solve velocity snapshot")
-    expect("object.impulseStrength * Rules.GetGravityMultiplier(rules_, level_.rules.initialGravity)" in main_lua
+    expect("object.impulseStrength * Rules.GetRestitutionMultiplier(rules_)" in main_lua
            and "* CurrentMatterVelocityToWorld(CurrentPhysicsStepScale())" in main_lua,
-           "spring impulse no longer follows the source gravity multiplier")
+           "spring impulse no longer follows the experiment branch Hooke multiplier")
     physics_pre_step = main_lua.split("function HandlePhysicsPreStep", 1)[1].split("function HandlePhysicsPostStep", 1)[0]
     expect(physics_pre_step.index("CapAppleSpeed()") < physics_pre_step.index("applePreSolveVelocity_ = Vector2")
            < physics_pre_step.index("apple_.body.linearDamping"),
            "speed cap is not applied before the physics pass")
     expect("physicsStepTimeScale_ = physicsTimeScale" in main_lua
-           and "UpdateExperiment(eventData:GetFloat(\"TimeStep\") * physicsTimeScale)" in main_lua,
+           and "UpdateExperiment(ResolvePhysicsTimeStep(eventData) * physicsTimeScale)" in main_lua,
            "physics post-step timing does not retain the scale that advanced the source step")
     expect('id = "hooke_wall"' in physics_probe_lua and 'id = "hooke_resting"' in physics_probe_lua
+           and 'id = "spring_exit_hooke"' in physics_probe_lua
            and "QueueMatterRestitutionAlignment(other)" in main_lua
            and "ApplyPendingMatterRestitution()" in main_lua,
            "Hooke wall probe or production restitution compensation is missing")

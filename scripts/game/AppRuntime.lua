@@ -12,7 +12,20 @@ function M.Install(context)
     local CONFIG = context.CONFIG
     local CARD_RENDER_WIDTH = context.CARD_RENDER_WIDTH
     local CARD_RENDER_HEIGHT = context.CARD_RENDER_HEIGHT
+    local lastValidPhysicsTimeStep = 1 / 60
     local _ENV = context
+
+    local function ResolvePhysicsTimeStep(eventData)
+        local timeStep = eventData:GetFloat("TimeStep")
+        -- UrhoX can expose a zero PhysicsPre/PostStep delta on the first
+        -- persistent 2D contact even though Box2D still advances the world.
+        -- Reuse the latest positive step so damping and trajectory sampling
+        -- remain tied to the step that actually drove the solver.
+        if timeStep and timeStep > .000001 then
+            lastValidPhysicsTimeStep = timeStep
+        end
+        return lastValidPhysicsTimeStep
+    end
     function RefreshWorkspaceLayout()
         if not frame_ then return end
         local entries = CardEntries and CardEntries() or {}
@@ -155,16 +168,17 @@ function M.Install(context)
         applePreSolveVelocity_ = Vector2(velocity.x, velocity.y)
         pendingMatterRestitutions_ = nil
         local physicsTimeScale = CurrentPhysicsTimeScale()
+        local physicsTimeStep = ResolvePhysicsTimeStep(eventData)
         physicsStepTimeScale_ = physicsTimeScale
         apple_.body.linearDamping = MatterCalibration.Box2DLinearDamping(
             apple_.baseFrictionAir,
             physicsTimeScale,
-            eventData:GetFloat("TimeStep")
+            physicsTimeStep
         )
         apple_.body.angularDamping = MatterCalibration.Box2DLinearDamping(
             apple_.baseFrictionAir,
             physicsTimeScale,
-            eventData:GetFloat("TimeStep")
+            physicsTimeStep
         )
     end
 
@@ -186,7 +200,7 @@ function M.Install(context)
                 apple = apple_,
                 pixelsPerMeter = CONFIG.pixelsPerMeter,
                 matterVelocityToWorld = CONFIG.matterVelocityToWorld,
-            }, eventData:GetFloat("TimeStep"))
+            }, ResolvePhysicsTimeStep(eventData))
             applePreSolveVelocity_ = nil
             physicsStepTimeScale_ = nil
             return
@@ -199,7 +213,7 @@ function M.Install(context)
         ApplyPendingMatterRestitution()
         UpdateSpringExits()
         RefreshGoalContact()
-        UpdateExperiment(eventData:GetFloat("TimeStep") * physicsTimeScale)
+        UpdateExperiment(ResolvePhysicsTimeStep(eventData) * physicsTimeScale)
         applePreSolveVelocity_ = nil
         physicsStepTimeScale_ = nil
     end
@@ -235,10 +249,11 @@ function M.Install(context)
             local direction = object.direction
             local ix, iy = 0, 0
             if direction == "UP" then iy = 1 elseif direction == "DOWN" then iy = -1 elseif direction == "LEFT" then ix = -1 else ix = 1 end
-            -- SpringObject scales its exit impulse by the source gravity
-            -- multiplier. Hooke changes restitution only; Feather changes this
-            -- impulse together with gravity.
-            local impulse = object.impulseStrength * Rules.GetGravityMultiplier(rules_, level_.rules.initialGravity)
+            -- The experiment branch wires SpringObject.getSpringMultiplier to
+            -- worldRule.restitutionMultiplier. Hooke therefore strengthens the
+            -- explicit spring exit as well as ordinary contact restitution;
+            -- Feather affects gravity only.
+            local impulse = object.impulseStrength * Rules.GetRestitutionMultiplier(rules_)
                 * CurrentMatterVelocityToWorld(CurrentPhysicsStepScale())
             object.pendingExitVelocity = Vector2(v.x + ix * impulse, v.y + iy * impulse)
             object.triggeredAt = uiElapsed_ * 1000

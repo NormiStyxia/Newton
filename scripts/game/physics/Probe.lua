@@ -30,6 +30,8 @@ local CASES = {
     { id = "hooke_resting", durationMs = 500, fixtureId = "world-right", x = 1435, y = LAB_HEIGHT * .5, vx = 3.5, vy = 0,
         restitution = .88 },
     { id = "spring_exit", durationMs = 500, fixtureId = "spring", x = 510, y = 288, vx = 0, vy = 20 },
+    { id = "spring_exit_hooke", durationMs = 500, fixtureId = "spring", x = 510, y = 288, vx = 0, vy = 20,
+        restitution = .88, springMultiplier = .88 / .36 },
 }
 
 local function fixtureDefinition(id)
@@ -177,6 +179,7 @@ function PhysicsProbe:Update(context)
         vx = definition.vx,
         vy = definition.vy,
         restitution = definition.restitution,
+        springMultiplier = definition.springMultiplier,
         timeScale = scale,
     }
     self:BeginCurrentCase(context)
@@ -205,7 +208,8 @@ function PhysicsProbe:OnContactBegin(other, preSolveVelocity, context)
         -- points up, so the equivalent exit adds the converted impulse.
         self.pendingExitVelocity = Vector2(
             velocity.x,
-            velocity.y + 10 * context.matterVelocityToWorld * self.timeScale
+            velocity.y + 10 * (self.current.springMultiplier or 1)
+                * context.matterVelocityToWorld * self.timeScale
         )
     end
 end

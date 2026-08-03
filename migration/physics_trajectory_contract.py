@@ -85,6 +85,13 @@ CASE_SPECS: dict[str, dict[str, Any]] = {
         "initial_lab_viewport": {"x": 510.0, "y": 288.0, "vx": 0.0, "vy": 20.0},
         "tolerance": Tolerance(18.0, 1.80, 12.0, 35.0),
     },
+    "spring_exit_hooke": {
+        "description": "Hooke multiplies the pre-solve spring exit impulse by .88/.36.",
+        "duration_ms": 500.0,
+        "expected_contacts": 1,
+        "initial_lab_viewport": {"x": 510.0, "y": 288.0, "vx": 0.0, "vy": 20.0},
+        "tolerance": Tolerance(18.0, 1.80, 12.0, 35.0),
+    },
 }
 
 REQUIRED_SUITE_KEYS = frozenset(
@@ -110,7 +117,7 @@ BASELINE_MATERIAL = {
 
 def expected_material(case: str) -> dict[str, float]:
     material = dict(BASELINE_MATERIAL)
-    if case in {"hooke_wall", "hooke_resting"}:
+    if case in {"hooke_wall", "hooke_resting", "spring_exit_hooke"}:
         material["apple_restitution"] = 0.88
         material["contact_restitution"] = 0.88
     return material
@@ -219,6 +226,23 @@ REFERENCE_RECORDS = [
             sample(16.667, 510.0, 308.077778, 0.0, 20.077778, 0.0),
             sample(250.0, 506.739047, 388.734868, -0.330507, -0.036062, -7.629121),
             sample(500.0, 502.594161, 388.637117, -0.258542, 0.011748, -16.449047),
+        ],
+        "events": [{"t_ms": 83.333, "phase": "begin", "other": "spring"}],
+    },
+    {
+        "schema_version": SCHEMA_VERSION,
+        "engine": "phaser-matter",
+        "case": "spring_exit_hooke",
+        "time_scale": 1.0,
+        "coordinate_space": "lab-viewport-px",
+        "material": expected_material("spring_exit_hooke"),
+        "samples": [
+            sample(0.0, 510.0, 288.0, 0.0, 20.0, 0.0),
+            sample(16.667, 510.0, 308.077778, 0.0, 20.077778, 0.0),
+            sample(66.667, 510.0, 368.770039, 0.0, 20.306475, 0.0),
+            sample(83.333, 510.0, 388.63751, 0.0, -4.137969, 0.0),
+            sample(250.0, 510.0, 364.295257, 0.0, -1.086251, 0.0),
+            sample(500.0, 510.0, 381.073229, 0.0, 2.953028, 0.0),
         ],
         "events": [{"t_ms": 83.333, "phase": "begin", "other": "spring"}],
     },
@@ -735,6 +759,7 @@ def self_test() -> dict[str, Any]:
     ground_reference = next(record for record in records if record["case"] == "ground_slide")
     hooke_reference = next(record for record in records if record["case"] == "hooke_wall")
     hooke_resting_reference = next(record for record in records if record["case"] == "hooke_resting")
+    hooke_spring_reference = next(record for record in records if record["case"] == "spring_exit_hooke")
     expected_ground_y = 580.0 / PLAYFIELD_HEIGHT * LAB_HEIGHT - BASELINE_MATERIAL["apple_radius_px"]
     expect(
         math.isclose(CASE_SPECS["ground_slide"]["initial_lab_viewport"]["y"], expected_ground_y, abs_tol=1e-12),
@@ -753,6 +778,17 @@ def self_test() -> dict[str, Any]:
         math.isclose(hooke_resting_reference["material"]["contact_restitution"], 0.88, abs_tol=1e-12)
         and abs(float(hooke_resting_reference["samples"][-1]["vx"])) < 0.5,
         "built-in low-speed Hooke reference no longer demonstrates Matter's resting threshold",
+    )
+    hooke_spring_before = hooke_spring_reference["samples"][2]
+    hooke_spring_after = hooke_spring_reference["samples"][3]
+    expect(
+        math.isclose(hooke_spring_reference["material"]["contact_restitution"], 0.88, abs_tol=1e-12)
+        and math.isclose(
+            float(hooke_spring_before["vy"]) - float(hooke_spring_after["vy"]),
+            0.88 / 0.36 * 10.0,
+            abs_tol=1e-6,
+        ),
+        "built-in Hooke spring reference no longer demonstrates the .88/.36 exit impulse",
     )
     maker_free = validate_record(
         {

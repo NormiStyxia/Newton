@@ -19,6 +19,10 @@ local function Number(value)
     return string.format("%.6f", value or 0)
 end
 
+local function PreciseNumber(value)
+    return string.format("%.9f", value or 0)
+end
+
 ---@return PhysicsTelemetry
 function PhysicsTelemetry.New()
     local self = setmetatable({}, PhysicsTelemetry)
@@ -84,7 +88,7 @@ function PhysicsTelemetry:Begin(caseId, timeScale, material)
         Number(material.matterRestingContactFriction),
         Number(material.matterRestingTangentSpeed),
         Number(material.matterForceScale),
-        Number(material.matterBaseDeltaMs),
+        PreciseNumber(material.matterBaseDeltaMs),
         Number(material.appleRadiusPx)
     ))
 end
@@ -152,10 +156,10 @@ function PhysicsTelemetry:Capture(timeStep, timeScale, position, velocity, angle
         Number(self.simulationTime),
         Number(stepMs),
         Number(position.x * pixelsPerMeter),
-        Number(-position.y * pixelsPerMeter),
+        Number(position.y * pixelsPerMeter),
         Number(velocity.x / matterVelocityScale),
         Number(-velocity.y / matterVelocityScale),
-        Number(angle),
+        Number(-angle),
         contact
     )
     if self.sampleEveryStep then
@@ -169,10 +173,10 @@ function PhysicsTelemetry:Capture(timeStep, timeScale, position, velocity, angle
             Number(stepMs),
             Number(timeScale),
             Number(position.x * pixelsPerMeter),
-            Number(-position.y * pixelsPerMeter),
+            Number(position.y * pixelsPerMeter),
             Number(velocity.x / matterVelocityScale),
             Number(-velocity.y / matterVelocityScale),
-            Number(angle),
+            Number(-angle),
             contact
         ))
         repeat
