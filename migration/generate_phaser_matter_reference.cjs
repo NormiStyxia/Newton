@@ -21,6 +21,16 @@ const Events = require(path.join(matterRoot, "core", "Events.js"));
 const Body = require(path.join(matterRoot, "body", "Body.js"));
 const Bodies = require(path.join(matterRoot, "factory", "Bodies.js"));
 const Composite = require(path.join(matterRoot, "body", "Composite.js"));
+const Resolver = require(path.join(matterRoot, "collision", "Resolver.js"));
+
+// Phaser.Physics.Matter.MatterPhysics overwrites Matter's library Resolver
+// defaults while the scene boots. Apply those runtime values explicitly here
+// because this generator intentionally does not boot a browser Phaser game.
+Resolver._restingThresh = 4;
+Resolver._restingThreshTangent = 6;
+Resolver._positionDampen = 0.9;
+Resolver._positionWarming = 0.8;
+Resolver._frictionNormalMultiplier = 5;
 
 const BASE_DELTA_MS = 1000 / 60;
 const LAB = { width: 1500, height: 596 };
@@ -36,6 +46,7 @@ const MATERIAL = {
   matter_base_delta_ms: BASE_DELTA_MS,
   apple_radius_px: APPLE_RADIUS,
 };
+const HOOKE_RESTITUTION = 0.88;
 
 const floorY = PLAYFIELD.groundY / PLAYFIELD.height * LAB.height;
 const fixtures = {
@@ -51,6 +62,8 @@ const CASES = {
   // groundY is the top surface of the floor rectangle, not its centre.
   ground_slide: { duration: 1000, fixture: "floor", initial: { x: 510, y: floorY - APPLE_RADIUS, vx: 12, vy: 0 } },
   right_wall: { duration: 500, fixture: "right", initial: { x: 1410, y: LAB.height / 2, vx: 18, vy: 0 } },
+  hooke_wall: { duration: 500, fixture: "right", restitution: HOOKE_RESTITUTION, initial: { x: 1410, y: LAB.height / 2, vx: 18, vy: 0 } },
+  hooke_resting: { duration: 500, fixture: "right", restitution: HOOKE_RESTITUTION, initial: { x: 1435, y: LAB.height / 2, vx: 3.5, vy: 0 } },
   spring_exit: { duration: 500, fixture: "spring", initial: { x: 510, y: 288, vx: 0, vy: 20 } },
 };
 
@@ -91,6 +104,9 @@ function runCase(caseId, timeScale) {
   Body.setMass(apple, 1);
   Body.setStatic(apple, true);
   Body.setStatic(apple, false);
+  // PlayScene updates the dynamic apple after Hooke resolves. Static fixtures
+  // remain at restitution 0, so Matter's max-pair rule observes exactly .88.
+  apple.restitution = spec.restitution || 0;
   Body.setVelocity(apple, { x: spec.initial.vx, y: spec.initial.vy });
   Composite.add(engine.world, apple);
 
@@ -133,7 +149,11 @@ function runCase(caseId, timeScale) {
     case: caseId,
     time_scale: timeScale,
     coordinate_space: "lab-viewport-px",
-    material: MATERIAL,
+    material: {
+      ...MATERIAL,
+      apple_restitution: spec.restitution || 0,
+      contact_restitution: spec.restitution || 0,
+    },
     samples,
     events,
   };

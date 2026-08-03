@@ -11,7 +11,14 @@ MatterCalibration.APPLE_FRICTION = 0.1
 -- the observed dynamic material instead of mutating a global apple fixture.
 MatterCalibration.APPLE_FRICTION_STATIC = 0.5
 MatterCalibration.MATTER_FRICTION_NORMAL_MULTIPLIER = 5
-MatterCalibration.MATTER_RESTING_TANGENT_SPEED = math.sqrt(6)
+-- Phaser's MatterPhysics constructor replaces Matter's library defaults with
+-- restingThresh=4 and restingThreshTangent=6 for the actual game runtime.
+MatterCalibration.MATTER_RESTING_TANGENT_SPEED = 6
+MatterCalibration.MATTER_RESTING_NORMAL_SPEED = 4
+-- Box2D suppresses restitution below this fixed world-speed threshold. Matter
+-- scales its own threshold with Engine.timing.timeScale, so the engines have
+-- disagreement windows at both normal and slow-motion time scales.
+MatterCalibration.BOX2D_RESTITUTION_THRESHOLD = 1
 MatterCalibration.APPLE_FRICTION_AIR = 0.01
 MatterCalibration.APPLE_INITIAL_RESTITUTION = 0
 -- Matter's runtime probe reports these values after every static body has
@@ -68,6 +75,37 @@ end
 ---@return number
 function MatterCalibration.CardRestitution(multiplier)
     return math.max(0, math.min(0.98, MatterCalibration.CARD_RESTITUTION_BASE * multiplier))
+end
+
+---@param incoming Vector2
+---@param solved Vector2
+---@param normal Vector2 Unit normal pointing from the static fixture toward the apple.
+---@param restitution number
+---@param timeScale number
+---@param matterVelocityToWorld number
+---@return Vector2|nil corrected
+function MatterCalibration.AlignRestitutionThreshold(incoming, solved, normal, restitution, timeScale, matterVelocityToWorld)
+    if not incoming or not solved or not normal or restitution <= 0 then return nil end
+    local length = math.sqrt(normal.x * normal.x + normal.y * normal.y)
+    if length <= .000001 then return nil end
+    local nx, ny = normal.x / length, normal.y / length
+    local incomingNormal = incoming.x * nx + incoming.y * ny
+    if incomingNormal >= 0 then return nil end
+    local incomingSpeed = -incomingNormal
+    local matterThreshold = MatterCalibration.MATTER_RESTING_NORMAL_SPEED
+        * matterVelocityToWorld * timeScale
+    local matterRestitutes = incomingSpeed > matterThreshold
+    local box2dRestitutes = incomingSpeed > MatterCalibration.BOX2D_RESTITUTION_THRESHOLD
+    -- Most impacts need no adapter. Correct only the two narrow disagreement
+    -- windows: slow motion where Matter still bounces, and 1x low speed where
+    -- Box2D bounces before Matter leaves its resting-contact branch.
+    if matterRestitutes == box2dRestitutes then return nil end
+    local desiredNormal = matterRestitutes and incomingSpeed * restitution or 0
+    local solvedNormal = solved.x * nx + solved.y * ny
+    return Vector2(
+        solved.x + (desiredNormal - solvedNormal) * nx,
+        solved.y + (desiredNormal - solvedNormal) * ny
+    )
 end
 
 -- Matter's frictionStatic branch is a per-pair cached tangent impulse, not a

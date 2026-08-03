@@ -142,6 +142,7 @@ function M.Install(context)
     function HandlePhysicsPreStep(_eventType, eventData)
         if not apple_ or not launched_ or replayActive_ or apple_.body.bodyType ~= BT_DYNAMIC then
             applePreSolveVelocity_ = nil
+            pendingMatterRestitutions_ = nil
             physicsStepTimeScale_ = nil
             return
         end
@@ -152,6 +153,7 @@ function M.Install(context)
         -- before gravity integration and contact solving mutate the velocity.
         local velocity = apple_.body.linearVelocity
         applePreSolveVelocity_ = Vector2(velocity.x, velocity.y)
+        pendingMatterRestitutions_ = nil
         local physicsTimeScale = CurrentPhysicsTimeScale()
         physicsStepTimeScale_ = physicsTimeScale
         apple_.body.linearDamping = MatterCalibration.Box2DLinearDamping(
@@ -171,12 +173,14 @@ function M.Install(context)
     function HandlePhysicsPostStep(_eventType, eventData)
         if not launched_ or replayActive_ or isPaused_ then
             applePreSolveVelocity_ = nil
+            pendingMatterRestitutions_ = nil
             physicsStepTimeScale_ = nil
             return
         end
         local physicsTimeScale = CurrentPhysicsStepScale()
         local physicsProbe = level_ and level_.physicsProbe or nil
         if physicsProbe and physicsProbe:IsActive() then
+            ApplyPendingMatterRestitution()
             UpdateSpringExits()
             physicsProbe:AfterPhysicsStep({
                 apple = apple_,
@@ -189,6 +193,10 @@ function M.Install(context)
         end
         -- The original applies a spring's pre-solve exit velocity after Matter's
         -- collision resolution, then advances runtime mechanisms in physics time.
+        -- Align Matter's time-scaled restitution threshold first. An active
+        -- spring then intentionally replaces that result with its explicit
+        -- pre-solve exit velocity, matching SpringObject.afterPhysicsStep.
+        ApplyPendingMatterRestitution()
         UpdateSpringExits()
         RefreshGoalContact()
         UpdateExperiment(eventData:GetFloat("TimeStep") * physicsTimeScale)
@@ -214,6 +222,7 @@ function M.Install(context)
         if ActivateGoalContact(nodeA, nodeB, true) then return end
         if not nodeA or not nodeB or not runtime_ or not IsAppleNode(nodeA) and not IsAppleNode(nodeB) then return end
         local other = IsAppleNode(nodeA) and nodeB or nodeA
+        QueueMatterRestitutionAlignment(other)
         local object = runtime_.byId[other.name]
         if launched_ and not replayActive_ then PlaySound("impact") end
         if not object then return end

@@ -64,6 +64,20 @@ CASE_SPECS: dict[str, dict[str, Any]] = {
         "initial_lab_viewport": {"x": 1410.0, "y": 298.0, "vx": 18.0, "vy": 0.0},
         "tolerance": Tolerance(10.0, 0.70, 8.0, 20.0),
     },
+    "hooke_wall": {
+        "description": "Hooke's .88 restitution against the zero-restitution probe wall.",
+        "duration_ms": 500.0,
+        "expected_contacts": 1,
+        "initial_lab_viewport": {"x": 1410.0, "y": 298.0, "vx": 18.0, "vy": 0.0},
+        "tolerance": Tolerance(12.0, 0.90, 10.0, 20.0),
+    },
+    "hooke_resting": {
+        "description": "Hooke impact inside the opposing Matter/Box2D 1x resting thresholds.",
+        "duration_ms": 500.0,
+        "expected_contacts": 1,
+        "initial_lab_viewport": {"x": 1435.0, "y": 298.0, "vx": 3.5, "vy": 0.0},
+        "tolerance": Tolerance(10.0, 0.70, 8.0, 20.0),
+    },
     "spring_exit": {
         "description": "Pre-solve velocity plus one upward spring exit impulse.",
         "duration_ms": 500.0,
@@ -92,6 +106,14 @@ BASELINE_MATERIAL = {
     # GoldenPath.test.ts uses 34 only in its independent toy model.
     "apple_radius_px": 27.0,
 }
+
+
+def expected_material(case: str) -> dict[str, float]:
+    material = dict(BASELINE_MATERIAL)
+    if case in {"hooke_wall", "hooke_resting"}:
+        material["apple_restitution"] = 0.88
+        material["contact_restitution"] = 0.88
+    return material
 
 
 def sample(t_ms: float, x: float, y: float, vx: float, vy: float, angle_deg: float | None = None) -> dict[str, float | None]:
@@ -134,9 +156,9 @@ REFERENCE_RECORDS = [
         "samples": [
             sample(0.0, 510.0, 466.828571, 12.0, 0.0, 0.0),
             sample(16.667, 521.88, 466.903029, 11.08, 0.0, 0.0),
-            sample(250.0, 606.273052, 466.946068, 3.364391, 0.07459, 72.930014),
-            sample(500.0, 652.254747, 466.967747, 2.78933, 0.189126, 170.577025),
-            sample(1000.0, 720.213243, 466.940416, 1.817253, -0.097017, 315.406415),
+            sample(250.0, 604.881023, 467.00903, 3.37538, 0.16891, 74.574259),
+            sample(500.0, 651.594423, 467.011596, 2.793209, -0.393286, 171.836032),
+            sample(1000.0, 719.893814, 466.90762, 1.836257, -0.039475, 317.230805),
         ],
         "events": [{"t_ms": 16.667, "phase": "begin", "other": "world-floor"}],
     },
@@ -154,6 +176,36 @@ REFERENCE_RECORDS = [
             sample(500.0, 1446.322801, 379.118868, -0.032853, 5.895052, -38.332662),
         ],
         "events": [{"t_ms": 50.0, "phase": "begin", "other": "world-right"}],
+    },
+    {
+        "schema_version": SCHEMA_VERSION,
+        "engine": "phaser-matter",
+        "case": "hooke_wall",
+        "time_scale": 1.0,
+        "coordinate_space": "lab-viewport-px",
+        "material": expected_material("hooke_wall"),
+        "samples": [
+            sample(0.0, 1410.0, 298.0, 18.0, 0.0, 0.0),
+            sample(16.667, 1427.82, 298.277778, 17.82, 0.277778, 0.0),
+            sample(250.0, 1277.060727, 323.727529, -13.411443, 3.406591, -6.487555),
+            sample(500.0, 1091.255607, 402.750341, -11.534624, 6.817135, -13.570506),
+        ],
+        "events": [{"t_ms": 50.0, "phase": "begin", "other": "world-right"}],
+    },
+    {
+        "schema_version": SCHEMA_VERSION,
+        "engine": "phaser-matter",
+        "case": "hooke_resting",
+        "time_scale": 1.0,
+        "coordinate_space": "lab-viewport-px",
+        "material": expected_material("hooke_resting"),
+        "samples": [
+            sample(0.0, 1435.0, 298.0, 3.5, 0.0, 0.0),
+            sample(16.667, 1438.465, 298.277778, 3.465, 0.277778, 0.0),
+            sample(250.0, 1444.23506, 322.245204, -0.285055, 3.212494, -6.929751),
+            sample(500.0, 1440.285848, 398.578952, -0.245164, 6.6502, -15.417731),
+        ],
+        "events": [{"t_ms": 66.667, "phase": "begin", "other": "world-right"}],
     },
     {
         "schema_version": SCHEMA_VERSION,
@@ -294,6 +346,32 @@ def telemetry_payloads(lines: Iterable[str], source: str) -> Iterable[dict[str, 
         yield mapping(payload, f"{source}:{line_number}")
 
 
+def telemetry_sample(raw: Any, label: str) -> dict[str, float | None]:
+    if isinstance(raw, dict):
+        finite(raw.get("dt"), f"{label}.dt")
+        return {
+            "t_ms": finite(raw.get("t"), f"{label}.t"),
+            "x": finite(raw.get("x"), f"{label}.x"),
+            "y": finite(raw.get("y"), f"{label}.y"),
+            "vx": finite(raw.get("vx"), f"{label}.vx"),
+            "vy": finite(raw.get("vy"), f"{label}.vy"),
+            "angle_deg": finite(raw.get("angle"), f"{label}.angle"),
+        }
+    if not isinstance(raw, list) or len(raw) != 8:
+        raise ContractError(f"{label} must be an object or an 8-value batch entry")
+    finite(raw[1], f"{label}.dt")
+    if not isinstance(raw[7], str):
+        raise ContractError(f"{label}.contact must be a string")
+    return {
+        "t_ms": finite(raw[0], f"{label}.t"),
+        "x": finite(raw[2], f"{label}.x"),
+        "y": finite(raw[3], f"{label}.y"),
+        "vx": finite(raw[4], f"{label}.vx"),
+        "vy": finite(raw[5], f"{label}.vy"),
+        "angle_deg": finite(raw[6], f"{label}.angle"),
+    }
+
+
 def parse_maker_log_lines(lines: Iterable[str], source: str) -> list[dict[str, Any]]:
     completed: list[dict[str, Any]] = []
     current: dict[str, Any] | None = None
@@ -336,16 +414,20 @@ def parse_maker_log_lines(lines: Iterable[str], source: str) -> list[dict[str, A
             scale = finite(payload.get("scale"), f"{source}.sample.scale")
             if not math.isclose(scale, current["time_scale"], abs_tol=1e-12):
                 raise ContractError(f"{source}: sample scale does not match begin scale")
-            current["samples"].append(
-                {
-                    "t_ms": finite(payload.get("t"), f"{source}.sample.t"),
-                    "x": finite(payload.get("x"), f"{source}.sample.x"),
-                    "y": finite(payload.get("y"), f"{source}.sample.y"),
-                    "vx": finite(payload.get("vx"), f"{source}.sample.vx"),
-                    "vy": finite(payload.get("vy"), f"{source}.sample.vy"),
-                    "angle_deg": finite(payload.get("angle"), f"{source}.sample.angle"),
-                }
-            )
+            current["samples"].append(telemetry_sample(payload, f"{source}.sample"))
+        elif event_type == "sample_batch":
+            if current["material"] is None:
+                raise ContractError(f"{source}: sample batch arrived before an explicit material event")
+            scale = finite(payload.get("scale"), f"{source}.sample_batch.scale")
+            if not math.isclose(scale, current["time_scale"], abs_tol=1e-12):
+                raise ContractError(f"{source}: sample batch scale does not match begin scale")
+            samples = payload.get("samples")
+            if not isinstance(samples, list) or not samples:
+                raise ContractError(f"{source}: sample batch must contain at least one sample")
+            for index, raw_sample in enumerate(samples):
+                current["samples"].append(
+                    telemetry_sample(raw_sample, f"{source}.sample_batch.samples[{index}]")
+                )
         elif event_type in {"contact_begin", "contact_end"}:
             current["events"].append(
                 {
@@ -548,7 +630,7 @@ def compare_records(source_raw: dict[str, Any], maker_raw: dict[str, Any]) -> di
     elif len(maker_events) < expected_contact_count:
         errors.append(f"Maker emitted {len(maker_events)} contacts; expected at least {expected_contact_count}")
 
-    for key, expected_value in BASELINE_MATERIAL.items():
+    for key, expected_value in expected_material(case).items():
         actual_value = maker["material"][key]
         if not math.isclose(actual_value, expected_value, rel_tol=0.0, abs_tol=1e-9):
             errors.append(f"material.{key}={actual_value} differs from expected {expected_value}")
@@ -629,7 +711,7 @@ def template_suite(engine: str) -> dict[str, Any]:
                     "case": case,
                     "time_scale": time_scale,
                     "coordinate_space": coordinate_space,
-                    "material": BASELINE_MATERIAL,
+                    "material": expected_material(case),
                     "samples": [],
                     "events": [],
                 }
@@ -651,6 +733,8 @@ def self_test() -> dict[str, Any]:
     expect(len(records) == len(CASE_SPECS), "reference does not cover every case")
     expect({record["case"] for record in records} == set(CASE_SPECS), "reference case IDs differ")
     ground_reference = next(record for record in records if record["case"] == "ground_slide")
+    hooke_reference = next(record for record in records if record["case"] == "hooke_wall")
+    hooke_resting_reference = next(record for record in records if record["case"] == "hooke_resting")
     expected_ground_y = 580.0 / PLAYFIELD_HEIGHT * LAB_HEIGHT - BASELINE_MATERIAL["apple_radius_px"]
     expect(
         math.isclose(CASE_SPECS["ground_slide"]["initial_lab_viewport"]["y"], expected_ground_y, abs_tol=1e-12),
@@ -659,6 +743,16 @@ def self_test() -> dict[str, Any]:
     expect(
         math.isclose(float(ground_reference["samples"][0]["y"]), expected_ground_y, abs_tol=1e-6),
         "built-in ground-slide reference no longer matches the Phaser capture geometry",
+    )
+    expect(
+        math.isclose(hooke_reference["material"]["contact_restitution"], 0.88, abs_tol=1e-12)
+        and float(hooke_reference["samples"][-1]["vx"]) < -10,
+        "built-in Hooke reference no longer demonstrates the .88 wall rebound",
+    )
+    expect(
+        math.isclose(hooke_resting_reference["material"]["contact_restitution"], 0.88, abs_tol=1e-12)
+        and abs(float(hooke_resting_reference["samples"][-1]["vx"])) < 0.5,
+        "built-in low-speed Hooke reference no longer demonstrates Matter's resting threshold",
     )
     maker_free = validate_record(
         {
@@ -716,6 +810,19 @@ def self_test() -> dict[str, Any]:
         "self-test-jsonl",
     )
     expect(len(wrapped_log_records) == 1, "JSONL msg telemetry parser changed")
+    batched_log_records = parse_maker_log_lines(
+        [
+            '[PhysicsTelemetry] {"type":"begin","case":"free_flight","scale":0.05}',
+            '[PhysicsTelemetry] {"type":"material","case":"free_flight","scale":0.05,"material":{"apple_friction":0.1,"apple_friction_air":0.01,"apple_restitution":0,"contact_friction":0.1,"contact_restitution":0,"matter_force_scale":0.001,"matter_base_delta_ms":16.666666666666668,"apple_radius_px":27}}',
+            '[PhysicsTelemetry] {"type":"sample_batch","case":"free_flight","scale":0.05,"samples":[[0,0,-440,60,12,-8,0,""],[1,1,-439.4,59.6,11.99,-7.98,0,""]]}',
+            '[PhysicsTelemetry] {"type":"end","case":"free_flight","t":1}',
+        ],
+        "self-test-batched-log",
+    )
+    expect(
+        len(batched_log_records) == 1 and len(batched_log_records[0]["samples"]) == 2,
+        "batched every-step telemetry parser changed",
+    )
     try:
         parse_maker_log_lines(
             [
@@ -777,17 +884,17 @@ def self_test() -> dict[str, Any]:
     full_suite_result = compare_suites(full_source_records, full_maker_records)
     expect(
         full_suite_result["status"] == "pass"
-        and full_suite_result["required_records"] == 8
-        and len(full_suite_result["results"]) == 8,
-        "complete eight-record suites do not compare successfully",
+        and full_suite_result["required_records"] == len(REQUIRED_SUITE_KEYS)
+        and len(full_suite_result["results"]) == len(REQUIRED_SUITE_KEYS),
+        "complete required-record suites do not compare successfully",
     )
     common_subset_result = compare_suites(full_source_records[:1], full_maker_records[:1])
     expect(
         common_subset_result["status"] == "fail"
-        and len(common_subset_result["results"]) == 8
-        and len(common_subset_result["missing_source_keys"]) == 7
-        and len(common_subset_result["missing_maker_keys"]) == 7,
-        "a common one-record subset can pass without all four cases at both time scales",
+        and len(common_subset_result["results"]) == len(REQUIRED_SUITE_KEYS)
+        and len(common_subset_result["missing_source_keys"]) == len(REQUIRED_SUITE_KEYS) - 1
+        and len(common_subset_result["missing_maker_keys"]) == len(REQUIRED_SUITE_KEYS) - 1,
+        "a common one-record subset can pass without all required cases at both time scales",
     )
     return {
         "mode": "PHYSICS_TRAJECTORY_CONTRACT_SELF_TEST",
@@ -802,7 +909,7 @@ def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--self-test", action="store_true", help="verify the schema, canonical Matter baselines, and coordinate transforms")
     parser.add_argument("--reference", action="store_true", help="print the reviewed 1x Phaser Matter reference suite")
-    parser.add_argument("--template", choices=sorted(ENGINES), help="print an empty eight-run capture suite for the selected engine")
+    parser.add_argument("--template", choices=sorted(ENGINES), help="print an empty required-run capture suite for the selected engine")
     parser.add_argument("--maker-log", metavar="LOG", help="parse complete [PhysicsTelemetry] sessions into a Maker capture suite")
     parser.add_argument("--compare", nargs=2, metavar=("PHASER_JSON", "MAKER_JSON"), help="compare exported source and Maker suites")
     args = parser.parse_args(argv)

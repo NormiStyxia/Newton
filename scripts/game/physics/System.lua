@@ -37,6 +37,90 @@ function M.Install(context)
         if not apple_ or not apple_.shape then return end
         apple_.shape.restitution = MatterCalibration.CardRestitution(Rules.GetRestitutionMultiplier(rules_))
     end
+    ---@param node Node|nil
+    ---@return table|nil
+    function FindPhysicalContactBox(node)
+        if not node then return nil end
+        local object = runtime_ and runtime_.byId[node.name] or nil
+        if object and object.worldWidth and object.worldHeight and object.shape and not object.shape.trigger then
+            return object
+        end
+        for _, boundary in ipairs(laboratoryBoundaries_ and laboratoryBoundaries_.ordered or {}) do
+            if boundary.node == node then return boundary end
+        end
+        return nil
+    end
+    ---@param object table
+    ---@param incoming Vector2
+    ---@return Vector2
+    function MatterContactNormal(object, incoming)
+        local center = object.node.position2D
+        local position = apple_.node.position2D
+        local rotation = math.rad(object.node.rotation2D)
+        local cosine, sine = math.cos(rotation), math.sin(rotation)
+        local dx, dy = position.x - center.x, position.y - center.y
+        local localX = cosine * dx + sine * dy
+        local localY = -sine * dx + cosine * dy
+        -- Level objects expose worldWidth/worldHeight; laboratory boundaries
+        -- expose bodyWidth/bodyHeight. Both are Box2D world metres.
+        local width = object.worldWidth or object.bodyWidth
+        local height = object.worldHeight or object.bodyHeight
+        if not width or not height then return Vector2(0, 0) end
+        local halfWidth, halfHeight = width * .5, height * .5
+        local closestX = math.max(-halfWidth, math.min(localX, halfWidth))
+        local closestY = math.max(-halfHeight, math.min(localY, halfHeight))
+        local normalX, normalY = localX - closestX, localY - closestY
+        local length = math.sqrt(normalX * normalX + normalY * normalY)
+        if length > .000001 then
+            normalX, normalY = normalX / length, normalY / length
+        else
+            -- Deep overlap has no unique closest-point vector. Select the
+            -- nearest face and orient it against the incoming local velocity.
+            local localVelocityX = cosine * incoming.x + sine * incoming.y
+            local localVelocityY = -sine * incoming.x + cosine * incoming.y
+            if halfWidth - math.abs(localX) <= halfHeight - math.abs(localY) then
+                normalX = localX < 0 and -1 or localX > 0 and 1 or (localVelocityX > 0 and -1 or 1)
+                normalY = 0
+            else
+                normalX = 0
+                normalY = localY < 0 and -1 or localY > 0 and 1 or (localVelocityY > 0 and -1 or 1)
+            end
+        end
+        return Vector2(cosine * normalX - sine * normalY, sine * normalX + cosine * normalY)
+    end
+    ---@param other Node|nil
+    function QueueMatterRestitutionAlignment(other)
+        if not apple_ or not applePreSolveVelocity_ or not apple_.shape or apple_.shape.restitution <= 0 then return end
+        local object = FindPhysicalContactBox(other)
+        if not object then return end
+        pendingMatterRestitutions_ = pendingMatterRestitutions_ or {}
+        pendingMatterRestitutions_[#pendingMatterRestitutions_ + 1] = {
+            incoming = Vector2(applePreSolveVelocity_.x, applePreSolveVelocity_.y),
+            normal = MatterContactNormal(object, applePreSolveVelocity_),
+            restitution = apple_.shape.restitution,
+            timeScale = CurrentPhysicsStepScale(),
+        }
+    end
+    function ApplyPendingMatterRestitution()
+        if not apple_ or not pendingMatterRestitutions_ then return end
+        local solved = apple_.body.linearVelocity
+        for _, pending in ipairs(pendingMatterRestitutions_) do
+            local corrected = MatterCalibration.AlignRestitutionThreshold(
+                pending.incoming,
+                solved,
+                pending.normal,
+                pending.restitution,
+                pending.timeScale,
+                CONFIG.matterVelocityToWorld
+            )
+            if corrected then solved = corrected end
+        end
+        pendingMatterRestitutions_ = nil
+        if solved.x ~= apple_.body.linearVelocity.x or solved.y ~= apple_.body.linearVelocity.y then
+            apple_.body.linearVelocity = solved
+            apple_.body.awake = true
+        end
+    end
     function RestoreAppleContactMaterial()
         if not apple_ or not apple_.shape then return end
         if math.abs(apple_.shape.friction - MatterCalibration.APPLE_FRICTION) > .0001 then

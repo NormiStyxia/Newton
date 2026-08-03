@@ -10,6 +10,7 @@ local PhysicsTelemetry = require("game.physics.Telemetry")
 ---@field fixtures table<string, table>
 ---@field root Node|nil
 ---@field pendingExitVelocity Vector2|nil
+---@field pendingRestitution table|nil
 ---@field originalMaskBits integer|nil
 local PhysicsProbe = {}
 PhysicsProbe.__index = PhysicsProbe
@@ -24,6 +25,10 @@ local CASES = {
     { id = "free_flight", durationMs = 1000, fixtureId = nil, x = 310, y = 238, vx = 12, vy = -8 },
     { id = "ground_slide", durationMs = 1000, fixtureId = "world-floor", x = 510, y = FLOOR_Y - 27, vx = 12, vy = 0 },
     { id = "right_wall", durationMs = 500, fixtureId = "world-right", x = 1410, y = LAB_HEIGHT * .5, vx = 18, vy = 0 },
+    { id = "hooke_wall", durationMs = 500, fixtureId = "world-right", x = 1410, y = LAB_HEIGHT * .5, vx = 18, vy = 0,
+        restitution = .88 },
+    { id = "hooke_resting", durationMs = 500, fixtureId = "world-right", x = 1435, y = LAB_HEIGHT * .5, vx = 3.5, vy = 0,
+        restitution = .88 },
     { id = "spring_exit", durationMs = 500, fixtureId = "spring", x = 510, y = 288, vx = 0, vy = 20 },
 }
 
@@ -48,6 +53,7 @@ function PhysicsProbe.New()
     self.fixtures = {}
     self.root = nil
     self.pendingExitVelocity = nil
+    self.pendingRestitution = nil
     self.originalMaskBits = nil
     return self
 end
@@ -90,12 +96,13 @@ end
 function PhysicsProbe:Material(context)
     local staticFriction = MatterCalibration.STATIC_FRICTION
     local appleFriction = context.apple.shape.friction
+    local appleRestitution = context.apple.shape.restitution
     return {
         appleFriction = appleFriction,
         appleFrictionAir = context.apple.baseFrictionAir,
-        appleRestitution = context.apple.shape.restitution,
+        appleRestitution = appleRestitution,
         contactFriction = MatterCalibration.APPLE_FRICTION,
-        contactRestitution = MatterCalibration.STATIC_RESTITUTION,
+        contactRestitution = math.max(appleRestitution, MatterCalibration.STATIC_RESTITUTION),
         staticFixtureFriction = staticFriction,
         box2dMixedFriction = math.sqrt(appleFriction * staticFriction),
         matterRestingContactFriction = MatterCalibration.MATTER_RESTING_CONTACT_FRICTION,
@@ -111,6 +118,7 @@ function PhysicsProbe:BeginCurrentCase(context)
     if not spec then return end
     self.timeScale = spec.timeScale
     self.pendingExitVelocity = nil
+    self.pendingRestitution = nil
     self:SetFixture(spec.fixtureId)
     local apple = context.apple
     local worldX, worldY = context.mapper:ViewportToWorld(spec.x, spec.y)
@@ -126,7 +134,7 @@ function PhysicsProbe:BeginCurrentCase(context)
     apple.body.linearDamping = MatterCalibration.Box2DLinearDamping(apple.baseFrictionAir, self.timeScale)
     apple.body.angularDamping = MatterCalibration.Box2DLinearDamping(apple.baseFrictionAir, self.timeScale)
     apple.shape.friction = MatterCalibration.APPLE_FRICTION
-    apple.shape.restitution = MatterCalibration.APPLE_INITIAL_RESTITUTION
+    apple.shape.restitution = spec.restitution or MatterCalibration.APPLE_INITIAL_RESTITUTION
     apple.shape.maskBits = PROBE_CATEGORY
     apple.body.awake = true
     context.applyGravity()
@@ -168,6 +176,7 @@ function PhysicsProbe:Update(context)
         y = definition.y,
         vx = definition.vx,
         vy = definition.vy,
+        restitution = definition.restitution,
         timeScale = scale,
     }
     self:BeginCurrentCase(context)
@@ -181,6 +190,15 @@ function PhysicsProbe:OnContactBegin(other, preSolveVelocity, context)
     local id = other.name
     if id ~= self.current.fixtureId then return end
     self.telemetry:BeginContact(id)
+    if self.current.restitution and self.current.restitution > 0 and not self.pendingRestitution then
+        self.pendingRestitution = {
+            incoming = preSolveVelocity or context.apple.body.linearVelocity,
+            -- The isolated right-wall fixture is axis-aligned and the apple
+            -- approaches it from the left.
+            normal = Vector2(-1, 0),
+            restitution = self.current.restitution,
+        }
+    end
     if id == "spring" and not self.pendingExitVelocity then
         local velocity = preSolveVelocity or context.apple.body.linearVelocity
         -- Phaser UP subtracts from its screen-down Y velocity. UrhoX world Y
@@ -201,6 +219,18 @@ end
 function PhysicsProbe:AfterPhysicsStep(context, timeStep)
     if not self.active or not self.current then return end
     local apple = context.apple
+    if self.pendingRestitution then
+        local corrected = MatterCalibration.AlignRestitutionThreshold(
+            self.pendingRestitution.incoming,
+            apple.body.linearVelocity,
+            self.pendingRestitution.normal,
+            self.pendingRestitution.restitution,
+            self.timeScale,
+            context.matterVelocityToWorld
+        )
+        if corrected then apple.body.linearVelocity = corrected; apple.body.awake = true end
+        self.pendingRestitution = nil
+    end
     if self.pendingExitVelocity then
         apple.body.linearVelocity = self.pendingExitVelocity
         apple.body.awake = true
@@ -226,6 +256,7 @@ function PhysicsProbe:Stop(context)
     end
     self.originalMaskBits = nil
     self.pendingExitVelocity = nil
+    self.pendingRestitution = nil
     self.current = nil
     self.active = false
     self.timeScale = 1

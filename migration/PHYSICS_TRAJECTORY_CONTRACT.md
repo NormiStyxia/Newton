@@ -39,8 +39,8 @@ record has these required fields:
 ```
 
 `engine` is `phaser-matter` or `maker-box2d`.  `time_scale` must be `1.0` or
-`0.05`.  The case IDs are `free_flight`, `ground_slide`, `right_wall`, and
-`spring_exit`.
+`0.05`.  The case IDs are `free_flight`, `ground_slide`, `right_wall`,
+`hooke_wall`, `hooke_resting`, and `spring_exit`.
 
 ## Effective material and spring timing
 
@@ -56,6 +56,21 @@ mixed friction `sqrt(.1 * .1)=.1` then matches Matter's kinetic pair.  Matter's
 low-speed `frictionStatic * frictionNormalMultiplier` threshold is a separate
 cached contact branch with no direct Box2D fixture equivalent; it is emitted
 as diagnostic telemetry rather than baked into the fixture material.
+
+`hooke_wall` applies the source Hooke value (`apple restitution=.88`) against
+the same zero-restitution right wall. Matter scales its normal resting threshold
+with `Engine.timing.timeScale`; Box2D keeps an approximately `1 m/s` world-speed
+threshold. At `.05x`, native Box2D can suppress impacts that still bounce in
+Matter. At `1x`, a smaller reverse window exists where Box2D bounces before
+Matter leaves its resting-contact branch; `hooke_resting` covers that boundary.
+Maker changes the solved normal velocity only when the two threshold decisions
+disagree. Speeds on which they agree and all tangential friction are untouched.
+
+These thresholds use the running Phaser configuration, not the raw Matter
+library defaults. `Phaser.Physics.Matter.MatterPhysics` sets
+`restingThresh=4`, `restingThreshTangent=6`, and
+`frictionNormalMultiplier=5` when the scene boots. The offline generator
+applies those same values explicitly because it does not boot Phaser itself.
 
 For spring exits, the current Phaser runtime captures `body.velocity` in its
 `beforeupdate` hook and consumes that pre-solve snapshot from `collisionStart`.
@@ -83,7 +98,7 @@ python migration/physics_trajectory_contract.py --compare phaser.json maker.json
 
 `generate_phaser_matter_reference.cjs` imports Phaser 3.90's bundled Matter
 implementation without booting or modifying the Phaser project. It emits the
-four fixed fixtures at both `1x` and `.05x`. The apple uses the actual
+six fixed cases at both `1x` and `.05x`. The apple uses the actual
 `setCircle(27)` runtime body, then follows the scene's `setMass(1)` and
 `setStatic(true/false)` sequence.
 
@@ -92,8 +107,8 @@ four fixed fixtures at both `1x` and `.05x`. The apple uses the actual
 The current Maker runtime only retains replay samples and has no contact-log
 export.  A runtime probe must emit the required fields above at `PhysicsPostStep`
 and `PhysicsBeginContact2D`, including the actual `TimeStep`, active
-`time_scale`, contact phase, and the other node ID.  It must capture all four
-cases at `1x` and `.05x`.
+`time_scale`, contact phase, and the other node ID. It must capture all six
+contract cases at `1x` and `.05x`.
 
 `--maker-log` consumes raw lines prefixed with `[PhysicsTelemetry]` and Maker
 runtime JSONL records whose `msg` field contains that prefix. Every session
@@ -128,3 +143,8 @@ At `.05x`, the probe records every `PhysicsPostStep` so a low-speed contact is
 not downsampled to 60Hz. Contact comparison uses begin/end lifecycle semantics:
 repeated Matter begin notifications for a single resting pair do not count as
 separate physical collisions.
+
+To stay below Maker's runtime-log rate limit, `.05x` samples are transported in
+compact `type=sample_batch` messages. Each batch entry is
+`[t, dt, x, y, vx, vy, angle, contact]`; batching changes only the log transport,
+not the every-`PhysicsPostStep` capture cadence.

@@ -135,12 +135,12 @@ def main() -> int:
     expect("nvgBeginFrame(self.vg, frame.systemLogicalWidth, frame.systemLogicalHeight, frame.dpr)" in canvas_source
            and "nvgScale(self.vg, frame.renderScale, frame.renderScale)" in canvas_source,
            "NanoVG Mode A frame contract differs")
-    expect("local pointerFrame = PointerState()" in input_source
+    expect("local pointerFrame = PointerState()" in runtime
            and all(name in runtime for name in ("HandleTouchBegin", "HandleTouchMove", "HandleTouchEnd")),
            "mouse/touch PointerFrame routing is incomplete")
 
     priority_markers = (
-        "if HandleGreenAssistantPointer",
+        "if assistantConsumed then",
         "if replayActive_ then",
         "if IsResultOverlayVisible() then",
         "for index = 1, CONFIG.levelCount do",
@@ -157,8 +157,8 @@ def main() -> int:
     expect("bulletTimeScale = 0.05" in runtime and "MOUSEB_RIGHT" in legacy and "AnimateCardToHome" in legacy,
            "bullet time or right-click cancel contract is missing")
 
-    expect("failureCountsByLevel_[level_.levelId]" in legacy
-           and "failureCount_ = failureCountsByLevel_[level_.levelId] or 0" in level_session,
+    expect("context.failureCountsByLevel_[level_.levelId] = failureCount_" in legacy
+           and "failureCount_ = context.failureCountsByLevel_[level_.levelId] or 0" in level_session,
            "failure counts are not isolated by level")
     expect("ResetSessionState(true)" in level_session and "ResetSessionState(false)" in level_session,
            "build/reset do not share one initialization path")

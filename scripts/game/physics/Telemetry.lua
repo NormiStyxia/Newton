@@ -5,9 +5,15 @@
 ---@field sampleInterval number
 ---@field nextSample number
 ---@field sampleEveryStep boolean
+---@field sampleBuffer string[]
 ---@field contacts table<string, boolean>
 local PhysicsTelemetry = {}
 PhysicsTelemetry.__index = PhysicsTelemetry
+
+-- Keep every .05x PhysicsPostStep sample, but batch the transport. Printing
+-- thousands of individual lines exhausts Maker's runtime-log stream before
+-- the contact cases run, which makes the verifier lose the elasticity data.
+local SAMPLE_BATCH_SIZE = 48
 
 local function Number(value)
     return string.format("%.6f", value or 0)
@@ -22,6 +28,7 @@ function PhysicsTelemetry.New()
     self.sampleInterval = 1000 / 60
     self.nextSample = 0
     self.sampleEveryStep = false
+    self.sampleBuffer = {}
     self.contacts = {}
     return self
 end
@@ -31,6 +38,17 @@ function PhysicsTelemetry:ContactSummary()
     for contactId in pairs(self.contacts) do ids[#ids + 1] = contactId end
     table.sort(ids)
     return table.concat(ids, ",")
+end
+
+function PhysicsTelemetry:FlushSamples()
+    if #self.sampleBuffer == 0 then return end
+    print(string.format(
+        '[PhysicsTelemetry] {"type":"sample_batch","case":"%s","scale":%s,"samples":[%s]}',
+        self.caseId or "unknown",
+        Number(self.sampleEveryStep and .05 or 1),
+        table.concat(self.sampleBuffer, ",")
+    ))
+    self.sampleBuffer = {}
 end
 
 ---@param caseId string
@@ -45,6 +63,7 @@ function PhysicsTelemetry:Begin(caseId, timeScale, material)
     -- Box2D post-step at that speed so contact and low-speed friction
     -- differences remain observable instead of being hidden by 60Hz samples.
     self.sampleEveryStep = timeScale <= .05
+    self.sampleBuffer = {}
     self.contacts = {}
     print(string.format(
         '[PhysicsTelemetry] {"type":"begin","case":"%s","scale":%s}',
@@ -72,6 +91,7 @@ end
 
 function PhysicsTelemetry:Stop()
     if self.enabled then
+        self:FlushSamples()
         print(string.format(
             '[PhysicsTelemetry] {"type":"end","case":"%s","t":%s}',
             self.caseId or "unknown",
@@ -80,6 +100,7 @@ function PhysicsTelemetry:Stop()
     end
     self.enabled = false
     self.caseId = nil
+    self.sampleBuffer = {}
     self.contacts = {}
 end
 
@@ -87,6 +108,7 @@ end
 function PhysicsTelemetry:BeginContact(contactId)
     if not self.enabled or self.contacts[contactId] then return end
     self.contacts[contactId] = true
+    self:FlushSamples()
     print(string.format(
         '[PhysicsTelemetry] {"type":"contact_begin","case":"%s","t":%s,"contact":"%s"}',
         self.caseId or "unknown",
@@ -99,6 +121,7 @@ end
 function PhysicsTelemetry:EndContact(contactId)
     if not self.enabled or not self.contacts[contactId] then return end
     self.contacts[contactId] = nil
+    self:FlushSamples()
     print(string.format(
         '[PhysicsTelemetry] {"type":"contact_end","case":"%s","t":%s,"contact":"%s"}',
         self.caseId or "unknown",
@@ -124,20 +147,34 @@ function PhysicsTelemetry:Capture(timeStep, timeScale, position, velocity, angle
     -- Matter's engine.timing.timeScale output.
     local matterVelocityScale = math.max(.000001, matterVelocityToWorld * timeScale)
     local contact = self:ContactSummary()
-    print(string.format(
-        '[PhysicsTelemetry] {"type":"sample","case":"%s","t":%s,"dt":%s,"scale":%s,"x":%s,"y":%s,"vx":%s,"vy":%s,"angle":%s,"contact":"%s"}',
-        self.caseId or "unknown",
+    local encodedSample = string.format(
+        '[%s,%s,%s,%s,%s,%s,%s,"%s"]',
         Number(self.simulationTime),
         Number(stepMs),
-        Number(timeScale),
         Number(position.x * pixelsPerMeter),
         Number(-position.y * pixelsPerMeter),
         Number(velocity.x / matterVelocityScale),
         Number(-velocity.y / matterVelocityScale),
         Number(angle),
         contact
-    ))
-    if not self.sampleEveryStep then
+    )
+    if self.sampleEveryStep then
+        self.sampleBuffer[#self.sampleBuffer + 1] = encodedSample
+        if #self.sampleBuffer >= SAMPLE_BATCH_SIZE then self:FlushSamples() end
+    else
+        print(string.format(
+            '[PhysicsTelemetry] {"type":"sample","case":"%s","t":%s,"dt":%s,"scale":%s,"x":%s,"y":%s,"vx":%s,"vy":%s,"angle":%s,"contact":"%s"}',
+            self.caseId or "unknown",
+            Number(self.simulationTime),
+            Number(stepMs),
+            Number(timeScale),
+            Number(position.x * pixelsPerMeter),
+            Number(-position.y * pixelsPerMeter),
+            Number(velocity.x / matterVelocityScale),
+            Number(-velocity.y / matterVelocityScale),
+            Number(angle),
+            contact
+        ))
         repeat
             self.nextSample = self.nextSample + self.sampleInterval
         until self.nextSample > self.simulationTime + .0001

@@ -26,6 +26,7 @@ def main() -> int:
     state_lua = (ROOT / "scripts/game/State.lua").read_text(encoding="utf-8")
     factory = (ROOT / "scripts/game/level/RuntimeFactory.lua").read_text(encoding="utf-8")
     calibration = (ROOT / "scripts/game/physics/Calibration.lua").read_text(encoding="utf-8")
+    physics_system = (ROOT / "scripts/game/physics/System.lua").read_text(encoding="utf-8")
     probe = (ROOT / "scripts/game/physics/Probe.lua").read_text(encoding="utf-8")
     generator = (ROOT / "migration/generate_phaser_matter_reference.cjs").read_text(encoding="utf-8")
     level_data = (ROOT / "scripts/game/level/LevelData.lua").read_text(encoding="utf-8")
@@ -143,6 +144,11 @@ def main() -> int:
     expect("STATIC_RESTITUTION = MatterCalibration.SOURCE_STATIC_RESTITUTION" in calibration,
            "static Matter material is not calibrated")
     expect("CARD_RESTITUTION_BASE = 0.36" in calibration, "card restitution baseline is not preserved")
+    expect("MATTER_RESTING_NORMAL_SPEED = 4" in calibration
+           and "MATTER_RESTING_TANGENT_SPEED = 6" in calibration
+           and "BOX2D_RESTITUTION_THRESHOLD = 1" in calibration
+           and "function MatterCalibration.AlignRestitutionThreshold" in calibration,
+           "Phaser-runtime restitution threshold mismatch is not calibrated")
     expect("MatterCalibration.APPLE_FRICTION" in factory and "MatterCalibration.STATIC_FRICTION" in factory,
            "RuntimeFactory does not use calibrated Matter materials")
     expect("MatterCalibration.CardRestitution" in main_lua and "ApplyAppleCardMaterial" in main_lua,
@@ -211,6 +217,18 @@ def main() -> int:
            "spring exit impulse does not follow the source gravity multiplier")
     expect("object.impulseStrength * Rules.GetRestitutionMultiplier(rules_)" not in main_lua,
            "spring exit impulse is incorrectly coupled to Hooke restitution")
+    expect('id = "hooke_wall"' in probe and 'id = "hooke_resting"' in probe
+           and 'hooke_wall:' in generator and 'hooke_resting:' in generator,
+           "trajectory probes do not cover Hooke restitution")
+    expect("QueueMatterRestitutionAlignment(other)" in main_lua
+           and "ApplyPendingMatterRestitution()" in main_lua,
+           "production collision path does not align Matter's restitution threshold")
+    expect("object.worldWidth or object.bodyWidth" in physics_system
+           and "object.worldHeight or object.bodyHeight" in physics_system,
+           "production restitution alignment cannot resolve laboratory boundary dimensions")
+    post_step = main_lua.split("function HandlePhysicsPostStep", 1)[1].split("function HandleScreenMode", 1)[0]
+    expect(post_step.index("ApplyPendingMatterRestitution()") < post_step.index("UpdateSpringExits()"),
+           "spring's explicit exit velocity no longer wins after restitution correction")
     expect("eventData:GetFloat(\"TimeStep\")" in main_lua and "timeStep" in calibration,
            "air damping is not calibrated to the current physics step")
     expect("apple_.body.angularDamping = MatterCalibration.Box2DLinearDamping" in main_lua
@@ -243,10 +261,28 @@ def main() -> int:
     expect("global" in calibration and "fixture swap" in calibration
            and "AppleFixtureFrictionForMatterStaticContact" not in calibration,
            "Matter static-friction cache limitation is not documented")
-    expect(math.sqrt(6) > 0.25,
+    expect(6 > 0.25,
            "Matter tangent resting threshold unexpectedly collapsed into its friction threshold")
     expect(max(0.0, 0.0) == 0.0 and max(0.88, 0.0) == 0.88,
            "baseline and Hooke restitution do not reproduce Matter contact response")
+    source_hooke_speed = 18.0
+    hooke_scale = 0.05
+    hooke_world_speed = source_hooke_speed * velocity_to_world * hooke_scale
+    matter_resting_threshold = 4.0 * velocity_to_world * hooke_scale
+    box2d_restitution_threshold = 1.0
+    expect(matter_resting_threshold < hooke_world_speed < box2d_restitution_threshold,
+           "Hooke probe no longer exercises the Matter/Box2D threshold gap")
+    resting_source_speed = 3.5
+    resting_world_speed = resting_source_speed * velocity_to_world
+    matter_runtime_threshold = 4.0 * velocity_to_world
+    expect(box2d_restitution_threshold < resting_world_speed < matter_runtime_threshold,
+           "low-speed Hooke probe no longer exercises the reverse 1x threshold gap")
+    expect("Resolver._restingThresh = 4" in generator
+           and "Resolver._restingThreshTangent = 6" in generator,
+           "Phaser reference generator does not reproduce MatterPhysics runtime Resolver defaults")
+    restored_source_speed = hooke_world_speed * 0.88 / (velocity_to_world * hooke_scale)
+    expect(math.isclose(restored_source_speed, 15.84, rel_tol=0, abs_tol=1e-12),
+           "slow-motion Hooke restitution conversion changed")
 
     result = {
         "mode": "PHYSICS_PROFILE_VALIDATE",

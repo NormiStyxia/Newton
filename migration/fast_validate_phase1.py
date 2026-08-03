@@ -265,6 +265,9 @@ def main() -> int:
     expect("self.sampleEveryStep = timeScale <= .05" in physics_telemetry_lua
            and "not self.sampleEveryStep and self.simulationTime + .0001 < self.nextSample" in physics_telemetry_lua,
            "slow-motion physics telemetry no longer records every Box2D post-step")
+    expect('"type":"sample_batch"' in physics_telemetry_lua
+           and 'event_type == "sample_batch"' in trajectory_contract_py,
+           "slow-motion telemetry no longer batches every-step samples for Maker log transport")
     expect("envelope.get(\"msg\")" in trajectory_contract_py
            and "def normalise_contact_events" in trajectory_contract_py,
            "Maker JSONL telemetry or contact lifecycle normalization is missing")
@@ -274,6 +277,11 @@ def main() -> int:
     expect("DEFAULT_GRAVITY_MAGNITUDE = 1.05" in rules_lua and "function Rules.GetGravityMultiplier" in rules_lua, "source gravity magnitude or button multiplier missing")
     expect("APPLE_FRICTION_AIR = 0.01" in calibration_lua and "Box2DLinearDamping" in calibration_lua, "effective Matter air friction is not calibrated")
     expect("APPLE_FRICTION_STATIC = 0.5" in calibration_lua and "MATTER_FRICTION_NORMAL_MULTIPLIER = 5" in calibration_lua and "MATTER_RESTING_TANGENT_SPEED" in calibration_lua, "Matter static-friction thresholds are not calibrated")
+    expect("MATTER_RESTING_NORMAL_SPEED = 4" in calibration_lua
+           and "MATTER_RESTING_TANGENT_SPEED = 6" in calibration_lua
+           and "BOX2D_RESTITUTION_THRESHOLD = 1" in calibration_lua
+           and "function MatterCalibration.AlignRestitutionThreshold" in calibration_lua,
+           "Phaser-runtime Matter/Box2D restitution thresholds are not adapted")
     expect("MatterCalibration.APPLE_FRICTION" in factory_lua and "MatterCalibration.STATIC_RESTITUTION" in factory_lua, "effective Matter fixture materials are not calibrated")
     expect("UpdateMatterStaticFriction" not in main_lua and "TrackApplePhysicalContact" not in main_lua and "AppleFixtureFrictionForMatterStaticContact" not in main_lua, "Box2D still mutates the apple fixture to fake Matter static friction")
     expect("apple_.body.angularDamping = MatterCalibration.Box2DLinearDamping" in main_lua, "Matter frictionAir is not applied to angular motion")
@@ -292,6 +300,16 @@ def main() -> int:
     expect("physicsStepTimeScale_ = physicsTimeScale" in main_lua
            and "UpdateExperiment(eventData:GetFloat(\"TimeStep\") * physicsTimeScale)" in main_lua,
            "physics post-step timing does not retain the scale that advanced the source step")
+    expect('id = "hooke_wall"' in physics_probe_lua and 'id = "hooke_resting"' in physics_probe_lua
+           and "QueueMatterRestitutionAlignment(other)" in main_lua
+           and "ApplyPendingMatterRestitution()" in main_lua,
+           "Hooke wall probe or production restitution compensation is missing")
+    expect("object.worldWidth or object.bodyWidth" in all_lua
+           and "object.worldHeight or object.bodyHeight" in all_lua,
+           "restitution contact normal does not support laboratory boundaries")
+    post_step = main_lua.split("function HandlePhysicsPostStep", 1)[1].split("function HandleScreenMode", 1)[0]
+    expect(post_step.index("ApplyPendingMatterRestitution()") < post_step.index("UpdateSpringExits()"),
+           "spring exit no longer wins after slow-motion restitution compensation")
     expect("uiElapsed_ * 1000 - object.triggeredAt" in main_lua and "uiElapsed_ * 1000 >= object.closeAt" in main_lua, "scene-time cooldown or door delay differs from source")
     expect("if #trail_ > 18" in main_lua and "flightMs_ - lastTrailAt_ > 55" in main_lua and "DrawVelocityArrow" in main_lua, "trail or velocity visualization differs from Phaser")
     expect("input:GetMouseButtonPress(MOUSEB_RIGHT)" in main_lua and "input:GetKeyPress(KEY_ESCAPE)" in main_lua and "ToggleTacticalPause" in main_lua, "source keyboard or cancel interaction is missing")
