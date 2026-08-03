@@ -242,6 +242,17 @@ function Controller:interrupt(reason)
     if self.state == Controller.State.WALK then
         self:_finishWalk(true, reason or "interrupted")
     elseif self.state == Controller.State.RELOCATING then
+        -- A relocation transition can be cancelled by a level change,
+        -- disabling, or an explicit behavior override.  Never leave the
+        -- root at the raw out-of-zone drag position in that case.
+        local restoreX = self.lastReachableX or self.validMinX
+        local restoreY = self.lastReachableY
+            or (self.zone and self.zone.baselineY)
+            or self.y
+        restoreX = Clamp(restoreX, self.validMinX, self.validMaxX)
+        self.x, self.y = restoreX, restoreY
+        self.lastReachableX, self.lastReachableY = self.x, self.y
+        self:_emit("positionChanged", self.x, self.y, "relocation-interrupted")
         self:_setState(Controller.State.IDLE, reason or "relocation-interrupted")
         self:_scheduleIdle()
     else
@@ -333,7 +344,11 @@ end
 
 function Controller:finishRelocation(x, y)
     if self.state ~= Controller.State.RELOCATING then return false end
-    self.x = type(x) == "number" and x or self.lastReachableX or self.validMinX
+    local restoreX = type(x) == "number" and x or self.lastReachableX or self.validMinX
+    -- Layout may have changed while the blind transition was running.  Keep
+    -- the recorded return point when it is still legal, otherwise use the
+    -- new horizontal bounds without touching the visual transition itself.
+    self.x = Clamp(restoreX, self.validMinX, self.validMaxX)
     self.y = type(y) == "number" and y or self.lastReachableY or self.zone.baselineY
     self.lastReachableX, self.lastReachableY = self.x, self.y
     self:_emit("positionChanged", self.x, self.y, "relocation-finished")

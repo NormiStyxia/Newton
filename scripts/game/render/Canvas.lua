@@ -129,6 +129,7 @@ function Renderer:Init()
             dialoguePanel = nvgCreateImage(self.vg, "image/ui/dialogue_overlay/panel.png", 0),
             dialogueSkip = nvgCreateImage(self.vg, "image/ui/dialogue_overlay/skip.png", 0),
             dialogueClose = nvgCreateImage(self.vg, "image/ui/dialogue_overlay/close.png", 0),
+            reportBase = nvgCreateImage(self.vg, "image/ui/report/observation_report_base.png", 0),
         },
         newtonAnger = {
             [0] = nvgCreateImage(self.vg, "image/ui/newton_panel/runtime/newton_anger_000.png", 0),

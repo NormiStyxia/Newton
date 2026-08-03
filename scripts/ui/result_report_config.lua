@@ -19,9 +19,11 @@ M.ReportColors = {
 }
 
 M.Layout = {
-    width = 410,
-    height = 650,
-    maxHeightRatio = 0.82,
+    artWidth = 1086,
+    artHeight = 1448,
+    width = 480,
+    height = 640,
+    maxHeightRatio = 0.84,
     enterDuration = 0.28,
     exitDuration = 0.18,
     maxTextLines = 2,
@@ -53,8 +55,14 @@ local function clamp(value, minimum, maximum)
 end
 
 function M.ResolveRect(frame)
-    local width = math.min(M.Layout.width, math.max(280, frame.logicalWidth - 36))
-    local height = math.min(M.Layout.height, math.max(480, frame.logicalHeight * M.Layout.maxHeightRatio))
+    local aspect = M.Layout.artWidth / M.Layout.artHeight
+    local height = math.min(M.Layout.height, math.max(520, frame.logicalHeight * M.Layout.maxHeightRatio))
+    local width = height * aspect
+    local maxWidth = math.max(360, frame.logicalWidth - 36)
+    if width > maxWidth then
+        width = maxWidth
+        height = width / aspect
+    end
     local centerX = frame.playfieldX + frame.playfieldWidth * 0.5
     local centerY = frame.logicalHeight * 0.5
     return {
@@ -66,20 +74,28 @@ function M.ResolveRect(frame)
 end
 
 function M.ResolveZones(rect, hasReplay)
-    local padding = M.Layout.padding
-    local selfBox = { x = rect.x + padding, y = rect.y + 238, w = rect.w - padding * 2, h = 32 }
-    local bottom = rect.y + rect.h - padding
-    local nextButton = { x = rect.x + padding, y = bottom - M.Layout.buttonHeight, w = rect.w - padding * 2, h = M.Layout.buttonHeight }
-    local secondaryY = nextButton.y - M.Layout.buttonGap - M.Layout.buttonHeight
-    local secondaryWidth = hasReplay and (nextButton.w - M.Layout.buttonGap) * 0.5 or nextButton.w
-    local retry = { x = nextButton.x, y = secondaryY, w = secondaryWidth, h = M.Layout.buttonHeight }
-    local replay = hasReplay and {
-        x = nextButton.x + secondaryWidth + M.Layout.buttonGap,
-        y = secondaryY,
-        w = secondaryWidth,
-        h = M.Layout.buttonHeight,
-    } or nil
+    local function artRect(x, y, w, h)
+        return {
+            x = rect.x + rect.w * x / M.Layout.artWidth,
+            y = rect.y + rect.h * y / M.Layout.artHeight,
+            w = rect.w * w / M.Layout.artWidth,
+            h = rect.h * h / M.Layout.artHeight,
+        }
+    end
+    local selfBox = artRect(240, 630, 738, 82)
+    local retry = artRect(176, 1160, 338, 82)
+    local replay = hasReplay and artRect(558, 1160, 348, 82) or nil
+    local nextButton = artRect(174, 1270, 740, 104)
     return { selfBox = selfBox, retry = retry, replay = replay, next = nextButton }
+end
+
+function M.ResolveReportArtRect(rect, x, y, w, h)
+    return {
+        x = rect.x + rect.w * x / M.Layout.artWidth,
+        y = rect.y + rect.h * y / M.Layout.artHeight,
+        w = rect.w * w / M.Layout.artWidth,
+        h = rect.h * h / M.Layout.artHeight,
+    }
 end
 
 function M.NewtonReview(anger)

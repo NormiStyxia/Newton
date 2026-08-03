@@ -173,6 +173,17 @@ expect(leftGrab:getState() == CompanionController.State.RELOCATING,
 expect(leftGrab:finishRelocation(leftGrab.lastReachableX, leftGrab.lastReachableY)
     and leftGrab.x == 186 and leftGrab.y == 274,
     "semantic relocation did not restore the last reachable root")
+local interruptedRelocation = hotspotController(CompanionController.Facing.LEFT)
+interruptedRelocation:handlePointer({ x = -50, y = -50, down = true, pressed = false, released = false }, false)
+interruptedRelocation:handlePointer({ x = -50, y = -50, down = false, pressed = false, released = true }, false)
+expect(interruptedRelocation:getState() == CompanionController.State.RELOCATING,
+    "interrupted relocation did not enter RELOCATING")
+local interruptedReturnX, interruptedReturnY = interruptedRelocation.lastReachableX, interruptedRelocation.lastReachableY
+interruptedRelocation:interrupt("level-changed")
+expect(interruptedRelocation:getState() == CompanionController.State.IDLE
+    and interruptedRelocation.x == interruptedReturnX
+    and interruptedRelocation.y == interruptedReturnY,
+    "relocation interruption did not restore the last reachable root")
 local rightGrab = hotspotController(CompanionController.Facing.RIGHT)
 expect(rightGrab.x == 214 and rightGrab.y == 274,
     "RIGHT drag did not mirror the lifted-cloth tip around the foot anchor")

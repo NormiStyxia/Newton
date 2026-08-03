@@ -58,6 +58,7 @@ function M.Install(context)
 
         resultReportState_ = {
             resultId = resultId,
+            experimentNumber = tonumber(levelIndex_) or 1,
             levelId = levelId,
             clearCount = clearCount,
             title = "观测成立",
@@ -70,6 +71,7 @@ function M.Install(context)
             einsteinReview = einstein,
             greenReview = green,
             isDropdownOpen = false,
+            dropdownProgress = 0,
             highlightedOption = 1,
             hoveredOption = nil,
             validationMessage = nil,
@@ -94,6 +96,10 @@ function M.Install(context)
             end
         elseif resultReportState_ then
             resultReportAnimation_ = math.min(1, resultReportAnimation_ + math.max(0, dt) / Config.Layout.enterDuration)
+            local target = resultReportState_.isDropdownOpen and 1 or 0
+            local response = 1 - math.exp(-math.max(0, dt) / 0.085)
+            resultReportState_.dropdownProgress = math.max(0, math.min(1,
+                (resultReportState_.dropdownProgress or 0) + (target - (resultReportState_.dropdownProgress or 0)) * response))
         end
     end
 
@@ -133,11 +139,11 @@ function M.Install(context)
         local hasReplay = HasResultReportReplay()
         local rect = Config.ResolveRect(frame_)
         local zones = Config.ResolveZones(rect, hasReplay)
-        local optionStartY = zones.selfBox.y + zones.selfBox.h + 6
+        local optionStartY = zones.selfBox.y + zones.selfBox.h + 5
         state.hoveredOption = nil
         if state.isDropdownOpen then
             for index = 1, #state.selfOptions do
-                local optionRect = { x = zones.selfBox.x, y = optionStartY + (index - 1) * 28, w = zones.selfBox.w, h = 26 }
+                local optionRect = { x = zones.selfBox.x, y = optionStartY + (index - 1) * 27, w = zones.selfBox.w, h = 25 }
                 if pointInRect(x, y, optionRect) then state.hoveredOption = index; break end
             end
         end

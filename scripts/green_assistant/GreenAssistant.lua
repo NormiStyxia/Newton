@@ -235,7 +235,17 @@ end
 
 function GreenAssistant:_onCompanionEvent(eventName, ...)
     if eventName == "stateChanged" then
-        local state, _, reason = ...
+        local state, previous, reason = ...
+        -- If an external lifecycle event interrupts relocation, the View must
+        -- stop drawing the transition before the restored position is synced.
+        -- The normal completion path clears relocationEffect first, so this
+        -- does not cancel a successful blind-in/return transition.
+        if previous == CompanionController.State.RELOCATING
+            and state ~= CompanionController.State.RELOCATING
+            and self.relocationEffect then
+            self.relocationEffect = nil
+            if self.view.cancelRelocationEffect then self.view:cancelRelocationEffect() end
+        end
         if not self._ignoreCompanionState then
             self.behaviorState:set(CompanionBehavior(state), "companion-" .. tostring(reason or state))
         end
