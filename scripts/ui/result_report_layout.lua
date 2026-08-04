@@ -229,17 +229,10 @@ function M.Install(context)
         local function artHeight(value)
             return rect.h * value / Config.Layout.artHeight
         end
-        local centerX = x + w * 0.5
         local experimentNumber = state.experimentNumber or levelIndex_ or 1
         painter_:Text(x + w * 0.90, y + rect.h * 0.124,
             string.format("No. EXP-%02d", experimentNumber), 10, c.inkMuted,
             NVG_ALIGN_RIGHT + NVG_ALIGN_TOP, "maker-body", alpha)
-        drawWrappedText(painter_, centerX, y + rect.h * 0.292, artWidth(660),
-            string.format("实验 %02d · %s", experimentNumber, state.experimentName or ""),
-            "maker-body", 13, 9, 1, c.ink, NVG_ALIGN_CENTER + NVG_ALIGN_TOP, 15, alpha)
-        drawWrappedText(painter_, centerX, y + rect.h * 0.333, artWidth(700),
-            state.resultDescription or "", "maker-body", 12, 9, 1, c.ink,
-            NVG_ALIGN_CENTER + NVG_ALIGN_TOP, 15, alpha)
 
         local selfAuthorX, selfY = artPoint(96, 654)
         painter_:Text(selfAuthorX, selfY, "诺米", Config.ReviewAuthorStyles.nomi.fontSize, c.ink,
