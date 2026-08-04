@@ -4,13 +4,16 @@
 ---@field portrait integer
 ---@field goalRing integer
 ---@field goalObserver integer
----@field ui table<string, integer>
+---@field ui table
 ---@field newtonAnger table<integer|string, integer>
 
 ---@class Renderer2D
 ---@field vg unknown
 ---@field fontBody integer
 ---@field fontDisplay integer
+---@field fontEinstein integer
+---@field fontNewton integer
+---@field fontGreen integer
 ---@field images RendererImageSet
 local Renderer = {}
 Renderer.__index = Renderer
@@ -109,9 +112,11 @@ function Renderer:Init()
     self.fontEinstein = nvgCreateFont(self.vg, "report-einstein", CHANGAN_FONT)
     self.fontNewton = nvgCreateFont(self.vg, "report-newton", CHUNXU_FONT)
     self.fontGreen = nvgCreateFont(self.vg, "report-green", SARASA_FONT)
-    print(string.format("[Font] FutureRound path=%s body=%d display=%d",
-        FUTURE_ROUND_FONT, self.fontBody, self.fontDisplay))
-    if self.fontBody == -1 or self.fontDisplay == -1 then
+    print(string.format("[Font] FutureRound path=%s body=%d display=%d report=(%d,%d,%d)",
+        FUTURE_ROUND_FONT, self.fontBody, self.fontDisplay,
+        self.fontEinstein, self.fontNewton, self.fontGreen))
+    if self.fontBody == -1 or self.fontDisplay == -1
+        or self.fontEinstein == -1 or self.fontNewton == -1 or self.fontGreen == -1 then
         error("未来圆字体加载失败: " .. FUTURE_ROUND_FONT)
     end
     self.images = {
@@ -142,6 +147,7 @@ function Renderer:Init()
                 nomi = nvgCreateImage(self.vg, "image/ui/dialogue_overlay/avatars/nomi.png", 0),
             },
             reportBase = nvgCreateImage(self.vg, "image/ui/report/observation_report_base.png", 0),
+            reportDropdown = nvgCreateImage(self.vg, "image/ui/report/report_dropdown_frame.png", 0),
         },
         newtonAnger = {
             [0] = nvgCreateImage(self.vg, "image/ui/newton_panel/runtime/newton_anger_000.png", 0),
@@ -203,6 +209,12 @@ end
 function Renderer:UseFont(font)
     if font == "maker-display" then
         nvgFontFaceId(self.vg, self.fontDisplay)
+    elseif font == "report-einstein" then
+        nvgFontFaceId(self.vg, self.fontEinstein)
+    elseif font == "report-newton" then
+        nvgFontFaceId(self.vg, self.fontNewton)
+    elseif font == "report-green" then
+        nvgFontFaceId(self.vg, self.fontGreen)
     elseif not font or font == "maker-body" then
         nvgFontFaceId(self.vg, self.fontBody)
     else

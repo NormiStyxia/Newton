@@ -247,10 +247,10 @@ function M.Install(context)
         painter_:Text(x + w * 0.90, y + rect.h * 0.124,
             string.format("No. EXP-%02d", experimentNumber), 10, c.inkMuted,
             NVG_ALIGN_RIGHT + NVG_ALIGN_TOP, "maker-body", alpha)
-        drawWrappedText(painter_, centerX, y + rect.h * 0.255, artWidth(660),
+        drawWrappedText(painter_, centerX, y + rect.h * 0.292, artWidth(660),
             string.format("实验 %02d · %s", experimentNumber, state.experimentName or ""),
             "maker-body", 13, 9, 1, c.ink, NVG_ALIGN_CENTER + NVG_ALIGN_TOP, 15, alpha)
-        drawWrappedText(painter_, centerX, y + rect.h * 0.302, artWidth(430),
+        drawWrappedText(painter_, centerX, y + rect.h * 0.333, artWidth(700),
             state.resultDescription or "", "maker-body", 12, 9, 1, c.ink,
             NVG_ALIGN_CENTER + NVG_ALIGN_TOP, 15, alpha)
 
@@ -263,10 +263,16 @@ function M.Install(context)
             12, 9, 1, state.selectedSelfReview and c.ink or c.inkMuted,
             NVG_ALIGN_LEFT + NVG_ALIGN_TOP, 15, alpha)
 
+        local reportDropdown = painter_.images and painter_.images.ui and painter_.images.ui.reportDropdown
+        if reportDropdown and reportDropdown >= 0 then
+            painter_:ImageRect(reportDropdown, zones.selfBox.x, y + zones.selfBox.y - rect.y,
+                zones.selfBox.w, zones.selfBox.h, alpha)
+        end
+
         local reviewWidth = { x = x + w * 0.265, w = artWidth(540) }
-        local _, newtonY = artPoint(96, 801)
-        local _, einsteinY = artPoint(96, 939)
-        local _, greenY = artPoint(96, 1060)
+        local _, newtonY = artPoint(96, 792)
+        local _, einsteinY = artPoint(96, 914)
+        local _, greenY = artPoint(96, 1038)
         drawReview(painter_, state, "newton", "牛顿", newtonY, reviewWidth, alpha)
         drawReview(painter_, state, "einstein", "爱因斯坦", einsteinY, reviewWidth, alpha)
         drawReview(painter_, state, "green", "绿毛同事", greenY, reviewWidth, alpha)
@@ -288,6 +294,10 @@ function M.Install(context)
         if drawZones.replay then drawArtworkButtonFeedback(painter_, drawZones.replay, replayHover, false, c, alpha) end
         drawArtworkButtonFeedback(painter_, drawZones.next, nextHover,
             Config.Layout.requireSelfReview and not state.selectedSelfReview, c, alpha)
+        drawActionButton(painter_, drawZones.retry, "重新实验", false, retryHover, false, alpha)
+        if drawZones.replay then drawActionButton(painter_, drawZones.replay, "调阅回放", false, replayHover, false, alpha) end
+        drawActionButton(painter_, drawZones.next, "进入下一实验", true, nextHover,
+            Config.Layout.requireSelfReview and not state.selectedSelfReview, alpha)
         if state.validationMessage then
             painter_:Text(x + w * 0.5, drawZones.next.y - 17, state.validationMessage, 11, c.danger, NVG_ALIGN_CENTER + NVG_ALIGN_TOP, "maker-body", alpha)
         end
@@ -301,8 +311,19 @@ function M.Install(context)
                 local optionY = optionStartY + (index - 1) * 27 * optionReveal
                 local optionHeight = 25 * math.min(1, optionReveal * 1.15)
                 local hovered = state.hoveredOption == index or state.highlightedOption == index
-                painter_:RoundedRect(zones.selfBox.x, optionY, zones.selfBox.w, optionHeight, 2,
-                    hovered and c.dropdownHover or c.paperLight, c.border, 1, math.floor(alpha * optionReveal))
+                local optionFrame = painter_.images and painter_.images.ui and painter_.images.ui.reportDropdown
+                if optionFrame and optionFrame >= 0 then
+                    painter_:ImageRect(optionFrame, zones.selfBox.x, optionY, zones.selfBox.w, optionHeight,
+                        math.floor(alpha * optionReveal))
+                    if hovered then
+                        painter_:FillRect(zones.selfBox.x + 3, optionY + 3,
+                            zones.selfBox.w - 6, math.max(1, optionHeight - 6), c.dropdownHover,
+                            math.floor(alpha * 0.22 * optionReveal))
+                    end
+                else
+                    painter_:RoundedRect(zones.selfBox.x, optionY, zones.selfBox.w, optionHeight, 2,
+                        hovered and c.dropdownHover or c.paperLight, c.border, 1, math.floor(alpha * optionReveal))
+                end
                 if optionReveal > 0.28 then
                     painter_:TextBox(zones.selfBox.x + 10, optionY + 5, zones.selfBox.w - 20, option, 11,
                         c.ink, NVG_ALIGN_LEFT + NVG_ALIGN_TOP, Config.ReviewAuthorStyles.nomi.font, 1.05,
