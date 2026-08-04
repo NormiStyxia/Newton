@@ -68,6 +68,43 @@ expect(incident.id == Profiles.INCIDENT_ID and not incident.boundaries.ceiling a
 standard.boundaries.left = false
 expect(Profiles.Resolve(nil).boundaries.left, "physics profile returned shared mutable state")
 
+local LevelData = require("game.level.LevelData")
+local boundaryLevel = {
+    schemaVersion = 1,
+    levelId = "boundary_rounding",
+    playfield = { width = 1400, height = 700 },
+    objects = {
+        {
+            id = "launcher", type = "launcher",
+            transform = { x = 100, y = 100, width = 20, height = 20, rotation = 0 },
+            properties = {},
+        },
+        {
+            id = "goal", type = "goal_sensor",
+            transform = { x = 1300, y = 100, width = 20, height = 20, rotation = 0 },
+            properties = {},
+        },
+        {
+            id = "wall_10", type = "wall",
+            transform = {
+                x = 472.5620537282992,
+                y = 502.70239503850445,
+                width = 198.63064255100974,
+                height = 20,
+                rotation = 135,
+            },
+            properties = {},
+        },
+    },
+    cardDeck = { cards = {} },
+    rules = { initialGravity = { x = 0, y = 1, strength = 1 } },
+}
+local boundaryValid = LevelData.Validate(boundaryLevel)
+expect(boundaryValid, "rotated object touching the playfield boundary was rejected")
+boundaryLevel.objects[3].transform.y = boundaryLevel.objects[3].transform.y + 1e-4
+local overflowValid = LevelData.Validate(boundaryLevel)
+expect(not overflowValid, "object beyond the boundary tolerance was accepted")
+
 local Timeline = require("game.replay.Timeline")
 local samples = {
     { t = 0, x = 0, y = 0, vx = 1, vy = 2, angle = 350 },

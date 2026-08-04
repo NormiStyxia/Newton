@@ -5,6 +5,9 @@ local LevelData = {}
 LevelData.SCHEMA_VERSION = 1
 LevelData.PLAYFIELD_GROUND_Y = 580
 
+-- Trigonometric extents for rotated objects can differ by a few ULPs across runtimes.
+local BOUNDARY_EPSILON = 1e-6
+
 ---@type table<string, boolean>
 local SUPPORTED_TYPES = {
     wall = true,
@@ -120,10 +123,10 @@ function LevelData.Validate(level)
                         and IsFiniteNumber(transform.y)
                         and IsFiniteNumber(transform.rotation) then
                         local extents = RotatedHalfExtents(transform)
-                        if transform.x - extents.x < 0
-                            or transform.x + extents.x > level.playfield.width
-                            or transform.y - extents.y < 0
-                            or transform.y + extents.y > LevelData.PLAYFIELD_GROUND_Y then
+                        if transform.x - extents.x < -BOUNDARY_EPSILON
+                            or transform.x + extents.x > level.playfield.width + BOUNDARY_EPSILON
+                            or transform.y - extents.y < -BOUNDARY_EPSILON
+                            or transform.y + extents.y > LevelData.PLAYFIELD_GROUND_Y + BOUNDARY_EPSILON then
                             AddError(errors, tostring(object.id) .. " 超出关卡边界")
                         end
                     end
