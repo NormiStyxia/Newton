@@ -223,6 +223,8 @@ def main() -> int:
     expect("CollisionCircle2D" in factory_lua and "CollisionBox2D" in factory_lua, "Box2D shapes missing")
     expect("BT_DYNAMIC" in main_lua and "BT_STATIC" in factory_lua, "body state transition missing")
     expect("nvgCreateImage" in renderer_lua and "nvgBeginFrame" in renderer_lua, "NanoVG visual renderer missing")
+    expect("math.rad(-object.node.rotation2D)" in renderer_lua and "math.rad(t.rotation or 0)" in renderer_lua,
+           "world object visual rotation differs from Phaser screen-space angle")
     expect("image/phase1/apple.png" in renderer_lua and "image/phase1/launcher.png" in renderer_lua, "source-derived sprite loading missing")
     expect("image/newton-portrait.png" in renderer_lua, "Newton portrait loading missing")
     expect("BASE_WIDTH = 1880" in design_lua and "BASE_HEIGHT = 840" in design_lua, "design viewport changed")

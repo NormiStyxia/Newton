@@ -383,7 +383,9 @@ function M.Install(Renderer, COLORS, color, tint)
         local x, y = design:WorldToLogical(worldX, worldY)
         local worldWidth, worldHeight = mapper:LevelSizeToWorld(t.width, t.height)
         local w, h = design:WorldSizeToLogical(worldWidth, worldHeight)
-        local rotation = object.node and math.rad(object.node.rotation2D) or math.rad(-(t.rotation or 0))
+        -- UrhoX stores node angles in Y-up world space; NanoVG and Phaser use
+        -- Y-down screen space, so presentation needs the opposite angle.
+        local rotation = object.node and math.rad(-object.node.rotation2D) or math.rad(t.rotation or 0)
         if object.type == "wall" then
             local fill = object.phaseable and COLORS.glass or COLORS.wall
             local edge = object.phaseable and COLORS.glassEdge or COLORS.wallEdge
