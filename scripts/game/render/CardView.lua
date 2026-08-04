@@ -5,44 +5,70 @@ local M = {}
 function M.Install(context)
     local Rules = context.Rules
     local CARD_TEXT_SCALE = context.CARD_TEXT_SCALE
-    local CARD_DESIGN_WIDTH = context.CARD_DESIGN_WIDTH
-    local CARD_DESIGN_HEIGHT = context.CARD_DESIGN_HEIGHT
+    local CARD_RENDER_WIDTH = context.CARD_RENDER_WIDTH
+    local CARD_RENDER_HEIGHT = context.CARD_RENDER_HEIGHT
     local _ENV = context
+    local singleLineSizeCache = {}
+    local textBoxSizeCache = {}
+
+    local function RemainingUses(remaining)
+        return math.max(0, math.floor(tonumber(remaining) or 0))
+    end
+
     function CardUseLabel(usage, remaining)
-        return usage == "REUSABLE" and "可重复" or (tostring(remaining) .. " 次")
+        return usage == "REUSABLE" and "可重复" or (tostring(RemainingUses(remaining)) .. "次")
     end
-    function CardBadgeText(id, usage, remaining)
-        if burningCardIds_[id] then return "燃烧" end
-        if activeCardId_ == id then
-            if cardHandReordering_ then return "排序" end
-            if activeCardDeploying_ then
-                local needsParameter = id == "side-gravity" or id == "mirror-motion"
-                if not needsParameter then
-                    return activeCardPointer_ and PointerInPlayfield(activeCardPointer_.x, activeCardPointer_.y) and "可部署" or "移入场地"
-                end
-                if cardParameterStart_ then
-                    if cardGestureDistance_ >= 48 then return "松手确认" end
-                    return cardCandidate_ and "继续滑动" or "滑动选方向"
-                end
-                if activeCardPointer_ and PointerInPlayfield(activeCardPointer_.x, activeCardPointer_.y) then return "停稳后选方向" end
-                return cardDeployEnteredMs_ and "移回场地" or "移入场地"
-            end
+
+    function CardBadgeText(usage, remaining)
+        return usage == "REUSABLE" and "∞" or ("×" .. tostring(RemainingUses(remaining)))
+    end
+
+    local function FitSingleLine(value, font, preferredSize, minimumSize, maximumWidth)
+        local key = table.concat({ font, value, preferredSize, minimumSize, maximumWidth }, "|")
+        if singleLineSizeCache[key] then return singleLineSizeCache[key] end
+        painter_:UseFont(font)
+        nvgFontSize(painter_.vg, preferredSize)
+        local width = nvgTextBounds(painter_.vg, 0, 0, value) or 0
+        local size = preferredSize
+        if width > maximumWidth and width > 0 then
+            size = math.max(minimumSize, preferredSize * maximumWidth / width)
         end
-        if primedCardId_ == id then return "0.05" end
-        return usage == "REUSABLE" and "∞" or tostring(remaining)
+        singleLineSizeCache[key] = size
+        return size
     end
-    function DrawCardBadge(value, edge, alpha)
-        local size = 10 * CARD_TEXT_SCALE
-        local horizontalPadding = 5 * CARD_TEXT_SCALE
-        local opacity = alpha or 1
-        painter_:UseFont("maker-body")
-        nvgFontSize(painter_.vg, size)
-        local width = math.max(25, nvgTextBounds(painter_.vg, 0, 0, value) + horizontalPadding * 2)
-        local right = 51 * CARD_TEXT_SCALE
-        painter_:RoundedRect(right - width, -94, width, 20, 4, edge, nil, nil, math.floor(opacity * 255))
-        painter_:Text(right - width * .5, -91, value, size, Renderer2D.COLORS.white, NVG_ALIGN_CENTER + NVG_ALIGN_TOP, nil, math.floor(opacity * 255))
+
+    local function FitTextBox(value, font, preferredSize, minimumSize, width, maximumHeight, lineHeight)
+        local key = table.concat({ font, value, preferredSize, minimumSize, width, maximumHeight, lineHeight }, "|")
+        if textBoxSizeCache[key] then return textBoxSizeCache[key] end
+        painter_:UseFont(font)
+        nvgTextAlign(painter_.vg, NVG_ALIGN_CENTER + NVG_ALIGN_TOP)
+        nvgTextLineHeight(painter_.vg, lineHeight)
+        local size = preferredSize
+        while size > minimumSize do
+            nvgFontSize(painter_.vg, size)
+            local bounds = nvgTextBoxBounds(painter_.vg, 0, 0, width, value)
+            local height = bounds and bounds[4] and bounds[2] and (bounds[4] - bounds[2]) or size
+            if height <= maximumHeight then
+                textBoxSizeCache[key] = size
+                return size
+            end
+            size = math.max(minimumSize, size - .5)
+        end
+        textBoxSizeCache[key] = size
+        return size
     end
-    function DrawCardSurface(id, def, card, cardState, badgeText, active, hovered, alpha)
+
+    function DrawCardBadge(value, alpha)
+        local opacity = math.floor((alpha or 1) * 255)
+        local size = FitSingleLine(value, "report-green", 12, 8, CARD_RENDER_WIDTH * .2)
+        local left = -CARD_RENDER_WIDTH * .5
+        local top = -CARD_RENDER_HEIGHT * .5
+        painter_:Text(left + CARD_RENDER_WIDTH * .852, top + CARD_RENDER_HEIGHT * .092,
+            value, size, Renderer2D.COLORS.white,
+            NVG_ALIGN_CENTER + NVG_ALIGN_MIDDLE, "report-green", opacity)
+    end
+
+    function DrawCardSurface(id, def, card, cardState, active, hovered, alpha)
         local field = def.kind == "field"
         local usage = cardState and cardState.usageMode or card.usageMode
         local remaining = cardState and cardState.remainingUses or card.count
@@ -59,30 +85,51 @@ function M.Install(context)
         local function alphaValue(value)
             return math.floor((value or 255) * opacity)
         end
-        local cardSkin = id == "quantum-phase" and painter_.images.ui.cardQuantum
-            or (field and painter_.images.ui.cardField or painter_.images.ui.cardDecision)
+        local illustratedSkin = painter_.images.ui.cardFaces and painter_.images.ui.cardFaces[id]
+        local hasIllustratedSkin = illustratedSkin and illustratedSkin >= 0
+        local cardSkin = hasIllustratedSkin and illustratedSkin
+            or (id == "quantum-phase" and painter_.images.ui.cardQuantum
+                or (field and painter_.images.ui.cardField or painter_.images.ui.cardDecision))
+        local left = -CARD_RENDER_WIDTH * .5
+        local top = -CARD_RENDER_HEIGHT * .5
         if not cardSkin or cardSkin < 0 then
-            painter_:RoundedRect(-60 * scale, -83 * scale, CARD_DESIGN_WIDTH * scale, CARD_DESIGN_HEIGHT * scale, 7 * scale, Renderer2D.COLORS.dark, nil, nil, alphaValue(hovered and 41 or 26))
-            painter_:RoundedRect(-62 * scale, -87 * scale, CARD_DESIGN_WIDTH * scale, CARD_DESIGN_HEIGHT * scale, 7 * scale, edge, nil, nil, opaque)
-            painter_:RoundedRect(-57 * scale, -82 * scale, 114 * scale, 164 * scale, 5 * scale, fill, nil, nil, opaque)
-            painter_:RoundedRect(-57 * scale, -82 * scale, 114 * scale, 21 * scale, 5 * scale, accent, nil, nil, alphaValue(36))
-            painter_:RoundedRect(-49 * scale, -32 * scale, 98 * scale, 76 * scale, 4 * scale, Renderer2D.COLORS.panel, edge, 1 * scale, alphaValue(107))
-            painter_:StrokeRect(-49 * scale, 51 * scale, 98 * scale, 0, edge, 1 * scale, alphaValue(133))
+            painter_:RoundedRect(left, top, CARD_RENDER_WIDTH, CARD_RENDER_HEIGHT, 7 * scale,
+                fill, edge, 2 * scale, opaque)
         else
-            painter_:Image(cardSkin, 0, 0, CARD_DESIGN_WIDTH * scale, CARD_DESIGN_HEIGHT * scale, (hovered and 1 or .96) * opacity)
+            painter_:Image(cardSkin, 0, 0, CARD_RENDER_WIDTH, CARD_RENDER_HEIGHT,
+                (hovered and 1 or .98) * opacity)
         end
-        local borderAlpha = cardSkin and ((active or hovered) and 255 or 61) or 255
-        painter_:RoundedRect(-62 * scale, -87 * scale, CARD_DESIGN_WIDTH * scale, CARD_DESIGN_HEIGHT * scale, 7 * scale, nil, active and Renderer2D.COLORS.primaryActive or edge, (active and 3 or 2) * scale, alphaValue(borderAlpha))
-        painter_:Text(-58, -85, (field and "场地 · " or "决策 · ") .. CardUseLabel(usage, remaining), 9 * CARD_TEXT_SCALE, accent, nil, nil, opaque)
-        painter_:Text(0, -58, def.name, 16 * CARD_TEXT_SCALE, titleColor, NVG_ALIGN_CENTER + NVG_ALIGN_TOP, "maker-display", opaque)
-        nvgSave(painter_.vg)
-        nvgScale(painter_.vg, CARD_TEXT_SCALE, CARD_TEXT_SCALE)
-        painter_:DrawCardSymbol(id, 0, 7, titleColor, opaque)
-        nvgRestore(painter_.vg)
-        -- Phaser uses a 10 px description with 2 px lineSpacing before the card
-        -- container scale is applied. Its final NanoVG line-height is 1.2.
-        painter_:TextBox(-51 * scale, 59 * scale, 102 * scale, def.description, 10 * scale, bodyColor, NVG_ALIGN_CENTER + NVG_ALIGN_TOP, "maker-body", 1.2, opaque)
-        DrawCardBadge(badgeText or CardBadgeText(id, usage, remaining), accent, opacity)
+        if active or hovered or not cardSkin or cardSkin < 0 then
+            local borderAlpha = active and 255 or (hovered and 190 or 90)
+            painter_:RoundedRect(left + 2, top + 2, CARD_RENDER_WIDTH - 4, CARD_RENDER_HEIGHT - 4,
+                7 * scale, nil, active and Renderer2D.COLORS.primaryActive or edge,
+                (active and 3 or 2) * scale, alphaValue(borderAlpha))
+        end
+
+        local titleSize = FitSingleLine(def.name, "maker-display", 16, 11, CARD_RENDER_WIDTH * .52)
+        painter_:Text(0, top + CARD_RENDER_HEIGHT * .065, def.name, titleSize, titleColor,
+            NVG_ALIGN_CENTER + NVG_ALIGN_TOP, "maker-display", opaque)
+
+        local useText = (field and "场地 · " or "决策 · ") .. CardUseLabel(usage, remaining)
+        local useSize = FitSingleLine(useText, "maker-body", 8.5, 7, CARD_RENDER_WIDTH * .62)
+        painter_:Text(0, top + CARD_RENDER_HEIGHT * .14, useText, useSize, accent,
+            NVG_ALIGN_CENTER + NVG_ALIGN_TOP, "maker-body", opaque)
+
+        if not hasIllustratedSkin then
+            nvgSave(painter_.vg)
+            nvgScale(painter_.vg, CARD_TEXT_SCALE, CARD_TEXT_SCALE)
+            painter_:DrawCardSymbol(id, 0, 7, titleColor, opaque)
+            nvgRestore(painter_.vg)
+        end
+
+        local descriptionWidth = CARD_RENDER_WIDTH * .78
+        local descriptionHeight = CARD_RENDER_HEIGHT * .10
+        local descriptionSize = FitTextBox(def.description, "maker-body", 9.5, 7.5,
+            descriptionWidth, descriptionHeight, 1.15)
+        painter_:TextBox(-descriptionWidth * .5, top + CARD_RENDER_HEIGHT * .873,
+            descriptionWidth, def.description, descriptionSize, bodyColor,
+            NVG_ALIGN_CENTER + NVG_ALIGN_TOP, "maker-body", 1.15, opaque)
+        DrawCardBadge(CardBadgeText(usage, remaining), opacity)
     end
 
     -- Cards and the direction selector occupy distinct Phaser depth bands. Keep
@@ -116,11 +163,10 @@ function M.Install(context)
                 local hovered = hoveredCardId_ == card.cardId and not active and not primed
                 nvgSave(painter_.vg); nvgTranslate(painter_.vg, pose.x, pose.y); nvgRotate(painter_.vg, math.rad(pose.angle)); nvgScale(painter_.vg, pose.scale or 1, pose.scale or 1)
                 local cardState = cardStates_[card.cardId]
-                local usage = cardState and cardState.usageMode or card.usageMode
-                local remaining = cardState and cardState.remainingUses or card.count
                 local faceActive = primed or (active and activeCardDeploying_)
                 local cardAlpha = (success_ or failed_) and .48 or 1
-                DrawCardSurface(card.cardId, Rules.CARDS[card.cardId], card, cardState, CardBadgeText(card.cardId, usage, remaining), faceActive, hovered, cardAlpha)
+                DrawCardSurface(card.cardId, Rules.CARDS[card.cardId], card, cardState,
+                    faceActive, hovered, cardAlpha)
                 nvgRestore(painter_.vg)
         end
         if not includePunch then return end
@@ -248,7 +294,7 @@ function M.Install(context)
                         nvgTranslate(painter_.vg, burn.x, burn.y)
                         nvgRotate(painter_.vg, math.rad(angle))
                         nvgScale(painter_.vg, scale, scale)
-                        DrawCardSurface(burn.id, def, card, cardState, "燃烧", true, false)
+                        DrawCardSurface(burn.id, def, card, cardState, true, false)
                         nvgRestore(painter_.vg)
                     end
                 end

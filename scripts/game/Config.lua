@@ -7,12 +7,12 @@ local CONFIG = {
     replaySampleMs = 1000 / 30,
 }
 
--- Phaser paints a 124 x 174 design face and uniformly scales it to 144 x 202.
--- Keep paint and hit geometry derived from that one transform so the card does
--- not become a mismatched rectangle at any responsive scale.
+-- The illustrated card source is 840 x 1280. Keep the established 202 px hand
+-- height and derive the width from the source aspect ratio so the artwork and
+-- hit geometry are never stretched.
 local CARD_DESIGN_WIDTH = 124
-local CARD_DESIGN_HEIGHT = 174
-local CARD_TEXT_SCALE = 144 / CARD_DESIGN_WIDTH
+local CARD_DESIGN_HEIGHT = CARD_DESIGN_WIDTH * 1280 / 840
+local CARD_TEXT_SCALE = 202 / CARD_DESIGN_HEIGHT
 local CARD_RENDER_WIDTH = CARD_DESIGN_WIDTH * CARD_TEXT_SCALE
 local CARD_RENDER_HEIGHT = CARD_DESIGN_HEIGHT * CARD_TEXT_SCALE
 local GOAL_CONTACT_SKIN = .005
@@ -25,7 +25,7 @@ CONFIG.maxAppleSpeed = 25 * CONFIG.matterVelocityToWorld
 local LEVEL_META = {
     level_01 = { name = "第一颗苹果", objective = "让苹果进入观察皿", observation = "先观察抛物线，再谈万有引力。" },
     level_02 = { name = "羽毛般落下", objective = "用轻羽引力越过矮台", observation = "减弱重力，轨迹会被拉得更长。" },
-    level_03 = { name = "世界向右落", objective = "利用横向引力，再让世界归位", observation = "苹果记得已经获得的速度。" },
+    level_03 = { name = "世界向右落", objective = "利用定向引力，再让世界归位", observation = "苹果记得已经获得的速度。" },
     level_04 = { name = "半空中的推手", objective = "在挡板前施加向上冲量", observation = "一次恰当的冲量胜过持续用力。" },
     level_05 = { name = "让世界归位", objective = "越墙后用牛顿拳恢复经典物理", observation = "重置规则，不重置结果。" },
     level_06 = { name = "墙不存在", objective = "在薄墙前开启量子隧穿", observation = "这不是穿墙，只是暂时不承认墙。" },

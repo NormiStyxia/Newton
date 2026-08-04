@@ -12,7 +12,7 @@ function M.Install(context)
             local labels = { LEFT = "左", RIGHT = "右", UP = "上", DOWN = "下" }
             return "场地重力已改为向" .. (labels[candidate] or "当前") .. "，动态物体速度保持不变。"
         end
-        if id == "hooke-bounce" then return "苹果与普通墙体的弹性响应已提高。" end
+        if id == "hooke-bounce" then return "弹簧的弹射倍率已提高。" end
         if id == "up-impulse" then return "向上冲量已叠加到苹果当前速度。" end
         if id == "mirror-motion" then
             return (candidate == "HORIZONTAL" and "水平" or "垂直") .. "速度已镜像，另一轴速度保持不变。"

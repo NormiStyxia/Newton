@@ -463,7 +463,7 @@ function M.Install(context)
             return
         end
         if id == "side-gravity" and (not candidate or gestureDistance < 48) then
-            SetStatus("CARD · 横向引力需要明确的方向手势")
+            SetStatus("CARD · 定向引力需要明确的方向手势")
             local from = CurrentCardVisualPose(id)
             activeCardId_ = nil
             AnimateCardToHome(id, from, .18)

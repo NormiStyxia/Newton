@@ -10,8 +10,8 @@ local DEFAULT_GRAVITY_MAGNITUDE = 1.05
 
 Rules.CARDS = {
     ["feather-gravity"] = { kind = "field", name = "轻羽引力", short = "轻羽", symbol = "g½", description = "重力强度降至标准值的 55%", accent = { 95, 143, 104 } },
-    ["side-gravity"] = { kind = "field", name = "横向引力", short = "横引力", symbol = "g→", description = "滑动选择四个方向的场地重力", accent = { 95, 143, 104 } },
-    ["hooke-bounce"] = { kind = "field", name = "弹性响应", short = "高弹性", symbol = "↟", description = "提高苹果与普通墙体的反弹系数", accent = { 95, 143, 104 } },
+    ["side-gravity"] = { kind = "field", name = "定向引力", short = "定向", symbol = "g→", description = "滑动选择四个方向的场地重力", accent = { 95, 143, 104 } },
+    ["hooke-bounce"] = { kind = "field", name = "弹性响应", short = "高弹性", symbol = "↟", description = "提高弹簧的弹射倍率", accent = { 95, 143, 104 } },
     ["up-impulse"] = { kind = "decision", name = "向上冲量", short = "上冲", symbol = "↑", description = "立即施加一次向上冲量", accent = { 180, 147, 69 } },
     ["mirror-motion"] = { kind = "decision", name = "运动镜像", short = "镜像", symbol = "⇆", description = "滑动选择水平或垂直速度镜像", accent = { 180, 147, 69 } },
     ["quantum-phase"] = { kind = "decision", name = "量子相位", short = "相位", symbol = "∿", description = "下一次穿过可相位墙体", accent = { 128, 118, 181 } },
