@@ -1,33 +1,37 @@
-# Build artifacts & runtime state
+# UrhoX project source is tracked; generated output and local runtime state are not.
+
+# Build and preview output
 .build/
 dist/
 .cli/
 logs/
-*.log
-logs/.nfs*
-.sce/logs/
-.sce/build/build_steps/__pycache__/
-
-# Temp & swap files
 .tmp/
-*.crswap
-.DS_Store
+.agent/
+_uploads/
+*.log
 
-# OSS util
+# Project-generated upload/build cache
+.project/.build/
+.project/**/*.meta
+
+# Engine-generated resource metadata
+*.meta
+
+# Local asset upload/cache files
 .ossutil_checkpoint/
 ossutil_output/
 
-# Editor / IDE / agent configs
+# Local editor, SDK, and agent configuration
 .vscode/
-.cursor/
-.codex/
-.gemini/
 .claude/
+.codex/
+.cursor/
+.gemini/
 .emmylua/
 .installer/
 .maker/
 
-# Maker engine assets & agent files (provided by ai-dev-kit, not user source)
+# Bundled engine documentation, examples, schemas, templates, and libraries
 engine-docs/
 examples/
 lua-tools/
@@ -36,26 +40,19 @@ skills/
 templates/
 tools/
 urhox-libs/
-AGENTS.md
-CLAUDE.md
 
-# >>> TapTap Maker AI dev kit (local only) >>>
+# OS and editor temporary files
 .DS_Store
-.claude/
-.cli/
-.codex/
-.cursor/
-.emmylua/
-.gemini/
-.installer/
-.maker/
-AGENTS.md
-CLAUDE.md
-engine-docs/
-examples/
-schemas/
-skills/
-templates/
-tools/
-urhox-libs/
-# <<< TapTap Maker AI dev kit (local only) <<<
+Thumbs.db
+*~
+*.swp
+*.swo
+
+# Python caches
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Node/package-manager caches if local tooling creates them
+node_modules/
+.npm/
