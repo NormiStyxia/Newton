@@ -42,21 +42,517 @@
       }
     },
     {
-      "id": "wall_01",
+      "id": "wall_17",
       "type": "wall",
-      "name": "普通墙体",
+      "name": "普通墙体 副本 副本 副本 副本 副本",
       "transform": {
-        "x": 687.1201506024933,
-        "y": 520,
-        "width": 120,
-        "height": 48,
-        "rotation": 90
+        "x": 646.9254837473203,
+        "y": 504.7346683499732,
+        "width": 150,
+        "height": 20,
+        "rotation": 30
       },
       "properties": {
         "collisionEnabled": true,
         "friction": 0.62,
         "restitution": 0.32,
         "isPhaseable": false
+      }
+    },
+    {
+      "id": "wall_18",
+      "type": "wall",
+      "name": "普通墙体 副本 副本 副本 副本 副本 副本",
+      "transform": {
+        "x": 488.9694619247364,
+        "y": 500.0778559320242,
+        "width": 150,
+        "height": 20,
+        "rotation": 150
+      },
+      "properties": {
+        "collisionEnabled": true,
+        "friction": 0.62,
+        "restitution": 0.32,
+        "isPhaseable": false
+      }
+    },
+    {
+      "id": "wall_01",
+      "type": "wall",
+      "name": "普通墙体",
+      "transform": {
+        "x": 1050.916234153687,
+        "y": 489.6404230442242,
+        "width": 20,
+        "height": 180.71915391155164,
+        "rotation": 0
+      },
+      "properties": {
+        "collisionEnabled": true,
+        "friction": 0.62,
+        "restitution": 0.32,
+        "isPhaseable": false
+      }
+    },
+    {
+      "id": "wall_02",
+      "type": "wall",
+      "name": "普通墙体 副本",
+      "transform": {
+        "x": 1117.7727163255702,
+        "y": 489.6404230442242,
+        "width": 20,
+        "height": 180.71915391155164,
+        "rotation": 0
+      },
+      "properties": {
+        "collisionEnabled": true,
+        "friction": 0.62,
+        "restitution": 0.32,
+        "isPhaseable": false
+      }
+    },
+    {
+      "id": "wall_03",
+      "type": "wall",
+      "name": "普通墙体",
+      "transform": {
+        "x": 1084.2217903010155,
+        "y": 390.5963214315736,
+        "width": 120,
+        "height": 20,
+        "rotation": 0
+      },
+      "properties": {
+        "collisionEnabled": true,
+        "friction": 0.62,
+        "restitution": 0.32,
+        "isPhaseable": false
+      }
+    },
+    {
+      "id": "wall_04",
+      "type": "wall",
+      "name": "普通墙体 副本",
+      "transform": {
+        "x": 1081.6916971659641,
+        "y": 193.90512226552573,
+        "width": 60,
+        "height": 20,
+        "rotation": 0
+      },
+      "properties": {
+        "collisionEnabled": true,
+        "friction": 0.62,
+        "restitution": 0.32,
+        "isPhaseable": false
+      }
+    },
+    {
+      "id": "wall_05",
+      "type": "wall",
+      "name": "普通墙体 副本",
+      "transform": {
+        "x": 1065.0389190923,
+        "y": 291.7258952813841,
+        "width": 20,
+        "height": 180.71915391155164,
+        "rotation": 0
+      },
+      "properties": {
+        "collisionEnabled": true,
+        "friction": 0.62,
+        "restitution": 0.32,
+        "isPhaseable": false
+      }
+    },
+    {
+      "id": "wall_06",
+      "type": "wall",
+      "name": "普通墙体 副本 副本",
+      "transform": {
+        "x": 1098.5898451168546,
+        "y": 294.05430149035885,
+        "width": 20,
+        "height": 180.71915391155164,
+        "rotation": 0
+      },
+      "properties": {
+        "collisionEnabled": true,
+        "friction": 0.62,
+        "restitution": 0.32,
+        "isPhaseable": false
+      }
+    },
+    {
+      "id": "wall_07",
+      "type": "wall",
+      "name": "普通墙体",
+      "transform": {
+        "x": 1080.5211729513123,
+        "y": 133.3074353398816,
+        "width": 20,
+        "height": 100,
+        "rotation": 0
+      },
+      "properties": {
+        "collisionEnabled": true,
+        "friction": 0.62,
+        "restitution": 0.32,
+        "isPhaseable": false
+      }
+    },
+    {
+      "id": "button_01",
+      "type": "button",
+      "name": "普通按钮",
+      "transform": {
+        "x": 1082.3714816261638,
+        "y": 71.60467080205501,
+        "width": 50,
+        "height": 20,
+        "rotation": 0
+      },
+      "properties": {
+        "mode": "HOLD",
+        "gravityThreshold": 1,
+        "channelId": "route_A",
+        "activationType": "apple",
+        "initialState": false,
+        "debounceTime": 180
+      }
+    },
+    {
+      "id": "wall_08",
+      "type": "wall",
+      "name": "普通墙体 副本 副本",
+      "transform": {
+        "x": 1203.1322852459691,
+        "y": 520,
+        "width": 20,
+        "height": 120,
+        "rotation": 0
+      },
+      "properties": {
+        "collisionEnabled": true,
+        "friction": 0.62,
+        "restitution": 0.32,
+        "isPhaseable": false
+      }
+    },
+    {
+      "id": "wall_09",
+      "type": "wall",
+      "name": "普通墙体 副本",
+      "transform": {
+        "x": 1173.2819765711176,
+        "y": 451.1940083572178,
+        "width": 120,
+        "height": 20,
+        "rotation": 0
+      },
+      "properties": {
+        "collisionEnabled": true,
+        "friction": 0.62,
+        "restitution": 0.32,
+        "isPhaseable": false
+      }
+    },
+    {
+      "id": "wall_10",
+      "type": "wall",
+      "name": "普通墙体 副本 副本 副本",
+      "transform": {
+        "x": 1263.512687055872,
+        "y": 545,
+        "width": 20,
+        "height": 70,
+        "rotation": 0
+      },
+      "properties": {
+        "collisionEnabled": true,
+        "friction": 0.62,
+        "restitution": 0.32,
+        "isPhaseable": false
+      }
+    },
+    {
+      "id": "wall_11",
+      "type": "wall",
+      "name": "普通墙体 副本 副本",
+      "transform": {
+        "x": 1241.0636130804266,
+        "y": 500.1496642379891,
+        "width": 80,
+        "height": 20,
+        "rotation": 0
+      },
+      "properties": {
+        "collisionEnabled": true,
+        "friction": 0.62,
+        "restitution": 0.32,
+        "isPhaseable": false
+      }
+    },
+    {
+      "id": "wall_12",
+      "type": "wall",
+      "name": "普通墙体 副本 副本 副本",
+      "transform": {
+        "x": 1182.0991053624023,
+        "y": 361.6372070429269,
+        "width": 20,
+        "height": 160,
+        "rotation": 0
+      },
+      "properties": {
+        "collisionEnabled": true,
+        "friction": 0.62,
+        "restitution": 0.32,
+        "isPhaseable": false
+      }
+    },
+    {
+      "id": "wall_13",
+      "type": "wall",
+      "name": "普通墙体 副本",
+      "transform": {
+        "x": 1151.0782724728988,
+        "y": 273.0709333706618,
+        "width": 120,
+        "height": 20,
+        "rotation": 0
+      },
+      "properties": {
+        "collisionEnabled": true,
+        "friction": 0.62,
+        "restitution": 0.32,
+        "isPhaseable": false
+      }
+    },
+    {
+      "id": "wall_14",
+      "type": "wall",
+      "name": "普通墙体 副本 副本",
+      "transform": {
+        "x": 1146.697870662996,
+        "y": 252.17440298219546,
+        "width": 80,
+        "height": 20,
+        "rotation": 0
+      },
+      "properties": {
+        "collisionEnabled": true,
+        "friction": 0.62,
+        "restitution": 0.32,
+        "isPhaseable": false
+      }
+    },
+    {
+      "id": "wall_15",
+      "type": "wall",
+      "name": "普通墙体 副本 副本 副本",
+      "transform": {
+        "x": 1233.9077482582466,
+        "y": 287.7824540890972,
+        "width": 20,
+        "height": 400,
+        "rotation": 0
+      },
+      "properties": {
+        "collisionEnabled": true,
+        "friction": 0.62,
+        "restitution": 0.32,
+        "isPhaseable": false
+      }
+    },
+    {
+      "id": "wall_16",
+      "type": "wall",
+      "name": "普通墙体 副本 副本 副本 副本",
+      "transform": {
+        "x": 1148.1137647548744,
+        "y": 164.9460078768791,
+        "width": 20,
+        "height": 160,
+        "rotation": 0
+      },
+      "properties": {
+        "collisionEnabled": true,
+        "friction": 0.62,
+        "restitution": 0.32,
+        "isPhaseable": false
+      }
+    },
+    {
+      "id": "wall_19",
+      "type": "wall",
+      "name": "普通墙体 副本 副本 副本",
+      "transform": {
+        "x": 1132.1407711414095,
+        "y": 192.77988740450527,
+        "width": 24,
+        "height": 100,
+        "rotation": 0
+      },
+      "properties": {
+        "collisionEnabled": true,
+        "friction": 0.62,
+        "restitution": 0.32,
+        "isPhaseable": false
+      }
+    },
+    {
+      "id": "wall_20",
+      "type": "wall",
+      "name": "普通墙体 副本 副本 副本 副本",
+      "transform": {
+        "x": 1165.6916971659643,
+        "y": 183.52538806091184,
+        "width": 24,
+        "height": 120.12146698590729,
+        "rotation": 0
+      },
+      "properties": {
+        "collisionEnabled": true,
+        "friction": 0.62,
+        "restitution": 0.32,
+        "isPhaseable": false
+      }
+    },
+    {
+      "id": "wall_21",
+      "type": "wall",
+      "name": "普通墙体 副本 副本",
+      "transform": {
+        "x": 1191.1052788594343,
+        "y": 77.54393730910135,
+        "width": 140,
+        "height": 20,
+        "rotation": 0
+      },
+      "properties": {
+        "collisionEnabled": true,
+        "friction": 0.62,
+        "restitution": 0.32,
+        "isPhaseable": false
+      }
+    },
+    {
+      "id": "wall_22",
+      "type": "wall",
+      "name": "普通墙体 副本 副本",
+      "transform": {
+        "x": 1287.3213299517167,
+        "y": 352.2958699681027,
+        "width": 120,
+        "height": 20,
+        "rotation": 0
+      },
+      "properties": {
+        "collisionEnabled": true,
+        "friction": 0.62,
+        "restitution": 0.32,
+        "isPhaseable": false
+      }
+    },
+    {
+      "id": "wall_23",
+      "type": "wall",
+      "name": "普通墙体 副本 副本",
+      "transform": {
+        "x": 1326.1778121235996,
+        "y": 470,
+        "width": 20,
+        "height": 220,
+        "rotation": 0
+      },
+      "properties": {
+        "collisionEnabled": true,
+        "friction": 0.62,
+        "restitution": 0.32,
+        "isPhaseable": false
+      }
+    },
+    {
+      "id": "spring_01",
+      "type": "spring",
+      "name": "弹簧",
+      "transform": {
+        "x": 1286.8305901972642,
+        "y": 321.9083382668233,
+        "width": 110,
+        "height": 34,
+        "rotation": 0
+      },
+      "properties": {
+        "direction": "UP",
+        "impulseStrength": 10,
+        "cooldown": 500,
+        "oneShot": false,
+        "enabled": true,
+        "enabledChannel": ""
+      }
+    },
+    {
+      "id": "spring_02",
+      "type": "spring",
+      "name": "弹簧 副本",
+      "transform": {
+        "x": 1194.5605263319112,
+        "y": 50.708140413588694,
+        "width": 110,
+        "height": 34,
+        "rotation": 0
+      },
+      "properties": {
+        "direction": "UP",
+        "impulseStrength": 10,
+        "cooldown": 500,
+        "oneShot": false,
+        "enabled": true,
+        "enabledChannel": ""
+      }
+    },
+    {
+      "id": "button_02",
+      "type": "button",
+      "name": "普通按钮",
+      "transform": {
+        "x": 1151.7580569330985,
+        "y": 369.6406655508023,
+        "width": 24,
+        "height": 130.4498731948819,
+        "rotation": 0
+      },
+      "properties": {
+        "mode": "HOLD",
+        "gravityThreshold": 1,
+        "channelId": "route_A",
+        "activationType": "apple",
+        "initialState": false,
+        "debounceTime": 180
+      }
+    },
+    {
+      "id": "spring_03",
+      "type": "spring",
+      "name": "弹簧",
+      "transform": {
+        "x": 559.6592809805913,
+        "y": 563,
+        "width": 110,
+        "height": 34,
+        "rotation": 0
+      },
+      "properties": {
+        "direction": "UP",
+        "impulseStrength": 10,
+        "cooldown": 500,
+        "oneShot": false,
+        "enabled": true,
+        "enabledChannel": ""
       }
     }
   ],

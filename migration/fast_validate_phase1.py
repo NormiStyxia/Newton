@@ -12,10 +12,18 @@ from runtime_source_index import all_runtime_source, legacy_main_source
 
 MAKER_ROOT = Path(__file__).resolve().parents[1]
 PHASER_ROOT = Path(r"D:\System Files\Download\牛顿\牛顿")
+PHASER_EXPERIMENT_LEVEL_ROOT = Path(r"D:\System Files\Download\牛顿\svg-ui-experiment\data\levels")
+EXPERIMENT_LEVEL_NAMES = {f"level_{index:02d}.json" for index in range(1, 6)}
 
 
 def sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest().upper()
+
+
+def phaser_source_level(name: str) -> Path:
+    if name in EXPERIMENT_LEVEL_NAMES:
+        return PHASER_EXPERIMENT_LEVEL_ROOT / name
+    return PHASER_ROOT / "data/levels" / name
 
 
 def main() -> int:
@@ -28,6 +36,7 @@ def main() -> int:
     source_levels = sorted((PHASER_ROOT / "data/levels").glob("*.json"))
     maker_levels = sorted((MAKER_ROOT / "assets/Data/Levels").glob("*.json"))
     expect(source_levels, "source levels are missing")
+    expect(PHASER_EXPERIMENT_LEVEL_ROOT.exists(), "Phaser experiment level source is missing")
     expect(
         [path.name for path in maker_levels] == [path.name for path in source_levels],
         "Maker level copy set differs from Phaser source",
@@ -35,9 +44,11 @@ def main() -> int:
 
     object_types: set[str] = set()
     for source_level in source_levels:
+        source_level = phaser_source_level(source_level.name)
         maker_level = MAKER_ROOT / "assets/Data/Levels" / source_level.name
+        expect(source_level.exists(), f"missing Phaser source level {source_level}")
         expect(maker_level.exists(), f"missing level copy {source_level.name}")
-        if not maker_level.exists():
+        if not source_level.exists() or not maker_level.exists():
             continue
         expect(sha256(source_level) == sha256(maker_level), f"{source_level.name} copy hash mismatch")
 

@@ -12,8 +12,8 @@
       "type": "launcher",
       "name": "苹果发射器",
       "transform": {
-        "x": 134.43708609271525,
-        "y": 467,
+        "x": 160.34140754063736,
+        "y": 468.1642031044873,
         "width": 110,
         "height": 96,
         "rotation": 0
@@ -30,8 +30,8 @@
       "type": "goal_sensor",
       "name": "爱因斯坦观察窗",
       "transform": {
-        "x": 1148,
-        "y": 493.2200357781753,
+        "x": 1079.5385790304915,
+        "y": 432.68147434483603,
         "width": 180,
         "height": 173.55992844364937,
         "rotation": 0
@@ -44,12 +44,12 @@
     {
       "id": "wall_01",
       "type": "wall",
-      "name": "黄铜墙",
+      "name": "普通墙体",
       "transform": {
-        "x": 618.7800466996554,
-        "y": 385.90339892665477,
-        "width": 76.02649006622516,
-        "height": 388.1932021466905,
+        "x": 338.5473943358271,
+        "y": 374.38431569998204,
+        "width": 20,
+        "height": 411.2313686000359,
         "rotation": 0
       },
       "properties": {
@@ -62,12 +62,282 @@
     {
       "id": "wall_02",
       "type": "wall",
-      "name": "黄铜墙 副本",
+      "name": "普通墙体 副本",
       "transform": {
-        "x": 616.239719263503,
-        "y": 50.2593688400284,
-        "width": 76.02649006622516,
-        "height": 80,
+        "x": 438.7094326550389,
+        "y": 248.6503804153544,
+        "width": 20,
+        "height": 455.471086570553,
+        "rotation": 0
+      },
+      "properties": {
+        "collisionEnabled": true,
+        "friction": 0.62,
+        "restitution": 0.32,
+        "isPhaseable": false
+      }
+    },
+    {
+      "id": "wall_03",
+      "type": "wall",
+      "name": "普通墙体 副本 副本",
+      "transform": {
+        "x": 539.7966253116766,
+        "y": 352.2644567147235,
+        "width": 20,
+        "height": 455.471086570553,
+        "rotation": 0
+      },
+      "properties": {
+        "collisionEnabled": true,
+        "friction": 0.62,
+        "restitution": 0.32,
+        "isPhaseable": false
+      }
+    },
+    {
+      "id": "wall_04",
+      "type": "wall",
+      "name": "普通墙体 副本 副本 副本",
+      "transform": {
+        "x": 627.9316572443532,
+        "y": 312.6815511621555,
+        "width": 20,
+        "height": 370,
+        "rotation": 0
+      },
+      "properties": {
+        "collisionEnabled": true,
+        "friction": 0.62,
+        "restitution": 0.32,
+        "isPhaseable": false
+      }
+    },
+    {
+      "id": "wall_06",
+      "type": "wall",
+      "name": "普通墙体 副本 副本 副本 副本 副本",
+      "transform": {
+        "x": 807.9023384594093,
+        "y": 245.15777110189248,
+        "width": 20,
+        "height": 230,
+        "rotation": 0
+      },
+      "properties": {
+        "collisionEnabled": true,
+        "friction": 0.62,
+        "restitution": 0.32,
+        "isPhaseable": false
+      }
+    },
+    {
+      "id": "wall_07",
+      "type": "wall",
+      "name": "普通墙体",
+      "transform": {
+        "x": 852.0080516071416,
+        "y": 346.35660346105647,
+        "width": 100,
+        "height": 20,
+        "rotation": 0
+      },
+      "properties": {
+        "collisionEnabled": true,
+        "friction": 0.62,
+        "restitution": 0.32,
+        "isPhaseable": false
+      }
+    },
+    {
+      "id": "wall_08",
+      "type": "wall",
+      "name": "普通墙体 副本 副本 副本",
+      "transform": {
+        "x": 898.0767237726844,
+        "y": 252.18380847950965,
+        "width": 20,
+        "height": 455.471086570553,
+        "rotation": 0
+      },
+      "properties": {
+        "collisionEnabled": true,
+        "friction": 0.62,
+        "restitution": 0.32,
+        "isPhaseable": false
+      }
+    },
+    {
+      "id": "wall_09",
+      "type": "wall",
+      "name": "普通墙体 副本",
+      "transform": {
+        "x": 228.69939805938373,
+        "y": 157.81482602641958,
+        "width": 300,
+        "height": 20,
+        "rotation": 0
+      },
+      "properties": {
+        "collisionEnabled": true,
+        "friction": 0.62,
+        "restitution": 0.32,
+        "isPhaseable": false
+      }
+    },
+    {
+      "id": "wall_10",
+      "type": "wall",
+      "name": "普通墙体 副本 副本 副本",
+      "transform": {
+        "x": 1003.5443182392246,
+        "y": 352.2644567147235,
+        "width": 20,
+        "height": 455.471086570553,
+        "rotation": 0
+      },
+      "properties": {
+        "collisionEnabled": true,
+        "friction": 0.62,
+        "restitution": 0.32,
+        "isPhaseable": false
+      }
+    },
+    {
+      "id": "wall_11",
+      "type": "wall",
+      "name": "普通墙体 副本 副本",
+      "transform": {
+        "x": 1129.1199382519055,
+        "y": 342.98224513220435,
+        "width": 300,
+        "height": 20,
+        "rotation": 0
+      },
+      "properties": {
+        "collisionEnabled": true,
+        "friction": 0.62,
+        "restitution": 0.32,
+        "isPhaseable": false
+      }
+    },
+    {
+      "id": "wall_12",
+      "type": "wall",
+      "name": "普通墙体 副本",
+      "transform": {
+        "x": 1238.967934528349,
+        "y": 403.48939331216445,
+        "width": 20,
+        "height": 100,
+        "rotation": 0
+      },
+      "properties": {
+        "collisionEnabled": true,
+        "friction": 0.62,
+        "restitution": 0.32,
+        "isPhaseable": false
+      }
+    },
+    {
+      "id": "wall_13",
+      "type": "wall",
+      "name": "普通墙体 副本 副本",
+      "transform": {
+        "x": 1093.0389190923001,
+        "y": 171.87210101149782,
+        "width": 20,
+        "height": 130.26928071666975,
+        "rotation": 0
+      },
+      "properties": {
+        "collisionEnabled": true,
+        "friction": 0.62,
+        "restitution": 0.32,
+        "isPhaseable": false
+      }
+    },
+    {
+      "id": "wall_14",
+      "type": "wall",
+      "name": "普通墙体 副本 副本 副本",
+      "transform": {
+        "x": 1225,
+        "y": 176.56032668282612,
+        "width": 350,
+        "height": 20,
+        "rotation": 0
+      },
+      "properties": {
+        "collisionEnabled": true,
+        "friction": 0.62,
+        "restitution": 0.32,
+        "isPhaseable": false
+      }
+    },
+    {
+      "id": "wall_15",
+      "type": "wall",
+      "name": "普通墙体 副本",
+      "transform": {
+        "x": 657.9710106249514,
+        "y": 132.20235772769917,
+        "width": 100,
+        "height": 20,
+        "rotation": 0
+      },
+      "properties": {
+        "collisionEnabled": true,
+        "friction": 0.62,
+        "restitution": 0.32,
+        "isPhaseable": false
+      }
+    },
+    {
+      "id": "wall_16",
+      "type": "wall",
+      "name": "普通墙体 副本 副本 副本",
+      "transform": {
+        "x": 702.8691585758422,
+        "y": 79.9591812493065,
+        "width": 20,
+        "height": 130.26928071666975,
+        "rotation": 0
+      },
+      "properties": {
+        "collisionEnabled": true,
+        "friction": 0.62,
+        "restitution": 0.32,
+        "isPhaseable": false
+      }
+    },
+    {
+      "id": "wall_05",
+      "type": "wall",
+      "name": "普通墙体 副本",
+      "transform": {
+        "x": 764.3637594289179,
+        "y": 466.32864871555273,
+        "width": 100,
+        "height": 20,
+        "rotation": 0
+      },
+      "properties": {
+        "collisionEnabled": true,
+        "friction": 0.62,
+        "restitution": 0.32,
+        "isPhaseable": false
+      }
+    },
+    {
+      "id": "wall_17",
+      "type": "wall",
+      "name": "普通墙体 副本 副本 副本",
+      "transform": {
+        "x": 808.3367530423825,
+        "y": 514.8653596416651,
+        "width": 20,
+        "height": 130.26928071666975,
         "rotation": 0
       },
       "properties": {
@@ -84,19 +354,22 @@
         "cardId": "feather-gravity",
         "count": 1,
         "order": 0,
-        "enabled": false
+        "enabled": false,
+        "usageMode": "SINGLE_USE"
       },
       {
         "cardId": "up-impulse",
         "count": 1,
         "order": 1,
-        "enabled": false
+        "enabled": false,
+        "usageMode": "SINGLE_USE"
       },
       {
         "cardId": "side-gravity",
         "count": 1,
         "order": 1,
-        "enabled": true
+        "enabled": true,
+        "usageMode": "REUSABLE"
       }
     ]
   },

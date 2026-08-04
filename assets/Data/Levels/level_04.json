@@ -168,10 +168,10 @@
       },
       {
         "cardId": "side-gravity",
-        "count": 4,
+        "count": 1,
         "order": 1,
         "enabled": true,
-        "usageMode": "SINGLE_USE"
+        "usageMode": "REUSABLE"
       }
     ]
   },
