@@ -5,7 +5,7 @@
     "id": "1838934907"
   },
   "entry": "main.lua",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "taptap_publish": {
     "title": "不经典力学.NEWTONignore",
     "description": "<game description>",
@@ -25,10 +25,10 @@
     "promotional_image": ""
   },
   "test_qrcode": {
-    "url": "https://tapcode-sce.spark.xd.com/qrcode/p_ss8c_1785886983304.png",
-    "generated_at": "2026-08-04T23:43:03.424Z"
+    "url": "https://tapcode-sce.spark.xd.com/qrcode/p_ss8c_1785887263509.png",
+    "generated_at": "2026-08-04T23:47:43.646Z"
   },
   "metadata": {
-    "updated_at": "2026-08-04T23:43:03.424Z"
+    "updated_at": "2026-08-04T23:47:43.646Z"
   }
 }
