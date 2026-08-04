@@ -119,6 +119,10 @@ function M.Install(context)
             state.validationMessage = "请先完成本次自我评价"
             return
         end
+        if actionName == "next" and not state.selectedSelfReview then
+            state.selectedSelfReview = Config.Layout.fallbackSelfReview
+            state.validationMessage = nil
+        end
         state.isDropdownOpen = false
         resultReportClosing_ = function()
             if actionName == "retry" then
@@ -157,11 +161,12 @@ function M.Install(context)
         state.hoveredOption = nil
         if state.isDropdownOpen then
             local optionReveal = dropdownEaseOut(state.dropdownProgress)
-            local optionHeight = 25 * math.min(1, optionReveal * 1.15)
+            local optionHeight = selfBox.h
+            local optionStep = optionHeight + Config.Layout.dropdownOptionGap
             for index = 1, #state.selfOptions do
                 local optionRect = {
                     x = selfBox.x,
-                    y = optionStartY + (index - 1) * 27 * optionReveal,
+                    y = optionStartY + (index - 1) * optionStep * optionReveal,
                     w = selfBox.w,
                     h = optionHeight,
                 }

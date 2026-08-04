@@ -208,10 +208,11 @@ function M.Install(context)
         }
 
         painter_:FillRect(0, 0, frame.logicalWidth, frame.logicalHeight, c.overlay, math.floor(82 * progress))
-        painter_:FillRect(x, y, w, rect.h, c.paper, alpha)
         local reportBase = painter_.images and painter_.images.ui and painter_.images.ui.reportBase
         if reportBase and reportBase >= 0 then
             painter_:ImageRect(reportBase, x, y, w, rect.h, progress)
+        else
+            painter_:FillRect(x, y, w, rect.h, c.paper, alpha)
         end
         local reportImages = painter_.images and painter_.images.ui
         local reportDropdown = reportImages and reportImages.reportDropdown
@@ -240,8 +241,8 @@ function M.Install(context)
         local selfTextX, selfTextY = artPoint(272, 655)
         drawWrappedText(painter_, selfTextX, selfTextY, artWidth(610),
             state.selectedSelfReview or "请选择本次自我评价", Config.ReviewAuthorStyles.nomi.font,
-            12, 9, 1, state.selectedSelfReview and c.ink or c.inkMuted,
-            NVG_ALIGN_LEFT + NVG_ALIGN_TOP, 15, alpha)
+            Config.Layout.selfReviewFontSize, 12, 1, state.selectedSelfReview and c.ink or c.inkMuted,
+            NVG_ALIGN_LEFT + NVG_ALIGN_TOP, 18, alpha)
         local arrowX, arrowY = artPoint(943, 674)
         drawDropdownArrow(painter_, arrowX, arrowY, artHeight(16), state.dropdownProgress or 0,
             c.primary, alpha)
@@ -283,15 +284,19 @@ function M.Install(context)
         if dropdownProgress > 0.01 then
             local optionStartY = drawZones.selfBox.y + drawZones.selfBox.h + 5
             local optionReveal = easeOut(dropdownProgress)
+            local optionHeight = drawZones.selfBox.h
+            local optionStep = optionHeight + Config.Layout.dropdownOptionGap
             for index, option in ipairs(state.selfOptions) do
-                local optionY = optionStartY + (index - 1) * 27 * optionReveal
-                local optionHeight = 25 * math.min(1, optionReveal * 1.15)
+                local optionY = optionStartY + (index - 1) * optionStep * optionReveal
                 if reportDropdown and reportDropdown >= 0 then
                     painter_:ImageRect(reportDropdown, drawZones.selfBox.x, optionY, drawZones.selfBox.w, optionHeight,
                         math.floor(alpha * optionReveal))
                 end
+                painter_:StrokeRect(drawZones.selfBox.x, optionY, drawZones.selfBox.w, optionHeight,
+                    c.border, math.max(1, artHeight(2)), math.floor(alpha * optionReveal))
                 if optionReveal > 0.28 then
-                    painter_:TextBox(drawZones.selfBox.x + 10, optionY + 5, drawZones.selfBox.w - 20, option, 11,
+                    painter_:TextBox(drawZones.selfBox.x + 14, optionY + artHeight(27),
+                        drawZones.selfBox.w - 28, option, Config.Layout.selfReviewOptionFontSize,
                         c.ink, NVG_ALIGN_LEFT + NVG_ALIGN_TOP, Config.ReviewAuthorStyles.nomi.font, 1.05,
                         math.floor(alpha * optionReveal))
                 end
