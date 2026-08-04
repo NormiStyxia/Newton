@@ -82,10 +82,10 @@ function M.ResolveZones(rect, hasReplay)
             h = rect.h * h / M.Layout.artHeight,
         }
     end
-    local selfBox = artRect(240, 630, 738, 82)
-    local retry = artRect(176, 1160, 338, 82)
-    local replay = hasReplay and artRect(558, 1160, 348, 82) or nil
-    local nextButton = artRect(174, 1270, 740, 104)
+    local selfBox = artRect(237, 621, 746, 102)
+    local retry = artRect(176, 1157, 337, 93)
+    local replay = hasReplay and artRect(557, 1141, 350, 105) or nil
+    local nextButton = artRect(169, 1267, 739, 115)
     return { selfBox = selfBox, retry = retry, replay = replay, next = nextButton }
 end
 

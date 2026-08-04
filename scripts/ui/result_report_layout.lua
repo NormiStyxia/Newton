@@ -136,20 +136,14 @@ local function drawDivider(painter, x, y, width, alpha)
     painter:FillRect(x, y, width, 1, Config.ReportColors.divider, alpha)
 end
 
-local function drawActionButton(painter, button, label, primary, hovered, disabled, alpha)
-    local fill = disabled and Config.ReportColors.disabled or (primary and Config.ReportColors.primary or Config.ReportColors.paperLight)
-    local text = primary and Config.ReportColors.primaryText or Config.ReportColors.ink
-    if hovered and not disabled then fill = primary and Config.ReportColors.border or Config.ReportColors.dropdownHover end
-    painter:RoundedRect(button.x, button.y, button.w, button.h, 3, fill, Config.ReportColors.border, 1.5, alpha)
-    painter:Text(button.x + button.w * 0.5, button.y + 8, label, primary and 15 or 14, text, NVG_ALIGN_CENTER + NVG_ALIGN_TOP, "maker-body", alpha)
-end
-
-local function drawDropdownTriangle(painter, x, y, size, progress, color, alpha)
+-- The artwork provides the frame; this is the requested stateful disclosure arrow.
+local function drawDropdownArrow(painter, x, y, size, progress, color, alpha)
     local vg = painter.vg
     local angle = math.pi - easeOut(progress) * math.pi * 0.5
     local ux, uy = math.cos(angle), math.sin(angle)
     local px, py = -uy, ux
-    local baseX, baseY = x - ux * size * 0.9, y - uy * size * 0.9
+    local baseX = x - ux * size * 0.9
+    local baseY = y - uy * size * 0.9
     nvgBeginPath(vg)
     nvgMoveTo(vg, x + ux * size, y + uy * size)
     nvgLineTo(vg, baseX + px * size * 0.78, baseY + py * size * 0.78)
@@ -159,42 +153,28 @@ local function drawDropdownTriangle(painter, x, y, size, progress, color, alpha)
     nvgFill(vg)
 end
 
-local function drawArtworkButtonFeedback(painter, button, hovered, disabled, colors, alpha)
-    if not button then return end
-    if disabled then
-        painter:RoundedRect(button.x, button.y, button.w, button.h, 3, colors.disabled, nil, nil,
-            math.floor(alpha * 0.38))
-    elseif hovered then
-        painter:RoundedRect(button.x, button.y, button.w, button.h, 3, colors.dropdownHover, nil, nil,
-            math.floor(alpha * 0.28))
-    end
-end
-
 ---@param context GameContext
 function M.Install(context)
     local _ENV = context
 
-    local function drawReview(painter, state, key, author, y, width, alpha)
+    local function drawReview(painter, state, key, author, y, columns, alpha)
         local style = Config.ReviewAuthorStyles[key]
-        painter:Text(width.x, y, author, style.fontSize, style.color, NVG_ALIGN_LEFT + NVG_ALIGN_TOP, style.font, alpha)
+        painter:Text(columns.nameX, y, author, style.fontSize, style.color,
+            NVG_ALIGN_LEFT + NVG_ALIGN_TOP, style.font, alpha)
         local body = state[key .. "Review"] or "暂无评语。"
         local textColor = style.color
         if key == "newton" and state.newtonTier and state.newtonTier.dangerAccent then textColor = Config.ReportColors.danger end
         local size = style.fontSize
         local lines, overflow
         repeat
-            lines, overflow = wrapText(painter, body, width.w, style.font, size, Config.Layout.maxTextLines)
+            lines, overflow = wrapText(painter, body, columns.bodyW, style.font, size, Config.Layout.maxTextLines)
             if overflow and size > Config.Layout.reviewFontMinSize then size = size - 1 end
         until not overflow or size <= Config.Layout.reviewFontMinSize
-        local bodyY = y + 24
+        local lineGap = math.max(16, size + 2)
+        local bodyY = y
         for index, line in ipairs(lines) do
-            painter:Text(width.x, bodyY + (index - 1) * 16, line, size, textColor, NVG_ALIGN_LEFT + NVG_ALIGN_TOP, style.font, alpha)
-        end
-        if key == "newton" and state.newtonTier and state.newtonTier.underlineCount then
-            local underlineY = bodyY + #lines * 16 + 1
-            for index = 1, state.newtonTier.underlineCount do
-                painter:FillRect(width.x, underlineY + (index - 1) * 3, width.w * 0.60, 1, textColor, alpha)
-            end
+            painter:Text(columns.bodyX, bodyY + (index - 1) * lineGap, line, size, textColor,
+                NVG_ALIGN_LEFT + NVG_ALIGN_TOP, style.font, alpha)
         end
         if overflow and not state.reviewOverflowLogged[key] then
             state.reviewOverflowLogged[key] = true
@@ -221,6 +201,7 @@ function M.Install(context)
             return { x = zone.x, y = zone.y + offsetY, w = zone.w, h = zone.h }
         end
         local drawZones = {
+            selfBox = shiftZone(zones.selfBox),
             retry = shiftZone(zones.retry),
             replay = shiftZone(zones.replay),
             next = shiftZone(zones.next),
@@ -231,6 +212,12 @@ function M.Install(context)
         local reportBase = painter_.images and painter_.images.ui and painter_.images.ui.reportBase
         if reportBase and reportBase >= 0 then
             painter_:ImageRect(reportBase, x, y, w, rect.h, progress)
+        end
+        local reportImages = painter_.images and painter_.images.ui
+        local reportDropdown = reportImages and reportImages.reportDropdown
+        if reportDropdown and reportDropdown >= 0 then
+            painter_:ImageRect(reportDropdown, drawZones.selfBox.x, drawZones.selfBox.y,
+                drawZones.selfBox.w, drawZones.selfBox.h, alpha)
         end
 
         local function artPoint(px, py)
@@ -262,42 +249,38 @@ function M.Install(context)
             state.selectedSelfReview or "请选择本次自我评价", Config.ReviewAuthorStyles.nomi.font,
             12, 9, 1, state.selectedSelfReview and c.ink or c.inkMuted,
             NVG_ALIGN_LEFT + NVG_ALIGN_TOP, 15, alpha)
+        local arrowX, arrowY = artPoint(943, 674)
+        drawDropdownArrow(painter_, arrowX, arrowY, artHeight(16), state.dropdownProgress or 0,
+            c.primary, alpha)
 
-        local reportDropdown = painter_.images and painter_.images.ui and painter_.images.ui.reportDropdown
-        if reportDropdown and reportDropdown >= 0 then
-            painter_:ImageRect(reportDropdown, zones.selfBox.x, y + zones.selfBox.y - rect.y,
-                zones.selfBox.w, zones.selfBox.h, alpha)
+        local reviewColumns = {
+            nameX = artPoint(92, 0),
+            bodyX = artPoint(296, 0),
+            bodyW = artWidth(590),
+        }
+        local _, newtonY = artPoint(92, 808)
+        local _, einsteinY = artPoint(92, 926)
+        local _, greenY = artPoint(92, 1043)
+        drawReview(painter_, state, "newton", "牛顿", newtonY, reviewColumns, alpha)
+        drawReview(painter_, state, "einstein", "爱因斯坦", einsteinY, reviewColumns, alpha)
+        drawReview(painter_, state, "green", "绿毛同事", greenY, reviewColumns, alpha)
+
+        local reportRetry = reportImages and reportImages.reportRetry
+        local reportReplay = reportImages and reportImages.reportReplay
+        local reportNext = reportImages and reportImages.reportNext
+        if reportRetry and reportRetry >= 0 then
+            painter_:ImageRect(reportRetry, drawZones.retry.x, drawZones.retry.y,
+                drawZones.retry.w, drawZones.retry.h, alpha)
         end
-
-        local reviewWidth = { x = x + w * 0.265, w = artWidth(540) }
-        local _, newtonY = artPoint(96, 792)
-        local _, einsteinY = artPoint(96, 914)
-        local _, greenY = artPoint(96, 1038)
-        drawReview(painter_, state, "newton", "牛顿", newtonY, reviewWidth, alpha)
-        drawReview(painter_, state, "einstein", "爱因斯坦", einsteinY, reviewWidth, alpha)
-        drawReview(painter_, state, "green", "绿毛同事", greenY, reviewWidth, alpha)
-
-        local triangleX, triangleY = artPoint(943, 674)
-        drawDropdownTriangle(painter_, triangleX, triangleY, artHeight(16), state.dropdownProgress or 0, c.primary, alpha)
-
-        local retryHover = false
-        local replayHover = false
-        local nextHover = false
-        local pointer = input.mousePosition
-        if pointer then
-            local px, py = context.design_:ScreenToLogical(pointer.x, pointer.y)
-            retryHover = px >= drawZones.retry.x and px <= drawZones.retry.x + drawZones.retry.w and py >= drawZones.retry.y and py <= drawZones.retry.y + drawZones.retry.h
-            replayHover = drawZones.replay and px >= drawZones.replay.x and px <= drawZones.replay.x + drawZones.replay.w and py >= drawZones.replay.y and py <= drawZones.replay.y + drawZones.replay.h
-            nextHover = px >= drawZones.next.x and px <= drawZones.next.x + drawZones.next.w and py >= drawZones.next.y and py <= drawZones.next.y + drawZones.next.h
+        if drawZones.replay and reportReplay and reportReplay >= 0 then
+            painter_:ImageRect(reportReplay, drawZones.replay.x, drawZones.replay.y,
+                drawZones.replay.w, drawZones.replay.h, alpha)
         end
-        drawArtworkButtonFeedback(painter_, drawZones.retry, retryHover, false, c, alpha)
-        if drawZones.replay then drawArtworkButtonFeedback(painter_, drawZones.replay, replayHover, false, c, alpha) end
-        drawArtworkButtonFeedback(painter_, drawZones.next, nextHover,
-            Config.Layout.requireSelfReview and not state.selectedSelfReview, c, alpha)
-        drawActionButton(painter_, drawZones.retry, "重新实验", false, retryHover, false, alpha)
-        if drawZones.replay then drawActionButton(painter_, drawZones.replay, "调阅回放", false, replayHover, false, alpha) end
-        drawActionButton(painter_, drawZones.next, "进入下一实验", true, nextHover,
-            Config.Layout.requireSelfReview and not state.selectedSelfReview, alpha)
+        if reportNext and reportNext >= 0 then
+            local nextAlpha = Config.Layout.requireSelfReview and not state.selectedSelfReview and math.floor(alpha * 0.48) or alpha
+            painter_:ImageRect(reportNext, drawZones.next.x, drawZones.next.y,
+                drawZones.next.w, drawZones.next.h, nextAlpha)
+        end
         if state.validationMessage then
             painter_:Text(x + w * 0.5, drawZones.next.y - 17, state.validationMessage, 11, c.danger, NVG_ALIGN_CENTER + NVG_ALIGN_TOP, "maker-body", alpha)
         end
@@ -305,27 +288,17 @@ function M.Install(context)
         -- Dropdown is painted last so its paper strips sit above the reviews.
         local dropdownProgress = state.dropdownProgress or 0
         if dropdownProgress > 0.01 then
-            local optionStartY = zones.selfBox.y + offsetY + zones.selfBox.h + 5
+            local optionStartY = drawZones.selfBox.y + drawZones.selfBox.h + 5
             local optionReveal = easeOut(dropdownProgress)
             for index, option in ipairs(state.selfOptions) do
                 local optionY = optionStartY + (index - 1) * 27 * optionReveal
                 local optionHeight = 25 * math.min(1, optionReveal * 1.15)
-                local hovered = state.hoveredOption == index or state.highlightedOption == index
-                local optionFrame = painter_.images and painter_.images.ui and painter_.images.ui.reportDropdown
-                if optionFrame and optionFrame >= 0 then
-                    painter_:ImageRect(optionFrame, zones.selfBox.x, optionY, zones.selfBox.w, optionHeight,
+                if reportDropdown and reportDropdown >= 0 then
+                    painter_:ImageRect(reportDropdown, drawZones.selfBox.x, optionY, drawZones.selfBox.w, optionHeight,
                         math.floor(alpha * optionReveal))
-                    if hovered then
-                        painter_:FillRect(zones.selfBox.x + 3, optionY + 3,
-                            zones.selfBox.w - 6, math.max(1, optionHeight - 6), c.dropdownHover,
-                            math.floor(alpha * 0.22 * optionReveal))
-                    end
-                else
-                    painter_:RoundedRect(zones.selfBox.x, optionY, zones.selfBox.w, optionHeight, 2,
-                        hovered and c.dropdownHover or c.paperLight, c.border, 1, math.floor(alpha * optionReveal))
                 end
                 if optionReveal > 0.28 then
-                    painter_:TextBox(zones.selfBox.x + 10, optionY + 5, zones.selfBox.w - 20, option, 11,
+                    painter_:TextBox(drawZones.selfBox.x + 10, optionY + 5, drawZones.selfBox.w - 20, option, 11,
                         c.ink, NVG_ALIGN_LEFT + NVG_ALIGN_TOP, Config.ReviewAuthorStyles.nomi.font, 1.05,
                         math.floor(alpha * optionReveal))
                 end

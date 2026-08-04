@@ -107,6 +107,11 @@ function M.Install(context)
         return rect and x >= rect.x and x <= rect.x + rect.w and y >= rect.y and y <= rect.y + rect.h
     end
 
+    local function dropdownEaseOut(value)
+        value = math.max(0, math.min(1, value or 0))
+        return 1 - (1 - value) * (1 - value)
+    end
+
     function BeginResultReportAction(actionName)
         if not resultReportState_ or resultReportClosing_ then return end
         local state = resultReportState_
@@ -150,8 +155,15 @@ function M.Install(context)
         local optionStartY = selfBox.y + selfBox.h + 5
         state.hoveredOption = nil
         if state.isDropdownOpen then
+            local optionReveal = dropdownEaseOut(state.dropdownProgress)
+            local optionHeight = 25 * math.min(1, optionReveal * 1.15)
             for index = 1, #state.selfOptions do
-                local optionRect = { x = selfBox.x, y = optionStartY + (index - 1) * 27, w = selfBox.w, h = 25 }
+                local optionRect = {
+                    x = selfBox.x,
+                    y = optionStartY + (index - 1) * 27 * optionReveal,
+                    w = selfBox.w,
+                    h = optionHeight,
+                }
                 if pointInRect(x, y, optionRect) then state.hoveredOption = index; break end
             end
         end
