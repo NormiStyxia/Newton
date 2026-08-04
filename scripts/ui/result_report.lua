@@ -145,7 +145,8 @@ function M.Install(context)
         local rect = Config.ResolveRect(frame_)
         local zones = Config.ResolveZones(rect, hasReplay)
         local animation = math.max(0, math.min(1, resultReportAnimation_ or 1))
-        local reportOffsetY = -(1 - (1 - animation) * (1 - animation)) * 24
+        local animationProgress = 1 - (1 - animation) * (1 - animation)
+        local reportOffsetY = -(1 - animationProgress) * 24
         local selfBox = {
             x = zones.selfBox.x,
             y = zones.selfBox.y + reportOffsetY,
