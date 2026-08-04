@@ -24,6 +24,26 @@ local function trimUtf8(value, keep)
     return table.concat(characters)
 end
 
+local function splitLastUtf8(value)
+    local start = utf8.offset(value or "", -1)
+    if not start then return "", value or "" end
+    return value:sub(1, start - 1), value:sub(start)
+end
+
+local NO_BREAK_PUNCTUATION = {
+    ["，"] = true, ["。"] = true, ["！"] = true, ["？"] = true, ["；"] = true,
+    ["："] = true, ["、"] = true, ["》"] = true, ["】"] = true, ["〕"] = true,
+    ["〉"] = true, ["」"] = true, ["』"] = true, ["］"] = true, ["）"] = true,
+    ["%"] = true, ["."] = true, [","] = true, ["!"] = true, ["?"] = true,
+    [";"] = true, [":"] = true, ["]"] = true, ["}"] = true, [")"] = true,
+    ["…"] = true, ["—"] = true, ["～"] = true, ["·"] = true,
+    ["\""] = true, ["'"] = true, ["”"] = true, ["’"] = true,
+}
+
+local function isNoBreakPunctuation(character)
+    return NO_BREAK_PUNCTUATION[character] == true
+end
+
 local function wrapText(painter, value, maxWidth, font, size, maxLines)
     painter:UseFont(font)
     nvgFontSize(painter.vg, size)
@@ -39,8 +59,19 @@ local function wrapText(painter, value, maxWidth, font, size, maxLines)
             local measured = nvgTextBounds(painter.vg, 0, 0, candidate, nil)
             if type(measured) ~= "number" then measured = utf8Length(candidate) * size * 0.92 end
             if line ~= "" and measured > maxWidth then
-                lines[#lines + 1] = line
-                line = character
+                if isNoBreakPunctuation(character) then
+                    local prefix, last = splitLastUtf8(line)
+                    if prefix ~= "" then
+                        lines[#lines + 1] = prefix
+                        line = last .. character
+                    else
+                        lines[#lines + 1] = line
+                        line = character
+                    end
+                else
+                    lines[#lines + 1] = line
+                    line = character
+                end
             else
                 line = candidate
             end
@@ -53,6 +84,19 @@ local function wrapText(painter, value, maxWidth, font, size, maxLines)
         lines[maxLines] = trimUtf8(lines[maxLines], math.max(1, utf8Length(lines[maxLines]) - 3)) .. "..."
     end
     return lines, overflow
+end
+
+local function drawWrappedText(painter, x, y, width, value, font, size, minSize, maxLines, color, align, lineGap, alpha)
+    local currentSize = size
+    local lines, overflow
+    repeat
+        lines, overflow = wrapText(painter, value or "", width, font, currentSize, maxLines)
+        if overflow and currentSize > minSize then currentSize = currentSize - 1 end
+    until not overflow or currentSize <= minSize
+    for index, line in ipairs(lines) do
+        painter:Text(x, y + (index - 1) * lineGap, line, currentSize, color, align, font, alpha)
+    end
+    return currentSize, overflow
 end
 
 local function drawDiamond(painter, x, y, radius, color, alpha)
@@ -100,6 +144,32 @@ local function drawActionButton(painter, button, label, primary, hovered, disabl
     painter:Text(button.x + button.w * 0.5, button.y + 8, label, primary and 15 or 14, text, NVG_ALIGN_CENTER + NVG_ALIGN_TOP, "maker-body", alpha)
 end
 
+local function drawDropdownTriangle(painter, x, y, size, progress, color, alpha)
+    local vg = painter.vg
+    local angle = math.pi - easeOut(progress) * math.pi * 0.5
+    local ux, uy = math.cos(angle), math.sin(angle)
+    local px, py = -uy, ux
+    local baseX, baseY = x - ux * size * 0.9, y - uy * size * 0.9
+    nvgBeginPath(vg)
+    nvgMoveTo(vg, x + ux * size, y + uy * size)
+    nvgLineTo(vg, baseX + px * size * 0.78, baseY + py * size * 0.78)
+    nvgLineTo(vg, baseX - px * size * 0.78, baseY - py * size * 0.78)
+    nvgClosePath(vg)
+    nvgFillColor(vg, nvgRGBA(color[1], color[2], color[3], alpha))
+    nvgFill(vg)
+end
+
+local function drawArtworkButtonFeedback(painter, button, hovered, disabled, colors, alpha)
+    if not button then return end
+    if disabled then
+        painter:RoundedRect(button.x, button.y, button.w, button.h, 3, colors.disabled, nil, nil,
+            math.floor(alpha * 0.38))
+    elseif hovered then
+        painter:RoundedRect(button.x, button.y, button.w, button.h, 3, colors.dropdownHover, nil, nil,
+            math.floor(alpha * 0.28))
+    end
+end
+
 ---@param context GameContext
 function M.Install(context)
     local _ENV = context
@@ -116,14 +186,14 @@ function M.Install(context)
             lines, overflow = wrapText(painter, body, width.w, style.font, size, Config.Layout.maxTextLines)
             if overflow and size > Config.Layout.reviewFontMinSize then size = size - 1 end
         until not overflow or size <= Config.Layout.reviewFontMinSize
-        local bodyY = y + 23
+        local bodyY = y + 3
         for index, line in ipairs(lines) do
-            painter:Text(width.x, bodyY + (index - 1) * 18, line, size, textColor, NVG_ALIGN_LEFT + NVG_ALIGN_TOP, style.font, alpha)
+            painter:Text(width.x, bodyY + (index - 1) * 16, line, size, textColor, NVG_ALIGN_LEFT + NVG_ALIGN_TOP, style.font, alpha)
         end
         if key == "newton" and state.newtonTier and state.newtonTier.underlineCount then
-            local underlineY = bodyY + #lines * 18 + 1
+            local underlineY = bodyY + #lines * 16 + 1
             for index = 1, state.newtonTier.underlineCount do
-                painter:FillRect(width.x, underlineY + (index - 1) * 3, width.w * 0.74, 1, textColor, alpha)
+                painter:FillRect(width.x, underlineY + (index - 1) * 3, width.w * 0.60, 1, textColor, alpha)
             end
         end
         if overflow and not state.reviewOverflowLogged[key] then
@@ -158,45 +228,51 @@ function M.Install(context)
 
         painter_:FillRect(0, 0, frame.logicalWidth, frame.logicalHeight, c.overlay, math.floor(82 * progress))
         painter_:FillRect(x, y, w, rect.h, c.paper, alpha)
-        painter_:StrokeRect(x, y, w, rect.h, c.border, 2.5, alpha)
-        painter_:StrokeRect(x + Config.Layout.innerBorder, y + Config.Layout.innerBorder, w - Config.Layout.innerBorder * 2, rect.h - Config.Layout.innerBorder * 2, c.border, 1, alpha)
+        local reportBase = painter_.images and painter_.images.ui and painter_.images.ui.reportBase
+        if reportBase and reportBase >= 0 then
+            painter_:ImageRect(reportBase, x, y, w, rect.h, progress)
+        end
 
-        drawLeaf(painter_, x + 23, y + 25, 0.7, c.primary, alpha)
-        drawDiamond(painter_, x + w - 27, y + 26, 4, c.danger, alpha)
-        painter_:Text(x + w - 24, y + 44, string.format("No. %s", state.resultId or "EXP-01"), 10, c.inkMuted, NVG_ALIGN_RIGHT + NVG_ALIGN_TOP, "maker-body", alpha)
-        painter_:Text(x + w * 0.5, y + 24, "实验观测报告", 24, c.ink, NVG_ALIGN_CENTER + NVG_ALIGN_TOP, "maker-display", alpha)
-        painter_:Text(x + w * 0.5, y + 53, "OBSERVATION REPORT", 10, c.inkMuted, NVG_ALIGN_CENTER + NVG_ALIGN_TOP, "maker-body", alpha)
+        local function artPoint(px, py)
+            return x + w * px / Config.Layout.artWidth, y + rect.h * py / Config.Layout.artHeight
+        end
+        local function artWidth(value)
+            return w * value / Config.Layout.artWidth
+        end
+        local function artHeight(value)
+            return rect.h * value / Config.Layout.artHeight
+        end
+        local centerX = x + w * 0.5
+        local experimentNumber = state.experimentNumber or levelIndex_ or 1
+        painter_:Text(x + w * 0.90, y + rect.h * 0.124,
+            string.format("No. EXP-%02d", experimentNumber), 10, c.inkMuted,
+            NVG_ALIGN_RIGHT + NVG_ALIGN_TOP, "maker-body", alpha)
+        drawWrappedText(painter_, centerX, y + rect.h * 0.255, artWidth(660),
+            string.format("实验 %02d · %s", experimentNumber, state.experimentName or ""),
+            "maker-body", 13, 9, 1, c.ink, NVG_ALIGN_CENTER + NVG_ALIGN_TOP, 15, alpha)
+        drawWrappedText(painter_, centerX, y + rect.h * 0.302, artWidth(430),
+            state.resultDescription or "", "maker-body", 12, 9, 1, c.ink,
+            NVG_ALIGN_CENTER + NVG_ALIGN_TOP, 15, alpha)
 
-        painter_:Text(x + 24, y + 83, state.title, 24, c.ink, NVG_ALIGN_LEFT + NVG_ALIGN_TOP, "maker-display", alpha)
-        painter_:Text(x + 24, y + 114, string.format("实验 %02d · %s", levelIndex_ or 1, state.experimentName), 13, c.ink, NVG_ALIGN_LEFT + NVG_ALIGN_TOP, "maker-body", alpha)
-        painter_:TextBox(x + 24, y + 137, w - 48, state.resultDescription, 12, c.inkMuted, NVG_ALIGN_LEFT + NVG_ALIGN_TOP, "maker-body", 1.15, alpha)
-        drawDivider(painter_, x + 24, y + 177, w - 48, alpha)
-        painter_:Text(x + 24, y + 189, "实验小组评议", 13, c.ink, NVG_ALIGN_LEFT + NVG_ALIGN_TOP, "maker-display", alpha)
+        local selfAuthorX, selfY = artPoint(96, 654)
+        painter_:Text(selfAuthorX, selfY, "诺米", Config.ReviewAuthorStyles.nomi.fontSize, c.ink,
+            NVG_ALIGN_LEFT + NVG_ALIGN_TOP, Config.ReviewAuthorStyles.nomi.font, alpha)
+        local selfTextX, selfTextY = artPoint(272, 655)
+        drawWrappedText(painter_, selfTextX, selfTextY, artWidth(610),
+            state.selectedSelfReview or "请选择本次自我评价", Config.ReviewAuthorStyles.nomi.font,
+            12, 9, 1, state.selectedSelfReview and c.ink or c.inkMuted,
+            NVG_ALIGN_LEFT + NVG_ALIGN_TOP, 15, alpha)
 
-        painter_:Text(x + 24, y + 211, "自我评价 · 诺米", Config.ReviewAuthorStyles.nomi.fontSize, c.ink, NVG_ALIGN_LEFT + NVG_ALIGN_TOP, "maker-body", alpha)
-        painter_:RoundedRect(zones.selfBox.x, y + 238, zones.selfBox.w, zones.selfBox.h, 2, c.paperLight, c.border, 1, alpha)
-        painter_:TextBox(zones.selfBox.x + 12, y + 246, zones.selfBox.w - 38, state.selectedSelfReview or "请选择本次自我评价", 12, state.selectedSelfReview and c.ink or c.inkMuted, NVG_ALIGN_LEFT + NVG_ALIGN_TOP, Config.ReviewAuthorStyles.nomi.font, 1.05, alpha)
-        painter_:Text(zones.selfBox.x + zones.selfBox.w - 14, y + 246, state.isDropdownOpen and "▲" or "▼", 12, c.primary, NVG_ALIGN_CENTER + NVG_ALIGN_TOP, "maker-body", alpha)
+        local reviewWidth = { x = x + w * 0.265, w = artWidth(540) }
+        local _, newtonY = artPoint(96, 801)
+        local _, einsteinY = artPoint(96, 939)
+        local _, greenY = artPoint(96, 1060)
+        drawReview(painter_, state, "newton", "牛顿", newtonY, reviewWidth, alpha)
+        drawReview(painter_, state, "einstein", "爱因斯坦", einsteinY, reviewWidth, alpha)
+        drawReview(painter_, state, "green", "绿毛同事", greenY, reviewWidth, alpha)
 
-        local reviewWidth = { x = x + 24, w = w - 48 }
-        local reviewY = y + 282
-        drawReview(painter_, state, "newton", "牛顿", reviewY, reviewWidth, alpha)
-        drawDivider(painter_, x + 24, reviewY + 58, w - 48, alpha)
-        drawReview(painter_, state, "einstein", "爱因斯坦", reviewY + 67, reviewWidth, alpha)
-        drawDivider(painter_, x + 24, reviewY + 125, w - 48, alpha)
-        drawReview(painter_, state, "green", "绿毛同事", reviewY + 134, reviewWidth, alpha)
-
-        -- The stamp is deliberately procedural and restrained; later artwork can
-        -- replace this draw block without touching report state or hit testing.
-        local vg = painter_.vg
-        local stampScale = 0.94 + 0.06 * progress
-        nvgSave(vg)
-        nvgTranslate(vg, x + w - 73, y + 128)
-        nvgRotate(vg, -0.12)
-        nvgScale(vg, stampScale, stampScale)
-        painter_:StrokeRect(-55, -16, 110, 32, c.danger, 1.5, alpha)
-        painter_:Text(0, -8, "已记录", 14, c.danger, NVG_ALIGN_CENTER + NVG_ALIGN_TOP, "maker-display", alpha)
-        nvgRestore(vg)
+        local triangleX, triangleY = artPoint(943, 674)
+        drawDropdownTriangle(painter_, triangleX, triangleY, artHeight(16), state.dropdownProgress or 0, c.primary, alpha)
 
         local retryHover = false
         local replayHover = false
@@ -208,21 +284,30 @@ function M.Install(context)
             replayHover = drawZones.replay and px >= drawZones.replay.x and px <= drawZones.replay.x + drawZones.replay.w and py >= drawZones.replay.y and py <= drawZones.replay.y + drawZones.replay.h
             nextHover = px >= drawZones.next.x and px <= drawZones.next.x + drawZones.next.w and py >= drawZones.next.y and py <= drawZones.next.y + drawZones.next.h
         end
-        drawActionButton(painter_, drawZones.retry, "重新实验", false, retryHover, false, alpha)
-        if drawZones.replay then drawActionButton(painter_, drawZones.replay, "调阅回放", false, replayHover, false, alpha) end
-        drawActionButton(painter_, drawZones.next, levelIndex_ < context.CONFIG.levelCount and "进入下一实验" or "返回实验目录", true, nextHover, Config.Layout.requireSelfReview and not state.selectedSelfReview, alpha)
+        drawArtworkButtonFeedback(painter_, drawZones.retry, retryHover, false, c, alpha)
+        if drawZones.replay then drawArtworkButtonFeedback(painter_, drawZones.replay, replayHover, false, c, alpha) end
+        drawArtworkButtonFeedback(painter_, drawZones.next, nextHover,
+            Config.Layout.requireSelfReview and not state.selectedSelfReview, c, alpha)
         if state.validationMessage then
             painter_:Text(x + w * 0.5, drawZones.next.y - 17, state.validationMessage, 11, c.danger, NVG_ALIGN_CENTER + NVG_ALIGN_TOP, "maker-body", alpha)
         end
 
         -- Dropdown is painted last so its paper strips sit above the reviews.
-        if state.isDropdownOpen then
-            local optionStartY = y + 276
+        local dropdownProgress = state.dropdownProgress or 0
+        if dropdownProgress > 0.01 then
+            local optionStartY = zones.selfBox.y + offsetY + zones.selfBox.h + 5
+            local optionReveal = easeOut(dropdownProgress)
             for index, option in ipairs(state.selfOptions) do
-                local optionY = optionStartY + (index - 1) * 28
+                local optionY = optionStartY + (index - 1) * 27 * optionReveal
+                local optionHeight = 25 * math.min(1, optionReveal * 1.15)
                 local hovered = state.hoveredOption == index or state.highlightedOption == index
-                painter_:RoundedRect(zones.selfBox.x, optionY, zones.selfBox.w, 26, 2, hovered and c.dropdownHover or c.paperLight, c.border, 1, alpha)
-                painter_:TextBox(zones.selfBox.x + 10, optionY + 5, zones.selfBox.w - 20, option, 11, c.ink, NVG_ALIGN_LEFT + NVG_ALIGN_TOP, Config.ReviewAuthorStyles.nomi.font, 1.05, alpha)
+                painter_:RoundedRect(zones.selfBox.x, optionY, zones.selfBox.w, optionHeight, 2,
+                    hovered and c.dropdownHover or c.paperLight, c.border, 1, math.floor(alpha * optionReveal))
+                if optionReveal > 0.28 then
+                    painter_:TextBox(zones.selfBox.x + 10, optionY + 5, zones.selfBox.w - 20, option, 11,
+                        c.ink, NVG_ALIGN_LEFT + NVG_ALIGN_TOP, Config.ReviewAuthorStyles.nomi.font, 1.05,
+                        math.floor(alpha * optionReveal))
+                end
             end
         end
     end

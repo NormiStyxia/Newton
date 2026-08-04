@@ -307,26 +307,62 @@ function View:_drawBlindSprite(frameData, position, progress, slatCount)
     if not frameData or progress <= 0 then return end
     local rect = self:_spriteRect(frameData, position.x, position.y)
     local vg = self.renderer.vg
+    local clampedProgress = math.max(0, math.min(1, progress))
     local slatHeight = rect.height / slatCount
-    local clippedWidth = rect.width * math.max(0, math.min(1, progress))
-    if clippedWidth <= 0 then return end
+    -- A PPT-style horizontal blind is made from horizontal slats which
+    -- collapse around their own center.  The old implementation clipped the
+    -- width from alternating sides, producing a vertical/checkerboard wipe
+    -- that was very easy to miss on the game background.
+    local slatGap = math.min(2, slatHeight * 0.08)
+    local visibleHeight = math.max(0, slatHeight * clampedProgress - slatGap)
+    if visibleHeight <= 0 then return end
     for index = 0, slatCount - 1 do
-        local y = rect.y + index * slatHeight
-        local x = index % 2 == 0 and rect.x or rect.x + rect.width - clippedWidth
+        local slatTop = rect.y + index * slatHeight
+        local centerY = slatTop + slatHeight * 0.5
+        local clipY = centerY - visibleHeight * 0.5
         nvgSave(vg)
-        nvgScissor(vg, x, y, clippedWidth, slatHeight + 1)
+        nvgScissor(vg, rect.x, clipY, rect.width, visibleHeight)
         self:_drawSprite(frameData, position.x, position.y)
         nvgRestore(vg)
+
+        -- Keep a restrained separator visible while the transition is in
+        -- progress. It makes the horizontal slat motion readable without
+        -- introducing a second overlay or changing the character asset.
+        if clampedProgress > 0 and clampedProgress < 1 and index < slatCount - 1 then
+            local lineY = slatTop + slatHeight
+            nvgSave(vg)
+            nvgStrokeColor(vg, nvgRGBA(76, 104, 84, 72))
+            nvgStrokeWidth(vg, 1)
+            nvgBeginPath(vg)
+            nvgMoveTo(vg, rect.x, lineY)
+            nvgLineTo(vg, rect.x + rect.width, lineY)
+            nvgStroke(vg)
+            nvgRestore(vg)
+        end
     end
+end
+
+function View:_resolveRelocationVisualPosition(frameData, position, fallback)
+    if not position then return fallback end
+    local rect = self:_spriteRect(frameData, position.x, position.y)
+    local visible = rect.x + rect.width > 0
+        and rect.x < self.logicalWidth
+        and rect.y + rect.height > 0
+        and rect.y < self.logicalHeight
+    return visible and position or fallback
 end
 
 function View:_renderRelocationEffect(frameData)
     local effect = self.relocationEffect
     if not effect or not frameData then return end
     local age = effect.age
+    -- If the user released fully outside the viewport, the raw `from` root is
+    -- not drawable. Use the legal destination as the visual transition point
+    -- so the relocation is still observable instead of silently disappearing.
+    local visualFrom = self:_resolveRelocationVisualPosition(frameData, effect.from, effect.to)
     if age < effect.exitDuration then
         local progress = EaseOut(age / effect.exitDuration)
-        self:_drawBlindSprite(frameData, effect.from, 1 - progress, effect.slatCount)
+        self:_drawBlindSprite(frameData, visualFrom, 1 - progress, effect.slatCount)
     elseif age >= effect.exitDuration + effect.holdDuration then
         local enterAge = age - effect.exitDuration - effect.holdDuration
         local progress = EaseOut(enterAge / effect.enterDuration)

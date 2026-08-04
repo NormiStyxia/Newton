@@ -139,11 +139,19 @@ function M.Install(context)
         local hasReplay = HasResultReportReplay()
         local rect = Config.ResolveRect(frame_)
         local zones = Config.ResolveZones(rect, hasReplay)
-        local optionStartY = zones.selfBox.y + zones.selfBox.h + 5
+        local animation = math.max(0, math.min(1, resultReportAnimation_ or 1))
+        local reportOffsetY = -(1 - (1 - animation) * (1 - animation)) * 24
+        local selfBox = {
+            x = zones.selfBox.x,
+            y = zones.selfBox.y + reportOffsetY,
+            w = zones.selfBox.w,
+            h = zones.selfBox.h,
+        }
+        local optionStartY = selfBox.y + selfBox.h + 5
         state.hoveredOption = nil
         if state.isDropdownOpen then
             for index = 1, #state.selfOptions do
-                local optionRect = { x = zones.selfBox.x, y = optionStartY + (index - 1) * 27, w = zones.selfBox.w, h = 25 }
+                local optionRect = { x = selfBox.x, y = optionStartY + (index - 1) * 27, w = selfBox.w, h = 25 }
                 if pointInRect(x, y, optionRect) then state.hoveredOption = index; break end
             end
         end
@@ -173,7 +181,7 @@ function M.Install(context)
             state.validationMessage = nil
             return true
         end
-        if pointInRect(x, y, zones.selfBox) then
+        if pointInRect(x, y, selfBox) then
             state.isDropdownOpen = not state.isDropdownOpen
             state.highlightedOption = 1
             return true
