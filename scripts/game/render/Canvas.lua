@@ -16,6 +16,9 @@ local Renderer = {}
 Renderer.__index = Renderer
 
 local FUTURE_ROUND_FONT = "Fonts/FutureRound-Regular.ttf"
+local CHANGAN_FONT = "Fonts/PingFangChangAnTi.ttf"
+local CHUNXU_FONT = "Fonts/LeMiChunXuWanXing.ttf"
+local SARASA_FONT = "Fonts/SarasaMonoSC-Regular.ttf"
 
 local COLORS = {
     background = { 248, 250, 228, 255 },
@@ -103,6 +106,9 @@ function Renderer:Init()
     if not self.vg then error("NanoVG context 创建失败") end
     self.fontBody = nvgCreateFont(self.vg, "maker-body", FUTURE_ROUND_FONT)
     self.fontDisplay = nvgCreateFont(self.vg, "maker-display", FUTURE_ROUND_FONT)
+    self.fontEinstein = nvgCreateFont(self.vg, "report-einstein", CHANGAN_FONT)
+    self.fontNewton = nvgCreateFont(self.vg, "report-newton", CHUNXU_FONT)
+    self.fontGreen = nvgCreateFont(self.vg, "report-green", SARASA_FONT)
     print(string.format("[Font] FutureRound path=%s body=%d display=%d",
         FUTURE_ROUND_FONT, self.fontBody, self.fontDisplay))
     if self.fontBody == -1 or self.fontDisplay == -1 then
@@ -129,6 +135,12 @@ function Renderer:Init()
             dialoguePanel = nvgCreateImage(self.vg, "image/ui/dialogue_overlay/panel.png", 0),
             dialogueSkip = nvgCreateImage(self.vg, "image/ui/dialogue_overlay/skip.png", 0),
             dialogueClose = nvgCreateImage(self.vg, "image/ui/dialogue_overlay/close.png", 0),
+            dialogueAvatars = {
+                newton = nvgCreateImage(self.vg, "image/ui/dialogue_overlay/avatars/newton.png", 0),
+                green = nvgCreateImage(self.vg, "image/ui/dialogue_overlay/avatars/green.png", 0),
+                einstein = nvgCreateImage(self.vg, "image/ui/dialogue_overlay/avatars/einstein.png", 0),
+                nomi = nvgCreateImage(self.vg, "image/ui/dialogue_overlay/avatars/nomi.png", 0),
+            },
             reportBase = nvgCreateImage(self.vg, "image/ui/report/observation_report_base.png", 0),
         },
         newtonAnger = {

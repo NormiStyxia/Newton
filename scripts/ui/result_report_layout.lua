@@ -186,7 +186,7 @@ function M.Install(context)
             lines, overflow = wrapText(painter, body, width.w, style.font, size, Config.Layout.maxTextLines)
             if overflow and size > Config.Layout.reviewFontMinSize then size = size - 1 end
         until not overflow or size <= Config.Layout.reviewFontMinSize
-        local bodyY = y + 3
+        local bodyY = y + 24
         for index, line in ipairs(lines) do
             painter:Text(width.x, bodyY + (index - 1) * 16, line, size, textColor, NVG_ALIGN_LEFT + NVG_ALIGN_TOP, style.font, alpha)
         end

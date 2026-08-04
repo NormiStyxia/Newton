@@ -11,12 +11,18 @@ local COLORS = {
     dark = { 47, 73, 56, 255 },
     body = { 64, 83, 68, 255 },
     muted = { 105, 120, 103, 255 },
-    cream = { 255, 249, 226, 255 },
-    creamStroke = { 125, 145, 105, 255 },
-    greenBubble = { 221, 235, 188, 255 },
-    greenStroke = { 125, 157, 101, 255 },
-    avatarNewton = { 245, 224, 192, 255 },
-    avatarGreen = { 186, 220, 173, 255 },
+    cream = { 226, 224, 216, 255 },
+    creamStroke = { 140, 134, 126, 255 },
+    greenBubble = { 211, 225, 218, 255 },
+    greenStroke = { 106, 137, 128, 255 },
+    avatarNewton = { 221, 210, 207, 255 },
+    avatarGreen = { 201, 219, 211, 255 },
+    avatarEinstein = { 216, 211, 224, 255 },
+    avatarNomi = { 207, 220, 232, 255 },
+    einsteinBubble = { 218, 214, 226, 255 },
+    einsteinStroke = { 126, 119, 148, 255 },
+    nomiBubble = { 211, 222, 233, 255 },
+    nomiStroke = { 105, 127, 151, 255 },
     track = { 79, 117, 72, 255 },
     trackInner = { 190, 211, 157, 255 },
     angerFill = { 217, 130, 118, 255 },
@@ -226,17 +232,28 @@ local function drawMessage(painter, controller, entry, index, viewport, scrollOf
         return
     end
 
-    local isGreen = message.style == "GREEN"
+    local speaker = message.speaker or (message.style == "GREEN" and "green" or "newton")
+    local isGreen = speaker == "green"
+    local isEinstein = speaker == "einstein"
+    local isNomi = speaker == "nomi"
     local avatarX = viewport.x + 23 + xOffset
     local avatarY = y + 25
     local bubbleX = viewport.x + 55 + xOffset
-    local bubbleFill = isGreen and COLORS.greenBubble or COLORS.cream
-    local bubbleStroke = isGreen and COLORS.greenStroke or COLORS.creamStroke
-    local avatarFill = isGreen and COLORS.avatarGreen or COLORS.avatarNewton
-
-    painter:Circle(avatarX, avatarY, 21, avatarFill, bubbleStroke, 2)
-    painter:Text(avatarX, avatarY, message.avatarText or "?", 17, COLORS.dark,
-        NVG_ALIGN_CENTER + NVG_ALIGN_MIDDLE, FONT)
+    local bubbleFill = isGreen and COLORS.greenBubble
+        or (isEinstein and COLORS.einsteinBubble or (isNomi and COLORS.nomiBubble or COLORS.cream))
+    local bubbleStroke = isGreen and COLORS.greenStroke
+        or (isEinstein and COLORS.einsteinStroke or (isNomi and COLORS.nomiStroke or COLORS.creamStroke))
+    local avatarFill = isGreen and COLORS.avatarGreen
+        or (isEinstein and COLORS.avatarEinstein or (isNomi and COLORS.avatarNomi or COLORS.avatarNewton))
+    local avatarImage = painter.images.ui and painter.images.ui.dialogueAvatars
+        and painter.images.ui.dialogueAvatars[speaker]
+    if avatarImage and avatarImage >= 0 then
+        painter:Image(avatarImage, avatarX, avatarY, 44, 44, 1, nil, 0.5, 0.5)
+    else
+        painter:Circle(avatarX, avatarY, 21, avatarFill, bubbleStroke, 2)
+        painter:Text(avatarX, avatarY, message.avatarText or "?", 17, COLORS.dark,
+            NVG_ALIGN_CENTER + NVG_ALIGN_MIDDLE, FONT)
+    end
     painter:RoundedRect(bubbleX, y, entry.bubbleW, entry.bubbleH, 7, bubbleFill, bubbleStroke, 1.5)
     painter:Text(bubbleX + 14, y + 9, message.displayName or "", 15, COLORS.dark,
         NVG_ALIGN_LEFT + NVG_ALIGN_TOP, FONT)

@@ -13,10 +13,10 @@ local STATE = {
     CLOSING = "CLOSING",
 }
 
-local OPEN_DURATION = 0.21
-local CLOSE_DURATION = 0.18
-local BUBBLE_DURATION = 0.15
-local MESSAGE_INTERVAL = 0.34
+local OPEN_DURATION = 0.34
+local CLOSE_DURATION = 0.26
+local BUBBLE_DURATION = 0.26
+local MESSAGE_INTERVAL = 0.52
 local MAX_ANGER = 100
 
 local function clamp(value, minimum, maximum)

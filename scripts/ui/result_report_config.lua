@@ -21,8 +21,8 @@ M.ReportColors = {
 M.Layout = {
     artWidth = 1086,
     artHeight = 1448,
-    width = 480,
-    height = 640,
+    width = 520,
+    height = 693,
     maxHeightRatio = 0.84,
     enterDuration = 0.28,
     exitDuration = 0.18,
@@ -37,9 +37,9 @@ M.Layout = {
 
 M.ReviewAuthorStyles = {
     nomi = { font = "maker-body", fontSize = 19, color = M.ReportColors.ink, alignment = "left" },
-    newton = { font = "maker-body", fontSize = 18, color = M.ReportColors.ink, alignment = "left" },
-    einstein = { font = "maker-body", fontSize = 18, color = M.ReportColors.ink, alignment = "left" },
-    green = { font = "maker-body", fontSize = 17, color = M.ReportColors.ink, alignment = "left", useMonospace = false },
+    newton = { font = "report-newton", fontSize = 18, color = M.ReportColors.ink, alignment = "left" },
+    einstein = { font = "report-einstein", fontSize = 18, color = M.ReportColors.ink, alignment = "left" },
+    green = { font = "report-green", fontSize = 17, color = M.ReportColors.ink, alignment = "left", useMonospace = false },
 }
 
 M.NewtonReviewTiers = {
