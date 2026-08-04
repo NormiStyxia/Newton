@@ -18,7 +18,7 @@
 local Renderer = {}
 Renderer.__index = Renderer
 
-local FUTURE_ROUND_FONT = "Fonts/FutureRound-Regular.ttf"
+local BODY_DISPLAY_FONT = "Fonts/LeMiMuHeYuanTi.ttf"
 local CHANGAN_FONT = "Fonts/PingFangChangAnTi.ttf"
 local CHUNXU_FONT = "Fonts/LeMiChunXuWanXing.ttf"
 local SARASA_FONT = "Fonts/SarasaMonoSC-Regular.ttf"
@@ -107,17 +107,17 @@ end
 function Renderer:Init()
     self.vg = nvgCreate(1)
     if not self.vg then error("NanoVG context 创建失败") end
-    self.fontBody = nvgCreateFont(self.vg, "maker-body", FUTURE_ROUND_FONT)
-    self.fontDisplay = nvgCreateFont(self.vg, "maker-display", FUTURE_ROUND_FONT)
+    self.fontBody = nvgCreateFont(self.vg, "maker-body", BODY_DISPLAY_FONT)
+    self.fontDisplay = nvgCreateFont(self.vg, "maker-display", BODY_DISPLAY_FONT)
     self.fontEinstein = nvgCreateFont(self.vg, "report-einstein", CHANGAN_FONT)
     self.fontNewton = nvgCreateFont(self.vg, "report-newton", CHUNXU_FONT)
     self.fontGreen = nvgCreateFont(self.vg, "report-green", SARASA_FONT)
-    print(string.format("[Font] FutureRound path=%s body=%d display=%d report=(%d,%d,%d)",
-        FUTURE_ROUND_FONT, self.fontBody, self.fontDisplay,
+    print(string.format("[Font] shared body/display path=%s body=%d display=%d report=(%d,%d,%d)",
+        BODY_DISPLAY_FONT, self.fontBody, self.fontDisplay,
         self.fontEinstein, self.fontNewton, self.fontGreen))
     if self.fontBody == -1 or self.fontDisplay == -1
         or self.fontEinstein == -1 or self.fontNewton == -1 or self.fontGreen == -1 then
-        error("未来圆字体加载失败: " .. FUTURE_ROUND_FONT)
+        error("正文/标题字体加载失败: " .. BODY_DISPLAY_FONT)
     end
     self.images = {
         apple = nvgCreateImage(self.vg, "image/phase1/apple.png", 0),

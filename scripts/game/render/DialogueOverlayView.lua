@@ -3,6 +3,7 @@ local View = {}
 local PANEL_ASPECT = 1343 / 2002
 local PANEL_HEIGHT = 660
 local FONT = "maker-body"
+local AVATAR_SIZE = 68
 local MESSAGE_RIGHT_RATIO = 0.70
 local SCROLLBAR_CENTER_RATIO = 0.75
 local FOOTER_RIGHT_RATIO = 0.82
@@ -248,9 +249,9 @@ local function drawMessage(painter, controller, entry, index, viewport, scrollOf
     local avatarImage = painter.images.ui and painter.images.ui.dialogueAvatars
         and painter.images.ui.dialogueAvatars[speaker]
     if avatarImage and avatarImage >= 0 then
-        painter:Image(avatarImage, avatarX, avatarY, 44, 44, 1, nil, 0.5, 0.5)
+        painter:Image(avatarImage, avatarX, avatarY, AVATAR_SIZE, AVATAR_SIZE, 1, nil, 0.5, 0.5)
     else
-        painter:Circle(avatarX, avatarY, 21, avatarFill, bubbleStroke, 2)
+        painter:Circle(avatarX, avatarY, AVATAR_SIZE * 0.48, avatarFill, bubbleStroke, 2)
         painter:Text(avatarX, avatarY, message.avatarText or "?", 17, COLORS.dark,
             NVG_ALIGN_CENTER + NVG_ALIGN_MIDDLE, FONT)
     end
