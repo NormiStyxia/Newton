@@ -36,7 +36,7 @@ M.Layout = {
 }
 
 M.ReviewAuthorStyles = {
-    nomi = { font = "maker-body", fontSize = 19, color = M.ReportColors.ink, alignment = "left" },
+    nomi = { font = "nomi-font", fontSize = 19, color = M.ReportColors.ink, alignment = "left" },
     newton = { font = "report-newton", fontSize = 18, color = M.ReportColors.ink, alignment = "left" },
     einstein = { font = "report-einstein", fontSize = 18, color = M.ReportColors.ink, alignment = "left" },
     green = { font = "report-green", fontSize = 17, color = M.ReportColors.ink, alignment = "left", useMonospace = false },

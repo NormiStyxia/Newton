@@ -31,7 +31,7 @@ local DOT_EDGE = { 196, 204, 244, 255 }
 -- The replacement art includes a decorative halo outside the original
 -- avatar crop. Keep the avatar's source-to-screen mapping fixed while letting
 -- that decoration extend beyond the Sensor visual bounds.
-local ART_CROP = { left = 153, top = 187, width = 937, height = 939 }
+local ART_CROP = { left = 121, top = 218, width = 995, height = 905 }
 local BASE_CROP = { left = 187, top = 218, width = 876, height = 905 }
 
 local function updateGoalDirection(goal, apple, dt)

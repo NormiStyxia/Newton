@@ -11,6 +11,7 @@
 ---@field vg unknown
 ---@field fontBody integer
 ---@field fontDisplay integer
+---@field fontNomi integer
 ---@field fontEinstein integer
 ---@field fontNewton integer
 ---@field fontGreen integer
@@ -19,6 +20,7 @@ local Renderer = {}
 Renderer.__index = Renderer
 
 local BODY_DISPLAY_FONT = "Fonts/LeMiMuHeYuanTi.ttf"
+local NOMI_FONT = "Fonts/HongLeiXiaoZhiTiaoQingChunTi.ttf"
 local CHANGAN_FONT = "Fonts/PingFangChangAnTi.ttf"
 local CHUNXU_FONT = "Fonts/LeMiChunXuWanXing.ttf"
 local SARASA_FONT = "Fonts/SarasaMonoSC-Regular.ttf"
@@ -83,6 +85,13 @@ local function color(c, alpha)
     return nvgRGBA(c[1], c[2], c[3], alpha or c[4] or 255)
 end
 
+-- Renderer colors use 0-255 alpha; NanoVG image patterns use 0-1 opacity.
+local function imageOpacity(alpha)
+    local opacity = alpha or 1
+    if opacity > 1 then opacity = opacity / 255 end
+    return math.max(0, math.min(1, opacity))
+end
+
 local function tint(c, tintColor)
     return {
         math.floor(c[1] * tintColor[1] / 255 + .5),
@@ -109,14 +118,16 @@ function Renderer:Init()
     if not self.vg then error("NanoVG context 创建失败") end
     self.fontBody = nvgCreateFont(self.vg, "maker-body", BODY_DISPLAY_FONT)
     self.fontDisplay = nvgCreateFont(self.vg, "maker-display", BODY_DISPLAY_FONT)
+    self.fontNomi = nvgCreateFont(self.vg, "nomi-font", NOMI_FONT)
     self.fontEinstein = nvgCreateFont(self.vg, "report-einstein", CHANGAN_FONT)
     self.fontNewton = nvgCreateFont(self.vg, "report-newton", CHUNXU_FONT)
     self.fontGreen = nvgCreateFont(self.vg, "report-green", SARASA_FONT)
-    print(string.format("[Font] shared body/display path=%s body=%d display=%d report=(%d,%d,%d)",
-        BODY_DISPLAY_FONT, self.fontBody, self.fontDisplay,
+    print(string.format("[Font] shared path=%s body=%d display=%d nomi=%d report=(%d,%d,%d)",
+        BODY_DISPLAY_FONT, self.fontBody, self.fontDisplay, self.fontNomi,
         self.fontEinstein, self.fontNewton, self.fontGreen))
     if self.fontBody == -1 or self.fontDisplay == -1
-        or self.fontEinstein == -1 or self.fontNewton == -1 or self.fontGreen == -1 then
+        or self.fontNomi == -1 or self.fontEinstein == -1
+        or self.fontNewton == -1 or self.fontGreen == -1 then
         error("正文/标题字体加载失败: " .. BODY_DISPLAY_FONT)
     end
     self.images = {
@@ -212,6 +223,8 @@ end
 function Renderer:UseFont(font)
     if font == "maker-display" then
         nvgFontFaceId(self.vg, self.fontDisplay)
+    elseif font == "nomi-font" then
+        nvgFontFaceId(self.vg, self.fontNomi)
     elseif font == "report-einstein" then
         nvgFontFaceId(self.vg, self.fontEinstein)
     elseif font == "report-newton" then
@@ -390,6 +403,7 @@ end
 
 function Renderer:Image(image, x, y, w, h, alpha, angle, originX, originY)
     if not image or image < 0 then return end
+    local opacity = imageOpacity(alpha)
     originX = originX or 0.5
     originY = originY or 0.5
     nvgSave(self.vg)
@@ -397,16 +411,17 @@ function Renderer:Image(image, x, y, w, h, alpha, angle, originX, originY)
     if angle and angle ~= 0 then nvgRotate(self.vg, angle) end
     nvgBeginPath(self.vg)
     nvgRect(self.vg, -w * originX, -h * originY, w, h)
-    nvgFillPaint(self.vg, nvgImagePattern(self.vg, -w * originX, -h * originY, w, h, 0, image, alpha or 1))
+    nvgFillPaint(self.vg, nvgImagePattern(self.vg, -w * originX, -h * originY, w, h, 0, image, opacity))
     nvgFill(self.vg)
     nvgRestore(self.vg)
 end
 
 function Renderer:ImageRect(image, x, y, w, h, alpha)
     if not image or image < 0 or w <= 0 or h <= 0 then return end
+    local opacity = imageOpacity(alpha)
     nvgBeginPath(self.vg)
     nvgRect(self.vg, x, y, w, h)
-    nvgFillPaint(self.vg, nvgImagePattern(self.vg, x, y, w, h, 0, image, alpha or 1))
+    nvgFillPaint(self.vg, nvgImagePattern(self.vg, x, y, w, h, 0, image, opacity))
     nvgFill(self.vg)
 end
 

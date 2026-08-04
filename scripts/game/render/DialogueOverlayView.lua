@@ -3,10 +3,18 @@ local View = {}
 local PANEL_ASPECT = 1343 / 2002
 local PANEL_HEIGHT = 660
 local FONT = "maker-body"
+local NOMI_FONT = "nomi-font"
 local AVATAR_SIZE = 68
 local MESSAGE_RIGHT_RATIO = 0.70
 local SCROLLBAR_CENTER_RATIO = 0.75
 local FOOTER_RIGHT_RATIO = 0.82
+
+local function fontForMessage(message)
+    if message and message.speaker == "nomi" then
+        return NOMI_FONT
+    end
+    return FONT
+end
 
 local COLORS = {
     dark = { 47, 73, 56, 255 },
@@ -100,7 +108,6 @@ local function layoutMessages(painter, messages, visibleCount, viewport)
     local bubbleWidth = math.max(120, viewport.w - 55)
     local entries = {}
     local cursorY = 6
-    local font = FONT
 
     for index = 1, visibleCount do
         local message = messages[index]
@@ -108,6 +115,7 @@ local function layoutMessages(painter, messages, visibleCount, viewport)
             entries[index] = { y = cursorY, h = 32, system = true, message = message }
             cursorY = cursorY + 42
         else
+            local font = fontForMessage(message)
             local lines = wrapText(painter, message.text or "", bubbleWidth - 28, font, 16)
             local bubbleHeight = 38 + #lines * 22
             local rowHeight = math.max(48, bubbleHeight) + 13
@@ -117,6 +125,7 @@ local function layoutMessages(painter, messages, visibleCount, viewport)
                 bubbleW = bubbleWidth,
                 bubbleH = bubbleHeight,
                 lines = lines,
+                font = font,
                 message = message,
             }
             cursorY = cursorY + rowHeight
@@ -237,6 +246,7 @@ local function drawMessage(painter, controller, entry, index, viewport, scrollOf
     local isGreen = speaker == "green"
     local isEinstein = speaker == "einstein"
     local isNomi = speaker == "nomi"
+    local messageFont = entry.font or (isNomi and NOMI_FONT or FONT)
     local avatarX = viewport.x + 23 + xOffset
     local avatarY = y + 25
     local bubbleX = viewport.x + 55 + xOffset
@@ -253,14 +263,14 @@ local function drawMessage(painter, controller, entry, index, viewport, scrollOf
     else
         painter:Circle(avatarX, avatarY, AVATAR_SIZE * 0.48, avatarFill, bubbleStroke, 2)
         painter:Text(avatarX, avatarY, message.avatarText or "?", 17, COLORS.dark,
-            NVG_ALIGN_CENTER + NVG_ALIGN_MIDDLE, FONT)
+            NVG_ALIGN_CENTER + NVG_ALIGN_MIDDLE, messageFont)
     end
     painter:RoundedRect(bubbleX, y, entry.bubbleW, entry.bubbleH, 7, bubbleFill, bubbleStroke, 1.5)
     painter:Text(bubbleX + 14, y + 9, message.displayName or "", 15, COLORS.dark,
-        NVG_ALIGN_LEFT + NVG_ALIGN_TOP, FONT)
+        NVG_ALIGN_LEFT + NVG_ALIGN_TOP, messageFont)
     for lineIndex, line in ipairs(entry.lines) do
         painter:Text(bubbleX + 14, y + 34 + (lineIndex - 1) * 22, line, 16, COLORS.body,
-            NVG_ALIGN_LEFT + NVG_ALIGN_TOP, FONT)
+            NVG_ALIGN_LEFT + NVG_ALIGN_TOP, messageFont)
     end
     nvgRestore(vg)
 end
