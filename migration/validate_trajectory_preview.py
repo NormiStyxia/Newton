@@ -42,7 +42,7 @@ def main() -> int:
     expect("aimPreview_ = { x = lx + dx" in experiment,
            "apple aim state is not retained for rendering and launch")
     expect("APPLE_FLIGHT_FRICTION_AIR = 0.0015" in calibration
-           and "APPLE_GAMEPLAY_GRAVITY_SCALE = 0.75" in calibration
+           and "APPLE_GAMEPLAY_GRAVITY_SCALE = 0.60" in calibration
            and "frictionAir = apple_.flightFrictionAir or MatterCalibration.APPLE_FLIGHT_FRICTION_AIR" in world_view
            and "gravityX = gravityX * MatterCalibration.APPLE_GAMEPLAY_GRAVITY_SCALE" in world_view,
            "preview does not use the same flight damping and gravity as gameplay")

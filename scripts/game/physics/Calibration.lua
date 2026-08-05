@@ -25,7 +25,7 @@ MatterCalibration.APPLE_FRICTION_AIR = 0.01
 MatterCalibration.APPLE_FLIGHT_FRICTION_AIR = 0.0015
 -- Standard gravity remains the calibration baseline. The gameplay-only scale
 -- gives a horizontal launch enough hang time to match the source visually.
-MatterCalibration.APPLE_GAMEPLAY_GRAVITY_SCALE = 0.75
+MatterCalibration.APPLE_GAMEPLAY_GRAVITY_SCALE = 0.60
 -- Extra tangential energy loss applied only while a contact supports the
 -- apple against gravity. This approximates rolling resistance without
 -- changing its free-flight trajectory or collision-normal velocity.

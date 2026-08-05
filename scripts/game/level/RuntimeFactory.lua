@@ -241,9 +241,11 @@ function RuntimeFactory.CreateApple(scene, launcher)
     local node = scene:CreateChild("Apple")
     node:SetPosition2D(launcher.spawnWorldX, launcher.spawnWorldY)
     local body = node:CreateComponent("RigidBody2D")
-    body.bodyType = BT_STATIC
+    -- Phaser creates a dynamic circle, calibrates its mass, then parks it as
+    -- static. Follow the same lifecycle so the first launch and retries enter
+    -- BT_DYNAMIC from an identically initialized body.
+    body.bodyType = BT_DYNAMIC
     body.useFixtureMass = false
-    body.mass = MatterCalibration.APPLE_MASS
     -- The source's setCircle call resets frictionAir to Matter's .01 default.
     -- Box2D damping is per second, so use its equivalent 60 Hz coefficient.
     body.linearDamping = MatterCalibration.Box2DLinearDamping(MatterCalibration.APPLE_FRICTION_AIR)
@@ -261,6 +263,10 @@ function RuntimeFactory.CreateApple(scene, launcher)
     shape.restitution = MatterCalibration.APPLE_INITIAL_RESTITUTION
     shape.categoryBits = CATEGORY_APPLE
     shape.maskBits = MASK_ALL
+    MatterCalibration.ApplyAppleMassProperties(body)
+    body.linearVelocity = Vector2(0, 0)
+    body.angularVelocity = 0
+    body.bodyType = BT_STATIC
     return {
         id = "apple",
         type = "apple",

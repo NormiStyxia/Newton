@@ -123,7 +123,7 @@ def main() -> int:
     expect("APPLE_FRICTION_STATIC = 0.5" in calibration, "Matter static-friction multiplier is not calibrated")
     expect("APPLE_FRICTION_AIR = 0.01" in calibration, "apple effective air friction is not calibrated")
     expect("APPLE_FLIGHT_FRICTION_AIR = 0.0015" in calibration
-           and "APPLE_GAMEPLAY_GRAVITY_SCALE = 0.75" in calibration,
+           and "APPLE_GAMEPLAY_GRAVITY_SCALE = 0.60" in calibration,
            "gameplay flight feel is not calibrated independently from the probe baseline")
     expect("APPLE_INITIAL_RESTITUTION = 0" in calibration, "apple initial restitution is not calibrated")
     expect("SOURCE_STATIC_FRICTION = 1" in calibration
@@ -136,6 +136,22 @@ def main() -> int:
     expect(main_lua.count("MatterCalibration.ApplyAppleMassProperties(apple_.body)") == 1
            and "MatterCalibration.ApplyAppleMassProperties(apple.body)" in (ROOT / "scripts/game/physics/Probe.lua").read_text(encoding="utf-8"),
            "apple mass properties are not restored after every static-to-dynamic transition")
+    apple_factory_match = re.search(
+        r"function RuntimeFactory\.CreateApple\(scene, launcher\)(?P<body>.*?)\n    return \{",
+        factory,
+        re.S,
+    )
+    apple_factory = apple_factory_match.group("body") if apple_factory_match else ""
+    dynamic_index = apple_factory.find("body.bodyType = BT_DYNAMIC")
+    shape_index = apple_factory.find("local shape =")
+    mass_index = apple_factory.find("MatterCalibration.ApplyAppleMassProperties(body)")
+    static_index = apple_factory.find("body.bodyType = BT_STATIC")
+    expect(apple_factory_match is not None
+           and min(dynamic_index, shape_index, mass_index, static_index) >= 0
+           and dynamic_index < shape_index < mass_index < static_index
+           and "body.linearVelocity = Vector2(0, 0)" in apple_factory
+           and "body.angularVelocity = 0" in apple_factory,
+           "apple creation does not mirror Phaser's dynamic-circle-mass-static lifecycle")
     expect("MATTER_RESTING_CONTACT_FRICTION = MatterCalibration.APPLE_FRICTION" in calibration
            and "* MatterCalibration.APPLE_FRICTION_STATIC" in calibration
            and "* MatterCalibration.MATTER_FRICTION_NORMAL_MULTIPLIER" in calibration,
