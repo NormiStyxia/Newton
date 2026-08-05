@@ -62,8 +62,10 @@ end
 renderer = { viewports = 0 }
 function renderer:SetNumViewports(value) self.viewports = value end
 input = {}
+input.mouseMoveWheel = 0
 function input:SetScreenKeyboardVisible(_) end
-KEY_ESCAPE = 27
+function input:GetKeyDown(_) return false end
+KEY_ESCAPE, KEY_CTRL, KEY_S, KEY_Z, KEY_Y, KEY_D, KEY_DELETE = 27, 1000, 83, 90, 89, 68, 127
 function input:GetKeyPress(key)
     local pressed = self.pressedKey == key
     if pressed then self.pressedKey = nil end
@@ -273,6 +275,24 @@ expect(recoveryContext.workshopState_.document.levelId == "custom_003"
 context.frame_ = {
     systemLogicalWidth = 800, systemLogicalHeight = 450,
     logicalWidth = 1880, logicalHeight = 1057.5,
+}
+workshop.view.drawerMode = nil
+context.UpdateLevelWorkshop(0, { x = 0, y = 0, down = false, pressed = false, released = false })
+expect(workshop.layout.supported and workshop.layout.mobileCompact,
+    "common phone landscape size was rejected by the workshop")
+local fileTab = workshop.layout.drawerTabs.files
+local pointerScale = workshop.layout.coordinateScale
+context.UpdateLevelWorkshop(0, {
+    x = (fileTab.x + fileTab.w * 0.5) / pointerScale,
+    y = (fileTab.y + fileTab.h * 0.5) / pointerScale,
+    down = true, pressed = true, released = false,
+})
+expect(workshop.view.drawerMode == "files",
+    "phone landscape pointer conversion missed the file drawer tab")
+
+context.frame_ = {
+    systemLogicalWidth = 719, systemLogicalHeight = 359,
+    logicalWidth = 1880, logicalHeight = 939,
 }
 workshop.dirty = true
 input.pressedKey = KEY_ESCAPE

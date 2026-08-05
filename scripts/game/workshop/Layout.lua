@@ -1,8 +1,8 @@
 local Layout = {}
 
 Layout.DEFAULTS = {
-    minimumSystemWidth = 960,
-    minimumSystemHeight = 540,
+    minimumSystemWidth = 720,
+    minimumSystemHeight = 360,
     foldedSystemWidth = 1380,
     foldedSystemHeight = 680,
     safeInset = 16,
@@ -39,7 +39,7 @@ local function resolveSafeInsets(frame, minimum)
         end
     end
     source = source or {}
-    local scale = math.max(0.001, (tonumber(frame.dpr) or 1) * (tonumber(frame.renderScale) or 1))
+    local scale = math.max(0.001, tonumber(frame.dpr) or 1)
     return {
         left = math.max(minimum, (tonumber(source.left) or 0) / scale),
         top = math.max(minimum, (tonumber(source.top) or 0) / scale),
@@ -52,6 +52,13 @@ function Layout.Resolve(frame, viewState, overrides)
     local config = copyDefaults(overrides)
     local systemWidth = tonumber(frame.systemLogicalWidth) or tonumber(frame.logicalWidth) or 0
     local systemHeight = tonumber(frame.systemLogicalHeight) or tonumber(frame.logicalHeight) or 0
+    local coordinateScale = tonumber(frame.renderScale)
+    if not coordinateScale then
+        local sourceWidth = math.max(1, tonumber(frame.logicalWidth) or systemWidth)
+        local sourceHeight = math.max(1, tonumber(frame.logicalHeight) or systemHeight)
+        coordinateScale = math.min(systemWidth / sourceWidth, systemHeight / sourceHeight)
+    end
+    coordinateScale = math.max(0.001, coordinateScale)
     local landscape = systemWidth >= systemHeight
     local supported = landscape
         and systemWidth >= config.minimumSystemWidth
@@ -62,14 +69,17 @@ function Layout.Resolve(frame, viewState, overrides)
             supported = false,
             frame = frame,
             config = config,
-            full = rect(0, 0, frame.logicalWidth, frame.logicalHeight),
+            coordinateScale = coordinateScale,
+            renderScaleCompensation = 1 / coordinateScale,
+            full = rect(0, 0, systemWidth, systemHeight),
         }
     end
 
     local folded = systemWidth < config.foldedSystemWidth or systemHeight < config.foldedSystemHeight
+    local mobileCompact = systemWidth < 960 or systemHeight < 480
     local safe = resolveSafeInsets(frame, config.safeInset)
-    local width, height = frame.logicalWidth, frame.logicalHeight
-    local topHeight, bottomHeight = 66, 34
+    local width, height = systemWidth, systemHeight
+    local topHeight, bottomHeight = mobileCompact and 60 or 68, 38
     local bodyY = safe.top + topHeight
     local bodyHeight = height - bodyY - bottomHeight - safe.bottom
     local leftWidth = folded and 0 or 292
@@ -81,7 +91,16 @@ function Layout.Resolve(frame, viewState, overrides)
     local left = leftWidth > 0 and rect(safe.left, bodyY, leftWidth, bodyHeight) or nil
     local right = rightWidth > 0 and rect(width - safe.right - rightWidth, bodyY, rightWidth, bodyHeight) or nil
 
-    local toolbar = buttonRow(safe.left, safe.top, {
+    local toolbarDefinitions = mobileCompact and {
+        { id = "exit", width = 52 },
+        { id = "draft", width = 60 },
+        { id = "save", width = 60 },
+        { id = "export", width = 60 },
+        { id = "import", width = 60 },
+        { id = "undo", width = 42 },
+        { id = "redo", width = 42 },
+        { id = "preview", width = 72 },
+    } or {
         { id = "exit", width = 92 },
         { id = "draft", width = 104 },
         { id = "save", width = 94 },
@@ -90,12 +109,20 @@ function Layout.Resolve(frame, viewState, overrides)
         { id = "undo", width = 46 },
         { id = "redo", width = 46 },
         { id = "preview", width = 116 },
-    }, 46, 8)
+    }
+    local toolbar = buttonRow(safe.left, safe.top, toolbarDefinitions, mobileCompact and 44 or 48,
+        mobileCompact and 6 or 8)
+    local titleX = toolbar.preview.x + toolbar.preview.w + 18
+    local titleRight = width - safe.right
+    if folded then titleRight = titleRight - 124 end
 
     local result = {
         mode = folded and "folded" or "full",
         supported = true,
         folded = folded,
+        mobileCompact = mobileCompact,
+        coordinateScale = coordinateScale,
+        renderScaleCompensation = 1 / coordinateScale,
         frame = frame,
         config = config,
         safeInsets = safe,
@@ -106,8 +133,7 @@ function Layout.Resolve(frame, viewState, overrides)
         right = right,
         canvas = canvas,
         toolbar = toolbar,
-        title = rect(toolbar.preview.x + toolbar.preview.w + 18, safe.top, math.max(120,
-            width - safe.right - (toolbar.preview.x + toolbar.preview.w + 18)), 46),
+        title = rect(titleX, safe.top, titleRight - titleX, mobileCompact and 44 or 48),
     }
 
     if folded then
@@ -117,7 +143,8 @@ function Layout.Resolve(frame, viewState, overrides)
         }
         local drawerMode = viewState and viewState.drawerMode or nil
         if drawerMode == "files" or drawerMode == "inspector" then
-            local drawerWidth = math.min(372, width * 0.34)
+            local drawerWidth = math.min(mobileCompact and 360 or 420,
+                width * (mobileCompact and 0.46 or 0.38))
             result.drawer = rect(width - safe.right - drawerWidth, bodyY, drawerWidth, bodyHeight)
             if drawerMode == "files" then result.left = result.drawer else result.right = result.drawer end
         end
@@ -129,19 +156,32 @@ function Layout.Resolve(frame, viewState, overrides)
             { id = "new", width = 58 }, { id = "copy", width = 58 },
             { id = "rename", width = 58 }, { id = "delete", width = 58 },
         }, 34, 6)
-        result.fileViewport = rect(panel.x + 10, panel.y + 86, panel.w - 20, math.max(120, panel.h * 0.48))
-        local paletteY = result.fileViewport.y + result.fileViewport.h + 38
-        result.paletteViewport = rect(panel.x + 10, paletteY, panel.w - 20,
-            math.max(80, panel.y + panel.h - paletteY - 10))
+        local paletteColumns = mobileCompact and 3 or (folded and 2 or 1)
+        local paletteRowHeight = mobileCompact and 40 or 44
+        local paletteRows = math.ceil(6 / paletteColumns)
+        local paletteHeight = paletteRows * paletteRowHeight
+        local contentBottom = panel.y + panel.h - 10
+        local paletteY = contentBottom - paletteHeight
+        local fileY = panel.y + 86
+        local fileHeight = math.max(42, paletteY - fileY - 32)
+        result.fileViewport = rect(panel.x + 10, fileY, panel.w - 20, fileHeight)
+        result.paletteViewport = rect(panel.x + 10, paletteY, panel.w - 20, paletteHeight)
+        result.paletteColumns = paletteColumns
+        result.paletteRowHeight = paletteRowHeight
     end
     if result.right then
         local panel = result.right
         result.inspectorViewport = rect(panel.x + 10, panel.y + 48, panel.w - 20, panel.h - 58)
     end
-    result.canvasViewport = rect(canvas.x + 12, canvas.y + 44, canvas.w - 24, canvas.h - 58)
+    result.canvasViewport = rect(canvas.x + 12, canvas.y + 52, canvas.w - 24, canvas.h - 68)
     result.statusText = rect(safe.left + 8, height - bottomHeight - safe.bottom + 7,
         width - safe.left - safe.right - 16, 22)
     return result
+end
+
+function Layout.PointerToWorkspace(layout, x, y)
+    local scale = layout and layout.coordinateScale or 1
+    return (tonumber(x) or 0) * scale, (tonumber(y) or 0) * scale
 end
 
 function Layout.PointIn(target, x, y)

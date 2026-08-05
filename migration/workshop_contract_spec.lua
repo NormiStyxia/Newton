@@ -15,6 +15,7 @@ local Layout = require("game.workshop.Layout")
 local Interaction = require("game.workshop.Interaction")
 local TextTransfer = require("game.workshop.TextTransfer")
 local Inspector = require("game.workshop.Inspector")
+local View = require("game.workshop.View")
 local ExperimentCatalog = require("ui.ExperimentCatalog")
 
 local function validLevel(id, name)
@@ -268,10 +269,10 @@ local safeLayout = Layout.Resolve({
     logicalWidth = 1880, logicalHeight = 840, dpr = 2, renderScale = 0.5,
     safeAreaInsets = { left = 80, top = 30, right = 40, bottom = 20 },
 }, {})
-expect(safeLayout.toolbar.exit.x == 80 and safeLayout.toolbar.exit.y == 30
-    and safeLayout.right.x + safeLayout.right.w == 1840
+expect(safeLayout.toolbar.exit.x == 40 and safeLayout.toolbar.exit.y == 16
+    and safeLayout.right.x + safeLayout.right.w == 1860
     and safeLayout.bottom.y == 786,
-    "physical safe-area insets were not converted into Mode A workshop coordinates")
+    "physical safe-area insets were not converted into system logical coordinates")
 local foldedLayout = Layout.Resolve({
     systemLogicalWidth = 1280, systemLogicalHeight = 640,
     logicalWidth = 1880, logicalHeight = 940,
@@ -285,19 +286,87 @@ local standardNarrowLayout = Layout.Resolve({
 expect(standardNarrowLayout.supported and standardNarrowLayout.mode == "folded"
     and standardNarrowLayout.left and standardNarrowLayout.canvasViewport.w > 0,
     "1366x768 workshop layout did not preserve an accessible canvas and file drawer")
-local minimumLayout = Layout.Resolve({
+local function checkMobileLandscape(width, height)
+    local renderScale = math.min(width / 1880, height / 840)
+    local layout = Layout.Resolve({
+        systemLogicalWidth = width, systemLogicalHeight = height,
+        logicalWidth = width / renderScale, logicalHeight = height / renderScale,
+        renderScale = renderScale,
+    }, { drawerMode = "files" })
+    expect(layout.supported and layout.mode == "folded" and layout.mobileCompact,
+        string.format("%dx%d mobile landscape was not accepted in compact mode", width, height))
+    expect(layout.canvasViewport.w > 0 and layout.canvasViewport.h > 0,
+        string.format("%dx%d mobile landscape lost the canvas viewport", width, height))
+    expect(layout.toolbar.preview.x + layout.toolbar.preview.w + 6 <= layout.drawerTabs.files.x,
+        string.format("%dx%d compact toolbar overlaps the drawer tabs", width, height))
+    expect(layout.left and layout.paletteViewport
+        and layout.paletteViewport.x >= layout.left.x
+        and layout.paletteViewport.y >= layout.left.y
+        and layout.paletteViewport.x + layout.paletteViewport.w <= layout.left.x + layout.left.w
+        and layout.paletteViewport.y + layout.paletteViewport.h <= layout.left.y + layout.left.h,
+        string.format("%dx%d object palette escaped the file drawer", width, height))
+
+    local controlState = {
+        entries = {}, supportedTypes = { "wall", "launcher", "goal_sensor", "spring", "button", "door" },
+        view = {}, document = nil, inspectorFields = {},
+    }
+    local controls = View.BuildControls(controlState, layout, Interaction)
+    local paletteRowsInside = #controls.paletteRows == #controlState.supportedTypes
+    for _, row in ipairs(controls.paletteRows) do
+        paletteRowsInside = paletteRowsInside
+            and row.rect.x >= layout.paletteViewport.x
+            and row.rect.y >= layout.paletteViewport.y
+            and row.rect.x + row.rect.w <= layout.paletteViewport.x + layout.paletteViewport.w
+            and row.rect.y + row.rect.h <= layout.paletteViewport.y + layout.paletteViewport.h
+    end
+    expect(paletteRowsInside,
+        string.format("%dx%d object palette controls overflow or become inaccessible", width, height))
+
+    local designX, designY = width * 0.5 / renderScale, height * 0.5 / renderScale
+    local workspaceX, workspaceY = Layout.PointerToWorkspace(layout, designX, designY)
+    expect(math.abs(workspaceX - width * 0.5) < 1e-9 and math.abs(workspaceY - height * 0.5) < 1e-9,
+        string.format("%dx%d pointer conversion did not match workshop rendering", width, height))
+    return layout
+end
+
+local minimumLayout = checkMobileLandscape(720, 360)
+checkMobileLandscape(800, 360)
+checkMobileLandscape(844, 390)
+expect(minimumLayout.full.w == 720 and minimumLayout.full.h == 360,
+    "minimum mobile landscape did not use system logical dimensions")
+local standardToolbarLayout = Layout.Resolve({
     systemLogicalWidth = 960, systemLogicalHeight = 540,
     logicalWidth = 1880, logicalHeight = 1057.5,
+    renderScale = 960 / 1880,
 }, { drawerMode = nil })
-expect(minimumLayout.supported and minimumLayout.mode == "folded"
-    and minimumLayout.canvasViewport.w > 0 and minimumLayout.toolbar.preview.x >= 0,
-    "minimum candidate landscape size lost critical workshop controls")
+expect(standardToolbarLayout.supported and not standardToolbarLayout.mobileCompact
+    and standardToolbarLayout.canvasViewport.w > 0
+    and standardToolbarLayout.title.x + standardToolbarLayout.title.w + 12
+        <= standardToolbarLayout.drawerTabs.files.x,
+    "960x540 standard toolbar or title overlaps the drawer tabs")
+local notchedPhoneLayout = Layout.Resolve({
+    systemLogicalWidth = 844, systemLogicalHeight = 390,
+    logicalWidth = 1880, logicalHeight = 869,
+    renderScale = 844 / 1880, dpr = 3,
+    safeAreaInsets = { left = 141, top = 0, right = 141, bottom = 63 },
+}, { drawerMode = "files" })
+expect(notchedPhoneLayout.supported
+    and notchedPhoneLayout.safeInsets.left == 47
+    and notchedPhoneLayout.safeInsets.right == 47
+    and notchedPhoneLayout.safeInsets.bottom == 21
+    and notchedPhoneLayout.canvasViewport.w > 0
+    and notchedPhoneLayout.toolbar.preview.x + notchedPhoneLayout.toolbar.preview.w + 6
+        <= notchedPhoneLayout.drawerTabs.files.x,
+    "phone safe-area simulation clips critical workshop controls")
 local belowMinimumLayout = Layout.Resolve({
-    systemLogicalWidth = 959, systemLogicalHeight = 539,
-    logicalWidth = 1880, logicalHeight = 1056,
+    systemLogicalWidth = 719, systemLogicalHeight = 359,
+    logicalWidth = 1880, logicalHeight = 939,
+    renderScale = 719 / 1880,
 }, {})
-expect(not belowMinimumLayout.supported and belowMinimumLayout.mode == "unsupported",
-    "below-minimum landscape was accepted")
+expect(not belowMinimumLayout.supported and belowMinimumLayout.mode == "unsupported"
+    and belowMinimumLayout.full.w == 719 and belowMinimumLayout.full.h == 359
+    and belowMinimumLayout.renderScaleCompensation > 1,
+    "below-minimum landscape was accepted or rendered in the wrong coordinate space")
 local portraitLayout = Layout.Resolve({
     systemLogicalWidth = 720, systemLogicalHeight = 1280,
     logicalWidth = 1880, logicalHeight = 3342,

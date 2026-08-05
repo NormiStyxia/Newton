@@ -695,7 +695,8 @@ function M.Install(context)
             return
         end
         local textEditing = updateTextEditKeys()
-        local x, y = pointerFrame.x, pointerFrame.y
+        local x, y = Layout.PointerToWorkspace(current.layout, pointerFrame.x, pointerFrame.y)
+        pointerFrame.x, pointerFrame.y = x, y
         local wheel = input.mouseMoveWheel or 0
         current.hoverTooltip = nil
         if not current.modal then
@@ -728,7 +729,6 @@ function M.Install(context)
             return
         end
         if textEditing then return end
-
         if input:GetKeyDown(KEY_CTRL) and input:GetKeyPress(KEY_S) then SaveWorkshopCurrent(); return end
         if input:GetKeyDown(KEY_CTRL) and input:GetKeyPress(KEY_Z) then undo(); return end
         if input:GetKeyDown(KEY_CTRL) and input:GetKeyPress(KEY_Y) then redo(); return end

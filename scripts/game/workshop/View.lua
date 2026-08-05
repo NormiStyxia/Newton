@@ -71,15 +71,15 @@ function View.BuildControls(state, layout, interaction)
     for id, rect in pairs(layout.fileActions or {}) do controls.byId["file_" .. id] = rect end
     for id, rect in pairs(layout.drawerTabs or {}) do controls.byId["drawer_" .. id] = rect end
 
-    controls.byId.grid = { x = layout.canvas.x + 12, y = layout.canvas.y + 8, w = 54, h = 28 }
-    controls.byId.snap = { x = layout.canvas.x + 72, y = layout.canvas.y + 8, w = 54, h = 28 }
-    controls.byId.zoomOut = { x = layout.canvas.x + layout.canvas.w - 108, y = layout.canvas.y + 8, w = 30, h = 28 }
-    controls.byId.zoomIn = { x = layout.canvas.x + layout.canvas.w - 72, y = layout.canvas.y + 8, w = 30, h = 28 }
-    controls.byId.deleteObject = { x = layout.canvas.x + layout.canvas.w - 204, y = layout.canvas.y + 8, w = 84, h = 28 }
+    controls.byId.grid = { x = layout.canvas.x + 12, y = layout.canvas.y + 8, w = 64, h = 36 }
+    controls.byId.snap = { x = layout.canvas.x + 82, y = layout.canvas.y + 8, w = 64, h = 36 }
+    controls.byId.zoomOut = { x = layout.canvas.x + layout.canvas.w - 92, y = layout.canvas.y + 8, w = 36, h = 36 }
+    controls.byId.zoomIn = { x = layout.canvas.x + layout.canvas.w - 50, y = layout.canvas.y + 8, w = 36, h = 36 }
+    controls.byId.deleteObject = { x = layout.canvas.x + layout.canvas.w - 202, y = layout.canvas.y + 8, w = 98, h = 36 }
 
     if layout.fileViewport then
         local entries = state.entries or {}
-        local rowHeight = 40
+        local rowHeight = layout.mobileCompact and 44 or 52
         state.view.fileScrollMax = math.max(0, #entries * rowHeight - layout.fileViewport.h)
         state.view.fileScroll = clamp(state.view.fileScroll or 0, 0, state.view.fileScrollMax)
         for index, entry in ipairs(entries) do
@@ -92,10 +92,16 @@ function View.BuildControls(state, layout, interaction)
     end
     if layout.paletteViewport then
         local types = state.supportedTypes or {}
-        local rowHeight = 37
+        local rowHeight = layout.paletteRowHeight or 44
+        local columns = math.max(1, layout.paletteColumns or 1)
+        local gap = 4
+        local cellWidth = (layout.paletteViewport.w - (columns - 1) * gap) / columns
         for index, objectType in ipairs(types) do
-            local y = layout.paletteViewport.y + (index - 1) * rowHeight
-            local rect = { x = layout.paletteViewport.x, y = y, w = layout.paletteViewport.w, h = rowHeight - 4 }
+            local column = (index - 1) % columns
+            local row = math.floor((index - 1) / columns)
+            local y = layout.paletteViewport.y + row * rowHeight
+            local rect = { x = layout.paletteViewport.x + column * (cellWidth + gap), y = y,
+                w = cellWidth, h = rowHeight - 4 }
             if y + rect.h <= layout.paletteViewport.y + layout.paletteViewport.h then
                 addControl(controls, "paletteRows", objectType, rect, { objectType = objectType })
             end
@@ -105,7 +111,7 @@ function View.BuildControls(state, layout, interaction)
         local y = layout.inspectorViewport.y - (state.view.inspectorScroll or 0)
         local contentHeight = 0
         for index, field in ipairs(state.inspectorFields or {}) do
-            local height = field.kind == "section" and 31 or 44
+            local height = field.kind == "section" and 38 or 52
             local rect = { x = layout.inspectorViewport.x, y = y, w = layout.inspectorViewport.w, h = height }
             if y + height >= layout.inspectorViewport.y and y <= layout.inspectorViewport.y + layout.inspectorViewport.h then
                 addControl(controls, "inspectorRows", field.key or tostring(index), rect, { field = field })
@@ -169,7 +175,7 @@ function View.BuildControls(state, layout, interaction)
         if wideModal then
             local text = modal.kind == "export" and (modal.payload and modal.payload.text or "")
                 or (state.textEdit and state.textEdit.value or modal.text or "")
-            TextTransfer.UpdateModal(modal, text, controls.modalBody, 12, 1.35)
+            TextTransfer.UpdateModal(modal, text, controls.modalBody, 14, 1.4)
         end
     end
     return controls
@@ -184,16 +190,16 @@ local function drawButton(painter, rect, label, options)
     if not enabled then fill, text = COLORS.panelMuted, COLORS.textMuted end
     painter:RoundedRect(rect.x, rect.y, rect.w, rect.h, 4, fill, enabled and COLORS.line or COLORS.panelMuted, 1,
         enabled and 255 or 150)
-    painter:Text(rect.x + rect.w * 0.5, rect.y + rect.h * 0.5, label, options.fontSize or 14, text,
+    painter:Text(rect.x + rect.w * 0.5, rect.y + rect.h * 0.5, label, options.fontSize or 16, text,
         NVG_ALIGN_CENTER + NVG_ALIGN_MIDDLE, "maker-body")
 end
 
 local function drawUnsupported(painter, layout)
     painter:FillRect(0, 0, layout.full.w, layout.full.h, COLORS.background)
     local text = layout.mode == "portrait" and "请切换横屏使用关卡工坊" or "当前窗口尺寸暂不支持关卡工坊"
-    painter:Text(layout.full.w * 0.5, layout.full.h * 0.5 - 18, text, 28, COLORS.lightText,
+    painter:Text(layout.full.w * 0.5, layout.full.h * 0.5 - 18, text, 30, COLORS.lightText,
         NVG_ALIGN_CENTER + NVG_ALIGN_MIDDLE, "maker-display")
-    painter:Text(layout.full.w * 0.5, layout.full.h * 0.5 + 24, "调整窗口后将自动恢复，不会丢失当前草稿", 14,
+    painter:Text(layout.full.w * 0.5, layout.full.h * 0.5 + 24, "调整窗口后将自动恢复，不会丢失当前草稿", 16,
         COLORS.textMuted, NVG_ALIGN_CENTER + NVG_ALIGN_MIDDLE, "maker-body")
 end
 
@@ -201,13 +207,16 @@ local function drawPanel(painter, rect, title)
     if not rect then return end
     painter:FillRect(rect.x, rect.y, rect.w, rect.h, COLORS.panel)
     painter:StrokeRect(rect.x, rect.y, rect.w, rect.h, COLORS.line, 1)
-    painter:Text(rect.x + 12, rect.y + 13, title, 16, COLORS.text, nil, "maker-display")
+    painter:Text(rect.x + 12, rect.y + 13, title, 18, COLORS.text, nil, "maker-display")
 end
 
 local function drawTop(painter, state, layout, controls)
     painter:FillRect(0, 0, layout.full.w, layout.top.h, COLORS.top)
-    local labels = { exit = "退出", draft = "保存草稿", save = "保存关卡", export = "导出 JSON", import = "导入 JSON",
-        undo = "↶", redo = "↷", preview = "快速预览" }
+    local labels = layout.mobileCompact
+        and { exit = "退出", draft = "草稿", save = "保存", export = "导出", import = "导入",
+            undo = "撤", redo = "重", preview = "预览" }
+        or { exit = "退出", draft = "保存草稿", save = "保存关卡", export = "导出 JSON", import = "导入 JSON",
+            undo = "撤销", redo = "重做", preview = "快速预览" }
     for id, rect in pairs(layout.toolbar) do
         local enabled = true
         if id == "save" or id == "draft" then enabled = not state.readOnly and state.document ~= nil end
@@ -215,15 +224,18 @@ local function drawTop(painter, state, layout, controls)
         if id == "redo" then enabled = state.canRedo end
         if id == "preview" or id == "export" then enabled = state.document ~= nil end
         drawButton(painter, rect, labels[id], { enabled = enabled, primary = id == "preview",
-            fontSize = (id == "undo" or id == "redo") and 22 or 14 })
+            fontSize = layout.mobileCompact and 14 or 16 })
     end
     local suffix = state.dirty and "  ·  未保存" or ""
-    painter:Text(layout.title.x, layout.title.y + layout.title.h * 0.5,
-        truncate((state.document and state.document.name or "关卡工坊") .. suffix, 40), 18,
-        COLORS.lightText, NVG_ALIGN_LEFT + NVG_ALIGN_MIDDLE, "maker-display")
+    if not layout.mobileCompact and layout.title.w >= 80 then
+        painter:Text(layout.title.x, layout.title.y + layout.title.h * 0.5,
+            truncate((state.document and state.document.name or "关卡工坊") .. suffix,
+                math.max(6, math.floor(layout.title.w / 18))), 20,
+            COLORS.lightText, NVG_ALIGN_LEFT + NVG_ALIGN_MIDDLE, "maker-display")
+    end
     if layout.drawerTabs then
-        drawButton(painter, layout.drawerTabs.files, "文件", { active = state.view.drawerMode == "files", fontSize = 12 })
-        drawButton(painter, layout.drawerTabs.inspector, "属性", { active = state.view.drawerMode == "inspector", fontSize = 12 })
+        drawButton(painter, layout.drawerTabs.files, "文件", { active = state.view.drawerMode == "files", fontSize = 15 })
+        drawButton(painter, layout.drawerTabs.inspector, "属性", { active = state.view.drawerMode == "inspector", fontSize = 15 })
     end
 end
 
@@ -245,14 +257,18 @@ local function drawLeft(painter, state, layout, controls)
             painter:FillRect(row.rect.x, row.rect.y, row.rect.w, row.rect.h,
                 selected and COLORS.panelMuted or COLORS.panel, 255)
             if selected then painter:FillRect(row.rect.x, row.rect.y, 4, row.rect.h, COLORS.accent) end
-            painter:Text(row.rect.x + 10, row.rect.y + 7, truncate(entry.name, 23), 13, COLORS.text, nil, "maker-body")
-            painter:Text(row.rect.x + 10, row.rect.y + 24,
-                (entry.readOnly and "官方 · 只读" or "自定义") .. "  " .. entry.levelId, 10, COLORS.textMuted, nil, "maker-body")
+            painter:Text(row.rect.x + 10, row.rect.y + 7,
+                truncate(entry.name, math.max(4, math.floor((row.rect.w - 20) / 16))), 16,
+                COLORS.text, nil, "maker-body")
+            painter:Text(row.rect.x + 10, row.rect.y + 29,
+                truncate((entry.readOnly and "官方 · 只读" or "自定义") .. "  " .. entry.levelId,
+                    math.max(5, math.floor((row.rect.w - 20) / 12))),
+                13, COLORS.textMuted, nil, "maker-body")
         end
         nvgRestore(painter.vg)
     end
     if layout.paletteViewport then
-        painter:Text(layout.paletteViewport.x, layout.paletteViewport.y - 27, "新增对象", 14, COLORS.text, nil, "maker-display")
+        painter:Text(layout.paletteViewport.x, layout.paletteViewport.y - 27, "新增对象", 16, COLORS.text, nil, "maker-display")
         nvgSave(painter.vg)
         nvgScissor(painter.vg, layout.paletteViewport.x, layout.paletteViewport.y,
             layout.paletteViewport.w, layout.paletteViewport.h)
@@ -320,14 +336,14 @@ local function drawObject(painter, object, transform, selected)
         painter:FillRect(-2, -h * 0.42, 4, h * 0.84, COLORS.lightText, 150)
     end
     nvgRestore(painter.vg)
-    painter:Text(x, y, truncate(object.id, math.max(5, math.floor(w / 8))), 10, COLORS.lightText,
+    painter:Text(x, y, truncate(object.id, math.max(5, math.floor(w / 10))), 12, COLORS.lightText,
         NVG_ALIGN_CENTER + NVG_ALIGN_MIDDLE, "maker-body")
 end
 
 local function drawCanvas(painter, state, layout, controls)
     painter:FillRect(layout.canvas.x, layout.canvas.y, layout.canvas.w, layout.canvas.h, COLORS.canvas)
     painter:StrokeRect(layout.canvas.x, layout.canvas.y, layout.canvas.w, layout.canvas.h, COLORS.line, 1)
-    painter:Text(layout.canvas.x + 140, layout.canvas.y + 15, "灰盒画布", 14, COLORS.lightText, nil, "maker-display")
+    painter:Text(layout.canvas.x + 154, layout.canvas.y + 17, "灰盒画布", 16, COLORS.lightText, nil, "maker-display")
     drawButton(painter, controls.byId.grid, "网格", { active = state.view.showGrid })
     drawButton(painter, controls.byId.snap, "吸附", { active = state.view.snap })
     drawButton(painter, controls.byId.deleteObject, "删除对象", { enabled = state.selectedObject ~= nil and not state.readOnly, danger = true })
@@ -362,7 +378,7 @@ local function drawCanvas(painter, state, layout, controls)
             string.format("%s  x %.1f  y %.1f  %.1f × %.1f  %.1f°", state.selectedObject.id,
                 state.selectedObject.transform.x, state.selectedObject.transform.y,
                 state.selectedObject.transform.width, state.selectedObject.transform.height,
-                state.selectedObject.transform.rotation), 11, COLORS.lightText, nil, "maker-body")
+                state.selectedObject.transform.rotation), 13, COLORS.lightText, nil, "maker-body")
     end
     nvgRestore(painter.vg)
 end
@@ -385,10 +401,10 @@ local function drawInspector(painter, state, layout, controls)
         local field = row.field
         if field.kind == "section" then
             painter:FillRect(row.rect.x, row.rect.y, row.rect.w, row.rect.h, COLORS.panelMuted)
-            painter:Text(row.rect.x + 8, row.rect.y + row.rect.h * 0.5, field.label, 13, COLORS.text,
+            painter:Text(row.rect.x + 8, row.rect.y + row.rect.h * 0.5, field.label, 15, COLORS.text,
                 NVG_ALIGN_LEFT + NVG_ALIGN_MIDDLE, "maker-display")
         else
-            painter:Text(row.rect.x + 5, row.rect.y + 7, field.label, 11, COLORS.textMuted, nil, "maker-body")
+            painter:Text(row.rect.x + 5, row.rect.y + 7, field.label, 14, COLORS.textMuted, nil, "maker-body")
             local valueRect = { x = row.rect.x + row.rect.w * 0.43, y = row.rect.y + 5,
                 w = row.rect.w * 0.57 - 5, h = row.rect.h - 10 }
             local active = state.textEdit and state.textEdit.fieldKey == field.key
@@ -396,7 +412,7 @@ local function drawInspector(painter, state, layout, controls)
                 active and COLORS.panel or COLORS.panelMuted, active and COLORS.accent or COLORS.line, active and 2 or 1)
             local value = active and state.textEdit.value or fieldValue(field)
             painter:Text(valueRect.x + 8, valueRect.y + valueRect.h * 0.5,
-                truncate(value, math.max(8, math.floor(valueRect.w / 8))), 12,
+                truncate(value, math.max(5, math.floor(valueRect.w / 9))), 15,
                 field.editable == false and COLORS.textMuted or COLORS.text,
                 NVG_ALIGN_LEFT + NVG_ALIGN_MIDDLE, "maker-body")
         end
@@ -421,7 +437,7 @@ local function drawStatus(painter, state, layout)
         text = text .. string.format("   ·   %d 对象   ·   %d 错误 / %d 警告   ·   %s",
             #(state.document.objects or {}), errors, warnings, state.persistenceKind or "memory-only")
     end
-    painter:Text(layout.statusText.x, layout.statusText.y, truncate(text, 120), 12,
+    painter:Text(layout.statusText.x, layout.statusText.y, truncate(text, 120), 14,
         errors > 0 and COLORS.warning or COLORS.lightText, nil, "maker-body")
 end
 
@@ -430,7 +446,7 @@ local function drawModal(painter, state, controls)
     if not modal or not rect then return end
     painter:FillRect(0, 0, state.layout.full.w, state.layout.full.h, COLORS.overlay)
     painter:RoundedRect(rect.x, rect.y, rect.w, rect.h, 6, COLORS.panel, COLORS.line, 2)
-    painter:Text(rect.x + 24, rect.y + 22, modal.title or "关卡工坊", 20, COLORS.text, nil, "maker-display")
+    painter:Text(rect.x + 24, rect.y + 22, modal.title or "关卡工坊", 22, COLORS.text, nil, "maker-display")
     local body = controls.modalBody
     if modal.kind == "export" or modal.kind == "import" then
         painter:FillRect(body.x, body.y, body.w, body.h, COLORS.top)
@@ -441,23 +457,23 @@ local function drawModal(painter, state, controls)
             or (state.textEdit and state.textEdit.value or modal.text or "")
         text = modal.previewText or text
         nvgTranslate(painter.vg, 0, -(modal.previewOffsetY or modal.scroll or 0))
-        painter:TextBox(body.x + 10, body.y + 10, body.w - 20, text, 12, COLORS.lightText,
-            NVG_ALIGN_LEFT + NVG_ALIGN_TOP, "maker-body", 1.35)
+        painter:TextBox(body.x + 10, body.y + 10, body.w - 20, text, 14, COLORS.lightText,
+            NVG_ALIGN_LEFT + NVG_ALIGN_TOP, "maker-body", 1.4)
         nvgRestore(painter.vg)
         local stats = modal.payload and string.format("%d 字符 · %d 字节 · %d 对象 · schemaVersion %s",
             modal.payload.characterCount, modal.payload.byteCount, modal.payload.objectCount,
             tostring(modal.payload.schemaVersion)) or (modal.textMetrics and string.format(
                 "%d 字符 · %d 字节 · 上限 %d 字节", modal.textMetrics.characterCount,
                 modal.textMetrics.byteCount, modal.maxBytes or 0) or "等待 JSON 文本")
-        painter:Text(body.x, body.y + body.h + 8, stats, 11, COLORS.textMuted, nil, "maker-body")
+        painter:Text(body.x, body.y + body.h + 8, stats, 13, COLORS.textMuted, nil, "maker-body")
     else
-        painter:TextBox(body.x, body.y, body.w, modal.message or "", 14, COLORS.text,
+        painter:TextBox(body.x, body.y, body.w, modal.message or "", 16, COLORS.text,
             NVG_ALIGN_LEFT + NVG_ALIGN_TOP, "maker-body", 1.25)
         if modal.kind == "rename" then
             local field = { x = body.x, y = body.y + 62, w = body.w, h = 38 }
             painter:RoundedRect(field.x, field.y, field.w, field.h, 3, COLORS.panelMuted, COLORS.accent, 2)
             painter:Text(field.x + 10, field.y + field.h * 0.5,
-                truncate(state.textEdit and state.textEdit.value or "", 60), 14, COLORS.text,
+                truncate(state.textEdit and state.textEdit.value or "", 60), 16, COLORS.text,
                 NVG_ALIGN_LEFT + NVG_ALIGN_MIDDLE, "maker-body")
         end
     end
@@ -471,7 +487,14 @@ end
 
 function View.Draw(context, state)
     local painter, layout, controls = context.painter_, state.layout, state.controls
-    if not layout.supported then drawUnsupported(painter, layout); return end
+    nvgSave(painter.vg)
+    local compensation = tonumber(layout.renderScaleCompensation) or 1
+    if math.abs(compensation - 1) > 0.0001 then nvgScale(painter.vg, compensation, compensation) end
+    if not layout.supported then
+        drawUnsupported(painter, layout)
+        nvgRestore(painter.vg)
+        return
+    end
     painter:FillRect(0, 0, layout.full.w, layout.full.h, COLORS.background)
     drawTop(painter, state, layout, controls)
     drawCanvas(painter, state, layout, controls)
@@ -484,7 +507,7 @@ function View.Draw(context, state)
         local x = clamp(tooltip.x, 10, layout.full.w - width - 10)
         local y = clamp(tooltip.y, 10, layout.full.h - 42)
         painter:RoundedRect(x, y, width, 32, 3, COLORS.top, COLORS.accent, 1)
-        painter:Text(x + 10, y + 16, truncate(tooltip.text, 62), 11, COLORS.lightText,
+        painter:Text(x + 10, y + 16, truncate(tooltip.text, 62), 14, COLORS.lightText,
             NVG_ALIGN_LEFT + NVG_ALIGN_MIDDLE, "maker-body")
     end
     drawModal(painter, state, controls)
@@ -492,9 +515,10 @@ function View.Draw(context, state)
         local width = math.min(620, 32 + #state.toast * 14)
         local x, y = (layout.full.w - width) * 0.5, layout.full.h - 88
         painter:RoundedRect(x, y, width, 42, 4, COLORS.top, COLORS.accent, 1)
-        painter:Text(x + width * 0.5, y + 21, truncate(state.toast, 60), 13, COLORS.lightText,
+        painter:Text(x + width * 0.5, y + 21, truncate(state.toast, 60), 15, COLORS.lightText,
             NVG_ALIGN_CENTER + NVG_ALIGN_MIDDLE, "maker-body")
     end
+    nvgRestore(painter.vg)
 end
 
 View.PointIn = pointIn
