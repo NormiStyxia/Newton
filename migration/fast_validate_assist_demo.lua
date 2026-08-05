@@ -16,6 +16,7 @@ local function NewView()
     function view:setMessage(message) self.message = message end
     function view:setTarget(target) self.target = target end
     function view:moveTo(x, y) self.x, self.y, self.motionFinished = x, y, true end
+    function view:getPosition() return self.x, self.y end
     function view:isMotionFinished() return self.motionFinished end
     function view:startDrag() self.dragging = true end
     function view:endDrag() self.dragging = false end
@@ -34,8 +35,10 @@ local function NewAdapter(alwaysWait)
     function adapter:getCardDropTarget() return { x = 500, y = 300 } end
     function adapter:getPunchTarget() return { x = 700, y = 600, shape = "circle", radius = 40 } end
     function adapter:launch() Call(self, "launch"); return true end
+    function adapter:previewLaunch() self.launchPreviewed = true; return true end
     function adapter:playCard() Call(self, "card"); return true end
     function adapter:newtonPunch() Call(self, "punch"); return true end
+    function adapter:holdSimulation(held) self.simulationHeld = held == true end
     function adapter:testCondition(action)
         local key = action.condition
         self.conditionCounts[key] = (self.conditionCounts[key] or 0) + 1
@@ -53,7 +56,7 @@ for _ = 1, 200 do
     if State.IsTerminal(runner:getState()) then break end
 end
 Expect(runner:getState() == State.COMPLETED, "standard solution did not complete")
-Expect(table.concat(adapter.calls, ",") == "begin,reset,card,launch,punch", "semantic action order changed")
+Expect(table.concat(adapter.calls, ",") == "begin,reset,launch,card,card,punch", "semantic action order changed")
 
 local timeoutRunner = Runner.New(NewAdapter(true), NewView())
 Expect(timeoutRunner:start({ actions = {
@@ -67,5 +70,11 @@ local abortRunner = Runner.New(NewAdapter(false), NewView())
 Expect(abortRunner:start({ actions = { { type = "RESET_LEVEL" } } }))
 Expect(abortRunner:abort("escape"), "active runner did not abort")
 Expect(abortRunner:getState() == State.ABORTED, "abort state was not preserved")
+
+local invalidWaitRunner = Runner.New(NewAdapter(false), NewView())
+local invalidWaitStarted = invalidWaitRunner:start({ actions = {
+    { type = "WAIT_CONDITION", condition = "GOAL_REACHED" },
+} })
+Expect(not invalidWaitStarted, "WAIT_CONDITION without a timeout was accepted")
 
 print("AssistDemo FAST_VALIDATE passed")

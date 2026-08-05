@@ -22,9 +22,9 @@ function M.Install(context)
 
     function AbortGreenAssistantTakeover(reason)
         if greenAssistant_ and greenAssistant_.cancelTakeover then
-            return greenAssistant_:cancelTakeover(reason)
+            if greenAssistant_:cancelTakeover(reason) then return true end
         end
-        if AbortAssistDemo then return AbortAssistDemo(reason) end
+        if context.AbortAssistDemo then return context.AbortAssistDemo(reason) end
         return false
     end
 

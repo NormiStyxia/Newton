@@ -29,6 +29,9 @@
 ---@field debugDraw_ boolean
 ---@field failureCountsByLevel_ table<string, integer>
 ---@field assistantInputLocked_ boolean
+---@field assistSceneActive_ boolean
+---@field assistDemoActive_ boolean
+---@field assistUsed_ boolean
 ---@field pointer_ table
 ---@field dialogueController_ table|nil
 ---@field InitializeDialogue fun()
@@ -37,6 +40,19 @@
 ---@field UpdateDialogue fun(dt: number, pointerFrame: table): boolean
 ---@field DrawDialogueHistoryButton fun()
 ---@field DrawDialogueOverlay fun()
+---@field InitializeAssistDemo fun()
+---@field DestroyAssistDemo fun()
+---@field StartAssistDemo fun(solution: table): boolean, string|nil
+---@field UpdateAssistDemo fun(dt: number)
+---@field DrawAssistDemo fun()
+---@field GetAssistDemoState fun(): string
+---@field GetAssistDemoError fun(): string|nil
+---@field IsAssistDemoFinished fun(): boolean
+---@field FinishAssistDemo fun(): boolean
+---@field AbortAssistDemo fun(reason: string|nil): boolean
+---@field AbortGreenAssistantTakeover fun(reason: string|nil): boolean
+---@field DrawGreenAssistantOverlay fun()
+---@field ExecuteCardPlay fun(id: string, candidate: string|nil, x: number, y: number): boolean
 ---@field resultReportState_ table|nil
 local State = {}
 

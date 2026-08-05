@@ -491,6 +491,41 @@ function M.Install(context)
         QueueCardResolution(id, deployment.x, deployment.y, candidate, burnPose)
         ClearCardInteraction()
     end
+
+    --- Executes a semantic card play without synthesizing pointer input. The
+    --- normal burn timeline remains the single owner of rule application,
+    --- usage consumption, replay events, and hand reflow.
+    ---@param id string
+    ---@param candidate string|nil
+    ---@param x number
+    ---@param y number
+    ---@return boolean
+    function ExecuteCardPlay(id, candidate, x, y)
+        local card = cardDeckById_[id]
+        local state = cardStates_[id]
+        local definition = Rules.CARDS[id]
+        if not card or not card.enabled or not state or not definition then return false end
+        if state.consumed or (state.usageMode ~= "REUSABLE" and state.remainingUses <= 0) then return false end
+        if burningCardIds_[id] or #cardBurns_ > 0 then return false end
+        if definition.kind == "decision" and not launched_ then return false end
+        if id == "side-gravity" then
+            if candidate ~= "LEFT" and candidate ~= "RIGHT" and candidate ~= "UP" and candidate ~= "DOWN" then
+                return false
+            end
+        elseif id == "mirror-motion" and candidate ~= "HORIZONTAL" and candidate ~= "VERTICAL" then
+            return false
+        end
+        if not PointerInPlayfield(x, y) then return false end
+
+        local burnPose = CurrentCardVisualPose(id) or CardHomePose(id)
+        if not burnPose then return false end
+        activeCardId_, primedCardId_ = nil, nil
+        ClearCardInteraction()
+        SetHoveredCard(nil)
+        QueueCardResolution(id, x, y, candidate, burnPose)
+        return true
+    end
+
     function CaptureHandVisualPoses(removedId)
         local entries = CardEntries()
         local currentPoses = Rules.CardHand(#entries, frame_.playfieldX + frame_.playfieldWidth * .5, frame_.cardHandY, frame_.playfieldWidth)

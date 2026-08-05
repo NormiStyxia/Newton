@@ -47,6 +47,10 @@ function Runner:start(solution, cursorStart)
         if not SUPPORTED_ACTIONS[action.type] then
             return false, "unsupported assist action: " .. tostring(action.type)
         end
+        if action.type == "WAIT_CONDITION"
+            and (type(action.timeout) ~= "number" or action.timeout <= 0) then
+            return false, "WAIT_CONDITION requires a positive timeout"
+        end
     end
     self.solution = solution
     self.actionIndex = 0
@@ -129,6 +133,9 @@ function Runner:_updateLaunch(action)
         self.view:endDrag()
         self.phase = "release"
         self.phaseElapsed = 0
+    elseif self.phase == "pull" and self.adapter.previewLaunch and self.view.getPosition then
+        local x, y = self.view:getPosition()
+        self.adapter:previewLaunch(x, y)
     elseif self.phase == "release" and self.phaseElapsed >= (action.postDelay or 0.18) then
         self:_completeAction()
     end
@@ -251,7 +258,11 @@ function Runner:update(dt)
         self:_fail("level entered failed state")
         return
     end
-    self:_updateAction(dt)
+    local ok, errorMessage = pcall(self._updateAction, self, dt)
+    if not ok then
+        self:_fail(errorMessage)
+        return
+    end
     if self.state == State.EXECUTING and not self.action then self:_nextAction() end
 end
 

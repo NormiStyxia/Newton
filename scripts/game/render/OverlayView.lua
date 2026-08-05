@@ -53,14 +53,15 @@ function M.Install(context)
     -- Phaser's pause shade is depth 53, below the ordinary hand (54-58). Keep it
     -- in its own pass so later layer changes cannot accidentally dim rule cards.
     function DrawPauseShade()
-        if replayMode_ ~= "none" or not isPaused_ or (IsResultReportVisible and IsResultReportVisible()) then return end
+        if assistSceneActive_ or replayMode_ ~= "none" or not isPaused_
+            or (IsResultReportVisible and IsResultReportVisible()) then return end
         painter_:FillRect(frame_.playfieldX, frame_.playfieldY, frame_.playfieldWidth, frame_.playfieldHeight, { 0, 0, 0, 255 }, 66)
     end
 
     -- The shade is emitted with the playfield (Phaser depth 53). The label is a
     -- separate depth-67 element and must not be painted into this lower pass.
     function DrawPauseStatus()
-        if replayMode_ ~= "none" or not isPaused_ then return end
+        if assistSceneActive_ or replayMode_ ~= "none" or not isPaused_ then return end
         local right = frame_.playfieldX + frame_.playfieldWidth - 24
         local top = frame_.playfieldY + 16
         painter_:FillRect(right - 196, top, 196, 24, Renderer2D.COLORS.panel, 255)

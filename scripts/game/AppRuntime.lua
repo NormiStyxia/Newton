@@ -43,7 +43,7 @@ function M.Install(context)
         painter_ = Renderer2D.New()
         frame_ = context.design_:Frame()
         context.InitializeDialogue()
-        InitializeAssistDemo()
+        context.InitializeAssistDemo()
         InitializeGreenAssistant()
         BuildLevel(1)
         RefreshWorkspaceLayout()
@@ -64,7 +64,7 @@ function M.Install(context)
         if level_ and level_.physicsProbe then level_.physicsProbe:Stop({ apple = apple_ }) end
         context.DestroyDialogue()
         DestroyGreenAssistant()
-        DestroyAssistDemo()
+        context.DestroyAssistDemo()
         if painter_ then painter_:Destroy(); painter_ = nil end
     end
 
@@ -77,15 +77,16 @@ function M.Install(context)
         local pointerFrame = PointerState()
         local assistEscapeHandled = false
         if assistSceneActive_ and input:GetKeyPress(KEY_ESCAPE) then
-            assistEscapeHandled = AbortGreenAssistantTakeover("escape") == true
+            assistEscapeHandled = context.AbortGreenAssistantTakeover("escape") == true
         end
         local reportVisible = IsResultReportVisible and IsResultReportVisible()
-        local dialoguePointerConsumed = reportVisible and false or context.UpdateDialogue(dt, pointerFrame)
+        local dialoguePointerConsumed = (reportVisible or context.assistantInputLocked_)
+            and false or context.UpdateDialogue(dt, pointerFrame)
         if audio_ then audio_:Update(dt) end
         uiElapsed_ = uiElapsed_ + dt
         UpdateRuleFeedback(dt)
         UpdatePhaseWallEffects(dt)
-        UpdateAssistDemo(dt)
+        context.UpdateAssistDemo(dt)
         -- Sample once, then give the screen-space Companion first chance to
         -- apply a rigid drag before its animation/update and before rendering.
         local assistantPointerConsumed = dialoguePointerConsumed
@@ -119,12 +120,13 @@ function M.Install(context)
             }
             -- Deliberately hard to trigger during a normal game, but independent
             -- of the disabled physics debug renderer so captures remain possible.
-            local keyboardProbeRequested = input:GetKeyDown(KEY_CTRL) and input:GetKeyDown(KEY_ALT) and input:GetKeyPress(KEY_T)
+            local keyboardProbeRequested = not context.assistantInputLocked_
+                and input:GetKeyDown(KEY_CTRL) and input:GetKeyDown(KEY_ALT) and input:GetKeyPress(KEY_T)
             -- Maker embeds the Web runtime in a cross-origin iframe where browser
             -- automation cannot always forward keyboard chords. Keep a deliberately
             -- middle-click as an equivalent diagnostics-only trigger. Normal
             -- gameplay uses left/right clicks and is therefore unaffected.
-            local pointerProbeRequested = input:GetMouseButtonPress(MOUSEB_MIDDLE)
+            local pointerProbeRequested = not context.assistantInputLocked_ and input:GetMouseButtonPress(MOUSEB_MIDDLE)
             if keyboardProbeRequested or pointerProbeRequested then
                 physicsProbe:Start(probeContext)
             end
@@ -360,11 +362,11 @@ function M.Install(context)
             DrawCardBurnParticles()
             DrawRuleFlash()
             if replayActive_ then DrawReplay() end
-            DrawAssistDemo()
+            context.DrawAssistDemo()
             DrawGreenAssistant()
             context.DrawDialogueOverlay()
             DrawResultOverlay()
-            DrawGreenAssistantOverlay()
+            context.DrawGreenAssistantOverlay()
             painter_:Finish()
         end)
         State.EndGameSnapshot(context)

@@ -15,7 +15,7 @@ local SOLUTIONS = {
                 condition = "APPLE_CROSSED_X",
                 x = 180,
                 direction = "RIGHT",
-                timeout = 2.0,
+                timeout = 5.0,
                 prepareTarget = { type = "CARD", cardId = "up-impulse", duration = 0.14 },
             },
             {
@@ -28,7 +28,7 @@ local SOLUTIONS = {
                 type = "WAIT_CONDITION",
                 condition = "APPLE_ENTER_REGION",
                 regionId = "passage_exit",
-                timeout = 3.0,
+                timeout = 5.0,
                 prepareTarget = { type = "CARD", cardId = "side-gravity", duration = 0.24 },
             },
             {
@@ -43,7 +43,7 @@ local SOLUTIONS = {
                 condition = "APPLE_CROSSED_X",
                 x = 850,
                 direction = "RIGHT",
-                timeout = 3.0,
+                timeout = 5.0,
                 prepareTarget = { type = "NEWTON_PUNCH", duration = 0.2 },
             },
             { type = "NEWTON_PUNCH", cursorDuration = 0.12 },

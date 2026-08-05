@@ -56,6 +56,7 @@ end
 
 function CursorView:setMessage(text) self.message = text end
 function CursorView:setTarget(target) self.target = target end
+function CursorView:getPosition() return self.x, self.y end
 
 function CursorView:moveTo(x, y, duration)
     if not self.cursorInitialized then
@@ -90,6 +91,11 @@ end
 function CursorView:endDrag()
     self.dragging = false
     self.dragOrigin = nil
+    if self.target then
+        self.target.x = self.x
+        self.target.y = self.y
+        self.target.elapsed = 0
+    end
     self:click(self.x, self.y)
 end
 
@@ -136,12 +142,14 @@ end
 function CursorView:_drawTarget(alpha)
     local target = self.target
     if not target then return end
+    local x = self.dragging and self.x or target.x
+    local y = self.dragging and self.y or target.y
     local pulse = 0.5 + math.sin((target.elapsed or 0) * 5) * 0.08
     local strokeAlpha = math.floor(alpha * pulse)
     if target.shape == "circle" then
-        self.renderer:Circle(target.x, target.y, (target.radius or 24) + 5, nil, COLORS.glow, 2, strokeAlpha)
+        self.renderer:Circle(x, y, (target.radius or 24) + 5, nil, COLORS.glow, 2, strokeAlpha)
     else
-        self.renderer:RoundedRect(target.x - target.w * 0.5 - 5, target.y - target.h * 0.5 - 5,
+        self.renderer:RoundedRect(x - target.w * 0.5 - 5, y - target.h * 0.5 - 5,
             target.w + 10, target.h + 10, 5, nil, COLORS.glow, 2, strokeAlpha)
     end
 end

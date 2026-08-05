@@ -99,6 +99,12 @@ function GameAdapter:launch(pullX, pullY)
     return self.context.launched_ == true
 end
 
+function GameAdapter:previewLaunch(screenX, screenY)
+    if self.context.launched_ then return false end
+    self.context.UpdateAppleDrag(screenX, screenY)
+    return true
+end
+
 function GameAdapter:playCard(cardId, parameter)
     local drop = self:getCardDropTarget(parameter)
     return self.context.ExecuteCardPlay(cardId, parameter, drop.originX or drop.x, drop.originY or drop.y) == true
