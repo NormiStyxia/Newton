@@ -67,8 +67,12 @@ function M.Install(context)
             SetHoveredCard(nil)
             return
         end
+        if context.assistantInputLocked_ then
+            hoveredNavigation_, hoveredLevelIndex_, punchHovered_ = nil, nil, false
+            SetHoveredCard(nil)
+            return
+        end
         UpdateHoverState(x, y)
-        if context.assistantInputLocked_ then return end
         if replayActive_ then
             if replayBusinessMode_ == ReplayMode.PLAYER_REPLAY then HandleReplayPointer(x, y, press) end
             return
@@ -122,20 +126,7 @@ function M.Install(context)
                 ToggleTacticalPause()
             elseif x >= frame_.playfieldX + frame_.playfieldWidth - 98 and x <= frame_.playfieldX + frame_.playfieldWidth - 18
                 and y >= frame_.cardHandY - 17 and y <= frame_.cardHandY + 63 then
-                local removedRules = {}
-                for cardId in pairs(rules_.activeFields) do removedRules[#removedRules + 1] = cardId end
-                if rules_.phaseActive then removedRules[#removedRules + 1] = "quantum-phase" end
-                if Rules.Punch(rules_) then
-                    phaseTraversing_ = false
-                    phaseWallTraversal_ = nil
-                    SetGravity()
-                    ApplyAppleCardMaterial()
-                    UpdateAngerFromRules()
-                    for _, cardId in ipairs(removedRules) do RecordReplayEvent("RULE_REMOVED", cardId) end
-                    RecordReplayEvent("NEWTON_PUNCH")
-                    SetStatus("NEWTON · 修正拳已出手")
-                    PlaySound("punch")
-                end
+                ExecuteNewtonPunch()
             elseif not isPaused_ and not launched_ and IsNearApple(x, y) then
                 draggedApple_ = true
                 -- Phaser starts aiming on POINTER_DOWN, before the first move

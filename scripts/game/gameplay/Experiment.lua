@@ -102,9 +102,14 @@ function M.Install(context)
             if absorbElapsedMs_ >= 520 then
                 absorbing_ = false
                 success_ = true
-                assistedClear_ = false
-                if level_ then level_.resultOverlayVisible = true end
-                if GenerateResultReport then GenerateResultReport() end
+                assistedClear_ = assistDemoActive_ == true or assistUsed_ == true
+                if level_ then
+                    level_.assistedClear = assistedClear_
+                    -- The AssistDemo runner must observe the real success before
+                    -- the report pauses its update. Finalization opens the report.
+                    level_.resultOverlayVisible = assistDemoActive_ ~= true
+                end
+                if not assistDemoActive_ and GenerateResultReport then GenerateResultReport() end
                 SetStatus("CLEARED · 观测成立")
                 NotifyGreenAssistantAttemptSucceeded()
             end

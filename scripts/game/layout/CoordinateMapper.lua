@@ -57,6 +57,17 @@ function CoordinateMapper:LevelToWorld(levelX, levelY)
     return self:ViewportToWorld(viewportX, viewportY)
 end
 
+---@param worldX number
+---@param worldY number
+---@return number levelX
+---@return number levelY
+function CoordinateMapper:WorldToLevel(worldX, worldY)
+    local viewportX = worldX * self.pixelsPerMeter + self.viewportWidth * 0.5
+    local viewportY = self.viewportHeight * 0.5 - worldY * self.pixelsPerMeter
+    return viewportX / self.viewportWidth * self.levelWidth,
+        viewportY / self.viewportHeight * self.levelHeight
+end
+
 ---@param levelWidth number
 ---@param levelHeight number
 ---@return number worldWidth

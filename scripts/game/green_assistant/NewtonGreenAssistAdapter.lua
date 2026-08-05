@@ -1,38 +1,25 @@
-local AssistReplayData = require("game.replay.AssistReplayData")
+local AssistDemoState = require("game.assist_demo.State")
+local StandardSolutions = require("game.assist_demo.StandardSolutions")
 local ReplayMode = require("game.replay.Mode")
 
 local Adapter = {}
 Adapter.__index = Adapter
 
 function Adapter.New(context)
-    local self = setmetatable({}, Adapter)
-    self.context = assert(context, "Newton GreenAssistant adapter requires the App context")
-    self.cache = {}
-    return self
+    return setmetatable({
+        context = assert(context, "Newton GreenAssistant adapter requires the App context"),
+    }, Adapter)
 end
 
 Adapter.new = Adapter.New
-
-function Adapter:_load(levelId)
-    if self.cache[levelId] ~= nil then return self.cache[levelId] or nil end
-    local resourcePath = string.format("Data/Assist/%s.json", tostring(levelId))
-    local data, errorMessage = AssistReplayData.Load(resourcePath, levelId)
-    if not data then
-        print("[GreenAssistant] " .. tostring(errorMessage))
-        self.cache[levelId] = false
-        return nil
-    end
-    local runtime = AssistReplayData.ToRuntime(data, self.context.mapper_)
-    self.cache[levelId] = runtime
-    return runtime
-end
 
 function Adapter:canTakeover(levelId)
     local context = self.context
     return context.level_ ~= nil
         and context.apple_ ~= nil
         and context.replayBusinessMode_ == ReplayMode.NONE
-        and self:_load(levelId) ~= nil
+        and StandardSolutions.Has(levelId)
+        and not context.assistDemoActive_
 end
 
 function Adapter:lockPlayerInput()
@@ -48,41 +35,36 @@ end
 
 function Adapter:prepareTakeoverScene()
     local context = self.context
-    context.ResetExperiment(false)
     context.assistantInputLocked_ = true
     context.assistSceneActive_ = true
     if context.level_ then context.level_.resultOverlayVisible = false end
 end
 
 function Adapter:getAssistReplay(levelId)
-    return self:_load(levelId)
+    return StandardSolutions.Get(levelId)
 end
 
-function Adapter:beginTakeoverReplay(replayData)
-    return self.context.StartAssistReplay(replayData)
+function Adapter:beginTakeoverReplay(solution)
+    return self.context.StartAssistDemo(solution)
 end
 
 function Adapter:updateTakeover(_dt)
-    -- AppRuntime owns the shared ReplayPlayer update. The adapter only exposes
-    -- completion state to GreenAssistant and never advances a second timeline.
+    local state = self.context.GetAssistDemoState()
+    if state == AssistDemoState.FAILED then
+        error(self.context.GetAssistDemoError() or "assist demo failed")
+    end
 end
 
 function Adapter:isTakeoverFinished()
-    local context = self.context
-    return context.replayBusinessMode_ == ReplayMode.ASSIST_TAKEOVER and context.replayFinished_ == true
+    return self.context.IsAssistDemoFinished()
 end
 
 function Adapter:finishTakeover()
-    local context = self.context
-    assert(context.FinishAssistReplay(), "assist replay could not be finalized")
-    context.CompleteLevel({ assisted = true })
-    context.assistSceneActive_ = false
+    assert(self.context.FinishAssistDemo(), "assist demo could not be finalized")
 end
 
 function Adapter:cancelTakeover()
-    local context = self.context
-    if context.replayBusinessMode_ == ReplayMode.ASSIST_TAKEOVER then context.CancelAssistReplay() end
-    context.assistSceneActive_ = false
+    self.context.AbortAssistDemo("cancelled")
 end
 
 return Adapter

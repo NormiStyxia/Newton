@@ -135,6 +135,23 @@ function M.Install(context)
         if applied then ApplyAppleCardMaterial() end
         return applied
     end
+
+    function ExecuteNewtonPunch()
+        local removedRules = {}
+        for cardId in pairs(rules_.activeFields) do removedRules[#removedRules + 1] = cardId end
+        if rules_.phaseActive then removedRules[#removedRules + 1] = "quantum-phase" end
+        if not Rules.Punch(rules_) then return false end
+        phaseTraversing_ = false
+        phaseWallTraversal_ = nil
+        SetGravity()
+        ApplyAppleCardMaterial()
+        UpdateAngerFromRules()
+        for _, cardId in ipairs(removedRules) do RecordReplayEvent("RULE_REMOVED", cardId) end
+        RecordReplayEvent("NEWTON_PUNCH")
+        SetStatus("NEWTON · 修正拳已出手")
+        PlaySound("punch")
+        return true
+    end
 end
 
 return M

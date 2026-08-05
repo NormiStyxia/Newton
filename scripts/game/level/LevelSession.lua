@@ -81,6 +81,8 @@ function M.Install(context)
         success_, failed_, absorbing_, absorbElapsedMs_ = false, false, false, 0
         assistedClear_ = false
         assistSceneActive_ = false
+        assistDemoActive_ = false
+        assistUsed_ = false
         level_.resultOverlayVisible = false
         SetReplayMode("none")
         replayTime_, replaySpeed_ = 0, 1

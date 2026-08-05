@@ -45,15 +45,21 @@ function M.Install(context)
         if not level_ then return nil end
 
         local levelId = level_.levelId or string.format("level_%02d", levelIndex_ or 1)
-        local clearCount = (resultReportClearCounts_[levelId] or 0) + 1
-        resultReportClearCounts_[levelId] = clearCount
+        local assistUsed = assistedClear_ == true or assistUsed_ == true
+        local previousClearCount = resultReportClearCounts_[levelId] or 0
+        local clearCount = assistUsed and previousClearCount or previousClearCount + 1
+        if not assistUsed then resultReportClearCounts_[levelId] = clearCount end
         local resultId = newResultId(levelId, clearCount)
-        local seed = table.concat({ tostring(levelId), tostring(clearCount), resultId }, "_")
+        local seed = table.concat({ tostring(levelId), tostring(clearCount), resultId, assistUsed and "assist" or "player" }, "_")
         local selfOptions = Selector.SampleUnique(Pools.NomiSelfReviewPool, 3, seed .. ":nomi")
         local einstein = Selector.SampleReview(Pools.EinsteinReviewPool, resultReportHistory_.einstein, 2, seed .. ":einstein")
         local green = Selector.SampleReview(Pools.GreenReviewPool, resultReportHistory_.green, 2, seed .. ":green")
-        Selector.PushRecent(resultReportHistory_.einstein, einstein, 2)
-        Selector.PushRecent(resultReportHistory_.green, green, 2)
+        if not assistUsed then
+            Selector.PushRecent(resultReportHistory_.einstein, einstein, 2)
+            Selector.PushRecent(resultReportHistory_.green, green, 2)
+        else
+            green = "差不多就是这样。轨迹已经留在回放里了。"
+        end
         local newtonReview, newtonTier = Config.NewtonReview(anger_)
 
         resultReportState_ = {
@@ -61,9 +67,12 @@ function M.Install(context)
             experimentNumber = tonumber(levelIndex_) or 1,
             levelId = levelId,
             clearCount = clearCount,
-            title = "观测成立",
+            title = assistUsed and "辅助观测成立" or "观测成立",
             experimentName = level_.name or "第一颗苹果",
-            resultDescription = observation_ ~= "" and observation_ or "苹果已稳定进入观察窗",
+            resultDescription = assistUsed and "本次观测由绿毛同事协助完成。评分不计入个人实验记录。"
+                or (observation_ ~= "" and observation_ or "苹果已稳定进入观察窗"),
+            assistUsed = assistUsed,
+            countsForRecord = not assistUsed,
             selfOptions = selfOptions,
             selectedSelfReview = nil,
             newtonReview = newtonReview,
@@ -81,7 +90,8 @@ function M.Install(context)
         resultReportAnimation_ = 0
         resultReportClosing_ = nil
         isPaused_ = true
-        print(string.format("[ResultReport] generated resultId=%s levelId=%s clearCount=%d anger=%d", resultId, levelId, clearCount, resultReportState_.anger))
+        print(string.format("[ResultReport] generated resultId=%s levelId=%s clearCount=%d anger=%d assistUsed=%s countsForRecord=%s",
+            resultId, levelId, clearCount, resultReportState_.anger, tostring(assistUsed), tostring(not assistUsed)))
         return resultReportState_
     end
 

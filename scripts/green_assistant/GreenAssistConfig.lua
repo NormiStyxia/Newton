@@ -202,11 +202,11 @@ GreenAssistConfig.DEFAULTS = {
     failureAssist = {
         observeDuration = 1.6,
         observeLines = { "我看到了。", "轨迹记下了。", "再试一次。" },
-        offerText = "需要我接管吗？",
-        declineText = "不用",
-        acceptText = "交给你",
-        successText = "好了。",
-        unavailableText = "这关还没有可用的辅助轨迹。",
+        offerText = "要不让我试一次？",
+        declineText = "暂时不用",
+        acceptText = "查看演示",
+        successText = "差不多就是这样。轨迹已经留在回放里了。",
+        unavailableText = "演示未能完成，当前关卡参数可能已发生变化。",
     },
     debug = {
         enabled = false,

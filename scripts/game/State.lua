@@ -79,6 +79,7 @@ own("replay", {
 })
 own("assistant", {
     "greenAssistant_", "greenAssistantAdapter_", "assistantInputLocked_", "assistSceneActive_",
+    "assistDemoRunner_", "assistDemoGameAdapter_", "assistDemoView_", "assistDemoActive_", "assistUsed_",
 })
 own("report", {
     "resultReportState_", "resultReportClearCounts_", "resultReportHistory_", "resultReportNextId_",
@@ -185,7 +186,9 @@ function State.New(dependencies, constants)
     context.replayMode_, context.replayNextSampleMs_, context.replayPreviousSample_ = "none", 0, nil
     context.replayBusinessMode_ = dependencies.ReplayMode and dependencies.ReplayMode.NONE or 0
     context.greenAssistant_, context.greenAssistantAdapter_ = nil, nil
+    context.assistDemoRunner_, context.assistDemoGameAdapter_, context.assistDemoView_ = nil, nil, nil
     context.assistantInputLocked_, context.assistSceneActive_ = false, false
+    context.assistDemoActive_, context.assistUsed_ = false, false
     context.resultReportState_, context.resultReportClearCounts_, context.resultReportHistory_ = nil, {}, { einstein = {}, green = {} }
     context.resultReportNextId_, context.resultReportAnimation_, context.resultReportClosing_ = 0, 0, nil
     context.trail_, context.lastTrailAt_, context.sensorAngle_, context.uiElapsed_, context.anger_ = {}, 0, 0, 0, 0

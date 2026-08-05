@@ -234,6 +234,11 @@ function M.Install(context)
         painter_:Text(x + w * 0.90, y + rect.h * 0.124,
             string.format("No. EXP-%02d", experimentNumber), 10, c.inkMuted,
             NVG_ALIGN_RIGHT + NVG_ALIGN_TOP, "maker-body", alpha)
+        if state.assistUsed then
+            painter_:Text(x + w * 0.5, y + rect.h * 0.152,
+                "本次观测由绿毛同事协助完成 · 不计入个人实验记录", 11, c.primary,
+                NVG_ALIGN_CENTER + NVG_ALIGN_TOP, "maker-body", alpha)
+        end
 
         local selfAuthorX, selfY = artPoint(96, 654)
         painter_:Text(selfAuthorX, selfY, "诺米", Config.ReviewAuthorStyles.nomi.fontSize, c.ink,

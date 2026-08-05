@@ -20,6 +20,14 @@ function M.Install(context)
         })
     end
 
+    function AbortGreenAssistantTakeover(reason)
+        if greenAssistant_ and greenAssistant_.cancelTakeover then
+            return greenAssistant_:cancelTakeover(reason)
+        end
+        if AbortAssistDemo then return AbortAssistDemo(reason) end
+        return false
+    end
+
     function DestroyGreenAssistant()
         if greenAssistant_ then greenAssistant_:destroy(); greenAssistant_ = nil end
         greenAssistantAdapter_ = nil
@@ -30,7 +38,15 @@ function M.Install(context)
     end
 
     function DrawGreenAssistant()
-        if greenAssistant_ then greenAssistant_:render() end
+        if greenAssistant_ and greenAssistant_:getBehavior() ~= GreenAssistant.Behavior.OFFER then
+            greenAssistant_:render()
+        end
+    end
+
+    function DrawGreenAssistantOverlay()
+        if greenAssistant_ and greenAssistant_:getBehavior() == GreenAssistant.Behavior.OFFER then
+            greenAssistant_:render()
+        end
     end
 
     function HandleGreenAssistantPointer(x, y, pointerFrame)

@@ -43,6 +43,7 @@ function M.Install(context)
         painter_ = Renderer2D.New()
         frame_ = context.design_:Frame()
         context.InitializeDialogue()
+        InitializeAssistDemo()
         InitializeGreenAssistant()
         BuildLevel(1)
         RefreshWorkspaceLayout()
@@ -63,6 +64,7 @@ function M.Install(context)
         if level_ and level_.physicsProbe then level_.physicsProbe:Stop({ apple = apple_ }) end
         context.DestroyDialogue()
         DestroyGreenAssistant()
+        DestroyAssistDemo()
         if painter_ then painter_:Destroy(); painter_ = nil end
     end
 
@@ -73,12 +75,17 @@ function M.Install(context)
         frame_ = context.design_:Frame()
         RefreshWorkspaceLayout()
         local pointerFrame = PointerState()
+        local assistEscapeHandled = false
+        if assistSceneActive_ and input:GetKeyPress(KEY_ESCAPE) then
+            assistEscapeHandled = AbortGreenAssistantTakeover("escape") == true
+        end
         local reportVisible = IsResultReportVisible and IsResultReportVisible()
         local dialoguePointerConsumed = reportVisible and false or context.UpdateDialogue(dt, pointerFrame)
         if audio_ then audio_:Update(dt) end
         uiElapsed_ = uiElapsed_ + dt
         UpdateRuleFeedback(dt)
         UpdatePhaseWallEffects(dt)
+        UpdateAssistDemo(dt)
         -- Sample once, then give the screen-space Companion first chance to
         -- apply a rigid drag before its animation/update and before rendering.
         local assistantPointerConsumed = dialoguePointerConsumed
@@ -140,8 +147,8 @@ function M.Install(context)
             return
         end
         UpdateCardParameter(dt)
-        if input:GetKeyPress(KEY_R) then ResetExperiment() end
-        if input:GetMouseButtonPress(MOUSEB_RIGHT) and (activeCardId_ or primedCardId_) then
+        if not context.assistantInputLocked_ and input:GetKeyPress(KEY_R) then ResetExperiment() end
+        if not context.assistantInputLocked_ and input:GetMouseButtonPress(MOUSEB_RIGHT) and (activeCardId_ or primedCardId_) then
             local id = activeCardId_ or primedCardId_
             local from = activeCardId_ and CurrentCardVisualPose(id) or PrimedCardPose(id)
             activeCardId_ = nil
@@ -149,7 +156,7 @@ function M.Install(context)
             AnimateCardToHome(id, from, .18)
             ClearCardInteraction()
         end
-        if input:GetKeyPress(KEY_ESCAPE) then
+        if not context.assistantInputLocked_ and not assistEscapeHandled and input:GetKeyPress(KEY_ESCAPE) then
             if replayActive_ then StopReplay() else ToggleTacticalPause() end
         end
         EinsteinObserver.Update(runtime_, apple_, dt, isPaused_)
@@ -353,9 +360,11 @@ function M.Install(context)
             DrawCardBurnParticles()
             DrawRuleFlash()
             if replayActive_ then DrawReplay() end
+            DrawAssistDemo()
             DrawGreenAssistant()
             context.DrawDialogueOverlay()
             DrawResultOverlay()
+            DrawGreenAssistantOverlay()
             painter_:Finish()
         end)
         State.EndGameSnapshot(context)

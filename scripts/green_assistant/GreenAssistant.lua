@@ -525,6 +525,15 @@ function GreenAssistant:declineTakeover()
     return true
 end
 
+function GreenAssistant:cancelTakeover(reason)
+    if not self.takeover:isActive() then return false end
+    self.takeover:cancel()
+    self:_hideMessage()
+    if self.enabled then self:setBehavior(BehaviorState.IDLE, reason or "takeover-cancelled") end
+    self:_emit("onTakeoverAborted", reason or "cancelled")
+    return true
+end
+
 function GreenAssistant:registerAnimation(name, config)
     self.animator:registerAnimation(name, config)
     if self.view.preloadAnimation then self.view:preloadAnimation(config) end
