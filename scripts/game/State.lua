@@ -2,6 +2,7 @@
 ---@class GameContext
 ---@field State any
 ---@field LevelData any
+---@field LevelDocument any
 ---@field LevelPresentation any
 ---@field CoordinateMapper any
 ---@field DesignSpace any
@@ -62,6 +63,7 @@
 ---@field screen_ "catalog"|"game"|"workshop"|"workshop_preview"
 ---@field runtimeSession_ table|nil
 ---@field catalogState_ table
+---@field workshopState_ table
 ---@field hudRuleSummary_ string
 ---@field hudRuleList_ table
 ---@field hudObjectiveText_ string
@@ -120,6 +122,7 @@ own("navigation", {
     "screen_", "catalogState_", "hudRuleSummary_", "hudRuleList_", "hudObjectiveText_",
     "hudExpectedScore_", "hudInterventionCount_", "hudDropdown_", "hudEscapeConsumed_",
 })
+own("workshop", { "workshopState_" })
 
 local function refreshModes(domains)
     local experiment = domains.experiment
@@ -160,7 +163,7 @@ end
 function State.New(dependencies, constants)
     local domains = {
         runtime = {}, layout = {}, experiment = {}, goal = {}, mechanisms = {}, input = {}, cards = {}, replay = {},
-        assistant = {}, report = {}, navigation = {},
+        assistant = {}, report = {}, navigation = {}, workshop = {},
     }
     ---@type GameContext
     local context = {}
@@ -241,6 +244,47 @@ function State.New(dependencies, constants)
         scrollMax = 0,
         dragStartY = nil,
         dragStartScroll = 0,
+        toast = nil,
+        toastTime = 0,
+        hoverTooltip = nil,
+    }
+    context.workshopState_ = {
+        initialized = false,
+        elapsed = 0,
+        autoSaveDelay = 1.0,
+        autoSaveDue = nil,
+        lastDraftSaveAt = nil,
+        repository = nil,
+        history = nil,
+        draftStore = nil,
+        persistenceKind = "memory-only",
+        entries = {},
+        initializationErrors = {},
+        supportedTypes = {},
+        entryId = nil,
+        metadata = nil,
+        document = nil,
+        readOnly = true,
+        dirty = false,
+        selectedObjectId = nil,
+        selectedObject = nil,
+        view = {
+            zoom = 1, panX = 0, panY = 0,
+            showGrid = true, snap = true, gridSize = 10, angleSnap = 15,
+            fileScroll = 0, inspectorScroll = 0, drawerMode = "files",
+        },
+        layoutConfig = {},
+        layout = nil,
+        controls = {},
+        inspectorFields = {},
+        validation = { valid = false, errors = {}, warnings = {} },
+        canUndo = false,
+        canRedo = false,
+        transaction = nil,
+        textEdit = nil,
+        modal = nil,
+        previewSnapshot = nil,
+        status = "关卡工坊尚未打开",
         toast = nil,
         toastTime = 0,
     }

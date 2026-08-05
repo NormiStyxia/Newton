@@ -34,6 +34,7 @@ def main() -> int:
     allowed_globals = {
         "Start", "Stop", "HandleUpdate", "HandlePhysicsPreStep", "HandlePhysicsPostStep",
         "HandleScreenMode", "HandleTouchBegin", "HandleTouchMove", "HandleTouchEnd",
+        "HandleTextInput",
         "HandleCollisionBegin", "HandleCollisionUpdate", "HandleCollisionEnd", "HandleRender",
     }
     main_globals = set(re.findall(r"^function\s+([A-Za-z_][A-Za-z0-9_]*)\s*\(", main_source, re.M))
@@ -83,7 +84,7 @@ def main() -> int:
     checks += 1
 
     subscriptions = (
-        "Update", "ScreenMode", "TouchBegin", "TouchMove", "TouchEnd", "PhysicsPreStep",
+        "Update", "ScreenMode", "TouchBegin", "TouchMove", "TouchEnd", "TextInput", "PhysicsPreStep",
         "PhysicsPostStep", "PhysicsBeginContact2D", "PhysicsUpdateContact2D", "PhysicsEndContact2D",
     )
     for event_name in subscriptions:
@@ -105,7 +106,7 @@ def main() -> int:
     app_source = sources["game.App"]
     public_methods = {
         "Start", "Stop", "Update", "OnPhysicsPreStep", "OnPhysicsPostStep", "OnScreenMode",
-        "OnTouchBegin", "OnTouchMove", "OnTouchEnd", "OnContactBegin", "OnContactUpdate",
+        "OnTouchBegin", "OnTouchMove", "OnTouchEnd", "OnTextInput", "OnContactBegin", "OnContactUpdate",
         "OnContactEnd", "Render",
     }
     actual_methods = set(re.findall(r"^function\s+App:([A-Za-z_][A-Za-z0-9_]*)\s*\(", app_source, re.M))

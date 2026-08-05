@@ -11,6 +11,7 @@ function HandleScreenMode() app:OnScreenMode() end
 function HandleTouchBegin(eventType, eventData) app:OnTouchBegin(eventType, eventData) end
 function HandleTouchMove(eventType, eventData) app:OnTouchMove(eventType, eventData) end
 function HandleTouchEnd(eventType, eventData) app:OnTouchEnd(eventType, eventData) end
+function HandleTextInput(eventType, eventData) app:OnTextInput(eventType, eventData) end
 function HandleCollisionBegin(eventType, eventData) app:OnContactBegin(eventType, eventData) end
 function HandleCollisionUpdate(eventType, eventData) app:OnContactUpdate(eventType, eventData) end
 function HandleCollisionEnd(eventType, eventData) app:OnContactEnd(eventType, eventData) end

@@ -10,6 +10,7 @@ LevelDocument.REQUIRED_GOAL_STAY_TIME_MS = 1000
 LevelDocument.LIMITS = {
     maxObjects = 500,
     maxCards = 32,
+    maxScoringTiers = 10,
     maxIdLength = 64,
     maxNameLength = 96,
     maxAuthorLength = 64,
@@ -22,6 +23,11 @@ LevelDocument.LIMITS = {
 }
 
 local BOUNDARY_EPSILON = 1e-6
+local FORBIDDEN_REFERENCE_KEYS = {
+    asset = true, assetpath = true, material = true, model = true,
+    path = true, resource = true, resourcepath = true, script = true,
+    texture = true, uri = true, url = true,
+}
 
 local function IsSupportedType(objectType)
     return objectType == "wall"
@@ -260,6 +266,10 @@ local function ValidateSafeTree(report, root)
                 if keyType ~= "string" and keyType ~= "number" then
                     Error(report, "KEY_TYPE", path, "JSON 键只能是字符串或数字")
                 else
+                    if keyType == "string" and FORBIDDEN_REFERENCE_KEYS[key:lower()] then
+                        Error(report, "RESOURCE_REFERENCE", path .. "." .. key,
+                            "关卡 JSON 不允许引用任意项目资源或脚本")
+                    end
                     visit(child, path .. "." .. tostring(key), depth + 1)
                 end
             end
@@ -402,6 +412,55 @@ local function ValidateRules(report, rules)
     end
 end
 
+local function ValidateScoring(report, scoring)
+    if scoring == nil then return end
+    if type(scoring) ~= "table" then
+        Error(report, "SCORING", "scoring", "scoring 必须是对象")
+        return
+    end
+    if scoring.profileId ~= nil then
+        ValidateString(report, scoring.profileId, "scoring.profileId", "profileId",
+            LevelDocument.LIMITS.maxIdLength, true)
+    end
+    if scoring.metric ~= "ruleDeployCount" then
+        Error(report, "SCORING_METRIC", "scoring.metric", "当前仅支持 ruleDeployCount 评分指标")
+    end
+    if type(scoring.tiers) ~= "table" then
+        Error(report, "SCORING_TIERS", "scoring.tiers", "scoring.tiers 必须是数组")
+        return
+    end
+    if #scoring.tiers == 0 or #scoring.tiers > LevelDocument.LIMITS.maxScoringTiers then
+        Error(report, "SCORING_TIER_LIMIT", "scoring.tiers",
+            "评分档位数量必须位于 1 到 " .. tostring(LevelDocument.LIMITS.maxScoringTiers) .. " 之间")
+    end
+    local previousLimit = -1
+    for index, tier in ipairs(scoring.tiers) do
+        local prefix = "scoring.tiers[" .. tostring(index) .. "]"
+        if type(tier) ~= "table" then
+            Error(report, "SCORING_TIER", prefix, "评分档位必须是对象")
+        else
+            ValidateNumberRange(report, tier.score, prefix .. ".score", "score", 0, 100, true)
+            if tier.maxInterventions ~= nil then
+                if ValidateNumberRange(report, tier.maxInterventions, prefix .. ".maxInterventions",
+                    "maxInterventions", 0, 999, true) and tier.maxInterventions <= previousLimit then
+                    Error(report, "SCORING_ORDER", prefix .. ".maxInterventions", "干预上限必须严格递增")
+                end
+                previousLimit = tier.maxInterventions
+            elseif index ~= #scoring.tiers then
+                Error(report, "SCORING_FALLBACK", prefix .. ".maxInterventions", "无上限评分档位只能位于最后")
+            end
+            if tier.title ~= nil then
+                ValidateString(report, tier.title, prefix .. ".title", "title",
+                    LevelDocument.LIMITS.maxNameLength, true)
+            end
+            if tier.description ~= nil then
+                ValidateString(report, tier.description, prefix .. ".description", "description",
+                    LevelDocument.LIMITS.maxDescriptionLength, true)
+            end
+        end
+    end
+end
+
 ---@param level table
 ---@return table report
 function LevelDocument.ValidateDetailed(level)
@@ -473,6 +532,7 @@ function LevelDocument.ValidateDetailed(level)
 
     ValidateCards(report, level.cardDeck)
     ValidateRules(report, level.rules)
+    ValidateScoring(report, level.scoring)
     report.valid = #report.errors == 0
     return report
 end

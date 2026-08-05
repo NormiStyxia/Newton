@@ -342,6 +342,7 @@ function M.Install(context)
     end
 
     function RequestReturnToCatalog(preselectIndex)
+        if screen_ == "workshop_preview" then return ExitWorkshopPreview("navigation") end
         local selected = tonumber(preselectIndex) or levelIndex_ or catalogState_.selectedIndex or 1
         if scene_ or level_ then ReleaseLevelRuntime() end
         screen_ = "catalog"
@@ -353,9 +354,7 @@ function M.Install(context)
     end
 
     function RequestEnterWorkshop(selectedLevelId)
-        catalogState_.toast = "关卡工坊尚未开放"
-        catalogState_.toastTime = 2.6
-        print("[Catalog] workshop requested for " .. tostring(selectedLevelId or "unknown"))
+        return OpenLevelWorkshop(selectedLevelId)
     end
 
     local function selectLevel(index)

@@ -72,20 +72,21 @@ local LevelData = require("game.level.LevelData")
 local boundaryLevel = {
     schemaVersion = 1,
     levelId = "boundary_rounding",
+    name = "boundary rounding",
     playfield = { width = 1400, height = 700 },
     objects = {
         {
-            id = "launcher", type = "launcher",
+            id = "launcher", name = "launcher", type = "launcher",
             transform = { x = 100, y = 100, width = 20, height = 20, rotation = 0 },
             properties = {},
         },
         {
-            id = "goal", type = "goal_sensor",
+            id = "goal", name = "goal", type = "goal_sensor",
             transform = { x = 1300, y = 100, width = 20, height = 20, rotation = 0 },
             properties = {},
         },
         {
-            id = "wall_10", type = "wall",
+            id = "wall_10", name = "wall", type = "wall",
             transform = {
                 x = 472.5620537282992,
                 y = 502.70239503850445,
@@ -99,8 +100,9 @@ local boundaryLevel = {
     cardDeck = { cards = {} },
     rules = { initialGravity = { x = 0, y = 1, strength = 1 } },
 }
-local boundaryValid = LevelData.Validate(boundaryLevel)
-expect(boundaryValid, "rotated object touching the playfield boundary was rejected")
+boundaryLevel = LevelData.Normalize(boundaryLevel)
+local boundaryValid, boundaryErrors = LevelData.Validate(boundaryLevel)
+expect(boundaryValid, "rotated object touching the playfield boundary was rejected: " .. table.concat(boundaryErrors, "; "))
 boundaryLevel.objects[3].transform.y = boundaryLevel.objects[3].transform.y + 1e-4
 local overflowValid = LevelData.Validate(boundaryLevel)
 expect(not overflowValid, "object beyond the boundary tolerance was accepted")
@@ -162,18 +164,23 @@ local App = require("game.App")
 local app = App.New()
 for _, method in ipairs({
     "Start", "Stop", "Update", "OnPhysicsPreStep", "OnPhysicsPostStep", "OnScreenMode",
-    "OnTouchBegin", "OnTouchMove", "OnTouchEnd", "OnContactBegin", "OnContactUpdate",
+    "OnTouchBegin", "OnTouchMove", "OnTouchEnd", "OnTextInput", "OnContactBegin", "OnContactUpdate",
     "OnContactEnd", "Render",
 }) do
     expect(type(app[method]) == "function", "App adapter method missing: " .. method)
 end
 expect(type(app.context.BuildLevel) == "function" and type(app.context.HandlePointer) == "function"
     and type(app.context.HandleRender) == "function", "App installers did not compose")
+expect(type(app.context.RequestEnterWorkshop) == "function"
+    and type(app.context.OpenLevelWorkshop) == "function"
+    and type(app.context.BeginWorkshopPreview) == "function"
+    and type(app.context.ExitWorkshopPreview) == "function",
+    "catalog, workshop, and formal preview routing were not composed")
 
 dofile("scripts/main.lua")
 for _, callback in ipairs({
     "Start", "Stop", "HandleUpdate", "HandlePhysicsPreStep", "HandlePhysicsPostStep",
-    "HandleScreenMode", "HandleTouchBegin", "HandleTouchMove", "HandleTouchEnd",
+    "HandleScreenMode", "HandleTouchBegin", "HandleTouchMove", "HandleTouchEnd", "HandleTextInput",
     "HandleCollisionBegin", "HandleCollisionUpdate", "HandleCollisionEnd", "HandleRender",
 }) do
     expect(type(_G[callback]) == "function", "engine entry callback missing: " .. callback)

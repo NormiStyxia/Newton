@@ -1,6 +1,7 @@
 local Config = require("game.Config")
 local State = require("game.State")
 local LevelData = require("game.level.LevelData")
+local LevelDocument = require("game.level.LevelDocument")
 local LevelPresentation = require("game.level.Presentation")
 local CoordinateMapper = require("game.layout.CoordinateMapper")
 local DesignSpace = require("game.layout.DesignSpace")
@@ -25,7 +26,7 @@ local INSTALLERS = {
     "game.cards.Controller", "game.input.InteractionRouter", "game.render.WorldView",
     "game.render.ReplayView", "game.render.OverlayView", "game.render.CardView",
     "game.assist_demo.Controller", "game.green_assistant.Controller", "game.dialogue.DialogueController", "ui.result_report",
-    "ui.result_report_layout", "ui.ExperimentCatalog", "game.AppRuntime",
+    "ui.result_report_layout", "game.workshop.Controller", "ui.ExperimentCatalog", "game.AppRuntime",
 }
 
 local App = {}
@@ -34,7 +35,7 @@ App.__index = App
 function App.New()
     local dependencies = {
         State = State,
-        LevelData = LevelData, LevelPresentation = LevelPresentation,
+        LevelData = LevelData, LevelDocument = LevelDocument, LevelPresentation = LevelPresentation,
         CoordinateMapper = CoordinateMapper, DesignSpace = DesignSpace,
         WorkspaceLayout = WorkspaceLayout,
         MatterCalibration = MatterCalibration, PhysicsProfiles = PhysicsProfiles, PhysicsProbe = PhysicsProbe,
@@ -56,6 +57,7 @@ function App:OnScreenMode() self.context.HandleScreenMode() end
 function App:OnTouchBegin(eventType, eventData) self.context.HandleTouchBegin(eventType, eventData) end
 function App:OnTouchMove(eventType, eventData) self.context.HandleTouchMove(eventType, eventData) end
 function App:OnTouchEnd(eventType, eventData) self.context.HandleTouchEnd(eventType, eventData) end
+function App:OnTextInput(eventType, eventData) self.context.HandleWorkshopTextInput(eventType, eventData) end
 function App:OnContactBegin(eventType, eventData) self.context.HandleCollisionBegin(eventType, eventData) end
 function App:OnContactUpdate(eventType, eventData) self.context.HandleCollisionUpdate(eventType, eventData) end
 function App:OnContactEnd(eventType, eventData) self.context.HandleCollisionEnd(eventType, eventData) end

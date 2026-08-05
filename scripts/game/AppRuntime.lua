@@ -54,6 +54,7 @@ function M.Install(context)
         SubscribeToEvent("TouchBegin", "HandleTouchBegin")
         SubscribeToEvent("TouchMove", "HandleTouchMove")
         SubscribeToEvent("TouchEnd", "HandleTouchEnd")
+        SubscribeToEvent("TextInput", "HandleTextInput")
         SubscribeToEvent("PhysicsPreStep", "HandlePhysicsPreStep")
         SubscribeToEvent("PhysicsPostStep", "HandlePhysicsPostStep")
         SubscribeToEvent("PhysicsBeginContact2D", "HandleCollisionBegin")
@@ -63,6 +64,7 @@ function M.Install(context)
         print("[Migration] 1:1 design-space runtime started")
     end
     function Stop()
+        ShutdownLevelWorkshop()
         if scene_ or level_ then ReleaseLevelRuntime() end
         context.DestroyDialogue()
         DestroyGreenAssistant()
@@ -80,6 +82,14 @@ function M.Install(context)
         local pointerFrame = PointerState()
         if screen_ == "catalog" then
             UpdateExperimentCatalog(dt, pointerFrame)
+            return
+        end
+        if screen_ == "workshop" then
+            UpdateLevelWorkshop(dt, pointerFrame)
+            return
+        end
+        if screen_ == "workshop_preview" and input:GetKeyPress(KEY_ESCAPE) then
+            ExitWorkshopPreview("escape")
             return
         end
         if not level_ or not apple_ then return end
@@ -109,7 +119,7 @@ function M.Install(context)
         end
         if not reportVisible then UpdateGreenAssistant(dt) end
         if UpdateResultReport then UpdateResultReport(dt) end
-        if screen_ == "catalog" then return end
+        if screen_ ~= "game" and screen_ ~= "workshop_preview" then return end
         -- Replay owns the input/update frame. Do not let cards, reset shortcuts,
         -- or normal completion updates mutate the suspended experiment.
         if replayActive_ then
@@ -157,7 +167,7 @@ function M.Install(context)
         UpdateSpringVisuals(dt)
         sensorAngle_ = sensorAngle_ + dt * (goalContact_ and (math.pi * 2 / 7.2) or (math.pi * 2 / 10))
         HandlePointer(pointerFrame, assistantPointerConsumed)
-        if screen_ == "catalog" then return end
+        if screen_ ~= "game" and screen_ ~= "workshop_preview" then return end
         if replayActive_ then
             SyncPhysicsUpdateEnabled()
             UpdateReplay(dt)
@@ -270,6 +280,7 @@ function M.Install(context)
     function HandleScreenMode()
         frame_ = context.design_:Frame()
         RefreshWorkspaceLayout()
+        if screen_ == "workshop" then HandleWorkshopScreenMode() end
     end
 
     ---@param _eventType string
@@ -382,6 +393,15 @@ function M.Install(context)
     end
     function HandleRender()
         if not painter_ or not frame_ then return end
+        if screen_ == "workshop" then
+            local ok, err = pcall(function()
+                painter_:Begin(frame_)
+                DrawLevelWorkshop()
+                painter_:Finish()
+            end)
+            if not ok then error(err) end
+            return
+        end
         State.BeginGameSnapshot(context)
         local ok, err = pcall(function()
             painter_:Begin(frame_)
