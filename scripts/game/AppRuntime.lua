@@ -415,6 +415,7 @@ function M.Install(context)
                 return
             end
             painter_:DrawBackground(frame_)
+            painter_:DrawGameplayWallArt(frame_)
             painter_:DrawNewton(frame_, level_, anger_, observation_)
             painter_:DrawGround(frame_)
             local goalPulseProgress = goalPulseElapsedMs_ and math.max(0, math.min(1, goalPulseElapsedMs_ / 460)) or nil

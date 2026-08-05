@@ -221,6 +221,15 @@ local function dragWorkspace(targetContext, current, fromX, fromY, toX, toY)
     })
 end
 
+local function wheelWorkspace(targetContext, current, x, y, wheel)
+    local rawX, rawY = rawPoint(current, x, y)
+    input.mouseMoveWheel = wheel
+    updateWorkshop(targetContext, {
+        x = rawX, y = rawY, down = false, pressed = false, released = false,
+    })
+    input.mouseMoveWheel = 0
+end
+
 expect(context.screen_ == "workshop" and workshop.entryId == "official:level_01",
     "official entry selection mismatch")
 expect(workshop.readOnly and #workshop.entries == 2, "official repository was not read-only or complete")
@@ -594,6 +603,43 @@ fileTab = workshop.layout.drawerTabs.files
 clickRect(context, workshop, fileTab)
 expect(workshop.view.drawerMode == "files" and workshop.layout.left and not workshop.layout.right,
     "phone file tab could not reopen the file drawer")
+
+workshop.view.drawerMode = "inspector"
+updateWorkshop(context)
+expect(workshop.layout.inspectorViewport and workshop.view.inspectorScrollMax > 0,
+    "phone Inspector did not expose a scrollable viewport")
+workshop.view.inspectorScroll = 0
+local inspectorViewport = workshop.layout.inspectorViewport
+wheelWorkspace(context, workshop,
+    inspectorViewport.x + inspectorViewport.w * 0.5,
+    inspectorViewport.y + inspectorViewport.h * 0.5, -1)
+expect(math.abs(workshop.view.inspectorScroll - 4.8) < 1e-9,
+    "Inspector wheel scrolling was not reduced to one tenth of the previous step")
+
+workshop.view.drawerMode = nil
+updateWorkshop(context)
+local canvasViewport = workshop.layout.canvasViewport
+local transformBeforePan = workshop.controls.canvasTransform
+local emptyX, emptyY = canvasViewport.x + 18, canvasViewport.y + 18
+local emptyLevelX, emptyLevelY = Interaction.ScreenToLevel(transformBeforePan, emptyX, emptyY)
+expect(Interaction.FindTopObject(workshop.document, emptyLevelX, emptyLevelY,
+    5 / transformBeforePan.scale) == nil, "canvas pan test point unexpectedly overlaps an object")
+local panXBefore, panYBefore = workshop.view.panX, workshop.view.panY
+dragWorkspace(context, workshop, emptyX, emptyY, emptyX + 40, emptyY + 25)
+expect(workshop.view.panX == panXBefore + 40 and workshop.view.panY == panYBefore + 25,
+    "dragging an empty canvas area did not pan the canvas")
+
+clickControl(context, workshop, "export")
+workshop.modal.payload.text = string.rep("scroll line\n", 100)
+updateWorkshop(context)
+expect(workshop.modal.scrollMax > 0, "long JSON export did not expose modal scrolling")
+workshop.modal.scroll = 0
+local modalBody = workshop.controls.modalBody
+wheelWorkspace(context, workshop, modalBody.x + modalBody.w * 0.5,
+    modalBody.y + modalBody.h * 0.5, -1)
+expect(math.abs(workshop.modal.scroll - 5.4) < 1e-9,
+    "JSON modal wheel scrolling was not reduced to one tenth of the previous step")
+clickModalButton(context, workshop, "close")
 
 context.frame_ = {
     systemLogicalWidth = 567, systemLogicalHeight = 299,

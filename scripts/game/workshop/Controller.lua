@@ -608,6 +608,8 @@ function M.Install(context)
         local transform = controls.canvasTransform
         if not transform then return end
         local x, y = pointerFrame.x, pointerFrame.y
+        local panTransaction = { kind = "pan", startX = x, startY = y,
+            panX = current.view.panX, panY = current.view.panY, changed = false }
         if current.selectedObject and not current.readOnly then
             ---@type string|nil
             local handle = Interaction.HitHandle(controls.handles, x, y)
@@ -616,6 +618,7 @@ function M.Install(context)
                 return
             end
         end
+        if input:GetKeyDown(KEY_SHIFT) then current.transaction = panTransaction; return end
         local levelX, levelY = Interaction.ScreenToLevel(transform, x, y)
         local object = Interaction.FindTopObject(current.document, levelX, levelY, 5 / transform.scale)
         if object then
@@ -627,13 +630,11 @@ function M.Install(context)
                     offsetX = object.transform.x - levelX, offsetY = object.transform.y - levelY,
                     changed = false,
                 }
-            end
+            else current.transaction = panTransaction end
             rebuildUI()
-        elseif input:GetKeyDown(KEY_SHIFT) then
-            current.transaction = { kind = "pan", startX = x, startY = y,
-                panX = current.view.panX, panY = current.view.panY, changed = false }
         else
             current.selectedObjectId, current.selectedObject = nil, nil
+            current.transaction = panTransaction
             buildInspectorFields(); rebuildUI()
         end
     end
@@ -717,7 +718,7 @@ function M.Install(context)
         end
         if current.modal then
             if wheel ~= 0 and current.controls.modalBody and View.PointIn(current.controls.modalBody, x, y) then
-                current.modal.scroll = clamp((current.modal.scroll or 0) - wheel * 54, 0, current.modal.scrollMax or 0)
+                current.modal.scroll = clamp((current.modal.scroll or 0) - wheel * 5.4, 0, current.modal.scrollMax or 0)
             end
             if pointerFrame.pressed then
                 for _, button in ipairs(current.controls.modalButtons or {}) do
@@ -737,9 +738,9 @@ function M.Install(context)
 
         if wheel ~= 0 then
             if current.layout.fileViewport and View.PointIn(current.layout.fileViewport, x, y) then
-                current.view.fileScroll = clamp(current.view.fileScroll - wheel * 48, 0, current.view.fileScrollMax)
+                current.view.fileScroll = clamp(current.view.fileScroll - wheel * 4.8, 0, current.view.fileScrollMax)
             elseif current.layout.inspectorViewport and View.PointIn(current.layout.inspectorViewport, x, y) then
-                current.view.inspectorScroll = clamp(current.view.inspectorScroll - wheel * 48, 0, current.view.inspectorScrollMax)
+                current.view.inspectorScroll = clamp(current.view.inspectorScroll - wheel * 4.8, 0, current.view.inspectorScrollMax)
             elseif View.ControlHitAllowed(current.layout, "canvas", x, y) and View.PointIn(current.layout.canvasViewport, x, y) then
                 current.view.zoom = clamp(current.view.zoom * (wheel > 0 and 1.12 or .89), .35, 4)
             end
