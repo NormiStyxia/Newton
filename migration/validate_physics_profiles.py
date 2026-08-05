@@ -67,6 +67,12 @@ def main() -> int:
            "standard default gravity is not 10.5 m/s^2")
     expect(math.isclose(incident_acceleration * 1.05, 0.175, rel_tol=0, abs_tol=1e-12),
            "incident default gravity does not preserve 0.175 m/s^2")
+    gravity_scale_match = re.search(r"APPLE_GAMEPLAY_GRAVITY_SCALE = ([0-9.]+)", calibration)
+    expected_gameplay_scale = standard_acceleration / ((1 - 0.01) * standard_acceleration * 1.05)
+    expect(gravity_scale_match is not None
+           and math.isclose(float(gravity_scale_match.group(1)), expected_gameplay_scale,
+                            rel_tol=0, abs_tol=5e-7),
+           "gameplay gravity does not compensate Box2D damping order against Phaser")
 
     standard_block = re.search(r"standard = \{(?P<body>.*?)\n    \},\n    incident_codex", profiles, re.S)
     incident_block = re.search(r"incident_codex_migration_01 = \{(?P<body>.*?)\n    \},\n\}", profiles, re.S)
@@ -122,9 +128,10 @@ def main() -> int:
     expect("APPLE_FRICTION = 0.1" in calibration, "apple effective friction is not calibrated")
     expect("APPLE_FRICTION_STATIC = 0.5" in calibration, "Matter static-friction multiplier is not calibrated")
     expect("APPLE_FRICTION_AIR = 0.01" in calibration, "apple effective air friction is not calibrated")
-    expect("APPLE_FLIGHT_FRICTION_AIR = 0.0015" in calibration
-           and "APPLE_GAMEPLAY_GRAVITY_SCALE = 0.60" in calibration,
-           "gameplay flight feel is not calibrated independently from the probe baseline")
+    expect("APPLE_FLIGHT_FRICTION_AIR = 0.01" in calibration
+           and "APPLE_GAMEPLAY_GRAVITY_SCALE = 0.962001" in calibration
+           and "APPLE_TRAJECTORY_GRAVITY_SCALE = 1" in calibration,
+           "gameplay flight does not reproduce Phaser's runtime damping and gravity")
     expect("APPLE_INITIAL_RESTITUTION = 0" in calibration, "apple initial restitution is not calibrated")
     expect("SOURCE_STATIC_FRICTION = 1" in calibration
            and "SOURCE_STATIC_RESTITUTION = 0" in calibration,
@@ -229,8 +236,8 @@ def main() -> int:
            "air/contact damping is not selected from the previous support state")
     expect("flightFrictionAir = MatterCalibration.APPLE_FLIGHT_FRICTION_AIR" in factory
            and "frictionAir = apple_.flightFrictionAir or MatterCalibration.APPLE_FLIGHT_FRICTION_AIR" in world_view
-           and "gravityX = gravityX * MatterCalibration.APPLE_GAMEPLAY_GRAVITY_SCALE" in world_view,
-           "trajectory preview does not share the gameplay flight calibration")
+           and "gravityX = gravityX * MatterCalibration.APPLE_TRAJECTORY_GRAVITY_SCALE" in world_view,
+           "trajectory preview does not use the source Matter flight calibration")
     expect("local velocity = apple_.body.linearVelocity" in physics_pre_step
            and "applePreSolveVelocity_ = Vector2(velocity.x, velocity.y)" in physics_pre_step
            and physics_pre_step.index("applePreSolveVelocity_ = Vector2") < physics_pre_step.index("apple_.body.linearDamping")

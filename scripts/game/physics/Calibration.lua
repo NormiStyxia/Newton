@@ -19,13 +19,16 @@ MatterCalibration.MATTER_RESTING_NORMAL_SPEED = 4
 -- scales its own threshold with Engine.timing.timeScale, so the engines have
 -- disagreement windows at both normal and slow-motion time scales.
 MatterCalibration.BOX2D_RESTITUTION_THRESHOLD = 1
--- Keep the runtime-observed Matter value as the contact/probe baseline. Normal
--- gameplay uses the lighter declared value in free flight for Phaser-like feel.
+-- setCircle replaces Phaser's declared .0015 with Matter's .01 runtime value.
+-- Keep that observed value in free flight as well as on supported contacts.
 MatterCalibration.APPLE_FRICTION_AIR = 0.01
-MatterCalibration.APPLE_FLIGHT_FRICTION_AIR = 0.0015
--- Standard gravity remains the calibration baseline. The gameplay-only scale
--- gives a horizontal launch enough hang time to match the source visually.
-MatterCalibration.APPLE_GAMEPLAY_GRAVITY_SCALE = 0.60
+MatterCalibration.APPLE_FLIGHT_FRICTION_AIR = 0.01
+-- Phaser adds its gravity acceleration after air-friction retention; Box2D
+-- damps the gravity-updated velocity. 0.962001 maps Phaser's 10 m/s^2 onto
+-- the 10.5 m/s^2 standard profile while compensating that ordering at 60 Hz.
+MatterCalibration.APPLE_GAMEPLAY_GRAVITY_SCALE = 0.962001
+-- The dotted predictor already executes Matter's update order directly.
+MatterCalibration.APPLE_TRAJECTORY_GRAVITY_SCALE = 1
 -- Extra tangential energy loss applied only while a contact supports the
 -- apple against gravity. This approximates rolling resistance without
 -- changing its free-flight trajectory or collision-normal velocity.
