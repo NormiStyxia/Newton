@@ -124,16 +124,6 @@ local function levelFields(fields, current, LevelDocument, Rules)
     addField(fields, "level.description", "简介", "text", document.description or "",
         function(value) document.description = value end,
         { editable = canEdit, maxLength = LevelDocument.LIMITS.maxDescriptionLength })
-    section(fields, "world", "场地与重力")
-    addField(fields, "playfield.width", "场地宽度", "number", document.playfield.width,
-        function(value) document.playfield.width = value end, { editable = canEdit })
-    addField(fields, "playfield.height", "场地高度", "number", document.playfield.height,
-        function(value) document.playfield.height = value end, { editable = canEdit })
-    for _, definition in ipairs({ { "x", "重力 X" }, { "y", "重力 Y" }, { "strength", "重力强度" } }) do
-        local key, label = definition[1], definition[2]
-        addField(fields, "gravity." .. key, label, "number", document.rules.initialGravity[key],
-            function(value) document.rules.initialGravity[key] = value end, { editable = canEdit })
-    end
     section(fields, "cards", "规则卡配置")
     for _, cardId in ipairs(CARD_ORDER) do
         local definition = Rules.CARDS[cardId]

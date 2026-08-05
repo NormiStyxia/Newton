@@ -14,6 +14,7 @@ local Export = require("game.workshop.Export")
 local Layout = require("game.workshop.Layout")
 local Interaction = require("game.workshop.Interaction")
 local TextTransfer = require("game.workshop.TextTransfer")
+local Inspector = require("game.workshop.Inspector")
 local ExperimentCatalog = require("ui.ExperimentCatalog")
 
 local function validLevel(id, name)
@@ -64,6 +65,22 @@ expect(secondCustom.levelId == "custom_002", "custom level IDs are not monotonic
 expect(repository:NextObjectId(custom, "wall") == "wall_002", "object ID generation collided")
 expect(repository:DeleteCustom(customMetadata.entryId), "custom delete failed")
 expect(repository:Open(customMetadata.entryId) == nil, "deleted custom level remained addressable")
+
+local levelInspectorFields = Inspector.Build({
+    document = validLevel("custom_inspector", "Inspector"),
+    readOnly = false,
+    selectedObject = nil,
+}, LevelDocument, { CARDS = {} }, {})
+local forbiddenInspectorKeys = {
+    ["playfield.width"] = true, ["playfield.height"] = true,
+    ["gravity.x"] = true, ["gravity.y"] = true, ["gravity.strength"] = true,
+}
+local exposedWorldField = nil
+for _, field in ipairs(levelInspectorFields) do
+    if forbiddenInspectorKeys[field.key] then exposedWorldField = field.key; break end
+end
+expect(exposedWorldField == nil,
+    "playfield dimensions or initial gravity were exposed through the level Inspector")
 
 local history = History.New({ clone = LevelDocument.Clone, limit = 4 })
 local historyDocument = validLevel("custom_history", "A")
