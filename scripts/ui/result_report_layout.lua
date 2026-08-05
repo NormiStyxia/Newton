@@ -215,7 +215,7 @@ function M.Install(context)
         local lineWidth = math.max(0.7, artHeight(layout.lineWidth))
         local diamondRadius = math.max(1.8, artHeight(layout.diamondRadius))
         local leftX, topY = artPoint(layout.left, layout.topRuleY)
-        local rightX = artPoint(layout.right, layout.topRuleY)
+        local rightX = artPoint(layout.topRuleRight, layout.topRuleY)
         local centerX = artPoint((layout.left + layout.right) * 0.5, layout.topRuleY)
 
         drawHairline(painter, leftX, topY, centerX - diamondRadius * 2.4, topY,
@@ -267,22 +267,6 @@ function M.Install(context)
             layout.valueSuffixOffsetY * fontScale, layout.valueGap * fontScale,
             artWidth(layout.right - layout.separators[2] - 24), colors.summaryValue, alpha)
 
-        local summary = tostring(state.summaryText or "通过多次规则修正后完成本次观测")
-        local summarySize = fitTextSize(painter, summary, font, layout.summarySize * fontScale,
-            artWidth(layout.summaryMaxWidth), layout.summarySize * fontScale * 0.72)
-        local summaryWidth = measureText(painter, summary, font, summarySize)
-        local bottomLeftX, bottomY = artPoint(layout.left, layout.bottomRuleY)
-        local bottomRightX = artPoint(layout.right, layout.bottomRuleY)
-        local bottomCenterX, summaryY = artPoint((layout.left + layout.right) * 0.5, layout.summaryY)
-        local ruleGap = artWidth(layout.bottomRuleGap)
-        drawHairline(painter, bottomLeftX, bottomY, bottomCenterX - summaryWidth * 0.5 - ruleGap,
-            bottomY, colors.summaryRule, lineWidth, lineAlpha)
-        drawHairline(painter, bottomCenterX + summaryWidth * 0.5 + ruleGap, bottomY, bottomRightX,
-            bottomY, colors.summaryRule, lineWidth, lineAlpha)
-        drawDiamond(painter, bottomLeftX, bottomY, diamondRadius * 0.85, colors.summaryRule, lineAlpha)
-        drawDiamond(painter, bottomRightX, bottomY, diamondRadius * 0.85, colors.summaryRule, lineAlpha)
-        painter:Text(bottomCenterX, summaryY, summary, summarySize, colors.summaryMuted,
-            NVG_ALIGN_CENTER + NVG_ALIGN_TOP, font, alpha)
     end
 
     local function drawReview(painter, state, key, author, y, columns, alpha)
