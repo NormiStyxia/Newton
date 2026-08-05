@@ -3,6 +3,7 @@ package.path = "scripts/?.lua;scripts/?/init.lua;" .. package.path
 local Runner = require("game.assist_demo.Runner")
 local State = require("game.assist_demo.State")
 local StandardSolutions = require("game.assist_demo.StandardSolutions")
+local FixedStepClock = require("game.assist_demo.FixedStepClock")
 
 local function Expect(condition, message)
     if not condition then error(message, 2) end
@@ -76,5 +77,73 @@ local invalidWaitStarted = invalidWaitRunner:start({ actions = {
     { type = "WAIT_CONDITION", condition = "GOAL_REACHED" },
 } })
 Expect(not invalidWaitStarted, "WAIT_CONDITION without a timeout was accepted")
+
+local physicsAdapter = NewAdapter(false)
+function physicsAdapter:isPhysicsCondition(action)
+    return action.condition == "APPLE_CROSSED_X"
+end
+local physicsRunner = Runner.New(physicsAdapter, NewView())
+Expect(physicsRunner:start({ actions = {
+    { type = "RESET_LEVEL" },
+    { type = "LAUNCH", pullX = -70, pullY = 60, postDelay = 0 },
+    { type = "WAIT_CONDITION", condition = "APPLE_CROSSED_X", x = 350, timeout = 2 },
+    { type = "PLAY_CARD", cardId = "up-impulse" },
+} }))
+for _ = 1, 12 do physicsRunner:update(0.05) end
+Expect((physicsAdapter.conditionCounts.APPLE_CROSSED_X or 0) == 0,
+    "physics condition was polled by the render-frame update")
+Expect(not physicsRunner:afterPhysicsStep(1 / 60),
+    "physics condition latched before the threshold-crossing step")
+Expect(physicsRunner:afterPhysicsStep(1 / 60), "physics condition was not latched post-step")
+Expect(physicsAdapter.conditionCounts.APPLE_CROSSED_X == 2,
+    "physics condition was not sampled exactly once per physics step")
+Expect(physicsAdapter.simulationHeld == true,
+    "next semantic action did not pause on the threshold-crossing step")
+
+local burnAdapter = NewAdapter(false)
+burnAdapter.cardFinished = false
+function burnAdapter:isCardActionFinished() return self.cardFinished end
+local burnRunner = Runner.New(burnAdapter, NewView())
+Expect(burnRunner:start({ actions = {
+    { type = "PLAY_CARD", cardId = "up-impulse", postDelay = 0 },
+    { type = "WAIT_VISUAL", duration = 0 },
+} }))
+for _ = 1, 8 do burnRunner:update(0.1) end
+Expect(burnAdapter.simulationHeld == true,
+    "card burn released deterministic simulation before the visual lifecycle finished")
+burnAdapter.cardFinished = true
+burnRunner:update(0.1)
+Expect(burnAdapter.simulationHeld == false,
+    "card burn completion did not release deterministic simulation")
+
+local function FixedStepResult(renderStep)
+    local running = true
+    local position = 0
+    local updates = 0
+    local scene = { updateEnabled = true }
+    function scene:SetUpdateEnabled(enabled) self.updateEnabled = enabled end
+    function scene:IsUpdateEnabled() return self.updateEnabled end
+    function scene:Update(dt)
+        Expect(math.abs(dt - 1 / 60) < 0.0000001, "fixed-step clock used a variable delta")
+        updates = updates + 1
+        position = position + 10
+        if position >= 50 then running = false end
+    end
+    local clock = FixedStepClock.New({ step = 1 / 60 })
+    clock:start(scene)
+    for _ = 1, 120 do
+        clock:advance(renderStep, function() return running end)
+        if not running then break end
+    end
+    clock:stop()
+    Expect(scene.updateEnabled, "fixed-step clock did not restore automatic scene updates")
+    return position, updates
+end
+
+for _, renderStep in ipairs({ 1 / 30, 1 / 60, 1 / 120 }) do
+    local position, updates = FixedStepResult(renderStep)
+    Expect(position == 50 and updates == 5,
+        "assist trajectory threshold changed with render frame rate")
+end
 
 print("AssistDemo FAST_VALIDATE passed")

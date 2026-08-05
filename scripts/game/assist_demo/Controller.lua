@@ -21,6 +21,7 @@ function M.Install(context)
     end
 
     function DestroyAssistDemo()
+        if assistDemoGameAdapter_ then assistDemoGameAdapter_:shutdown() end
         assistDemoRunner_, assistDemoGameAdapter_, assistDemoView_ = nil, nil, nil
         assistDemoActive_, assistUsed_ = false, false
     end
@@ -33,6 +34,15 @@ function M.Install(context)
 
     function UpdateAssistDemo(dt)
         if assistDemoRunner_ then assistDemoRunner_:update(dt) end
+    end
+
+    function UpdateAssistDemoPhysicsStep(dt)
+        if assistDemoRunner_ then assistDemoRunner_:afterPhysicsStep(dt) end
+    end
+
+    function AdvanceAssistDemoSimulation(dt)
+        if not assistDemoGameAdapter_ then return 0 end
+        return assistDemoGameAdapter_:advanceSimulation(dt)
     end
 
     function DrawAssistDemo()

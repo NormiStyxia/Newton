@@ -1,5 +1,15 @@
+local FixedStepClock = require("game.assist_demo.FixedStepClock")
+
 local GameAdapter = {}
 GameAdapter.__index = GameAdapter
+
+local PHYSICS_CONDITIONS = {
+    APPLE_CROSSED_X = true,
+    APPLE_CROSSED_Y = true,
+    APPLE_ENTER_REGION = true,
+    APPLE_EXIT_REGION = true,
+    APPLE_STOPPED = true,
+}
 
 local function InRect(x, y, rect)
     return x >= rect.x and x <= rect.x + rect.width
@@ -7,7 +17,12 @@ local function InRect(x, y, rect)
 end
 
 function GameAdapter.New(context)
-    return setmetatable({ context = assert(context, "AssistDemo GameAdapter requires context") }, GameAdapter)
+    context = assert(context, "AssistDemo GameAdapter requires context")
+    local framesPerSecond = context.CONFIG and context.CONFIG.matterFramesPerSecond or 60
+    return setmetatable({
+        context = context,
+        fixedStepClock = FixedStepClock.New({ step = 1 / framesPerSecond }),
+    }, GameAdapter)
 end
 
 GameAdapter.new = GameAdapter.New
@@ -19,6 +34,7 @@ function GameAdapter:beginSession()
     context.assistUsed_ = true
     context.assistantInputLocked_ = true
     if context.level_ then context.level_.resultOverlayVisible = false end
+    self.fixedStepClock:start(context.scene_)
 end
 
 function GameAdapter:resetLevel()
@@ -34,6 +50,7 @@ end
 
 function GameAdapter:completeSession()
     local context = self.context
+    self.fixedStepClock:stop()
     context.assistDemoActive_ = false
     context.assistSceneActive_ = false
     context.assistUsed_ = true
@@ -43,10 +60,30 @@ end
 
 function GameAdapter:abortSession()
     local context = self.context
+    self.fixedStepClock:stop()
     context.assistDemoActive_ = false
     context.assistSceneActive_ = false
     context.ResetExperiment(false)
     context.assistantInputLocked_ = false
+end
+
+function GameAdapter:shutdown()
+    self.fixedStepClock:stop()
+end
+
+function GameAdapter:advanceSimulation(dt)
+    local context = self.context
+    return self.fixedStepClock:advance(dt, function()
+        return context.assistDemoActive_ == true
+            and context.isPaused_ ~= true
+            and context.replayActive_ ~= true
+            and context.physicsWorld_ ~= nil
+            and context.physicsWorld_:IsUpdateEnabled()
+    end)
+end
+
+function GameAdapter:isPhysicsCondition(action)
+    return action and PHYSICS_CONDITIONS[action.condition] == true
 end
 
 function GameAdapter:getLauncherTarget()
@@ -108,6 +145,13 @@ end
 function GameAdapter:playCard(cardId, parameter)
     local drop = self:getCardDropTarget(parameter)
     return self.context.ExecuteCardPlay(cardId, parameter, drop.originX or drop.x, drop.originY or drop.y) == true
+end
+
+function GameAdapter:isCardActionFinished(action)
+    local context = self.context
+    local cardId = action and action.cardId
+    return #context.cardBurns_ == 0
+        and (not cardId or context.burningCardIds_[cardId] ~= true)
 end
 
 function GameAdapter:newtonPunch()

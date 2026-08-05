@@ -163,6 +163,7 @@ function M.Install(context)
         end
         EinsteinObserver.Update(runtime_, apple_, dt, isPaused_)
         SyncPhysicsUpdateEnabled()
+        context.AdvanceAssistDemoSimulation(dt)
         if replayActive_ then
             UpdateReplay(dt)
         elseif not isPaused_ and absorbing_ then
@@ -234,7 +235,9 @@ function M.Install(context)
         ApplyPendingMatterRestitution()
         UpdateSpringExits()
         RefreshGoalContact()
-        UpdateExperiment(ResolvePhysicsTimeStep(eventData) * physicsTimeScale)
+        local simulationStep = ResolvePhysicsTimeStep(eventData) * physicsTimeScale
+        UpdateExperiment(simulationStep)
+        context.UpdateAssistDemoPhysicsStep(simulationStep)
         applePreSolveVelocity_ = nil
         physicsStepTimeScale_ = nil
     end

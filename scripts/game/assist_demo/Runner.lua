@@ -38,6 +38,11 @@ end
 function Runner:getState() return self.state end
 function Runner:getError() return self.errorMessage end
 
+function Runner:_isPhysicsCondition(action)
+    return type(self.adapter.isPhysicsCondition) == "function"
+        and self.adapter:isPhysicsCondition(action) == true
+end
+
 function Runner:start(solution, cursorStart)
     if State.IsActive(self.state) then return false, "assist demo is already active" end
     if type(solution) ~= "table" or type(solution.actions) ~= "table" or #solution.actions == 0 then
@@ -165,8 +170,12 @@ function Runner:_updatePlayCard(action)
         self.view:endDrag()
         self.phase = "release"
         self.phaseElapsed = 0
-    elseif self.phase == "release" and self.phaseElapsed >= 0.22 then
-        self:_completeAction()
+    elseif self.phase == "release" then
+        local animationFinished = type(self.adapter.isCardActionFinished) ~= "function"
+            or self.adapter:isCardActionFinished(action) == true
+        if animationFinished and self.phaseElapsed >= (action.postDelay or 0.22) then
+            self:_completeAction()
+        end
     end
 end
 
@@ -230,7 +239,8 @@ function Runner:_updateAction(dt)
             self.phase, self.phaseElapsed = "wait", 0
             self:_prepareWaitTarget(action)
         end
-        if self.adapter:testCondition(action, self.conditionMemory, dt, self.solution.assistRegions or {}) then
+        if not self:_isPhysicsCondition(action)
+            and self.adapter:testCondition(action, self.conditionMemory, dt, self.solution.assistRegions or {}) then
             self:_completeAction()
         end
     elseif action.type == "LAUNCH" then
@@ -240,6 +250,35 @@ function Runner:_updateAction(dt)
     elseif action.type == "NEWTON_PUNCH" then
         self:_updatePunch(action)
     end
+end
+
+function Runner:afterPhysicsStep(dt)
+    local action = self.action
+    if self.state ~= State.EXECUTING or not action
+        or action.type ~= "WAIT_CONDITION" or not self:_isPhysicsCondition(action) then
+        return false
+    end
+    local ok, matched = pcall(self.adapter.testCondition, self.adapter, action,
+        self.conditionMemory, math.max(0, dt or 0), self.solution.assistRegions or {})
+    if not ok then
+        self:_fail(matched)
+        return false
+    end
+    if not matched then return false end
+
+    self:_completeAction()
+    self:_nextAction()
+    -- Pause on the exact post-step that crossed the semantic threshold. The
+    -- cursor may animate afterward, but no extra physics step can slip through.
+    if self.state == State.EXECUTING and self.action
+        and (self.action.type == "PLAY_CARD" or self.action.type == "NEWTON_PUNCH") then
+        local primed, errorMessage = pcall(self._updateAction, self, 0)
+        if not primed then
+            self:_fail(errorMessage)
+            return false
+        end
+    end
+    return true
 end
 
 function Runner:update(dt)

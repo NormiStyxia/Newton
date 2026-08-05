@@ -44,6 +44,8 @@
 ---@field DestroyAssistDemo fun()
 ---@field StartAssistDemo fun(solution: table): boolean, string|nil
 ---@field UpdateAssistDemo fun(dt: number)
+---@field UpdateAssistDemoPhysicsStep fun(dt: number)
+---@field AdvanceAssistDemoSimulation fun(dt: number): integer
 ---@field DrawAssistDemo fun()
 ---@field GetAssistDemoState fun(): string
 ---@field GetAssistDemoError fun(): string|nil
