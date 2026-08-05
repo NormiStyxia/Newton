@@ -20,6 +20,13 @@ MatterCalibration.MATTER_RESTING_NORMAL_SPEED = 4
 -- disagreement windows at both normal and slow-motion time scales.
 MatterCalibration.BOX2D_RESTITUTION_THRESHOLD = 1
 MatterCalibration.APPLE_FRICTION_AIR = 0.01
+-- Extra tangential energy loss applied only while a contact supports the
+-- apple against gravity. This approximates rolling resistance without
+-- changing its free-flight trajectory or collision-normal velocity.
+MatterCalibration.APPLE_ROLLING_DRAG = 0.03
+MatterCalibration.APPLE_SUPPORT_DOT_MIN = 0.55
+MatterCalibration.APPLE_STOP_TANGENT_SPEED = 0.06
+MatterCalibration.APPLE_STOP_ANGULAR_SPEED = 0.20
 MatterCalibration.APPLE_INITIAL_RESTITUTION = 0
 -- Matter's runtime probe reports these values after every static body has
 -- passed through Body.setStatic(true). The constructor values on floor,

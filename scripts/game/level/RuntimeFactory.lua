@@ -155,9 +155,10 @@ local function createWorldBoundary(scene, mapper, definition)
     body.bodyType = BT_STATIC
     local shape = node:CreateComponent("CollisionBox2D")
     shape:SetSize(bodyWidth, bodyHeight)
-    -- Matter Body.setStatic makes all laboratory boundaries use its default
-    -- material, despite the constructor options in PlayScene.ts.
-    shape.friction = MatterCalibration.STATIC_FRICTION
+    -- Boundary friction is a surface material. In particular, the laboratory
+    -- floor is intentionally grippier than the walls so a rolling apple does
+    -- not spend most of its travel sliding.
+    shape.friction = definition.friction or MatterCalibration.STATIC_FRICTION
     shape.restitution = MatterCalibration.STATIC_RESTITUTION
     shape.categoryBits = CATEGORY_WORLD
     shape.maskBits = MASK_ALL

@@ -75,6 +75,7 @@ function M.Install(context)
         goalContactEventSeen_, goalContactEndSeen_ = false, false
         goalContactConfirmed_, goalContactMissSteps_ = false, 0
         applePreSolveVelocity_ = nil
+        appleSupportNormal_ = nil
         pendingMatterRestitutions_ = nil
         physicsStepTimeScale_ = nil
         goalPulseElapsedMs_, phaseTraversing_, phaseWallTraversal_ = nil, false, nil

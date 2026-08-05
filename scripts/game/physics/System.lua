@@ -33,6 +33,41 @@ function M.Install(context)
     function CurrentMatterSpeedFromWorld(velocity)
         return math.sqrt(velocity.x * velocity.x + velocity.y * velocity.y) / CONFIG.matterVelocityToWorld
     end
+    ---@param timeStep number
+    function ApplyAppleRollingResistance(timeStep)
+        if not apple_ or not appleSupportNormal_ or apple_.body.bodyType ~= BT_DYNAMIC then return end
+
+        local normal = appleSupportNormal_
+        local normalLength = math.sqrt(normal.x * normal.x + normal.y * normal.y)
+        if normalLength <= .000001 then return end
+        local tangentX, tangentY = -normal.y / normalLength, normal.x / normalLength
+        local velocity = apple_.body.linearVelocity
+        local tangentSpeed = velocity.x * tangentX + velocity.y * tangentY
+        local angularSpeed = apple_.body.angularVelocity
+        local timeScale = CurrentPhysicsStepScale()
+        local retention = math.max(0, math.min(1,
+            1 - MatterCalibration.APPLE_ROLLING_DRAG
+                * timeScale
+                * math.max(0, timeStep)
+                * MatterCalibration.MATTER_FRAMES_PER_SECOND
+        ))
+        local nextTangentSpeed = tangentSpeed * retention
+        local nextAngularSpeed = angularSpeed * retention
+        local stopTangentSpeed = MatterCalibration.APPLE_STOP_TANGENT_SPEED * timeScale
+        local stopAngularSpeed = MatterCalibration.APPLE_STOP_ANGULAR_SPEED * timeScale
+        if math.abs(nextTangentSpeed) < stopTangentSpeed
+            and math.abs(nextAngularSpeed) < stopAngularSpeed then
+            nextTangentSpeed = 0
+            nextAngularSpeed = 0
+        end
+
+        local tangentDelta = nextTangentSpeed - tangentSpeed
+        apple_.body.linearVelocity = Vector2(
+            velocity.x + tangentX * tangentDelta,
+            velocity.y + tangentY * tangentDelta
+        )
+        apple_.body.angularVelocity = nextAngularSpeed
+    end
     function ApplyAppleCardMaterial()
         if not apple_ or not apple_.shape then return end
         apple_.shape.restitution = MatterCalibration.CardRestitution(Rules.GetRestitutionMultiplier(rules_))

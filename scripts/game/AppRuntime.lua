@@ -175,6 +175,10 @@ function M.Install(context)
     ---@param _eventType string
     ---@param eventData PhysicsPreStepEventData
     function HandlePhysicsPreStep(_eventType, eventData)
+        -- PhysicsUpdateContact2D repopulates this during the upcoming solve.
+        -- Clearing it every step avoids stale support after gravity changes or
+        -- contacts that end without a usable manifold.
+        appleSupportNormal_ = nil
         if not apple_ or not launched_ or replayActive_ or apple_.body.bodyType ~= BT_DYNAMIC then
             applePreSolveVelocity_ = nil
             pendingMatterRestitutions_ = nil
@@ -233,6 +237,7 @@ function M.Install(context)
         -- spring then intentionally replaces that result with its explicit
         -- pre-solve exit velocity, matching SpringObject.afterPhysicsStep.
         ApplyPendingMatterRestitution()
+        ApplyAppleRollingResistance(ResolvePhysicsTimeStep(eventData))
         UpdateSpringExits()
         RefreshGoalContact()
         local simulationStep = ResolvePhysicsTimeStep(eventData) * physicsTimeScale
@@ -304,6 +309,29 @@ function M.Install(context)
         local physicsProbe = level_ and level_.physicsProbe or nil
         if physicsProbe and physicsProbe:IsActive() then return end
         ActivateGoalContact(nodeA, nodeB, false)
+        if not apple_ or not nodeA or not nodeB
+            or not IsAppleNode(nodeA) and not IsAppleNode(nodeB)
+            or not eventData:GetBool("Enabled") then return end
+
+        local gravity = physicsWorld_:GetGravity()
+        local gravityLength = math.sqrt(gravity.x * gravity.x + gravity.y * gravity.y)
+        if gravityLength <= .000001 then return end
+        local antiGravityX, antiGravityY = -gravity.x / gravityLength, -gravity.y / gravityLength
+        local contacts = eventData["Contacts"]:GetBuffer()
+        while not contacts.eof do
+            contacts:ReadVector2() -- position
+            local normal = contacts:ReadVector2()
+            contacts:ReadFloat() -- separation
+            -- Box2D's manifold normal points from fixture A toward fixture B.
+            -- Convert it to the surface normal that always points at the apple.
+            if IsAppleNode(nodeA) then normal = Vector2(-normal.x, -normal.y) end
+            local supportDot = normal.x * antiGravityX + normal.y * antiGravityY
+            local currentDot = appleSupportNormal_ and
+                (appleSupportNormal_.x * antiGravityX + appleSupportNormal_.y * antiGravityY) or -math.huge
+            if supportDot >= MatterCalibration.APPLE_SUPPORT_DOT_MIN and supportDot > currentDot then
+                appleSupportNormal_ = Vector2(normal.x, normal.y)
+            end
+        end
     end
 
     ---@param _eventType string
