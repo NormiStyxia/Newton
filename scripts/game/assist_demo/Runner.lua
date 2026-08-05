@@ -208,7 +208,8 @@ function Runner:_updateAction(dt)
     self.actionElapsed = self.actionElapsed + dt
     self.phaseElapsed = self.phaseElapsed + dt
     if action.timeout and self.actionElapsed > action.timeout then
-        self:_fail(string.format("%s timed out after %.2fs", action.type, action.timeout))
+        local actionName = action.condition and (action.type .. " " .. action.condition) or action.type
+        self:_fail(string.format("%s timed out after %.2fs", actionName, action.timeout))
         return
     end
     if action.type == "RESET_LEVEL" then

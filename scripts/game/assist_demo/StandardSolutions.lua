@@ -13,7 +13,7 @@ local SOLUTIONS = {
             {
                 type = "WAIT_CONDITION",
                 condition = "APPLE_CROSSED_X",
-                x = 180,
+                x = 350,
                 direction = "RIGHT",
                 timeout = 5.0,
                 prepareTarget = { type = "CARD", cardId = "up-impulse", duration = 0.14 },
