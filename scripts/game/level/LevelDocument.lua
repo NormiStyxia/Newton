@@ -147,6 +147,11 @@ function LevelDocument.Normalize(source)
             if type(object) == "table" then NormalizeProperties(object, migrations) end
         end
     end
+    if type(document.cardDeck) == "table" and type(document.cardDeck.cards) == "table" then
+        for _, card in ipairs(document.cardDeck.cards) do
+            if type(card) == "table" then SetDefault(card, "usageMode", "SINGLE_USE") end
+        end
+    end
     return document, migrations
 end
 
