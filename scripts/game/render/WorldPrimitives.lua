@@ -37,6 +37,20 @@ function M.Install(Renderer, COLORS, color, tint)
         top = 24 * NARROW_WALL_SCALE,
         bottom = 25 * NARROW_WALL_SCALE,
     }
+    local DOOR_SCALE = 80 / 232
+    local DOOR_BORDER = {
+        left = 75 * DOOR_SCALE,
+        right = 66 * DOOR_SCALE,
+        top = 68 * DOOR_SCALE,
+        bottom = 73 * DOOR_SCALE,
+    }
+    local NARROW_DOOR_SCALE = 17 / 51
+    local NARROW_DOOR_BORDER = {
+        left = 81 * NARROW_DOOR_SCALE,
+        right = 79 * NARROW_DOOR_SCALE,
+        top = 25 * NARROW_DOOR_SCALE,
+        bottom = 26 * NARROW_DOOR_SCALE,
+    }
     local NARROW_WALL_MAX_THICKNESS = 40
 
     local function wallVisualSize(width, height, border)
@@ -45,6 +59,23 @@ function M.Install(Renderer, COLORS, color, tint)
         -- Keep this purely visual; the physics body remains at the source size.
         return math.max(width, border.left + border.right),
             math.max(height, border.top + border.bottom)
+    end
+
+    local function drawNineSliceObject(self, skin, border, width, height, rotateVertical, alpha)
+        if not skinReady(skin) then return false end
+        if rotateVertical and height > width then
+            nvgSave(self.vg)
+            nvgRotate(self.vg, math.pi * .5)
+            local visualWidth, visualHeight = wallVisualSize(height, width, border)
+            self:NineSlice(skin, -visualWidth * .5, -visualHeight * .5,
+                visualWidth, visualHeight, border, alpha)
+            nvgRestore(self.vg)
+        else
+            local visualWidth, visualHeight = wallVisualSize(width, height, border)
+            self:NineSlice(skin, -visualWidth * .5, -visualHeight * .5,
+                visualWidth, visualHeight, border, alpha)
+        end
+        return true
     end
 
     local function drawGameplayFrameOverlay(self, frame)
@@ -392,16 +423,18 @@ function M.Install(Renderer, COLORS, color, tint)
             nvgSave(self.vg)
             nvgTranslate(self.vg, x, y)
             nvgRotate(self.vg, rotation or 0)
-            if isNarrow and (t.height or 0) > (t.width or 0) then
-                nvgRotate(self.vg, math.pi * .5)
-                local visualWidth, visualHeight = wallVisualSize(h, w, wallBorder)
-                self:NineSlice(wallSkin, -visualWidth * .5, -visualHeight * .5,
-                    visualWidth, visualHeight, wallBorder, alpha)
-            else
-                local visualWidth, visualHeight = wallVisualSize(w, h, wallBorder)
-                self:NineSlice(wallSkin, -visualWidth * .5, -visualHeight * .5,
-                    visualWidth, visualHeight, wallBorder, alpha)
-            end
+            drawNineSliceObject(self, wallSkin, wallBorder, w, h, isNarrow, alpha)
+            nvgRestore(self.vg)
+            return true
+        elseif data.type == "door" then
+            local isNarrow = math.min(t.width or 0, t.height or 0) <= NARROW_WALL_MAX_THICKNESS
+            local doorSkin = isNarrow and self.skins.doorNarrow or self.skins.door
+            local doorBorder = isNarrow and NARROW_DOOR_BORDER or DOOR_BORDER
+            if not skinReady(doorSkin) then return false end
+            nvgSave(self.vg)
+            nvgTranslate(self.vg, x, y)
+            nvgRotate(self.vg, rotation or 0)
+            drawNineSliceObject(self, doorSkin, doorBorder, w, h, true, alpha)
             nvgRestore(self.vg)
             return true
         elseif data.type == "launcher" and imageReady(self.images.launcher) then
@@ -448,19 +481,9 @@ function M.Install(Renderer, COLORS, color, tint)
                     4, math.max(12, h - 16), COLORS.panel, 82)
                 PhaseWallEffects.Draw(self, object, w, h, COLORS)
             elseif skinReady(wallSkin) then
-                -- The narrow source PNG is horizontal. Match Phaser's
-                -- WallObject by composing it in source orientation and
-                -- rotating only vertical narrow walls by 90 degrees.
-                if isNarrow and t.height > t.width then
-                    nvgSave(self.vg)
-                    nvgRotate(self.vg, math.pi * .5)
-                    local visualWidth, visualHeight = wallVisualSize(h, w, wallBorder)
-                    self:NineSlice(wallSkin, -visualWidth * .5, -visualHeight * .5, visualWidth, visualHeight, wallBorder)
-                    nvgRestore(self.vg)
-                else
-                    local visualWidth, visualHeight = wallVisualSize(w, h, wallBorder)
-                    self:NineSlice(wallSkin, -visualWidth * .5, -visualHeight * .5, visualWidth, visualHeight, wallBorder)
-                end
+                -- The narrow source skin is horizontal. Rotate vertical narrow
+                -- bodies only in presentation space; physics stays intact.
+                drawNineSliceObject(self, wallSkin, wallBorder, w, h, isNarrow)
             else
                 self:FillRect(-w * .5, -h * .5, w, h, fill, object.phaseable and 173 or 255)
                 self:StrokeRect(-w * .5, -h * .5, w, h, edge, 3, 240)
@@ -472,8 +495,13 @@ function M.Install(Renderer, COLORS, color, tint)
             nvgSave(self.vg)
             nvgTranslate(self.vg, x, y)
             nvgRotate(self.vg, rotation)
-            self:FillRect(-w * .5, -h * .5, w, h, COLORS.darkSecondary, alpha)
-            self:StrokeRect(-w * .5, -h * .5, w, h, COLORS.darkPrimary, 3, alpha)
+            local isNarrow = math.min(t.width or 0, t.height or 0) <= NARROW_WALL_MAX_THICKNESS
+            local doorSkin = isNarrow and self.skins.doorNarrow or self.skins.door
+            local doorBorder = isNarrow and NARROW_DOOR_BORDER or DOOR_BORDER
+            if not drawNineSliceObject(self, doorSkin, doorBorder, w, h, true, alpha) then
+                self:FillRect(-w * .5, -h * .5, w, h, COLORS.darkSecondary, alpha)
+                self:StrokeRect(-w * .5, -h * .5, w, h, COLORS.darkPrimary, 3, alpha)
+            end
             nvgRestore(self.vg)
         elseif object.type == "launcher" then
             self:Image(self.images.launcher, x, y, w, w * 190 / 150, 1, rotation, .5, 36 / 190)

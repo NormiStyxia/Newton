@@ -228,6 +228,28 @@ function Renderer:Init()
             bottom = nvgCreateImage(self.vg, "image/skins/wall_green_narrow_runtime/bottom.png", 0),
             bottomRight = nvgCreateImage(self.vg, "image/skins/wall_green_narrow_runtime/bottom_right.png", 0),
         },
+        door = {
+            topLeft = nvgCreateImage(self.vg, "image/skins/door_green_runtime/top_left.png", 0),
+            top = nvgCreateImage(self.vg, "image/skins/door_green_runtime/top.png", 0),
+            topRight = nvgCreateImage(self.vg, "image/skins/door_green_runtime/top_right.png", 0),
+            left = nvgCreateImage(self.vg, "image/skins/door_green_runtime/left.png", 0),
+            center = nvgCreateImage(self.vg, "image/skins/door_green_runtime/center.png", 0),
+            right = nvgCreateImage(self.vg, "image/skins/door_green_runtime/right.png", 0),
+            bottomLeft = nvgCreateImage(self.vg, "image/skins/door_green_runtime/bottom_left.png", 0),
+            bottom = nvgCreateImage(self.vg, "image/skins/door_green_runtime/bottom.png", 0),
+            bottomRight = nvgCreateImage(self.vg, "image/skins/door_green_runtime/bottom_right.png", 0),
+        },
+        doorNarrow = {
+            topLeft = nvgCreateImage(self.vg, "image/skins/door_green_narrow_runtime/top_left.png", 0),
+            top = nvgCreateImage(self.vg, "image/skins/door_green_narrow_runtime/top.png", 0),
+            topRight = nvgCreateImage(self.vg, "image/skins/door_green_narrow_runtime/top_right.png", 0),
+            left = nvgCreateImage(self.vg, "image/skins/door_green_narrow_runtime/left.png", 0),
+            center = nvgCreateImage(self.vg, "image/skins/door_green_narrow_runtime/center.png", 0),
+            right = nvgCreateImage(self.vg, "image/skins/door_green_narrow_runtime/right.png", 0),
+            bottomLeft = nvgCreateImage(self.vg, "image/skins/door_green_narrow_runtime/bottom_left.png", 0),
+            bottom = nvgCreateImage(self.vg, "image/skins/door_green_narrow_runtime/bottom.png", 0),
+            bottomRight = nvgCreateImage(self.vg, "image/skins/door_green_narrow_runtime/bottom_right.png", 0),
+        },
     }
 end
 
