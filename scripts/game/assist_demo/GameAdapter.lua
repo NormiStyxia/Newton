@@ -191,20 +191,28 @@ function GameAdapter:testCondition(action, memory, dt, regions)
     local x, y = self:appleLevelPosition()
     if not x or not y then return false end
     if condition == "APPLE_CROSSED_X" then
+        if memory.previousX == nil then
+            memory.previousX = x
+            return false
+        end
         local crossed
         if action.direction == "LEFT" then
-            crossed = x <= action.x and (memory.previousX == nil or memory.previousX > action.x)
+            crossed = x <= action.x and memory.previousX > action.x
         else
-            crossed = x >= action.x and (memory.previousX == nil or memory.previousX < action.x)
+            crossed = x >= action.x and memory.previousX < action.x
         end
         memory.previousX = x
         return crossed
     elseif condition == "APPLE_CROSSED_Y" then
+        if memory.previousY == nil then
+            memory.previousY = y
+            return false
+        end
         local crossed
         if action.direction == "UP" then
-            crossed = y <= action.y and (memory.previousY == nil or memory.previousY > action.y)
+            crossed = y <= action.y and memory.previousY > action.y
         else
-            crossed = y >= action.y and (memory.previousY == nil or memory.previousY < action.y)
+            crossed = y >= action.y and memory.previousY < action.y
         end
         memory.previousY = y
         return crossed

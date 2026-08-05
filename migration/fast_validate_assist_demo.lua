@@ -4,6 +4,7 @@ local Runner = require("game.assist_demo.Runner")
 local State = require("game.assist_demo.State")
 local StandardSolutions = require("game.assist_demo.StandardSolutions")
 local FixedStepClock = require("game.assist_demo.FixedStepClock")
+local GameAdapter = require("game.assist_demo.GameAdapter")
 
 local function Expect(condition, message)
     if not condition then error(message, 2) end
@@ -77,6 +78,55 @@ local invalidWaitStarted = invalidWaitRunner:start({ actions = {
     { type = "WAIT_CONDITION", condition = "GOAL_REACHED" },
 } })
 Expect(not invalidWaitStarted, "WAIT_CONDITION without a timeout was accepted")
+
+for levelIndex = 1, 5 do
+    local levelId = string.format("level_%02d", levelIndex)
+    local solution = StandardSolutions.Get(levelId)
+    Expect(solution ~= nil and solution.levelId == levelId,
+        "missing standard solution for " .. levelId)
+    Expect(type(solution.actions) == "table" and #solution.actions >= 4,
+        "standard solution is incomplete for " .. levelId)
+    for actionIndex, action in ipairs(solution.actions) do
+        if action.type == "WAIT_CONDITION" then
+            Expect(type(action.timeout) == "number" and action.timeout > 0,
+                string.format("%s action %d has no timeout", levelId, actionIndex))
+        end
+    end
+end
+
+local conditionPosition = { x = 400, y = 100 }
+local conditionContext = {
+    CONFIG = { matterFramesPerSecond = 60 },
+    apple_ = {
+        node = { position2D = conditionPosition },
+        body = { linearVelocity = { x = 0, y = 0 } },
+    },
+    mapper_ = {
+        WorldToLevel = function(_, x, y) return x, y end,
+    },
+}
+local conditionAdapter = GameAdapter.New(conditionContext)
+local crossedX = { condition = "APPLE_CROSSED_X", x = 350, direction = "RIGHT" }
+local xMemory = {}
+Expect(not conditionAdapter:testCondition(crossedX, xMemory, 1 / 60, {}),
+    "APPLE_CROSSED_X matched its first sample")
+Expect(not conditionAdapter:testCondition(crossedX, xMemory, 1 / 60, {}),
+    "APPLE_CROSSED_X matched without crossing")
+conditionPosition.x = 340
+Expect(not conditionAdapter:testCondition(crossedX, xMemory, 1 / 60, {}),
+    "APPLE_CROSSED_X matched the opposite direction")
+conditionPosition.x = 360
+Expect(conditionAdapter:testCondition(crossedX, xMemory, 1 / 60, {}),
+    "APPLE_CROSSED_X missed a real crossing")
+
+conditionPosition.y = 250
+local crossedY = { condition = "APPLE_CROSSED_Y", y = 200, direction = "UP" }
+local yMemory = {}
+Expect(not conditionAdapter:testCondition(crossedY, yMemory, 1 / 60, {}),
+    "APPLE_CROSSED_Y matched its first sample")
+conditionPosition.y = 190
+Expect(conditionAdapter:testCondition(crossedY, yMemory, 1 / 60, {}),
+    "APPLE_CROSSED_Y missed a real crossing")
 
 local physicsAdapter = NewAdapter(false)
 function physicsAdapter:isPhysicsCondition(action)
