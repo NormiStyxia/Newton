@@ -23,7 +23,7 @@ MatterCalibration.APPLE_FRICTION_AIR = 0.01
 -- Extra tangential energy loss applied only while a contact supports the
 -- apple against gravity. This approximates rolling resistance without
 -- changing its free-flight trajectory or collision-normal velocity.
-MatterCalibration.APPLE_ROLLING_DRAG = 0.03
+MatterCalibration.APPLE_ROLLING_DRAG = 0.005
 MatterCalibration.APPLE_SUPPORT_DOT_MIN = 0.55
 MatterCalibration.APPLE_STOP_TANGENT_SPEED = 0.06
 MatterCalibration.APPLE_STOP_ANGULAR_SPEED = 0.20
