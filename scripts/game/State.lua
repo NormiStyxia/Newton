@@ -59,7 +59,8 @@
 ---@field DrawGreenAssistantOverlay fun()
 ---@field ExecuteCardPlay fun(id: string, candidate: string|nil, x: number, y: number): boolean
 ---@field resultReportState_ table|nil
----@field screen_ "catalog"|"game"
+---@field screen_ "catalog"|"game"|"workshop"|"workshop_preview"
+---@field runtimeSession_ table|nil
 ---@field catalogState_ table
 ---@field hudRuleSummary_ string
 ---@field hudRuleList_ table
@@ -77,7 +78,7 @@ local function own(domain, names)
 end
 
 own("runtime", {
-    "scene_", "camera_", "viewport_", "physicsWorld_", "level_", "physicsProfile_", "runtime_",
+    "scene_", "camera_", "viewport_", "physicsWorld_", "level_", "physicsProfile_", "runtime_", "runtimeSession_",
     "laboratoryBoundaries_", "apple_", "applePreSolveVelocity_", "appleSupportNormal_", "pendingMatterRestitutions_", "physicsStepTimeScale_", "mapper_", "audio_", "levelIndex_",
 })
 own("layout", { "design_", "frame_", "painter_", "sensorAngle_", "debugDraw_" })
@@ -191,7 +192,7 @@ function State.New(dependencies, constants)
     rawset(context, "domains", domains)
 
     context.scene_, context.camera_, context.viewport_, context.physicsWorld_ = nil, nil, nil, nil
-    context.level_, context.physicsProfile_, context.runtime_, context.laboratoryBoundaries_ = nil, nil, nil, nil
+    context.level_, context.physicsProfile_, context.runtime_, context.runtimeSession_, context.laboratoryBoundaries_ = nil, nil, nil, nil, nil
     context.apple_, context.applePreSolveVelocity_, context.appleSupportNormal_ = nil, nil, nil
     context.pendingMatterRestitutions_, context.physicsStepTimeScale_ = nil, nil
     context.mapper_, context.frame_, context.audio_ = nil, nil, nil

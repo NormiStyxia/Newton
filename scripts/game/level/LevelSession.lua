@@ -69,11 +69,16 @@ function M.Install(context)
         if SetReplayMode then SetReplayMode("none") end
         if scene_ then scene_:SetUpdateEnabled(false) end
         renderer:SetNumViewports(0)
+        if viewport_ then viewport_:Dispose() end
+        if audio_ then audio_.scene = nil end
+        if scene_ then scene_:Dispose() end
+        if runtimeSession_ then runtimeSession_.disposed = true end
         scene_, camera_, viewport_, physicsWorld_ = nil, nil, nil, nil
         runtime_, laboratoryBoundaries_, apple_, mapper_, audio_ = nil, nil, nil, nil, nil
-        physicsProfile_, level_ = nil, nil
+        physicsProfile_, level_, runtimeSession_ = nil, nil, nil
         assistantInputLocked_, assistSceneActive_, assistDemoActive_ = false, false, false
         ClearCardInteraction()
+        return true
     end
 
     function ResetSessionState(isFreshLevel)
@@ -120,9 +125,20 @@ function M.Install(context)
         SetStatus("READY · 等待发射")
     end
 
-    function BuildLevel(index)
+    ---@param document table
+    ---@param options table|nil
+    ---@return table|nil session
+    ---@return string|nil errorMessage
+    function StartRuntimeSessionFromDocument(document, options)
+        options = options or {}
         if scene_ or level_ then ReleaseLevelRuntime() end
-        level_ = LoadLevel(index)
+        local normalized, migrations = LevelData.Normalize(document)
+        local valid, errors = LevelData.Validate(normalized)
+        if not valid then return nil, table.concat(errors, "；") end
+
+        level_ = normalized
+        LevelPresentation.Apply(level_, LEVEL_META[level_.levelId], LEVEL_SCORE_PROFILES, DEFAULT_LEVEL_SCORE_PROFILE)
+        if options.levelIndex ~= nil then levelIndex_ = tonumber(options.levelIndex) or levelIndex_ end
         physicsProfile_ = PhysicsProfiles.Resolve(level_.physicsProfile)
         failureCount_ = context.failureCountsByLevel_[level_.levelId] or 0
         observation_ = level_.observation or ""
@@ -144,12 +160,40 @@ function M.Install(context)
         if not launcher then error("关卡缺少发射器") end
         local launcherRuntime = runtime_.byId[launcher.id]
         apple_ = RuntimeFactory.CreateApple(scene_, launcherRuntime)
-        level_.physicsProbe = require("game.physics.Probe").New()
+        if options.enablePhysicsProbe ~= false then level_.physicsProbe = require("game.physics.Probe").New() end
+        runtimeSession_ = {
+            levelId = level_.levelId,
+            levelIndex = levelIndex_,
+            sourceKind = options.sourceKind or "memory",
+            screen = options.screen or "game",
+            migrations = migrations,
+            disposed = false,
+        }
         ResetSessionState(true)
-        screen_ = "game"
+        screen_ = runtimeSession_.screen
         RefreshHUDSummary()
-        NotifyGreenAssistantLevelChanged(level_.levelId)
-        context.NotifyDialogueLevelReady(level_.levelId)
+        if options.notifyAssistant ~= false then NotifyGreenAssistantLevelChanged(level_.levelId) end
+        if options.notifyDialogue ~= false then context.NotifyDialogueLevelReady(level_.levelId) end
+        return runtimeSession_, nil
+    end
+
+    function GetRuntimeSession()
+        return runtimeSession_
+    end
+
+    function BuildLevel(index)
+        local document, resolvedIndex = LoadLevelDefinition(index)
+        levelIndex_ = resolvedIndex
+        local session, errorMessage = StartRuntimeSessionFromDocument(document, {
+            sourceKind = "official",
+            screen = "game",
+            levelIndex = resolvedIndex,
+            enablePhysicsProbe = true,
+            notifyAssistant = true,
+            notifyDialogue = true,
+        })
+        if not session then error(errorMessage) end
+        return session
     end
     function ResetExperiment(playResetSound)
         if not apple_ or not level_ then return end

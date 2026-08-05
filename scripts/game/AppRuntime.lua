@@ -68,6 +68,7 @@ function M.Install(context)
         DestroyGreenAssistant()
         context.DestroyAssistDemo()
         if painter_ then painter_:Destroy(); painter_ = nil end
+        UnsubscribeFromAllEvents()
     end
 
     ---@param _eventType string
