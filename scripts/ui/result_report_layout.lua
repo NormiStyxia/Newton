@@ -216,10 +216,6 @@ function M.Install(context)
         end
         local reportImages = painter_.images and painter_.images.ui
         local reportDropdown = reportImages and reportImages.reportDropdown
-        if reportDropdown and reportDropdown >= 0 then
-            painter_:ImageRect(reportDropdown, drawZones.selfBox.x, drawZones.selfBox.y,
-                drawZones.selfBox.w, drawZones.selfBox.h, alpha)
-        end
 
         local function artPoint(px, py)
             return x + w * px / Config.Layout.artWidth, y + rect.h * py / Config.Layout.artHeight
@@ -297,8 +293,6 @@ function M.Install(context)
                     painter_:ImageRect(reportDropdown, drawZones.selfBox.x, optionY, drawZones.selfBox.w, optionHeight,
                         math.floor(alpha * optionReveal))
                 end
-                painter_:StrokeRect(drawZones.selfBox.x, optionY, drawZones.selfBox.w, optionHeight,
-                    c.border, math.max(1, artHeight(2)), math.floor(alpha * optionReveal))
                 if optionReveal > 0.28 then
                     painter_:TextBox(drawZones.selfBox.x + 14, optionY + artHeight(27),
                         drawZones.selfBox.w - 28, option, Config.Layout.selfReviewOptionFontSize,

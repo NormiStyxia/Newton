@@ -30,8 +30,8 @@ M.Layout = {
     reviewFontMinSize = 15,
     requireSelfReview = false,
     fallbackSelfReview = "反正绿毛同事会补",
-    selfReviewFontSize = 15,
-    selfReviewOptionFontSize = 15,
+    selfReviewFontSize = 18,
+    selfReviewOptionFontSize = 18,
     dropdownOptionGap = 5,
     padding = 24,
     innerBorder = 5,
@@ -67,7 +67,7 @@ function M.ResolveRect(frame)
         width = maxWidth
         height = width / aspect
     end
-    local centerX = frame.playfieldX + frame.playfieldWidth * 0.5
+    local centerX = frame.logicalWidth * 0.5
     local centerY = frame.logicalHeight * 0.5
     return {
         x = centerX - width * 0.5,
