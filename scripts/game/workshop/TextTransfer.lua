@@ -1,3 +1,5 @@
+local TextEditor = require("game.workshop.TextEditor")
+
 local TextTransfer = {}
 
 local function enableSystemClipboard(clipboard)
@@ -47,13 +49,7 @@ function TextTransfer.AppendInput(edit, value, maxBytes)
         end
         edit.clipboardEchoRemaining = nil
     end
-    if edit.selectAll then edit.value, edit.selectAll = "", false end
-    local limit = tonumber(maxBytes) or math.huge
-    if #(edit.value or "") + #value > limit then
-        return false, "输入文本超过 " .. tostring(limit) .. " 字节限制"
-    end
-    edit.value = (edit.value or "") .. value
-    return true, nil
+    return TextEditor.Insert(edit, value, maxBytes)
 end
 
 local function addLine(lines, firstByte, lastByte)

@@ -14,6 +14,8 @@ local Export = require("game.workshop.Export")
 local Layout = require("game.workshop.Layout")
 local Interaction = require("game.workshop.Interaction")
 local TextTransfer = require("game.workshop.TextTransfer")
+local TextEditor = require("game.workshop.TextEditor")
+local TouchScroller = require("game.workshop.TouchScroller")
 local Inspector = require("game.workshop.Inspector")
 local View = require("game.workshop.View")
 local ExperimentCatalog = require("ui.ExperimentCatalog")
@@ -83,6 +85,56 @@ for _, field in ipairs(levelInspectorFields) do
 end
 expect(exposedWorldField == nil,
     "playfield dimensions or initial gravity were exposed through the level Inspector")
+
+local function objectInspectorKeys(object)
+    local keys = {}
+    local fields = Inspector.Build({ document = validLevel("field_filter", "Field Filter"),
+        readOnly = false, selectedObject = object }, LevelDocument, { CARDS = {} }, {})
+    for _, field in ipairs(fields) do keys[field.key] = true end
+    return keys
+end
+local springForInspector = LevelDocument.NewObject("spring", "spring_filter", 500, 300)
+local springKeys = objectInspectorKeys(springForInspector)
+expect(springKeys["properties.direction"]
+    and not springKeys["properties.impulseStrength"] and not springKeys["properties.cooldown"]
+    and not springKeys["properties.oneShot"] and not springKeys["properties.enabled"]
+    and not springKeys["properties.enabledChannel"] and springForInspector.properties.impulseStrength ~= nil,
+    "spring Inspector did not hide the requested controls while preserving runtime data")
+local goalForInspector = LevelDocument.NewObject("goal_sensor", "goal_filter", 500, 300)
+local goalKeys = objectInspectorKeys(goalForInspector)
+expect(goalKeys["transform.x"] and goalKeys["transform.y"]
+    and not goalKeys["transform.width"] and not goalKeys["transform.height"]
+    and not goalKeys["transform.rotation"] and not goalKeys["properties.requiredStayTime"]
+    and goalForInspector.properties.requiredStayTime == 1000,
+    "goal Inspector did not hide size/rotation/stay-time controls while preserving runtime data")
+
+local edit = TextEditor.Initialize({ value = "甲乙C" }, false, 0)
+TextEditor.Move(edit, -1, 0)
+expect(TextEditor.Insert(edit, "中", 64) and edit.value == "甲乙中C" and edit.cursor == 3,
+    "UTF-8 insertion did not respect the cursor")
+TextEditor.Backspace(edit, 0)
+expect(edit.value == "甲乙C" and edit.cursor == 2, "UTF-8 Backspace removed the wrong character")
+TextEditor.Home(edit, 0)
+TextEditor.Delete(edit, 0)
+expect(edit.value == "乙C" and edit.cursor == 0, "Delete/Home did not operate at the UTF-8 cursor")
+TextEditor.End(edit, 0)
+TextEditor.Move(edit, -1, 0)
+expect(edit.cursor == 1, "Left/Right/End cursor navigation is inconsistent")
+TextEditor.SetCursorFromX(edit, 4, function(value) return TextEditor.Length(value) * 10 end, 0)
+expect(edit.cursor == 0, "pointer-to-cursor positioning missed the nearest UTF-8 boundary")
+
+local gesture, touchResult = TouchScroller.Update(nil,
+    { x = 20, y = 80, down = true, pressed = true, released = false, isTouch = true },
+    { { id = "inspector", rect = { x = 0, y = 0, w = 100, h = 100 }, value = 0, maximum = 200 } }, 8)
+expect(gesture and touchResult.consume and not touchResult.tap, "touch scroll did not defer the initial tap")
+gesture, touchResult = TouchScroller.Update(gesture,
+    { x = 20, y = 40, down = true, pressed = false, released = false, isTouch = true }, {}, 8)
+expect(touchResult.value == 40 and touchResult.target == "inspector",
+    "touch scroll distance was not mapped to panel offset")
+gesture, touchResult = TouchScroller.Update(gesture,
+    { x = 20, y = 40, down = false, pressed = false, released = true, isTouch = true }, {}, 8)
+expect(not gesture and touchResult.consume and not touchResult.tap,
+    "completed touch swipe leaked through as a row click")
 
 local history = History.New({ clone = LevelDocument.Clone, limit = 4 })
 local historyDocument = validLevel("custom_history", "A")

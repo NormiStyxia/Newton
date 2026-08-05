@@ -16,7 +16,7 @@ function M.Install(context)
     -- Touch events carry physical screen coordinates, the same coordinate space as
     -- input.mousePosition. A single active touch keeps a gesture from triggering
     -- more than one game action on mobile devices.
-    ---@return table PointerFrame { x, y, down, pressed, released }
+    ---@return table PointerFrame { x, y, down, pressed, released, isTouch }
     function PointerState()
         if context.pointer_.activeTouchId ~= nil or context.pointer_.touchPressed or context.pointer_.touchReleased then
             local x, y = DesignPointer(context.pointer_.touchX, context.pointer_.touchY)
@@ -26,6 +26,7 @@ function M.Install(context)
                 down = context.pointer_.activeTouchId ~= nil,
                 pressed = context.pointer_.touchPressed,
                 released = context.pointer_.touchReleased,
+                isTouch = true,
             }
             context.pointer_.touchPressed = false
             context.pointer_.touchReleased = false
@@ -38,6 +39,7 @@ function M.Install(context)
             down = input:GetMouseButtonDown(MOUSEB_LEFT),
             pressed = input:GetMouseButtonPress(MOUSEB_LEFT),
             released = input:GetMouseButtonRelease(MOUSEB_LEFT),
+            isTouch = false,
         }
     end
     function HandleTouchBegin(_eventType, eventData)

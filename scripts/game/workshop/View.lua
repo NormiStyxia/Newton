@@ -1,4 +1,5 @@
 local TextTransfer = require("game.workshop.TextTransfer")
+local TextEditor = require("game.workshop.TextEditor")
 
 local View = {}
 
@@ -77,11 +78,13 @@ local function utf8Characters(value)
 end
 
 local function textWidth(painter, value, font, size)
-    painter:UseFont(font)
-    nvgFontSize(painter.vg, size)
-    local measured = nvgTextBounds(painter.vg, 0, 0, tostring(value or ""), nil)
-    if type(measured) == "number" then return measured end
-    return #utf8Characters(value) * size
+    if painter and painter.UseFont and nvgTextBounds then
+        painter:UseFont(font)
+        nvgFontSize(painter.vg, size)
+        local measured = nvgTextBounds(painter.vg, 0, 0, tostring(value or ""), nil)
+        if type(measured) == "number" then return measured end
+    end
+    return #utf8Characters(value) * size * 0.65
 end
 
 local function fitText(painter, value, font, preferredSize, minimumSize, maxWidth)
@@ -106,6 +109,10 @@ local function addControl(controls, group, id, rect, data)
     control.id, control.rect = id, rect
     controls[group][#controls[group] + 1] = control
     return control
+end
+
+local function inspectorValueRect(rect)
+    return { x = rect.x + rect.w * 0.43, y = rect.y + 5, w = rect.w * 0.57 - 5, h = rect.h - 10 }
 end
 
 function View.BuildControls(state, layout, interaction)
@@ -159,7 +166,9 @@ function View.BuildControls(state, layout, interaction)
                 or (layout.ultraCompact and 44 or 52)
             local rect = { x = layout.inspectorViewport.x, y = y, w = layout.inspectorViewport.w, h = height }
             if y + height >= layout.inspectorViewport.y and y <= layout.inspectorViewport.y + layout.inspectorViewport.h then
-                addControl(controls, "inspectorRows", field.key or tostring(index), rect, { field = field })
+                local control = addControl(controls, "inspectorRows", field.key or tostring(index), rect,
+                    { field = field })
+                if field.kind ~= "section" then control.valueRect = inspectorValueRect(rect) end
             end
             y = y + height
             contentHeight = contentHeight + height
@@ -192,6 +201,12 @@ function View.BuildControls(state, layout, interaction)
             x = controls.modal.x + 24, y = controls.modal.y + 78,
             w = controls.modal.w - 48, h = controls.modal.h - 144,
         }
+        if modal.kind == "rename" then
+            controls.renameField = {
+                x = controls.modalBody.x, y = controls.modalBody.y + 62,
+                w = controls.modalBody.w, h = 38,
+            }
+        end
         local definitions
         if modal.kind == "dirtySwitch" then
             definitions = { { "save", "保存草稿并继续" }, { "discard", "放弃修改" }, { "cancel", "取消" } }
@@ -463,6 +478,32 @@ local function fieldValue(field)
     return tostring(field.value == nil and "" or field.value)
 end
 
+local function drawActiveTextEdit(painter, edit, rect, elapsed, fontSize, textColor)
+    local textX, availableWidth = rect.x + 8, math.max(1, rect.w - 16)
+    local function measure(value) return textWidth(painter, value, "maker-body", fontSize) end
+    local scroll, cursorWidth, totalWidth = TextEditor.UpdateHorizontalScroll(edit, availableWidth, measure)
+    nvgSave(painter.vg)
+    nvgIntersectScissor(painter.vg, rect.x + 3, rect.y + 2, rect.w - 6, rect.h - 4)
+    if edit.selectAll and totalWidth > 0 then
+        painter:FillRect(textX - scroll, rect.y + 6, totalWidth, rect.h - 12, COLORS.accent, 90)
+    end
+    painter:Text(textX - scroll, rect.y + rect.h * 0.5, edit.value, fontSize, textColor,
+        NVG_ALIGN_LEFT + NVG_ALIGN_MIDDLE, "maker-body")
+    if TextEditor.CursorVisible(edit, elapsed) then
+        painter:FillRect(textX + cursorWidth - scroll, rect.y + 7, 1.5,
+            math.max(10, rect.h - 14), COLORS.accentBright)
+    end
+    nvgRestore(painter.vg)
+end
+
+function View.PlaceTextCursor(painter, edit, rect, pointerX, elapsed, fontSize)
+    if not edit or not rect then return end
+    local function measure(value) return textWidth(painter, value, "maker-body", fontSize or 18) end
+    local scroll = TextEditor.UpdateHorizontalScroll(edit, math.max(1, rect.w - 16), measure)
+    TextEditor.SetCursorFromX(edit, (pointerX or rect.x) - rect.x - 8 + scroll, measure, elapsed)
+    TextEditor.UpdateHorizontalScroll(edit, math.max(1, rect.w - 16), measure)
+end
+
 local function drawInspector(painter, state, layout, controls)
     if not layout.right then return end
     drawPanel(painter, layout.right, state.selectedObject and "对象 Inspector" or "关卡 Inspector")
@@ -482,17 +523,19 @@ local function drawInspector(painter, state, layout, controls)
                 row.rect.w * 0.4 - 5)
             painter:Text(row.rect.x + 5, row.rect.y + 7, fieldLabel, labelSize,
                 COLORS.textMuted, nil, "maker-body")
-            local valueRect = { x = row.rect.x + row.rect.w * 0.43, y = row.rect.y + 5,
-                w = row.rect.w * 0.57 - 5, h = row.rect.h - 10 }
+            local valueRect = row.valueRect or inspectorValueRect(row.rect)
             local active = state.textEdit and state.textEdit.fieldKey == field.key
             painter:RoundedRect(valueRect.x, valueRect.y, valueRect.w, valueRect.h, 3,
                 active and COLORS.panel or COLORS.panelMuted, active and COLORS.accent or COLORS.line, active and 2 or 1)
-            local value = active and state.textEdit.value or fieldValue(field)
-            local fittedValue, valueSize = fitText(painter, value, "maker-body", 18, 12, valueRect.w - 16)
-            painter:Text(valueRect.x + 8, valueRect.y + valueRect.h * 0.5,
-                fittedValue, valueSize,
-                field.editable == false and COLORS.textMuted or COLORS.text,
-                NVG_ALIGN_LEFT + NVG_ALIGN_MIDDLE, "maker-body")
+            if active then
+                drawActiveTextEdit(painter, state.textEdit, valueRect, state.elapsed, 18, COLORS.text)
+            else
+                local fittedValue, valueSize = fitText(painter, fieldValue(field), "maker-body", 18, 12,
+                    valueRect.w - 16)
+                painter:Text(valueRect.x + 8, valueRect.y + valueRect.h * 0.5, fittedValue, valueSize,
+                    field.editable == false and COLORS.textMuted or COLORS.text,
+                    NVG_ALIGN_LEFT + NVG_ALIGN_MIDDLE, "maker-body")
+            end
         end
     end
     nvgRestore(painter.vg)
@@ -549,11 +592,11 @@ local function drawModal(painter, state, controls)
         painter:TextBox(body.x, body.y, body.w, modal.message or "", 16, COLORS.text,
             NVG_ALIGN_LEFT + NVG_ALIGN_TOP, "maker-body", 1.25)
         if modal.kind == "rename" then
-            local field = { x = body.x, y = body.y + 62, w = body.w, h = 38 }
+            local field = controls.renameField
             painter:RoundedRect(field.x, field.y, field.w, field.h, 3, COLORS.panelMuted, COLORS.accent, 2)
-            painter:Text(field.x + 10, field.y + field.h * 0.5,
-                truncate(state.textEdit and state.textEdit.value or "", 60), 16, COLORS.text,
-                NVG_ALIGN_LEFT + NVG_ALIGN_MIDDLE, "maker-body")
+            if state.textEdit then
+                drawActiveTextEdit(painter, state.textEdit, field, state.elapsed, 16, COLORS.text)
+            end
         end
     end
     for _, button in ipairs(controls.modalButtons or {}) do

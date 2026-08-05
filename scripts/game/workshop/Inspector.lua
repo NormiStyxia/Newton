@@ -63,14 +63,17 @@ local function objectFields(fields, current, LevelDocument, typeLabels)
     addField(fields, "object.name", "名称", "text", object.name,
         function(value) object.name = value end, { editable = canEdit, maxLength = LevelDocument.LIMITS.maxNameLength })
     section(fields, "transform", "变换")
-    for _, definition in ipairs({
-        { "x", "X" }, { "y", "Y" }, { "width", "宽度" }, { "height", "高度" }, { "rotation", "角度" },
-    }) do
+    local transformDefinitions = { { "x", "X" }, { "y", "Y" } }
+    if object.type ~= "goal_sensor" then
+        transformDefinitions[#transformDefinitions + 1] = { "width", "宽度" }
+        transformDefinitions[#transformDefinitions + 1] = { "height", "高度" }
+        transformDefinitions[#transformDefinitions + 1] = { "rotation", "角度" }
+    end
+    for _, definition in ipairs(transformDefinitions) do
         local key, label = definition[1], definition[2]
         addField(fields, "transform." .. key, label, "number", object.transform[key],
             function(value) object.transform[key] = value end, { editable = canEdit })
     end
-    section(fields, "properties", "机制参数")
     local props = object.properties
     local function property(key, label, kind, options)
         addField(fields, "properties." .. key, label, kind, props[key],
@@ -78,27 +81,25 @@ local function objectFields(fields, current, LevelDocument, typeLabels)
             { editable = canEdit, options = options, maxLength = LevelDocument.LIMITS.maxTextLength })
     end
     if object.type == "wall" then
+        section(fields, "properties", "机制参数")
         property("collisionEnabled", "启用碰撞", "boolean")
         property("isPhaseable", "可相位穿透", "boolean")
     elseif object.type == "launcher" then
+        section(fields, "properties", "机制参数")
         property("appleSpawnOffsetX", "出生偏移 X", "number")
         property("appleSpawnOffsetY", "出生偏移 Y", "number")
-    elseif object.type == "goal_sensor" then
-        addField(fields, "properties.requiredStayTime", "停留时间", "readonly", 1000, nil, { editable = false })
     elseif object.type == "spring" then
+        section(fields, "properties", "机制参数")
         property("direction", "方向", "enum", { "UP", "RIGHT", "DOWN", "LEFT" })
-        property("impulseStrength", "冲量强度", "number")
-        property("cooldown", "冷却 ms", "number")
-        property("oneShot", "单次触发", "boolean")
-        property("enabled", "初始启用", "boolean")
-        property("enabledChannel", "启用通道", "text")
     elseif object.type == "button" then
+        section(fields, "properties", "机制参数")
         property("mode", "模式", "enum", { "HOLD", "TOGGLE" })
         property("gravityThreshold", "重力阈值", "number")
         property("channelId", "通道 ID", "text")
         property("initialState", "初始状态", "boolean")
         property("debounceTime", "防抖 ms", "number")
     elseif object.type == "door" then
+        section(fields, "properties", "机制参数")
         property("channelId", "通道 ID", "text")
         property("response", "响应", "enum", { "OPEN", "CLOSE", "TOGGLE" })
         property("initialState", "初始状态", "enum", { "CLOSED", "OPEN" })

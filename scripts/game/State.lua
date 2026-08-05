@@ -281,6 +281,7 @@ function State.New(dependencies, constants)
         canUndo = false,
         canRedo = false,
         transaction = nil,
+        touchScroll = nil,
         textEdit = nil,
         modal = nil,
         previewSnapshot = nil,

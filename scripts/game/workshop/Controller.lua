@@ -8,6 +8,8 @@ local View = require("game.workshop.View")
 local Inspector = require("game.workshop.Inspector")
 local DocumentActions = require("game.workshop.DocumentActions")
 local TextTransfer = require("game.workshop.TextTransfer")
+local TextEditor = require("game.workshop.TextEditor")
+local TouchScroller = require("game.workshop.TouchScroller")
 local PreviewSession = require("game.workshop.PreviewSession")
 
 local M = {}
@@ -40,7 +42,6 @@ function M.Install(context)
         current.selectedObject = DocumentActions.FindObject(current.document, current.selectedObjectId)
         if current.selectedObjectId and not current.selectedObject then current.selectedObjectId = nil end
     end
-
     local function refreshValidation()
         local current = state()
         current.validation = current.document and LevelDocument.ValidateDetailed(current.document)
@@ -49,13 +50,11 @@ function M.Install(context)
             current.status = current.validation.errors[1].path .. "：" .. current.validation.errors[1].message
         end
     end
-
     local function refreshHistoryFlags()
         local current = state()
         current.canUndo = current.history and current.history:CanUndo() or false
         current.canRedo = current.history and current.history:CanRedo() or false
     end
-
     local function markChanged(label)
         local current = state()
         current.dirty = true
@@ -66,7 +65,6 @@ function M.Install(context)
         refreshHistoryFlags()
         current.status = label .. " · 待保存"
     end
-
     local function editable()
         local current = state()
         if current.readOnly then
@@ -75,12 +73,10 @@ function M.Install(context)
         end
         return current.document ~= nil
     end
-
     local function buildInspectorFields()
         local current = state()
         current.inspectorFields = Inspector.Build(current, LevelDocument, Rules, View.TYPE_LABELS)
     end
-
     local function rebuildUI()
         local current = state()
         refreshEntries()
@@ -90,7 +86,6 @@ function M.Install(context)
         current.controls = View.BuildControls(current, current.layout, Interaction)
         refreshHistoryFlags()
     end
-
     local function saveDraft(reason)
         local current = state()
         if not current.document or current.readOnly or not current.dirty then return true end
@@ -101,7 +96,6 @@ function M.Install(context)
             or ((reason or "草稿已保存在运行内存") .. " · 本地槽位不可用")
         return true
     end
-
     local function openEntryNow(entryId, options)
         options = options or {}
         local current = state()
@@ -115,7 +109,7 @@ function M.Install(context)
         current.view = options.viewState and clone(LevelDocument, options.viewState) or DocumentActions.NewViewState()
         if current.layout and current.layout.folded then current.view.drawerMode = "files" end
         current.dirty = options.dirty == true
-        current.transaction, current.textEdit = nil, nil
+        current.transaction, current.touchScroll, current.textEdit = nil, nil, nil
         current.history:Reset(current.document, current.view, "打开关卡")
         refreshValidation()
         refreshHistoryFlags()
@@ -136,7 +130,6 @@ function M.Install(context)
         end
         return true
     end
-
     local function switchEntry(entryId)
         local current = state()
         if entryId == current.entryId then return true end
@@ -150,7 +143,6 @@ function M.Install(context)
         end
         return openEntryNow(entryId)
     end
-
     function InitializeLevelWorkshop()
         local current = state()
         if current.initialized then return true end
@@ -173,7 +165,6 @@ function M.Install(context)
         refreshEntries()
         return #current.initializationErrors == 0
     end
-
     function OpenLevelWorkshop(selectedLevelId)
         InitializeLevelWorkshop()
         if scene_ or level_ then ReleaseLevelRuntime() end
@@ -246,7 +237,6 @@ function M.Install(context)
         toast("自定义关卡已删除")
         return true
     end
-
     local function undo()
         local current = state()
         if current.readOnly then return end
@@ -258,7 +248,6 @@ function M.Install(context)
         refreshSelection(); refreshValidation(); rebuildUI()
         current.status = "已撤销"
     end
-
     local function redo()
         local current = state()
         if current.readOnly then return end
@@ -306,14 +295,7 @@ function M.Install(context)
     local function beginTextEdit(field, value, mode)
         if field and field.editable == false then return end
         local current = state()
-        current.textEdit = {
-            field = field,
-            fieldKey = field and field.key or mode,
-            value = tostring(value == nil and "" or value),
-            selectAll = true,
-            maxLength = field and field.maxLength or (mode == "import" and 1000000 or 256),
-            mode = mode or "field",
-        }
+        current.textEdit = TextEditor.Begin(field, value, mode, current.elapsed, 1000000)
         if input then input:SetScreenKeyboardVisible(true) end
     end
 
@@ -359,7 +341,7 @@ function M.Install(context)
         local edit = current.textEdit
         local accepted, errorMessage = TextTransfer.AppendInput(edit, text,
             edit.maxLength or Export.MAX_IMPORT_BYTES)
-        if not accepted then toast(errorMessage, 5) end
+        if accepted then TextEditor.ResetBlink(edit, current.elapsed) else toast(errorMessage, 5) end
     end
 
     local function pasteImportClipboard()
@@ -368,7 +350,8 @@ function M.Install(context)
         if not edit or edit.mode ~= "import" then return false end
         local text, errorMessage = TextTransfer.ReadClipboard(ui, Export.MAX_IMPORT_BYTES)
         if not text then toast("无法粘贴：" .. tostring(errorMessage), 5); return false end
-        edit.value, edit.selectAll, edit.clipboardEchoRemaining = text, false, text
+        edit.value, edit.clipboardEchoRemaining = text, text
+        TextEditor.Initialize(edit, false, current.elapsed)
         if current.modal then current.modal.text, current.modal.scroll = text, 0 end
         rebuildUI()
         toast("已从系统剪贴板读取 JSON 文本")
@@ -379,25 +362,12 @@ function M.Install(context)
         local current = state()
         local edit = current.textEdit
         if not edit then return false end
-        if input:GetKeyDown(KEY_CTRL) and input:GetKeyPress(KEY_A) then edit.selectAll = true; return true end
-        if edit.mode == "import" and input:GetKeyDown(KEY_CTRL) and input:GetKeyPress(KEY_V) then
-            pasteImportClipboard()
-            return true
-        end
-        if input:GetKeyPress(KEY_BACKSPACE) then
-            if edit.selectAll then
-                edit.value, edit.selectAll = "", false
-            elseif #edit.value > 0 then
-                local byte = utf8 and utf8.offset and utf8.offset(edit.value, -1, #edit.value + 1) or #edit.value
-                edit.value = edit.value:sub(1, math.max(0, (byte or #edit.value) - 1))
-            end
-            return true
-        end
-        if input:GetKeyPress(KEY_ESCAPE) then
+        local action = TextEditor.KeyAction(edit, input, current.elapsed)
+        if action == "paste" then pasteImportClipboard()
+        elseif action == "cancel" then
             if current.modal and (edit.mode == "rename" or edit.mode == "import") then current.modal = nil end
-            cancelTextEdit(); return true
-        end
-        if input:GetKeyPress(KEY_RETURN) and edit.mode ~= "import" then commitTextEdit(); return true end
+            cancelTextEdit()
+        elseif action == "commit" then commitTextEdit() end
         return true
     end
 
@@ -593,13 +563,18 @@ function M.Install(context)
         end
     end
 
-    local function handleInspectorRow(row)
+    local function handleInspectorRow(row, pointerX)
         local field = row.field
         if field.kind == "section" or field.editable == false or not editable() then return end
         if field.kind == "boolean" then
             field.set(not field.value); markChanged("修改" .. field.label); rebuildUI()
         elseif field.kind == "enum" then cycleEnum(field)
-        else beginTextEdit(field, field.value, "field"); rebuildUI() end
+        else
+            beginTextEdit(field, field.value, "field")
+            View.PlaceTextCursor(context.painter_, state().textEdit, row.valueRect or row.rect,
+                pointerX, state().elapsed)
+            rebuildUI()
+        end
     end
 
     local function beginCanvasGesture(pointerFrame)
@@ -698,8 +673,15 @@ function M.Install(context)
         local x, y = Layout.PointerToWorkspace(current.layout, pointerFrame.x, pointerFrame.y)
         pointerFrame.x, pointerFrame.y = x, y
         local wheel = input.mouseMoveWheel or 0
+        local gesture, touch = TouchScroller.Update(current.touchScroll, pointerFrame,
+            TouchScroller.Targets(current), 8)
+        current.touchScroll = gesture
+        if touch and touch.value ~= nil then TouchScroller.Apply(current, touch); rebuildUI() end
+        if touch and touch.consume then
+            if touch.tap then pointerFrame.pressed = true else return end
+        end
         current.hoverTooltip = nil
-        if not current.modal then
+        if not pointerFrame.isTouch and not current.modal then
             for _, row in ipairs(current.controls.fileRows or {}) do
                 if View.PointIn(row.rect, x, y) then
                     current.hoverTooltip = { text = row.entry.name .. "  ·  " .. row.entry.levelId, x = x + 14, y = y + 18 }
@@ -718,9 +700,14 @@ function M.Install(context)
         end
         if current.modal then
             if wheel ~= 0 and current.controls.modalBody and View.PointIn(current.controls.modalBody, x, y) then
-                current.modal.scroll = clamp((current.modal.scroll or 0) - wheel * 5.4, 0, current.modal.scrollMax or 0)
+                current.modal.scroll = clamp((current.modal.scroll or 0) - wheel * .54, 0, current.modal.scrollMax or 0)
             end
             if pointerFrame.pressed then
+                if current.controls.renameField and View.PointIn(current.controls.renameField, x, y) then
+                    View.PlaceTextCursor(context.painter_, current.textEdit, current.controls.renameField,
+                        x, current.elapsed, 16)
+                    return
+                end
                 for _, button in ipairs(current.controls.modalButtons or {}) do
                     if View.PointIn(button.rect, x, y) then handleModalButton(button.id); return end
                 end
@@ -728,7 +715,20 @@ function M.Install(context)
             if input:GetKeyPress(KEY_ESCAPE) then handleModalButton("cancel") end
             return
         end
-        if textEditing then return end
+        if textEditing then
+            if pointerFrame.pressed then
+                for _, row in ipairs(current.controls.inspectorRows or {}) do
+                    if View.PointIn(row.rect, x, y) then
+                        if current.textEdit and current.textEdit.fieldKey == row.field.key then
+                            View.PlaceTextCursor(context.painter_, current.textEdit, row.valueRect or row.rect,
+                                x, current.elapsed)
+                        elseif commitTextEdit() then handleInspectorRow(row, x) end
+                        return
+                    end
+                end
+            end
+            return
+        end
         if input:GetKeyDown(KEY_CTRL) and input:GetKeyPress(KEY_S) then SaveWorkshopCurrent(); return end
         if input:GetKeyDown(KEY_CTRL) and input:GetKeyPress(KEY_Z) then undo(); return end
         if input:GetKeyDown(KEY_CTRL) and input:GetKeyPress(KEY_Y) then redo(); return end
@@ -738,9 +738,9 @@ function M.Install(context)
 
         if wheel ~= 0 then
             if current.layout.fileViewport and View.PointIn(current.layout.fileViewport, x, y) then
-                current.view.fileScroll = clamp(current.view.fileScroll - wheel * 4.8, 0, current.view.fileScrollMax)
+                current.view.fileScroll = clamp(current.view.fileScroll - wheel * .48, 0, current.view.fileScrollMax)
             elseif current.layout.inspectorViewport and View.PointIn(current.layout.inspectorViewport, x, y) then
-                current.view.inspectorScroll = clamp(current.view.inspectorScroll - wheel * 4.8, 0, current.view.inspectorScrollMax)
+                current.view.inspectorScroll = clamp(current.view.inspectorScroll - wheel * .48, 0, current.view.inspectorScrollMax)
             elseif View.ControlHitAllowed(current.layout, "canvas", x, y) and View.PointIn(current.layout.canvasViewport, x, y) then
                 current.view.zoom = clamp(current.view.zoom * (wheel > 0 and 1.12 or .89), .35, 4)
             end
@@ -758,7 +758,7 @@ function M.Install(context)
                 if View.PointIn(row.rect, x, y) then addObject(row.objectType); return end
             end
             for _, row in ipairs(current.controls.inspectorRows) do
-                if View.PointIn(row.rect, x, y) then handleInspectorRow(row); return end
+                if View.PointIn(row.rect, x, y) then handleInspectorRow(row, x); return end
             end
             if View.ControlHitAllowed(current.layout, "canvas", x, y) and View.PointIn(current.layout.canvasViewport, x, y) then beginCanvasGesture(pointerFrame); return end
         end

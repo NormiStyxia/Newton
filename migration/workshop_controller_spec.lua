@@ -68,6 +68,7 @@ function input:SetScreenKeyboardVisible(_) end
 function input:GetKeyDown(key) return self.downKeys and self.downKeys[key] == true or false end
 KEY_ESCAPE, KEY_CTRL, KEY_S, KEY_Z, KEY_Y, KEY_D, KEY_DELETE = 27, 1000, 83, 90, 89, 68, 127
 KEY_BACKSPACE, KEY_RETURN, KEY_A, KEY_V, KEY_SHIFT = 8, 13, 65, 86, 1001
+KEY_LEFT, KEY_RIGHT, KEY_HOME, KEY_END = 1101, 1102, 1103, 1104
 function input:GetKeyPress(key)
     local pressed = self.pressedKey == key
     if pressed then self.pressedKey = nil end
@@ -199,6 +200,9 @@ end
 
 local function replaceTextAndCommit(targetContext, current, value)
     expect(current.textEdit ~= nil, "text editor was not opened")
+    input.downKeys, input.pressedKey = { [KEY_CTRL] = true }, KEY_A
+    updateWorkshop(targetContext)
+    input.downKeys = nil
     targetContext.HandleWorkshopTextInput("TextInput", {
         GetString = function(_, _) return value end,
     })
@@ -218,6 +222,20 @@ local function dragWorkspace(targetContext, current, fromX, fromY, toX, toY)
     })
     updateWorkshop(targetContext, {
         x = rawToX, y = rawToY, down = false, pressed = false, released = true,
+    })
+end
+
+local function touchSwipeWorkspace(targetContext, current, fromX, fromY, toX, toY)
+    local rawFromX, rawFromY = rawPoint(current, fromX, fromY)
+    local rawToX, rawToY = rawPoint(current, toX, toY)
+    updateWorkshop(targetContext, {
+        x = rawFromX, y = rawFromY, down = true, pressed = true, released = false, isTouch = true,
+    })
+    updateWorkshop(targetContext, {
+        x = rawToX, y = rawToY, down = true, pressed = false, released = false, isTouch = true,
+    })
+    updateWorkshop(targetContext, {
+        x = rawToX, y = rawToY, down = false, pressed = false, released = true, isTouch = true,
     })
 end
 
@@ -392,22 +410,26 @@ clickRect(context, workshop, springPalette.rect)
 expect(workshop.selectedObject and workshop.selectedObject.type == "spring",
     "palette click did not add and select a spring")
 local spring = workshop.selectedObject
-
-clickRect(context, workshop, inspectorRow(context, workshop, "properties.enabledChannel").rect)
-replaceTextAndCommit(context, workshop, "channel-main")
-expect(spring.properties.enabledChannel == "channel-main", "Inspector mechanism text edit failed")
-
-clickRect(context, workshop, inspectorRow(context, workshop, "properties.impulseStrength").rect)
-replaceTextAndCommit(context, workshop, "640")
-expect(spring.properties.impulseStrength == 640, "Inspector mechanism number edit failed")
-
-local oneShotBefore = spring.properties.oneShot
-clickRect(context, workshop, inspectorRow(context, workshop, "properties.oneShot").rect)
-expect(spring.properties.oneShot ~= oneShotBefore, "Inspector mechanism boolean edit failed")
+local hiddenSpringFields = {
+    ["properties.impulseStrength"] = true, ["properties.cooldown"] = true,
+    ["properties.oneShot"] = true, ["properties.enabled"] = true,
+    ["properties.enabledChannel"] = true,
+}
+for _, field in ipairs(workshop.inspectorFields) do
+    expect(not hiddenSpringFields[field.key], "hidden spring mechanism field remained editable: " .. tostring(field.key))
+end
+local springRuntimeValues = { spring.properties.impulseStrength, spring.properties.cooldown,
+    spring.properties.oneShot, spring.properties.enabled, spring.properties.enabledChannel }
 
 local directionBefore = spring.properties.direction
 clickRect(context, workshop, inspectorRow(context, workshop, "properties.direction").rect)
 expect(spring.properties.direction ~= directionBefore, "Inspector enum edit did not cycle direction")
+expect(spring.properties.impulseStrength == springRuntimeValues[1]
+    and spring.properties.cooldown == springRuntimeValues[2]
+    and spring.properties.oneShot == springRuntimeValues[3]
+    and spring.properties.enabled == springRuntimeValues[4]
+    and spring.properties.enabledChannel == springRuntimeValues[5],
+    "hiding spring controls changed their runtime data")
 
 updateWorkshop(context)
 local springTransform = workshop.controls.canvasTransform
@@ -613,8 +635,17 @@ local inspectorViewport = workshop.layout.inspectorViewport
 wheelWorkspace(context, workshop,
     inspectorViewport.x + inspectorViewport.w * 0.5,
     inspectorViewport.y + inspectorViewport.h * 0.5, -1)
-expect(math.abs(workshop.view.inspectorScroll - 4.8) < 1e-9,
-    "Inspector wheel scrolling was not reduced to one tenth of the previous step")
+expect(math.abs(workshop.view.inspectorScroll - .48) < 1e-9,
+    "Inspector wheel scrolling was not reduced to the requested desktop step")
+workshop.view.inspectorScroll = 0
+updateWorkshop(context)
+inspectorViewport = workshop.layout.inspectorViewport
+local dirtyBeforeTouch = workshop.dirty
+touchSwipeWorkspace(context, workshop,
+    inspectorViewport.x + inspectorViewport.w * .5, inspectorViewport.y + inspectorViewport.h * .65,
+    inspectorViewport.x + inspectorViewport.w * .5, inspectorViewport.y + inspectorViewport.h * .35)
+expect(workshop.view.inspectorScroll > 20 and workshop.textEdit == nil and workshop.dirty == dirtyBeforeTouch,
+    "touch Inspector swipe did not scroll cleanly or accidentally edited a field")
 
 workshop.view.drawerMode = nil
 updateWorkshop(context)
@@ -637,8 +668,14 @@ workshop.modal.scroll = 0
 local modalBody = workshop.controls.modalBody
 wheelWorkspace(context, workshop, modalBody.x + modalBody.w * 0.5,
     modalBody.y + modalBody.h * 0.5, -1)
-expect(math.abs(workshop.modal.scroll - 5.4) < 1e-9,
-    "JSON modal wheel scrolling was not reduced to one tenth of the previous step")
+expect(math.abs(workshop.modal.scroll - .54) < 1e-9,
+    "JSON modal wheel scrolling was not reduced to the requested desktop step")
+workshop.modal.scroll = 0
+touchSwipeWorkspace(context, workshop,
+    modalBody.x + modalBody.w * .5, modalBody.y + modalBody.h * .65,
+    modalBody.x + modalBody.w * .5, modalBody.y + modalBody.h * .35)
+expect(workshop.modal and workshop.modal.kind == "export" and workshop.modal.scroll > 20,
+    "touch JSON swipe did not scroll the panel or accidentally dismissed it")
 clickModalButton(context, workshop, "close")
 
 context.frame_ = {
