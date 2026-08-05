@@ -21,12 +21,11 @@ LevelData.Clone = LevelDocument.Clone
 ---@return table|nil level
 ---@return string|nil errorMessage
 function LevelData.Load(resourcePath)
-    if not cache:Exists(resourcePath) then
-        return nil, "关卡资源不存在：" .. resourcePath
-    end
-
     local file = cache:GetFile(resourcePath)
     if not file or not file:IsOpen() then
+        if not cache:Exists(resourcePath) then
+            return nil, "关卡资源不存在：" .. resourcePath
+        end
         return nil, "无法打开关卡资源：" .. resourcePath
     end
     local content = file:ReadString()
