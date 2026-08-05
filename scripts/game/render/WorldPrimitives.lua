@@ -206,7 +206,7 @@ function M.Install(Renderer, COLORS, color, tint)
             { "a = Δv / Δt", .92, .27, 18, .02, .15 }, { "y = sin 3t + ½sin(7t + φ) + ¼cos 11t", .48, .66, 14, .015, .13 },
             { "v² = v₀² + 2aΔx", .58, .8, 19, -.018, .16 }, { "y = kx²", .91, .38, 17, -.018, .14 },
         }
-        self:DrawFormulaDiagram(frame, "cone", .2, .12, .09, .16, -.018, .12)
+        self:DrawFormulaDiagram(frame, "cone", .46, .12, .09, .16, -.018, .12)
         self:DrawFormulaDiagram(frame, "orbit", .82, .12, .07, nil, .04, .13)
         self:DrawFormulaDiagram(frame, "orbit-map", .12, .64, .13, .16, -.025, .12)
         self:DrawFormulaDiagram(frame, "shaded-wave", .44, .73, .18, .10, -.015, .13)
@@ -344,6 +344,13 @@ function M.Install(Renderer, COLORS, color, tint)
         end
     end
 
+    function Renderer:DrawGameplayWallArt(frame)
+        local overlay = self.images.ui and self.images.ui.gameplayWallArtOverlay
+        if not imageReady(overlay) then return end
+        local scale = frame.logicalWidth / 2559
+        self:Image(overlay, 0, 0, 2559 * scale, 1149 * scale, 1, 0, 0, 0)
+    end
+
     function Renderer:DrawGameplayDecor(frame)
         local overlay = self.images.ui and self.images.ui.gameplayDecorOverlay
         if not imageReady(overlay) then return end
@@ -368,6 +375,44 @@ function M.Install(Renderer, COLORS, color, tint)
             self:Circle(x, y, outerRadius * (1 + progress * .088), nil, COLORS.primaryActive, 2, math.floor(.78 * (1 - progress) * 255))
         end
         EinsteinObserver.Draw(self, self.images.goalObserver, x, y, usableDiameter, state.observer)
+    end
+
+    -- Reuse the exact runtime image handles in the workshop without creating a
+    -- second asset table. The workshop keeps its grey collision bounds above
+    -- these visuals, so authored dimensions remain inspectable.
+    function Renderer:DrawWorkshopObjectArt(data, x, y, w, h, rotation, alpha)
+        if not data or not data.transform then return false end
+        local t = data.transform
+        alpha = alpha or .9
+        if data.type == "wall" and not (data.properties and data.properties.isPhaseable) then
+            local isNarrow = math.min(t.width or 0, t.height or 0) <= NARROW_WALL_MAX_THICKNESS
+            local wallSkin = isNarrow and self.skins.wallNarrow or self.skins.wall
+            local wallBorder = isNarrow and NARROW_WALL_BORDER or WALL_BORDER
+            if not skinReady(wallSkin) then return false end
+            nvgSave(self.vg)
+            nvgTranslate(self.vg, x, y)
+            nvgRotate(self.vg, rotation or 0)
+            if isNarrow and (t.height or 0) > (t.width or 0) then
+                nvgRotate(self.vg, math.pi * .5)
+                local visualWidth, visualHeight = wallVisualSize(h, w, wallBorder)
+                self:NineSlice(wallSkin, -visualWidth * .5, -visualHeight * .5,
+                    visualWidth, visualHeight, wallBorder, alpha)
+            else
+                local visualWidth, visualHeight = wallVisualSize(w, h, wallBorder)
+                self:NineSlice(wallSkin, -visualWidth * .5, -visualHeight * .5,
+                    visualWidth, visualHeight, wallBorder, alpha)
+            end
+            nvgRestore(self.vg)
+            return true
+        elseif data.type == "launcher" and imageReady(self.images.launcher) then
+            self:Image(self.images.launcher, x, y, w, w * 190 / 150, alpha,
+                rotation or 0, .5, 36 / 190)
+            return true
+        elseif data.type == "goal_sensor" and imageReady(self.images.goalObserver) then
+            local diameter = math.max(12, math.min(w * .8, h))
+            return EinsteinObserver.Draw(self, self.images.goalObserver, x, y, diameter, nil)
+        end
+        return false
     end
 
     function Renderer:DrawObject(frame, object, state, design, mapper)

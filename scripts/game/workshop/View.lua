@@ -376,8 +376,7 @@ local function drawObject(painter, object, transform, selected)
     nvgTranslate(painter.vg, x, y)
     nvgRotate(painter.vg, rotation)
     painter:FillRect(-w * 0.5, -h * 0.5, w, h, fill, object.properties and object.properties.collisionEnabled == false and 90 or 205)
-    painter:StrokeRect(-w * 0.5, -h * 0.5, w, h, selected and COLORS.selection or COLORS.lightText,
-        selected and 3 or 1, selected and 255 or 135)
+    painter:StrokeRect(-w * 0.5, -h * 0.5, w, h, COLORS.lightText, 1, 135)
     if object.type == "goal_sensor" then
         painter:StrokeRect(-w * 0.32, -h * 0.30, w * 0.64, h * 0.60, COLORS.lightText, 2, 180)
     elseif object.type == "launcher" then
@@ -395,6 +394,17 @@ local function drawObject(painter, object, transform, selected)
         painter:FillRect(-2, -h * 0.42, 4, h * 0.84, COLORS.lightText, 150)
     end
     nvgRestore(painter.vg)
+
+    if painter.DrawWorkshopObjectArt then
+        painter:DrawWorkshopObjectArt(object, x, y, w, h, rotation, .9)
+    end
+    if selected then
+        nvgSave(painter.vg)
+        nvgTranslate(painter.vg, x, y)
+        nvgRotate(painter.vg, rotation)
+        painter:StrokeRect(-w * 0.5, -h * 0.5, w, h, COLORS.selection, 3, 255)
+        nvgRestore(painter.vg)
+    end
     local objectId, objectIdSize = fitText(painter, object.id, "maker-body", 14, 9, math.max(10, w - 6))
     painter:Text(x, y, objectId, objectIdSize, COLORS.lightText,
         NVG_ALIGN_CENTER + NVG_ALIGN_MIDDLE, "maker-body")

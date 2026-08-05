@@ -588,8 +588,8 @@ function M.Install(context)
         elseif id == "zoomOut" then current.view.zoom = math.max(.35, current.view.zoom / 1.2); rebuildUI()
         elseif id == "zoomIn" then current.view.zoom = math.min(4, current.view.zoom * 1.2); rebuildUI()
         elseif id == "deleteObject" then deleteSelected()
-        elseif id == "drawer_files" then current.view.drawerMode = current.view.drawerMode == "files" and nil or "files"; rebuildUI()
-        elseif id == "drawer_inspector" then current.view.drawerMode = current.view.drawerMode == "inspector" and nil or "inspector"; rebuildUI()
+        elseif id == "drawer_files" then current.view.drawerMode = current.view.drawerMode ~= "files" and "files" or nil; rebuildUI()
+        elseif id == "drawer_inspector" then current.view.drawerMode = current.view.drawerMode ~= "inspector" and "inspector" or nil; rebuildUI()
         end
     end
 

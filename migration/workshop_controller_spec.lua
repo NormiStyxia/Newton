@@ -582,6 +582,18 @@ context.UpdateLevelWorkshop(0, {
 })
 expect(workshop.view.drawerMode == "files",
     "phone landscape pointer conversion missed the file drawer tab")
+local inspectorTab = workshop.layout.drawerTabs.inspector
+clickRect(context, workshop, inspectorTab)
+expect(workshop.view.drawerMode == "inspector" and workshop.layout.right and not workshop.layout.left,
+    "phone top tabs did not switch from files to Inspector")
+inspectorTab = workshop.layout.drawerTabs.inspector
+clickRect(context, workshop, inspectorTab)
+expect(workshop.view.drawerMode == nil and not workshop.layout.right and not workshop.layout.left,
+    "phone Inspector tab could not collapse the open drawer")
+fileTab = workshop.layout.drawerTabs.files
+clickRect(context, workshop, fileTab)
+expect(workshop.view.drawerMode == "files" and workshop.layout.left and not workshop.layout.right,
+    "phone file tab could not reopen the file drawer")
 
 context.frame_ = {
     systemLogicalWidth = 567, systemLogicalHeight = 299,

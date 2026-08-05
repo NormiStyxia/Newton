@@ -17,6 +17,7 @@ local TextTransfer = require("game.workshop.TextTransfer")
 local Inspector = require("game.workshop.Inspector")
 local View = require("game.workshop.View")
 local ExperimentCatalog = require("ui.ExperimentCatalog")
+local WorldPrimitives = require("game.render.WorldPrimitives")
 
 local function validLevel(id, name)
     local document = LevelDocument.New(id, name)
@@ -385,6 +386,43 @@ local portraitLayout = Layout.Resolve({
 }, {})
 expect(not portraitLayout.supported and portraitLayout.mode == "portrait",
     "portrait workshop layout was accepted")
+
+local fakeRendererType = {}
+function fakeRendererType:NineSlice(_, _, _, _, _, _, _) self.wallArtCalls = self.wallArtCalls + 1 end
+function fakeRendererType:Image(image, _, _, _, _, _, _, _, _)
+    if image == 21 then self.launcherArtCalls = self.launcherArtCalls + 1
+    elseif image == 22 then self.goalArtCalls = self.goalArtCalls + 1 end
+end
+function fakeRendererType:Circle() end
+local previousNvgSave, previousNvgTranslate = nvgSave, nvgTranslate
+local previousNvgRotate, previousNvgRestore = nvgRotate, nvgRestore
+nvgSave, nvgTranslate, nvgRotate, nvgRestore = function() end, function() end, function() end, function() end
+WorldPrimitives.Install(fakeRendererType, {}, function() return {} end, function() return {} end)
+local fakeRenderer = setmetatable({
+    vg = {}, wallArtCalls = 0, launcherArtCalls = 0, goalArtCalls = 0,
+    images = { launcher = 21, goalObserver = 22 },
+    skins = {
+        wall = { topLeft = 1, top = 1, topRight = 1, left = 1, center = 1,
+            right = 1, bottomLeft = 1, bottom = 1, bottomRight = 1 },
+        wallNarrow = { topLeft = 2, top = 2, topRight = 2, left = 2, center = 2,
+            right = 2, bottomLeft = 2, bottom = 2, bottomRight = 2 },
+    },
+}, { __index = fakeRendererType })
+expect(fakeRenderer:DrawWorkshopObjectArt(LevelDocument.NewObject("wall", "art_wall", 100, 100),
+    0, 0, 120, 32, 0, .9), "workshop wall art did not reuse the runtime nine-slice skin")
+expect(fakeRenderer:DrawWorkshopObjectArt(LevelDocument.NewObject("launcher", "art_launcher", 100, 100),
+    0, 0, 90, 90, 0, .9), "workshop launcher art did not reuse the runtime PNG handle")
+expect(fakeRenderer:DrawWorkshopObjectArt(LevelDocument.NewObject("goal_sensor", "art_goal", 100, 100),
+    0, 0, 100, 100, 0, .9), "workshop goal art did not reuse the runtime observer handle")
+local phaseArt = LevelDocument.NewObject("wall", "art_phase", 100, 100)
+phaseArt.properties.isPhaseable = true
+expect(not fakeRenderer:DrawWorkshopObjectArt(phaseArt, 0, 0, 120, 32, 0, .9),
+    "phase wall incorrectly claimed an image asset that the runtime does not have")
+expect(fakeRenderer.wallArtCalls == 1 and fakeRenderer.launcherArtCalls == 1
+    and fakeRenderer.goalArtCalls == 1,
+    "workshop art helper did not route through the shared runtime image handles")
+nvgSave, nvgTranslate, nvgRotate, nvgRestore =
+    previousNvgSave, previousNvgTranslate, previousNvgRotate, previousNvgRestore
 
 local mappingDocument = validLevel("mapping", "Mapping")
 local transform = Interaction.CanvasTransform(mappingDocument,
