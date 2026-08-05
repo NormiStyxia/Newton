@@ -1,37 +1,33 @@
-# UrhoX project source is tracked; generated output and local runtime state are not.
-
-# Build and preview output
+# Build artifacts & runtime state
 .build/
 dist/
 .cli/
 logs/
-.tmp/
-.agent/
-_uploads/
 *.log
+logs/.nfs*
+.sce/logs/
+.sce/build/build_steps/__pycache__/
 
-# Project-generated upload/build cache
-.project/.build/
-.project/**/*.meta
+# Temp & swap files
+.tmp/
+*.crswap
+.DS_Store
 
-# Engine-generated resource metadata
-*.meta
-
-# Local asset upload/cache files
+# OSS util
 .ossutil_checkpoint/
 ossutil_output/
 
-# Local editor, SDK, and agent configuration
+# Editor / IDE / agent configs
 .vscode/
-.claude/
-.codex/
 .cursor/
+.codex/
 .gemini/
+.claude/
 .emmylua/
 .installer/
 .maker/
 
-# Bundled engine documentation, examples, schemas, templates, and libraries
+# Maker engine assets & agent files (provided by ai-dev-kit, not user source)
 engine-docs/
 examples/
 lua-tools/
@@ -40,19 +36,5 @@ skills/
 templates/
 tools/
 urhox-libs/
-
-# OS and editor temporary files
-.DS_Store
-Thumbs.db
-*~
-*.swp
-*.swo
-
-# Python caches
-__pycache__/
-*.py[cod]
-.pytest_cache/
-
-# Node/package-manager caches if local tooling creates them
-node_modules/
-.npm/
+AGENTS.md
+CLAUDE.md
