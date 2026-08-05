@@ -25,6 +25,8 @@ function M.Install(context)
             elseif direction == "UP" then gravityY = -gravity.strength
             else gravityY = gravity.strength end
         end
+        gravityX = gravityX * MatterCalibration.APPLE_GAMEPLAY_GRAVITY_SCALE
+        gravityY = gravityY * MatterCalibration.APPLE_GAMEPLAY_GRAVITY_SCALE
         local points = TrajectoryPrediction.PredictFreeFlight({
             x = x,
             y = y,
@@ -32,7 +34,7 @@ function M.Install(context)
             velocityY = velocityY,
             gravityX = gravityX,
             gravityY = gravityY,
-            frictionAir = apple_.baseFrictionAir or MatterCalibration.APPLE_FRICTION_AIR,
+            frictionAir = apple_.flightFrictionAir or MatterCalibration.APPLE_FLIGHT_FRICTION_AIR,
             forceScale = 0.001,
             maxSpeed = 25,
             steps = 30,

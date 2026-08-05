@@ -33,6 +33,16 @@ function M.Install(context)
     function CurrentMatterSpeedFromWorld(velocity)
         return math.sqrt(velocity.x * velocity.x + velocity.y * velocity.y) / CONFIG.matterVelocityToWorld
     end
+    ---@param supportNormal? Vector2
+    ---@return number
+    function CurrentAppleFrictionAir(supportNormal)
+        if not apple_ then return MatterCalibration.APPLE_FRICTION_AIR end
+        local probeActive = level_ and level_.physicsProbe and level_.physicsProbe:IsActive()
+        if probeActive or supportNormal ~= nil then
+            return apple_.baseFrictionAir
+        end
+        return apple_.flightFrictionAir or apple_.baseFrictionAir
+    end
     ---@param timeStep number
     function ApplyAppleRollingResistance(timeStep)
         if not apple_ or not appleSupportNormal_ or apple_.body.bodyType ~= BT_DYNAMIC then return end
@@ -172,9 +182,10 @@ function M.Install(context)
             gravity = { x = 0, y = 1, strength = 1 }
         end
         local timeScale = CurrentPhysicsTimeScale()
+        local gravityScale = probeActive and 1 or MatterCalibration.APPLE_GAMEPLAY_GRAVITY_SCALE
         physicsWorld_:SetGravity(Vector2(
-            gravity.x * gravity.strength * physicsProfile_.gravityAcceleration * timeScale * timeScale,
-            -gravity.y * gravity.strength * physicsProfile_.gravityAcceleration * timeScale * timeScale
+            gravity.x * gravity.strength * physicsProfile_.gravityAcceleration * gravityScale * timeScale * timeScale,
+            -gravity.y * gravity.strength * physicsProfile_.gravityAcceleration * gravityScale * timeScale * timeScale
         ))
         -- PhysicsProbe owns the apple collision mask while it is sampling. Do not
         -- restore the normal level mask here or real fixtures leak into telemetry.
@@ -193,10 +204,11 @@ function M.Install(context)
         if apple_ and apple_.body and apple_.body.bodyType == BT_DYNAMIC then
             local velocity = apple_.body.linearVelocity
             local scaleRatio = nextScale / previousScale
+            local frictionAir = CurrentAppleFrictionAir(appleSupportNormal_)
             apple_.body.linearVelocity = Vector2(velocity.x * scaleRatio, velocity.y * scaleRatio)
             apple_.body.angularVelocity = apple_.body.angularVelocity * scaleRatio
-            apple_.body.linearDamping = MatterCalibration.Box2DLinearDamping(apple_.baseFrictionAir, nextScale)
-            apple_.body.angularDamping = MatterCalibration.Box2DLinearDamping(apple_.baseFrictionAir, nextScale)
+            apple_.body.linearDamping = MatterCalibration.Box2DLinearDamping(frictionAir, nextScale)
+            apple_.body.angularDamping = MatterCalibration.Box2DLinearDamping(frictionAir, nextScale)
             apple_.body.awake = true
         end
         SetGravity()

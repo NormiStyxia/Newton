@@ -175,6 +175,10 @@ function M.Install(context)
     ---@param _eventType string
     ---@param eventData PhysicsPreStepEventData
     function HandlePhysicsPreStep(_eventType, eventData)
+        -- The previous post-step support is the state that applies to this
+        -- integration. Resolve damping before clearing it for this step's
+        -- PhysicsUpdateContact2D callbacks.
+        local frictionAir = CurrentAppleFrictionAir(appleSupportNormal_)
         -- PhysicsUpdateContact2D repopulates this during the upcoming solve.
         -- Clearing it every step avoids stale support after gravity changes or
         -- contacts that end without a usable manifold.
@@ -197,12 +201,12 @@ function M.Install(context)
         local physicsTimeStep = ResolvePhysicsTimeStep(eventData)
         physicsStepTimeScale_ = physicsTimeScale
         apple_.body.linearDamping = MatterCalibration.Box2DLinearDamping(
-            apple_.baseFrictionAir,
+            frictionAir,
             physicsTimeScale,
             physicsTimeStep
         )
         apple_.body.angularDamping = MatterCalibration.Box2DLinearDamping(
-            apple_.baseFrictionAir,
+            frictionAir,
             physicsTimeScale,
             physicsTimeStep
         )

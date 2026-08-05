@@ -27,6 +27,7 @@ def main() -> int:
     factory = (ROOT / "scripts/game/level/RuntimeFactory.lua").read_text(encoding="utf-8")
     calibration = (ROOT / "scripts/game/physics/Calibration.lua").read_text(encoding="utf-8")
     physics_system = (ROOT / "scripts/game/physics/System.lua").read_text(encoding="utf-8")
+    world_view = (ROOT / "scripts/game/render/WorldView.lua").read_text(encoding="utf-8")
     probe = (ROOT / "scripts/game/physics/Probe.lua").read_text(encoding="utf-8")
     generator = (ROOT / "migration/generate_phaser_matter_reference.cjs").read_text(encoding="utf-8")
     level_data = (ROOT / "scripts/game/level/LevelData.lua").read_text(encoding="utf-8")
@@ -121,6 +122,9 @@ def main() -> int:
     expect("APPLE_FRICTION = 0.1" in calibration, "apple effective friction is not calibrated")
     expect("APPLE_FRICTION_STATIC = 0.5" in calibration, "Matter static-friction multiplier is not calibrated")
     expect("APPLE_FRICTION_AIR = 0.01" in calibration, "apple effective air friction is not calibrated")
+    expect("APPLE_FLIGHT_FRICTION_AIR = 0.0015" in calibration
+           and "APPLE_GAMEPLAY_GRAVITY_SCALE = 0.75" in calibration,
+           "gameplay flight feel is not calibrated independently from the probe baseline")
     expect("APPLE_INITIAL_RESTITUTION = 0" in calibration, "apple initial restitution is not calibrated")
     expect("SOURCE_STATIC_FRICTION = 1" in calibration
            and "SOURCE_STATIC_RESTITUTION = 0" in calibration,
@@ -193,6 +197,8 @@ def main() -> int:
     ), "bullet-time exit does not restore the Matter-normalized velocity")
     expect("velocity.x * scaleRatio" in main_lua and "timeScale * timeScale" in main_lua,
            "runtime does not apply the verified velocity/gravity time-scale mapping")
+    expect("local gravityScale = probeActive and 1 or MatterCalibration.APPLE_GAMEPLAY_GRAVITY_SCALE" in physics_system,
+           "gameplay gravity scale leaks into the physics probe or is not applied")
     expect("CurrentMatterVelocityToWorld" in main_lua and "CurrentMatterSpeedFromWorld" in main_lua,
            "Matter velocity reads are not normalized for the active time scale")
     expect("5.52 * CurrentPhysicsTimeScale()" in main_lua,
@@ -200,6 +206,15 @@ def main() -> int:
     expect("* CurrentMatterVelocityToWorld(CurrentPhysicsStepScale())" in main_lua,
            "spring exit velocity is not scaled by the physics step that produced its pre-solve velocity")
     physics_pre_step = main_lua.split("function HandlePhysicsPreStep", 1)[1].split("function HandlePhysicsPostStep", 1)[0]
+    expect("local frictionAir = CurrentAppleFrictionAir(appleSupportNormal_)" in physics_pre_step
+           and physics_pre_step.index("local frictionAir = CurrentAppleFrictionAir(appleSupportNormal_)")
+               < physics_pre_step.index("appleSupportNormal_ = nil")
+           and "if probeActive or supportNormal ~= nil then" in physics_system,
+           "air/contact damping is not selected from the previous support state")
+    expect("flightFrictionAir = MatterCalibration.APPLE_FLIGHT_FRICTION_AIR" in factory
+           and "frictionAir = apple_.flightFrictionAir or MatterCalibration.APPLE_FLIGHT_FRICTION_AIR" in world_view
+           and "gravityX = gravityX * MatterCalibration.APPLE_GAMEPLAY_GRAVITY_SCALE" in world_view,
+           "trajectory preview does not share the gameplay flight calibration")
     expect("local velocity = apple_.body.linearVelocity" in physics_pre_step
            and "applePreSolveVelocity_ = Vector2(velocity.x, velocity.y)" in physics_pre_step
            and physics_pre_step.index("applePreSolveVelocity_ = Vector2") < physics_pre_step.index("apple_.body.linearDamping")

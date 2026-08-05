@@ -345,8 +345,9 @@ def main() -> int:
            "replay rule-feed persistence and removal states are missing")
     expect('RecordReplayEvent("RULE_REMOVED", "quantum-phase")' in main_lua and "local removedRules = {}" in main_lua,
            "replay does not record phase or Newton rule removals")
-    expect("frictionAir = apple_.baseFrictionAir or MatterCalibration.APPLE_FRICTION_AIR" in main_lua,
-           "trajectory preview does not read the apple's current air-friction material")
+    expect("frictionAir = apple_.flightFrictionAir or MatterCalibration.APPLE_FLIGHT_FRICTION_AIR" in main_lua
+           and "gravityX = gravityX * MatterCalibration.APPLE_GAMEPLAY_GRAVITY_SCALE" in main_lua,
+           "trajectory preview does not read the gameplay flight calibration")
     render_loop = main_lua.split("function HandleRender()", 1)[1]
     expect(render_loop.index("DrawPlayfieldOverlay()") < render_loop.index("DrawPauseShade()")
            < render_loop.index("DrawCards(nil, 71.999, true)")

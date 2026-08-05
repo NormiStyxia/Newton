@@ -63,8 +63,9 @@ function M.Install(context)
             -vy * 60 / CONFIG.pixelsPerMeter * timeScale
         )
         apple_.body.angularVelocity = -vx * 0.006 * 60 * timeScale
-        apple_.body.linearDamping = MatterCalibration.Box2DLinearDamping(apple_.baseFrictionAir, timeScale)
-        apple_.body.angularDamping = MatterCalibration.Box2DLinearDamping(apple_.baseFrictionAir, timeScale)
+        local flightFrictionAir = apple_.flightFrictionAir or apple_.baseFrictionAir
+        apple_.body.linearDamping = MatterCalibration.Box2DLinearDamping(flightFrictionAir, timeScale)
+        apple_.body.angularDamping = MatterCalibration.Box2DLinearDamping(flightFrictionAir, timeScale)
         apple_.body.awake = true
         Rules.Launch(rules_)
         launched_ = true

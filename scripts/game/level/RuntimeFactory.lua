@@ -270,6 +270,7 @@ function RuntimeFactory.CreateApple(scene, launcher)
         radius = 0.27,
         baseRestitution = MatterCalibration.APPLE_INITIAL_RESTITUTION,
         baseFrictionAir = MatterCalibration.APPLE_FRICTION_AIR,
+        flightFrictionAir = MatterCalibration.APPLE_FLIGHT_FRICTION_AIR,
         displayRadius = 32,
         launcher = launcher,
         phaseActive = false,
