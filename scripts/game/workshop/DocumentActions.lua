@@ -38,6 +38,21 @@ function DocumentActions.PersistNewCustom(repository, draftStore, metadata, docu
     return false, persistence
 end
 
+function DocumentActions.ImportCustom(repository, draftStore, document, inspector)
+    local imported, metadata = repository:ImportAsCustom(document)
+    if not imported then return nil, metadata end
+    inspector.EnsureCustomFields(imported)
+    local replaced, replaceError = repository:ReplaceCustom(metadata.entryId, imported)
+    if not replaced then
+        repository:DeleteCustom(metadata.entryId)
+        return nil, replaceError
+    end
+    local saved, persistence = DocumentActions.PersistNewCustom(
+        repository, draftStore, metadata, imported)
+    if not saved then return nil, persistence end
+    return imported, metadata, persistence
+end
+
 function DocumentActions.DeleteCustom(repository, draftStore, entryId, levelId)
     local deleted, errorMessage = draftStore:DeleteCustom(levelId)
     if not deleted then return false, errorMessage end

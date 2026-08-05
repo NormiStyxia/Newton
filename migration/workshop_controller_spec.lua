@@ -10,6 +10,7 @@ local LevelDocument = require("game.level.LevelDocument")
 local Rules = require("game.gameplay.Rules")
 local State = require("game.State")
 local Controller = require("game.workshop.Controller")
+local Interaction = require("game.workshop.Interaction")
 
 local codecStore, codecIndex = {}, 0
 cjson = {}
@@ -64,8 +65,9 @@ function renderer:SetNumViewports(value) self.viewports = value end
 input = {}
 input.mouseMoveWheel = 0
 function input:SetScreenKeyboardVisible(_) end
-function input:GetKeyDown(_) return false end
+function input:GetKeyDown(key) return self.downKeys and self.downKeys[key] == true or false end
 KEY_ESCAPE, KEY_CTRL, KEY_S, KEY_Z, KEY_Y, KEY_D, KEY_DELETE = 27, 1000, 83, 90, 89, 68, 127
+KEY_BACKSPACE, KEY_RETURN, KEY_A, KEY_V, KEY_SHIFT = 8, 13, 65, 86, 1001
 function input:GetKeyPress(key)
     local pressed = self.pressedKey == key
     if pressed then self.pressedKey = nil end
@@ -88,7 +90,8 @@ local LevelData = {
     Validate = LevelDocument.Validate,
     ValidateDetailed = LevelDocument.ValidateDetailed,
     Decode = function(text)
-        local decoded = cjson.decode(text)
+        local ok, decoded = pcall(cjson.decode, text)
+        if not ok then return nil, "JSON 解析失败：" .. tostring(decoded) end
         local normalized = LevelDocument.Normalize(decoded)
         local valid, errors = LevelDocument.Validate(normalized)
         if not valid then return nil, table.concat(errors, ";") end
@@ -96,6 +99,18 @@ local LevelData = {
     end,
 }
 local designStub = { New = function() return {} end }
+local function newTestContext(frame)
+    local result = State.New({
+        DesignSpace = designStub,
+        Rules = Rules,
+        ReplayMode = { NONE = 0 },
+        LevelData = LevelData,
+        LevelDocument = LevelDocument,
+    }, { CONFIG = { pixelsPerMeter = 100, levelCount = 2 } })
+    result.frame_ = frame
+    Controller.Install(result)
+    return result
+end
 local context = State.New({
     DesignSpace = designStub,
     Rules = Rules,
@@ -126,6 +141,86 @@ end
 
 expect(context.OpenLevelWorkshop("level_01"), "catalog entry did not open workshop")
 local workshop = context.workshopState_
+
+local function idlePointer()
+    return { x = 0, y = 0, down = false, pressed = false, released = false }
+end
+
+local function updateWorkshop(targetContext, pointer)
+    targetContext.UpdateLevelWorkshop(0, pointer or idlePointer())
+end
+
+local function rawPoint(current, x, y)
+    local scale = current.layout and current.layout.coordinateScale or 1
+    return x / scale, y / scale
+end
+
+local function clickRect(targetContext, current, rect)
+    expect(rect and rect.w > 0 and rect.h > 0, "attempted to click a missing control rectangle")
+    local x, y = rect.x + rect.w * 0.5, rect.y + rect.h * 0.5
+    local rawX, rawY = rawPoint(current, x, y)
+    updateWorkshop(targetContext, { x = rawX, y = rawY, down = true, pressed = true, released = false })
+    updateWorkshop(targetContext, { x = rawX, y = rawY, down = false, pressed = false, released = true })
+end
+
+local function clickControl(targetContext, current, id)
+    updateWorkshop(targetContext)
+    clickRect(targetContext, current, current.controls.byId[id])
+end
+
+local function clickModalButton(targetContext, current, id)
+    updateWorkshop(targetContext)
+    for _, button in ipairs(current.controls.modalButtons or {}) do
+        if button.id == id then clickRect(targetContext, current, button.rect); return end
+    end
+    error("modal button not found: " .. tostring(id), 2)
+end
+
+local function inspectorRow(targetContext, current, key)
+    updateWorkshop(targetContext)
+    local offset = 0
+    for _, field in ipairs(current.inspectorFields or {}) do
+        if field.key == key then
+            current.view.inspectorScroll = math.min(offset, current.view.inspectorScrollMax or offset)
+            updateWorkshop(targetContext)
+            for _, row in ipairs(current.controls.inspectorRows or {}) do
+                if row.field.key == key then return row end
+            end
+            break
+        end
+        offset = offset + (field.kind == "section" and 38 or 52)
+    end
+    local fields, rows = {}, {}
+    for _, field in ipairs(current.inspectorFields or {}) do fields[#fields + 1] = tostring(field.key) end
+    for _, row in ipairs(current.controls.inspectorRows or {}) do rows[#rows + 1] = tostring(row.field.key) end
+    error("inspector row not found: " .. tostring(key)
+        .. " fields=" .. table.concat(fields, ",") .. " rows=" .. table.concat(rows, ","), 2)
+end
+
+local function replaceTextAndCommit(targetContext, current, value)
+    expect(current.textEdit ~= nil, "text editor was not opened")
+    targetContext.HandleWorkshopTextInput("TextInput", {
+        GetString = function(_, _) return value end,
+    })
+    input.pressedKey = KEY_RETURN
+    updateWorkshop(targetContext)
+    expect(current.textEdit == nil, "text editor did not commit with Return")
+end
+
+local function dragWorkspace(targetContext, current, fromX, fromY, toX, toY)
+    local rawFromX, rawFromY = rawPoint(current, fromX, fromY)
+    local rawToX, rawToY = rawPoint(current, toX, toY)
+    updateWorkshop(targetContext, {
+        x = rawFromX, y = rawFromY, down = true, pressed = true, released = false,
+    })
+    updateWorkshop(targetContext, {
+        x = rawToX, y = rawToY, down = true, pressed = false, released = false,
+    })
+    updateWorkshop(targetContext, {
+        x = rawToX, y = rawToY, down = false, pressed = false, released = true,
+    })
+end
+
 expect(context.screen_ == "workshop" and workshop.entryId == "official:level_01",
     "official entry selection mismatch")
 expect(workshop.readOnly and #workshop.entries == 2, "official repository was not read-only or complete")
@@ -251,8 +346,149 @@ expect(workshop.document.name == "剪贴板导入" and workshop.document.levelId
     and not workshop.dirty,
     "imported JSON was not isolated and formally saved as a custom level")
 
+-- Drive the actual pointer and text-input surface for the primary editing path.
+updateWorkshop(context)
+local editedWall = nil
+for _, object in ipairs(workshop.document.objects) do
+    if object.type == "wall" then editedWall = object; break end
+end
+expect(editedWall ~= nil, "imported test document has no wall")
+local transform = workshop.controls.canvasTransform
+local wallX, wallY = Interaction.LevelToScreen(transform, editedWall.transform.x, editedWall.transform.y)
+local originalWallX, originalWallY = editedWall.transform.x, editedWall.transform.y
+dragWorkspace(context, workshop, wallX, wallY, wallX + 54, wallY + 26)
+expect(workshop.selectedObjectId == editedWall.id
+    and (editedWall.transform.x ~= originalWallX or editedWall.transform.y ~= originalWallY),
+    "canvas drag did not select and move the wall")
+
+clickRect(context, workshop, inspectorRow(context, workshop, "object.name").rect)
+replaceTextAndCommit(context, workshop, "主策测试墙")
+expect(workshop.selectedObject.name == "主策测试墙", "Inspector text edit did not update object name")
+
+clickRect(context, workshop, inspectorRow(context, workshop, "transform.width").rect)
+replaceTextAndCommit(context, workshop, "180")
+expect(workshop.selectedObject.transform.width == 180, "Inspector number edit did not update width")
+
+local collisionBefore = workshop.selectedObject.properties.collisionEnabled
+clickRect(context, workshop, inspectorRow(context, workshop, "properties.collisionEnabled").rect)
+expect(workshop.selectedObject.properties.collisionEnabled ~= collisionBefore,
+    "Inspector boolean edit did not toggle collision")
+
+updateWorkshop(context)
+local springPalette = nil
+for _, row in ipairs(workshop.controls.paletteRows) do
+    if row.objectType == "spring" then springPalette = row; break end
+end
+clickRect(context, workshop, springPalette.rect)
+expect(workshop.selectedObject and workshop.selectedObject.type == "spring",
+    "palette click did not add and select a spring")
+local spring = workshop.selectedObject
+
+clickRect(context, workshop, inspectorRow(context, workshop, "properties.enabledChannel").rect)
+replaceTextAndCommit(context, workshop, "channel-main")
+expect(spring.properties.enabledChannel == "channel-main", "Inspector mechanism text edit failed")
+
+clickRect(context, workshop, inspectorRow(context, workshop, "properties.impulseStrength").rect)
+replaceTextAndCommit(context, workshop, "640")
+expect(spring.properties.impulseStrength == 640, "Inspector mechanism number edit failed")
+
+local oneShotBefore = spring.properties.oneShot
+clickRect(context, workshop, inspectorRow(context, workshop, "properties.oneShot").rect)
+expect(spring.properties.oneShot ~= oneShotBefore, "Inspector mechanism boolean edit failed")
+
+local directionBefore = spring.properties.direction
+clickRect(context, workshop, inspectorRow(context, workshop, "properties.direction").rect)
+expect(spring.properties.direction ~= directionBefore, "Inspector enum edit did not cycle direction")
+
+updateWorkshop(context)
+local springTransform = workshop.controls.canvasTransform
+local springX, springY = Interaction.LevelToScreen(springTransform, spring.transform.x, spring.transform.y)
+local beforeMoveX, beforeMoveY = spring.transform.x, spring.transform.y
+dragWorkspace(context, workshop, springX, springY, springX + 62, springY + 34)
+expect(spring.transform.x ~= beforeMoveX or spring.transform.y ~= beforeMoveY,
+    "selected-object move gesture did not update transform")
+
+updateWorkshop(context)
+local beforeWidth, beforeHeight = spring.transform.width, spring.transform.height
+local resizeHandle = workshop.controls.handles.resize
+dragWorkspace(context, workshop, resizeHandle.x, resizeHandle.y, resizeHandle.x + 48, resizeHandle.y + 36)
+expect(spring.transform.width ~= beforeWidth or spring.transform.height ~= beforeHeight,
+    "resize handle gesture did not update dimensions")
+
+updateWorkshop(context)
+local beforeRotation = spring.transform.rotation
+local rotateHandle = workshop.controls.handles.rotate
+local centerX, centerY = Interaction.LevelToScreen(workshop.controls.canvasTransform,
+    spring.transform.x, spring.transform.y)
+dragWorkspace(context, workshop, rotateHandle.x, rotateHandle.y, centerX + 100, centerY)
+expect(spring.transform.rotation ~= beforeRotation, "rotation handle gesture did not update angle")
+
+local countBeforeDelete = #workshop.document.objects
+clickControl(context, workshop, "deleteObject")
+expect(#workshop.document.objects == countBeforeDelete - 1 and workshop.selectedObjectId == nil,
+    "delete-object control did not remove the selected object")
+
+clickControl(context, workshop, "export")
+expect(workshop.modal and workshop.modal.kind == "export", "export control did not open JSON panel")
+local exportedText = workshop.modal.payload.text
+clickModalButton(context, workshop, "copy")
+expect(ui.clipboard == exportedText and workshop.status:find("已复制", 1, true),
+    "verified clipboard export did not report success")
+clickModalButton(context, workshop, "close")
+
+local readClipboard = ui.GetClipboardText
+ui.GetClipboardText = function() return "clipboard-mismatch" end
+clickControl(context, workshop, "export")
+clickModalButton(context, workshop, "copy")
+expect(workshop.status:find("未确认写入", 1, true),
+    "clipboard read-back mismatch was reported as success")
+ui.GetClipboardText = readClipboard
+clickModalButton(context, workshop, "close")
+
+context.WorkshopOpenImport()
+workshop.textEdit.value, workshop.textEdit.selectAll = "not-json", false
+clickModalButton(context, workshop, "confirm")
+expect(workshop.modal and workshop.modal.kind == "import"
+    and workshop.status:find("导入失败", 1, true),
+    "malformed JSON closed the import panel or reported success")
+clickModalButton(context, workshop, "cancel")
+
+context.WorkshopOpenImport()
+workshop.textEdit.value, workshop.textEdit.selectAll = string.rep("x", 1024 * 1024 + 1), false
+clickModalButton(context, workshop, "confirm")
+expect(workshop.modal and workshop.modal.kind == "import"
+    and workshop.status:find("超过", 1, true),
+    "oversized JSON bypassed the import limit")
+clickModalButton(context, workshop, "cancel")
+
+local documentBeforeCompletion = LevelDocument.Clone(workshop.document)
+expect(context.BeginWorkshopPreview(), "completion preview did not start")
+context.success_, context.failed_ = true, false
+expect(context.ExitWorkshopPreview("complete") and context.screen_ == "workshop"
+    and workshop.status:find("预览已完成", 1, true)
+    and workshop.document.levelId == documentBeforeCompletion.levelId,
+    "preview completion did not return to the isolated editor snapshot")
+expect(context.BeginWorkshopPreview(), "failure preview did not start")
+context.success_, context.failed_ = false, true
+expect(context.ExitWorkshopPreview("failed") and context.screen_ == "workshop"
+    and workshop.status:find("恢复编辑快照", 1, true),
+    "preview failure did not return to edit mode")
+
 context.WorkshopAddObject("wall")
 context.HandleWorkshopScreenMode()
+local continueContext = newTestContext(context.frame_)
+expect(continueContext.OpenLevelWorkshop("level_01")
+    and continueContext.WorkshopOpenEntry("custom:custom_002"),
+    "draft continuation context could not open the custom level")
+expect(continueContext.workshopState_.modal
+    and continueContext.workshopState_.modal.kind == "recovery",
+    "draft continuation did not offer recovery choices")
+local continuedDraftCount = #continueContext.workshopState_.modal.draft.document.objects
+continueContext.WorkshopResolveModal("continue")
+expect(continueContext.workshopState_.modal == nil and continueContext.workshopState_.dirty
+    and #continueContext.workshopState_.document.objects == continuedDraftCount,
+    "continue-editing did not restore the draft document")
+
 local recoveryContext = State.New({
     DesignSpace = designStub,
     Rules = Rules,
@@ -271,6 +507,63 @@ recoveryContext.WorkshopResolveModal("saveAs")
 expect(recoveryContext.workshopState_.document.levelId == "custom_003"
     and #recoveryContext.workshopState_.draftStore:LoadCustomLevels() == 3,
     "draft save-as did not persist a restart-safe custom baseline")
+
+local recoveredLevelId = recoveryContext.workshopState_.document.levelId
+recoveryContext.HandleWorkshopScreenMode()
+local discardContext = newTestContext(context.frame_)
+expect(discardContext.OpenLevelWorkshop("level_01")
+    and discardContext.WorkshopOpenEntry("custom:" .. recoveredLevelId),
+    "draft discard context could not open the recovered custom level")
+expect(discardContext.workshopState_.modal
+    and discardContext.workshopState_.modal.kind == "recovery",
+    "discard coverage did not discover the saved draft")
+discardContext.WorkshopResolveModal("discard")
+expect(discardContext.workshopState_.modal == nil and not discardContext.workshopState_.dirty
+    and discardContext.workshopState_.draftStore:LoadDraft(recoveredLevelId) == nil,
+    "discard-draft did not delete the draft or retain the formal baseline")
+
+local entriesBeforeFailedImport = #workshop.repository:List()
+local saveCustom = workshop.draftStore.SaveCustom
+workshop.draftStore.SaveCustom = function() return false, "injected persistence failure" end
+context.WorkshopOpenImport()
+workshop.textEdit.value = cjson.encode(importedDocument)
+workshop.textEdit.selectAll = false
+expect(not context.WorkshopConfirmImport()
+    and #workshop.repository:List() == entriesBeforeFailedImport
+    and workshop.modal and workshop.modal.kind == "import"
+    and workshop.status:find("导入失败", 1, true),
+    "failed import persistence left a repository entry or reported success")
+workshop.draftStore.SaveCustom = saveCustom
+clickModalButton(context, workshop, "cancel")
+
+local platformFunction = GetPlatform
+function GetPlatform() return "Web" end
+local managementContext = newTestContext(context.frame_)
+expect(managementContext.OpenLevelWorkshop("level_01"),
+    "memory-only management context could not open the workshop")
+GetPlatform = platformFunction
+local management = managementContext.workshopState_
+clickControl(managementContext, management, "file_new")
+local managedEntryId, managedLevelId = management.entryId, management.document.levelId
+expect(managedEntryId:match("^custom:") and management.dirty,
+    "new-level control did not create an editable custom level")
+clickControl(managementContext, management, "file_rename")
+expect(management.modal and management.modal.kind == "rename", "rename control did not open its modal")
+replaceTextAndCommit(managementContext, management, "主策命名关卡")
+expect(management.document.name == "主策命名关卡" and management.dirty,
+    "rename text input did not update the active custom level")
+clickControl(managementContext, management, "save")
+expect(not management.dirty
+    and management.repository:Open(managedEntryId).name == "主策命名关卡",
+    "renamed custom level was not formally saved")
+clickControl(managementContext, management, "file_delete")
+expect(management.modal and management.modal.kind == "confirmDelete",
+    "delete-level control did not request confirmation")
+clickModalButton(managementContext, management, "confirm")
+expect(management.repository:GetEntry(managedEntryId) == nil
+    and management.draftStore:LoadDraft(managedLevelId) == nil
+    and management.entryId:match("^official:"),
+    "confirmed custom-level deletion left repository or draft state behind")
 
 context.frame_ = {
     systemLogicalWidth = 800, systemLogicalHeight = 450,

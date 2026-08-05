@@ -441,17 +441,16 @@ function M.Install(context)
         local text = current.textEdit and current.textEdit.value or ""
         local document, errorMessage = Export.Deserialize(text, LevelData)
         if not document then toast("导入失败：" .. tostring(errorMessage), 5); return false end
-        local imported, metadata = current.repository:ImportAsCustom(document)
-        if not imported then toast("导入失败：" .. tostring(metadata), 5); return false end
-        Inspector.EnsureCustomFields(imported)
-        current.repository:ReplaceCustom(metadata.entryId, imported)
+        local imported, metadata, persistence = DocumentActions.ImportCustom(
+            current.repository, current.draftStore, document, Inspector)
+        if not imported then refreshEntries(); toast("导入失败：" .. tostring(metadata), 5); return false end
         cancelTextEdit(); current.modal = nil
         refreshEntries()
         openEntryNow(metadata.entryId, { skipRecovery = true })
-        state().dirty = true
-        state().history:Push(state().document, state().view, "导入关卡")
-        SaveWorkshopCurrent()
-        toast("JSON 已导入为独立自定义关卡")
+        state().dirty, state().autoSaveDue = false, nil
+        state().persistenceKind = state().draftStore:PersistenceKind()
+        toast(persistence.persisted and "JSON 已导入并保存为独立自定义关卡"
+            or "JSON 已导入到运行内存，请立即导出备份")
         return true
     end
 

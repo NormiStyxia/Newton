@@ -58,7 +58,9 @@ expect(not controller.targetX or controller.targetX >= controller.validMinX and 
     "zone shrink left an invalid WALK target")
 
 controller:interrupt("drag-test")
-expect(controller:moveTo(controller.validMaxX), "walk could not be started before drag interruption")
+local preDragTarget = math.abs(controller.x - controller.validMaxX) > 0.001
+    and controller.validMaxX or controller.validMinX
+expect(controller:moveTo(preDragTarget), "walk could not be started before drag interruption")
 local grabbedX, grabbedY = controller.x, controller.y
 local pointer = { x = grabbedX + 6, y = grabbedY - 12, down = true, pressed = true, released = false }
 local consumed, result = controller:handlePointer(pointer, true)
@@ -102,8 +104,9 @@ controller:update(1, true)
 expect(controller:getState() == CompanionController.State.RELOCATING,
     "autonomy changed position during relocation")
 expect(controller:finishRelocation(returnX, returnY), "relocation did not accept the last reachable position")
+local expectedReturnX = math.max(controller.validMinX, math.min(controller.validMaxX, returnX))
 expect(controller:getState() == CompanionController.State.IDLE
-    and controller.x == returnX and controller.y == returnY,
+    and controller.x == expectedReturnX and controller.y == returnY,
     "relocation did not restore the last reachable position")
 
 local tapOriginX, tapOriginY = controller.x, controller.y
