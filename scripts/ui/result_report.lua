@@ -6,6 +6,7 @@ local M = {}
 
 ---@param context GameContext
 function M.Install(context)
+    local LevelPresentation = context.LevelPresentation
     local _ENV = context
     local CONFIG = context.CONFIG
 
@@ -61,6 +62,7 @@ function M.Install(context)
             green = "差不多就是这样。轨迹已经留在回放里了。"
         end
         local newtonReview, newtonTier = Config.NewtonReview(anger_)
+        local scoreSummary = LevelPresentation.BuildResultSummary(level_.scoring, ruleDeployCount_)
 
         resultReportState_ = {
             resultId = resultId,
@@ -86,6 +88,11 @@ function M.Install(context)
             validationMessage = nil,
             reviewOverflowLogged = {},
             anger = math.max(0, math.min(100, tonumber(anger_) or 0)),
+            score = scoreSummary.score,
+            maxScore = scoreSummary.maxScore,
+            ratingLabel = scoreSummary.ratingLabel,
+            interventionCount = scoreSummary.interventionCount,
+            summaryText = scoreSummary.summaryText,
         }
         resultReportAnimation_ = 0
         resultReportClosing_ = nil

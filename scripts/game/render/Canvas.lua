@@ -15,6 +15,7 @@
 ---@field fontEinstein integer
 ---@field fontNewton integer
 ---@field fontGreen integer
+---@field fontReportSummary integer
 ---@field images RendererImageSet
 local Renderer = {}
 Renderer.__index = Renderer
@@ -24,6 +25,7 @@ local NOMI_FONT = "Fonts/HongLeiXiaoZhiTiaoQingChunTi.ttf"
 local CHANGAN_FONT = "Fonts/PingFangChangAnTi.ttf"
 local CHUNXU_FONT = "Fonts/LeMiChunXuWanXing.ttf"
 local SARASA_FONT = "Fonts/SarasaMonoSC-Regular.ttf"
+local REPORT_SUMMARY_FONT = "Fonts/ChillHuoSong_F_Regular.otf"
 
 local COLORS = {
     background = { 248, 250, 228, 255 },
@@ -122,12 +124,13 @@ function Renderer:Init()
     self.fontEinstein = nvgCreateFont(self.vg, "report-einstein", CHANGAN_FONT)
     self.fontNewton = nvgCreateFont(self.vg, "report-newton", CHUNXU_FONT)
     self.fontGreen = nvgCreateFont(self.vg, "report-green", SARASA_FONT)
-    print(string.format("[Font] shared path=%s body=%d display=%d nomi=%d report=(%d,%d,%d)",
+    self.fontReportSummary = nvgCreateFont(self.vg, "report-summary", REPORT_SUMMARY_FONT)
+    print(string.format("[Font] shared path=%s body=%d display=%d nomi=%d report=(%d,%d,%d,%d)",
         BODY_DISPLAY_FONT, self.fontBody, self.fontDisplay, self.fontNomi,
-        self.fontEinstein, self.fontNewton, self.fontGreen))
+        self.fontEinstein, self.fontNewton, self.fontGreen, self.fontReportSummary))
     if self.fontBody == -1 or self.fontDisplay == -1
         or self.fontNomi == -1 or self.fontEinstein == -1
-        or self.fontNewton == -1 or self.fontGreen == -1 then
+        or self.fontNewton == -1 or self.fontGreen == -1 or self.fontReportSummary == -1 then
         error("正文/标题字体加载失败: " .. BODY_DISPLAY_FONT)
     end
     self.images = {
@@ -238,6 +241,8 @@ function Renderer:UseFont(font)
         nvgFontFaceId(self.vg, self.fontNewton)
     elseif font == "report-green" then
         nvgFontFaceId(self.vg, self.fontGreen)
+    elseif font == "report-summary" then
+        nvgFontFaceId(self.vg, self.fontReportSummary)
     elseif not font or font == "maker-body" then
         nvgFontFaceId(self.vg, self.fontBody)
     else

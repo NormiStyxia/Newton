@@ -16,6 +16,10 @@ M.ReportColors = {
     disabled = { 177, 181, 160, 255 },
     overlay = { 45, 52, 39, 255 },
     white = { 255, 255, 255, 255 },
+    summaryHeading = { 77, 105, 80, 255 },
+    summaryValue = { 39, 73, 52, 255 },
+    summaryRule = { 100, 122, 91, 255 },
+    summaryMuted = { 92, 113, 87, 255 },
 }
 
 M.Layout = {
@@ -37,6 +41,37 @@ M.Layout = {
     innerBorder = 5,
     buttonHeight = 34,
     buttonGap = 8,
+    scoreSummary = {
+        font = "report-summary",
+        referenceReportWidth = 570,
+        left = 122,
+        right = 964,
+        topRuleY = 369,
+        headingY = 385,
+        valueY = 421,
+        bottomRuleY = 508,
+        summaryY = 497,
+        columnCenters = { 225, 543, 817 },
+        separators = { 395, 693 },
+        separatorTop = 389,
+        separatorBottom = 481,
+        separatorNodeY = 434,
+        headingSize = 16,
+        scoreSize = 43,
+        scoreSuffixSize = 22,
+        ratingSize = 29,
+        interventionSize = 43,
+        interventionSuffixSize = 22,
+        summarySize = 15,
+        valueSuffixOffsetY = 16,
+        valueGap = 2,
+        headingMaxWidth = 176,
+        ratingMaxWidth = 236,
+        summaryMaxWidth = 410,
+        bottomRuleGap = 18,
+        lineWidth = 1.6,
+        diamondRadius = 4,
+    },
 }
 
 M.ReviewAuthorStyles = {

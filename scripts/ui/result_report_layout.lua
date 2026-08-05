@@ -136,6 +136,55 @@ local function drawDivider(painter, x, y, width, alpha)
     painter:FillRect(x, y, width, 1, Config.ReportColors.divider, alpha)
 end
 
+local function measureText(painter, value, font, size)
+    painter:UseFont(font)
+    nvgFontSize(painter.vg, size)
+    nvgTextAlign(painter.vg, NVG_ALIGN_LEFT + NVG_ALIGN_TOP)
+    local width = nvgTextBounds(painter.vg, 0, 0, value, nil)
+    if type(width) ~= "number" then return utf8Length(value) * size * 0.82 end
+    return width
+end
+
+local function fitTextSize(painter, value, font, preferredSize, maxWidth, minimumSize)
+    local size = preferredSize
+    while size > minimumSize and measureText(painter, value, font, size) > maxWidth do
+        size = math.max(minimumSize, size - 0.5)
+    end
+    return size
+end
+
+local function drawHairline(painter, x1, y1, x2, y2, color, width, alpha)
+    local vg = painter.vg
+    nvgBeginPath(vg)
+    nvgMoveTo(vg, x1, y1)
+    nvgLineTo(vg, x2, y2)
+    nvgStrokeColor(vg, nvgRGBA(color[1], color[2], color[3], alpha))
+    nvgStrokeWidth(vg, width)
+    nvgStroke(vg)
+end
+
+local function drawMixedValue(painter, centerX, y, mainText, suffixText, font,
+        mainSize, suffixSize, suffixOffsetY, gap, maxWidth, color, alpha)
+    local mainWidth = measureText(painter, mainText, font, mainSize)
+    local suffixWidth = measureText(painter, suffixText, font, suffixSize)
+    local totalWidth = mainWidth + gap + suffixWidth
+    if totalWidth > maxWidth then
+        local scale = maxWidth / totalWidth
+        mainSize = mainSize * scale
+        suffixSize = suffixSize * scale
+        suffixOffsetY = suffixOffsetY * scale
+        gap = gap * scale
+        mainWidth = measureText(painter, mainText, font, mainSize)
+        suffixWidth = measureText(painter, suffixText, font, suffixSize)
+        totalWidth = mainWidth + gap + suffixWidth
+    end
+    local startX = centerX - totalWidth * 0.5
+    painter:Text(startX, y, mainText, mainSize, color,
+        NVG_ALIGN_LEFT + NVG_ALIGN_TOP, font, alpha)
+    painter:Text(startX + mainWidth + gap, y + suffixOffsetY, suffixText, suffixSize, color,
+        NVG_ALIGN_LEFT + NVG_ALIGN_TOP, font, alpha)
+end
+
 -- The artwork provides the frame; this is the requested stateful disclosure arrow.
 local function drawDropdownArrow(painter, x, y, size, progress, color, alpha)
     local vg = painter.vg
@@ -156,6 +205,85 @@ end
 ---@param context GameContext
 function M.Install(context)
     local _ENV = context
+
+    local function drawScoreSummary(painter, state, reportWidth, artPoint, artWidth, artHeight, alpha)
+        local layout = Config.Layout.scoreSummary
+        local colors = Config.ReportColors
+        local font = layout.font
+        local fontScale = clamp(reportWidth / layout.referenceReportWidth, 0.63, 1)
+        local lineAlpha = math.floor(alpha * 0.82)
+        local lineWidth = math.max(0.7, artHeight(layout.lineWidth))
+        local diamondRadius = math.max(1.8, artHeight(layout.diamondRadius))
+        local leftX, topY = artPoint(layout.left, layout.topRuleY)
+        local rightX = artPoint(layout.right, layout.topRuleY)
+        local centerX = artPoint((layout.left + layout.right) * 0.5, layout.topRuleY)
+
+        drawHairline(painter, leftX, topY, centerX - diamondRadius * 2.4, topY,
+            colors.summaryRule, lineWidth, lineAlpha)
+        drawHairline(painter, centerX + diamondRadius * 2.4, topY, rightX, topY,
+            colors.summaryRule, lineWidth, lineAlpha)
+        drawDiamond(painter, centerX, topY, diamondRadius, colors.summaryRule, lineAlpha)
+
+        for _, separatorArtX in ipairs(layout.separators) do
+            local separatorX, separatorTop = artPoint(separatorArtX, layout.separatorTop)
+            local _, separatorBottom = artPoint(separatorArtX, layout.separatorBottom)
+            local _, nodeY = artPoint(separatorArtX, layout.separatorNodeY)
+            drawHairline(painter, separatorX, separatorTop, separatorX, separatorBottom,
+                colors.summaryRule, lineWidth, lineAlpha)
+            drawDiamond(painter, separatorX, nodeY, diamondRadius, colors.summaryRule, lineAlpha)
+        end
+
+        local headings = { "实验得分", "实验评定", "规则干预" }
+        local headingSize = layout.headingSize * fontScale
+        local headingMaxWidth = artWidth(layout.headingMaxWidth)
+        local _, headingY = artPoint(0, layout.headingY)
+        for index, label in ipairs(headings) do
+            local columnX = artPoint(layout.columnCenters[index], layout.headingY)
+            local fittedSize = fitTextSize(painter, label, font, headingSize,
+                headingMaxWidth, headingSize * 0.78)
+            painter:Text(columnX, headingY, label, fittedSize, colors.summaryHeading,
+                NVG_ALIGN_CENTER + NVG_ALIGN_TOP, font, alpha)
+        end
+
+        local scoreX, valueY = artPoint(layout.columnCenters[1], layout.valueY)
+        drawMixedValue(painter, scoreX, valueY,
+            tostring(math.floor(tonumber(state.score) or 60)),
+            " / " .. tostring(math.floor(tonumber(state.maxScore) or 100)),
+            font, layout.scoreSize * fontScale, layout.scoreSuffixSize * fontScale,
+            layout.valueSuffixOffsetY * fontScale, layout.valueGap * fontScale,
+            artWidth(layout.separators[1] - layout.left - 24), colors.summaryValue, alpha)
+
+        local ratingX = artPoint(layout.columnCenters[2], layout.valueY)
+        local rating = tostring(state.ratingLabel or "观测成立")
+        local ratingSize = fitTextSize(painter, rating, font, layout.ratingSize * fontScale,
+            artWidth(layout.ratingMaxWidth), layout.ratingSize * fontScale * 0.7)
+        painter:Text(ratingX, valueY + 5 * fontScale, rating, ratingSize, colors.summaryValue,
+            NVG_ALIGN_CENTER + NVG_ALIGN_TOP, font, alpha)
+
+        local interventionX = artPoint(layout.columnCenters[3], layout.valueY)
+        drawMixedValue(painter, interventionX, valueY,
+            tostring(math.floor(tonumber(state.interventionCount) or 0)), " 张", font,
+            layout.interventionSize * fontScale, layout.interventionSuffixSize * fontScale,
+            layout.valueSuffixOffsetY * fontScale, layout.valueGap * fontScale,
+            artWidth(layout.right - layout.separators[2] - 24), colors.summaryValue, alpha)
+
+        local summary = tostring(state.summaryText or "通过多次规则修正后完成本次观测")
+        local summarySize = fitTextSize(painter, summary, font, layout.summarySize * fontScale,
+            artWidth(layout.summaryMaxWidth), layout.summarySize * fontScale * 0.72)
+        local summaryWidth = measureText(painter, summary, font, summarySize)
+        local bottomLeftX, bottomY = artPoint(layout.left, layout.bottomRuleY)
+        local bottomRightX = artPoint(layout.right, layout.bottomRuleY)
+        local bottomCenterX, summaryY = artPoint((layout.left + layout.right) * 0.5, layout.summaryY)
+        local ruleGap = artWidth(layout.bottomRuleGap)
+        drawHairline(painter, bottomLeftX, bottomY, bottomCenterX - summaryWidth * 0.5 - ruleGap,
+            bottomY, colors.summaryRule, lineWidth, lineAlpha)
+        drawHairline(painter, bottomCenterX + summaryWidth * 0.5 + ruleGap, bottomY, bottomRightX,
+            bottomY, colors.summaryRule, lineWidth, lineAlpha)
+        drawDiamond(painter, bottomLeftX, bottomY, diamondRadius * 0.85, colors.summaryRule, lineAlpha)
+        drawDiamond(painter, bottomRightX, bottomY, diamondRadius * 0.85, colors.summaryRule, lineAlpha)
+        painter:Text(bottomCenterX, summaryY, summary, summarySize, colors.summaryMuted,
+            NVG_ALIGN_CENTER + NVG_ALIGN_TOP, font, alpha)
+    end
 
     local function drawReview(painter, state, key, author, y, columns, alpha)
         local style = Config.ReviewAuthorStyles[key]
@@ -226,6 +354,7 @@ function M.Install(context)
         local function artHeight(value)
             return rect.h * value / Config.Layout.artHeight
         end
+        drawScoreSummary(painter_, state, w, artPoint, artWidth, artHeight, alpha)
         local experimentNumber = state.experimentNumber or levelIndex_ or 1
         painter_:Text(x + w * 0.90, y + rect.h * 0.124,
             string.format("No. EXP-%02d", experimentNumber), 10, c.inkMuted,
