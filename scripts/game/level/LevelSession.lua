@@ -69,7 +69,6 @@ function M.Install(context)
         if SetReplayMode then SetReplayMode("none") end
         if scene_ then scene_:SetUpdateEnabled(false) end
         renderer:SetNumViewports(0)
-        if viewport_ then viewport_:Dispose() end
         if audio_ then audio_.scene = nil end
         if scene_ then scene_:Dispose() end
         if runtimeSession_ then runtimeSession_.disposed = true end
