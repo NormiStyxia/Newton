@@ -45,7 +45,9 @@ function M.Install(context)
         context.InitializeDialogue()
         context.InitializeAssistDemo()
         InitializeGreenAssistant()
-        BuildLevel(1)
+        InitializeExperimentCatalog()
+        screen_ = "catalog"
+        renderer:SetNumViewports(0)
         RefreshWorkspaceLayout()
         SubscribeToEvent("Update", "HandleUpdate")
         SubscribeToEvent("ScreenMode", "HandleScreenMode")
@@ -61,7 +63,7 @@ function M.Install(context)
         print("[Migration] 1:1 design-space runtime started")
     end
     function Stop()
-        if level_ and level_.physicsProbe then level_.physicsProbe:Stop({ apple = apple_ }) end
+        if scene_ or level_ then ReleaseLevelRuntime() end
         context.DestroyDialogue()
         DestroyGreenAssistant()
         context.DestroyAssistDemo()
@@ -75,9 +77,20 @@ function M.Install(context)
         frame_ = context.design_:Frame()
         RefreshWorkspaceLayout()
         local pointerFrame = PointerState()
+        if screen_ == "catalog" then
+            UpdateExperimentCatalog(dt, pointerFrame)
+            return
+        end
+        if not level_ or not apple_ then return end
         local assistEscapeHandled = false
         if assistSceneActive_ and input:GetKeyPress(KEY_ESCAPE) then
             assistEscapeHandled = context.AbortGreenAssistantTakeover("escape") == true
+        end
+        RefreshHUDSummary()
+        hudEscapeConsumed_ = false
+        if not assistEscapeHandled and hudDropdown_ and input:GetKeyPress(KEY_ESCAPE) then
+            hudDropdown_ = nil
+            hudEscapeConsumed_ = true
         end
         local reportVisible = IsResultReportVisible and IsResultReportVisible()
         local dialoguePointerConsumed = (reportVisible or context.assistantInputLocked_)
@@ -95,6 +108,7 @@ function M.Install(context)
         end
         if not reportVisible then UpdateGreenAssistant(dt) end
         if UpdateResultReport then UpdateResultReport(dt) end
+        if screen_ == "catalog" then return end
         -- Replay owns the input/update frame. Do not let cards, reset shortcuts,
         -- or normal completion updates mutate the suspended experiment.
         if replayActive_ then
@@ -142,6 +156,7 @@ function M.Install(context)
         UpdateSpringVisuals(dt)
         sensorAngle_ = sensorAngle_ + dt * (goalContact_ and (math.pi * 2 / 7.2) or (math.pi * 2 / 10))
         HandlePointer(pointerFrame, assistantPointerConsumed)
+        if screen_ == "catalog" then return end
         if replayActive_ then
             SyncPhysicsUpdateEnabled()
             UpdateReplay(dt)
@@ -158,7 +173,8 @@ function M.Install(context)
             AnimateCardToHome(id, from, .18)
             ClearCardInteraction()
         end
-        if not context.assistantInputLocked_ and not assistEscapeHandled and input:GetKeyPress(KEY_ESCAPE) then
+        if not context.assistantInputLocked_ and not assistEscapeHandled and not hudEscapeConsumed_
+            and input:GetKeyPress(KEY_ESCAPE) then
             if replayActive_ then StopReplay() else ToggleTacticalPause() end
         end
         EinsteinObserver.Update(runtime_, apple_, dt, isPaused_)
@@ -364,10 +380,19 @@ function M.Install(context)
         end
     end
     function HandleRender()
-        if not painter_ or not frame_ or not level_ then return end
+        if not painter_ or not frame_ then return end
         State.BeginGameSnapshot(context)
         local ok, err = pcall(function()
             painter_:Begin(frame_)
+            if screen_ == "catalog" then
+                DrawExperimentCatalog()
+                painter_:Finish()
+                return
+            end
+            if not level_ then
+                painter_:Finish()
+                return
+            end
             painter_:DrawBackground(frame_)
             painter_:DrawNewton(frame_, level_, anger_, observation_)
             painter_:DrawGround(frame_)
@@ -399,6 +424,7 @@ function M.Install(context)
             if replayActive_ then DrawReplay() end
             context.DrawAssistDemo()
             DrawGreenAssistant()
+            DrawHUDDropdown()
             context.DrawDialogueOverlay()
             DrawResultOverlay()
             context.DrawGreenAssistantOverlay()

@@ -144,7 +144,6 @@ function Renderer:Init()
             noticeLineArt = nvgCreateImage(self.vg, "image/ui/notice_newton_lineart_pale.png", 0),
             buttonFrame = nvgCreateImage(self.vg, "image/ui_svg/runtime/button_frame@2x.png", 0),
             punchMedallion = nvgCreateImage(self.vg, "image/ui_svg/runtime/punch_medallion@2x.png", 0),
-            progressNode = nvgCreateImage(self.vg, "image/ui_svg/runtime/progress_node@2x.png", 0),
             cardField = nvgCreateImage(self.vg, "image/ui_svg/runtime/card_field@2x.png", 0),
             cardDecision = nvgCreateImage(self.vg, "image/ui_svg/runtime/card_decision@2x.png", 0),
             cardQuantum = nvgCreateImage(self.vg, "image/ui_svg/runtime/card_quantum@2x.png", 0),

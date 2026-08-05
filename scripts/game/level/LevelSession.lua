@@ -4,6 +4,7 @@ local M = {}
 ---@param context GameContext
 function M.Install(context)
     local LevelData = context.LevelData
+    local LevelPresentation = context.LevelPresentation
     local DesignSpace = context.DesignSpace
     local Rules = context.Rules
     local PhysicsProfiles = context.PhysicsProfiles
@@ -14,19 +15,21 @@ function M.Install(context)
     local PhaseWallEffects = context.PhaseWallEffects
     local CONFIG = context.CONFIG
     local LEVEL_META = context.LEVEL_META
+    local LEVEL_SCORE_PROFILES = context.LEVEL_SCORE_PROFILES
+    local DEFAULT_LEVEL_SCORE_PROFILE = context.DEFAULT_LEVEL_SCORE_PROFILE
     local _ENV = context
-    function LoadLevel(index)
+    function LoadLevelDefinition(index)
         index = math.max(1, math.min(CONFIG.levelCount, index))
         local resource = string.format("Data/Levels/level_%02d.json", index)
         local level, err = LevelData.Load(resource)
         if not level then error(err) end
         local meta = LEVEL_META[level.levelId]
-        if meta then
-            level.name = meta.name
-            level.objective = meta.objective
-            level.observation = meta.observation
-        end
-        levelIndex_ = index
+        LevelPresentation.Apply(level, meta, LEVEL_SCORE_PROFILES, DEFAULT_LEVEL_SCORE_PROFILE)
+        return level, index
+    end
+    function LoadLevel(index)
+        local level, resolvedIndex = LoadLevelDefinition(index)
+        levelIndex_ = resolvedIndex
         return level
     end
     function CreateScene()
@@ -53,7 +56,24 @@ function M.Install(context)
         camera_:SetOrthoSize(DesignSpace.LAB.height / CONFIG.pixelsPerMeter)
         cameraNode.position = Vector3(0, 0, -10)
         viewport_ = Viewport:new(scene_, camera_)
+        renderer:SetNumViewports(1)
         renderer:SetViewport(0, viewport_)
+    end
+
+    function ReleaseLevelRuntime()
+        if assistSceneActive_ and context.AbortGreenAssistantTakeover then
+            context.AbortGreenAssistantTakeover("leave-level")
+        end
+        if level_ and level_.physicsProbe then level_.physicsProbe:Stop({ apple = apple_ }) end
+        if ClearResultReportState then ClearResultReportState() end
+        if SetReplayMode then SetReplayMode("none") end
+        if scene_ then scene_:SetUpdateEnabled(false) end
+        renderer:SetNumViewports(0)
+        scene_, camera_, viewport_, physicsWorld_ = nil, nil, nil, nil
+        runtime_, laboratoryBoundaries_, apple_, mapper_, audio_ = nil, nil, nil, nil, nil
+        physicsProfile_, level_ = nil, nil
+        assistantInputLocked_, assistSceneActive_, assistDemoActive_ = false, false, false
+        ClearCardInteraction()
     end
 
     function ResetSessionState(isFreshLevel)
@@ -101,7 +121,7 @@ function M.Install(context)
     end
 
     function BuildLevel(index)
-        if ClearResultReportState then ClearResultReportState() end
+        if scene_ or level_ then ReleaseLevelRuntime() end
         level_ = LoadLevel(index)
         physicsProfile_ = PhysicsProfiles.Resolve(level_.physicsProfile)
         failureCount_ = context.failureCountsByLevel_[level_.levelId] or 0
@@ -126,6 +146,8 @@ function M.Install(context)
         apple_ = RuntimeFactory.CreateApple(scene_, launcherRuntime)
         level_.physicsProbe = require("game.physics.Probe").New()
         ResetSessionState(true)
+        screen_ = "game"
+        RefreshHUDSummary()
         NotifyGreenAssistantLevelChanged(level_.levelId)
         context.NotifyDialogueLevelReady(level_.levelId)
     end

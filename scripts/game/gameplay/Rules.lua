@@ -106,6 +106,38 @@ function Rules.GetGravityMultiplier(state, base)
     return multiplier
 end
 
+---@param state table
+---@return table[]
+function Rules.ActiveRuleList(state)
+    local result = {}
+    local order = { "feather-gravity", "side-gravity", "hooke-bounce" }
+    local seen = {}
+    local function append(id)
+        if not state.activeFields[id] or seen[id] then return end
+        seen[id] = true
+        local definition = Rules.CARDS[id]
+        local label = definition and definition.name or id
+        if id == "side-gravity" then
+            local direction = state.sideGravity or { x = 0, y = 1 }
+            local directionLabel = direction.x < 0 and "向左" or direction.x > 0 and "向右"
+                or direction.y < 0 and "向上" or "向下"
+            label = label .. " · " .. directionLabel
+        end
+        result[#result + 1] = { id = id, label = label }
+    end
+    for _, id in ipairs(order) do append(id) end
+    local remaining = {}
+    for id in pairs(state.activeFields) do
+        if not seen[id] then remaining[#remaining + 1] = id end
+    end
+    table.sort(remaining)
+    for _, id in ipairs(remaining) do append(id) end
+    if state.phaseActive then
+        result[#result + 1] = { id = "quantum-phase", label = "量子相位 · 已充能" }
+    end
+    return result
+end
+
 function Rules.CardHand(count, centerX, centerY, playfieldWidth)
     ---@type table<integer, CardHandOffset[]>
     local presets = {

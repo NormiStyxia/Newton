@@ -1,6 +1,7 @@
 local Config = require("game.Config")
 local State = require("game.State")
 local LevelData = require("game.level.LevelData")
+local LevelPresentation = require("game.level.Presentation")
 local CoordinateMapper = require("game.layout.CoordinateMapper")
 local DesignSpace = require("game.layout.DesignSpace")
 local WorkspaceLayout = require("game.layout.WorkspaceLayout")
@@ -24,7 +25,7 @@ local INSTALLERS = {
     "game.cards.Controller", "game.input.InteractionRouter", "game.render.WorldView",
     "game.render.ReplayView", "game.render.OverlayView", "game.render.CardView",
     "game.assist_demo.Controller", "game.green_assistant.Controller", "game.dialogue.DialogueController", "ui.result_report",
-    "ui.result_report_layout", "game.AppRuntime",
+    "ui.result_report_layout", "ui.ExperimentCatalog", "game.AppRuntime",
 }
 
 local App = {}
@@ -33,7 +34,8 @@ App.__index = App
 function App.New()
     local dependencies = {
         State = State,
-        LevelData = LevelData, CoordinateMapper = CoordinateMapper, DesignSpace = DesignSpace,
+        LevelData = LevelData, LevelPresentation = LevelPresentation,
+        CoordinateMapper = CoordinateMapper, DesignSpace = DesignSpace,
         WorkspaceLayout = WorkspaceLayout,
         MatterCalibration = MatterCalibration, PhysicsProfiles = PhysicsProfiles, PhysicsProbe = PhysicsProbe,
         Rules = Rules, RuntimeFactory = RuntimeFactory, Renderer2D = Renderer2D, SynthAudio = SynthAudio,

@@ -4,13 +4,103 @@ local M = {}
 ---@param context GameContext
 function M.Install(context)
     local Rules = context.Rules
-    local CONFIG = context.CONFIG
+    local LevelPresentation = context.LevelPresentation
     local _ENV = context
+
+    local function utf8Characters(value)
+        local result = {}
+        for _, codepoint in utf8.codes(value or "") do result[#result + 1] = utf8.char(codepoint) end
+        return result
+    end
+
+    local function textWidth(value, size, font)
+        painter_:UseFont(font)
+        nvgFontSize(painter_.vg, size)
+        local width = nvgTextBounds(painter_.vg, 0, 0, value or "", nil)
+        return type(width) == "number" and width or #utf8Characters(value) * size
+    end
+
+    local function ellipsize(value, maxWidth, size, font)
+        if textWidth(value, size, font) <= maxWidth then return value end
+        local characters = utf8Characters(value)
+        while #characters > 1 do
+            table.remove(characters)
+            local candidate = table.concat(characters) .. "..."
+            if textWidth(candidate, size, font) <= maxWidth then return candidate end
+        end
+        return "..."
+    end
+
+    function ResolveHUDLayout(f)
+        local titleX = f.workspaceX - 37
+        local summaryX = titleX + 438
+        local summaryRight = f.logicalWidth - 28
+        local summaryWidth = math.max(780, summaryRight - summaryX)
+        local leftWidth = summaryWidth * .28
+        local centerWidth = summaryWidth * .44
+        return {
+            titleX = titleX,
+            left = { x = summaryX, y = 12, w = leftWidth, h = 68 },
+            center = { x = summaryX + leftWidth, y = 12, w = centerWidth, h = 68 },
+            right = { x = summaryX + leftWidth + centerWidth, y = 12,
+                w = summaryWidth - leftWidth - centerWidth, h = 68 },
+        }
+    end
+
+    function ResolveHUDDropdownRect(kind)
+        local layout = ResolveHUDLayout(frame_)
+        if kind == "rules" then
+            return { x = layout.left.x, y = 88, w = layout.left.w,
+                h = 58 + math.max(1, #hudRuleList_) * 31 }
+        end
+        return { x = layout.right.x - 44, y = 88, w = layout.right.w + 44,
+            h = 105 + #(level_ and level_.scoring and level_.scoring.tiers or {}) * 58 }
+    end
+
+    function UpdateRuleDropdown(ruleList)
+        hudRuleList_ = ruleList or {}
+    end
+
+    function UpdateRuleSummary(ruleState)
+        local list = Rules.ActiveRuleList(ruleState or Rules.NewState())
+        UpdateRuleDropdown(list)
+        if #list == 0 then
+            hudRuleSummary_ = "经典场地"
+        elseif #list == 1 then
+            hudRuleSummary_ = list[1].label
+        else
+            hudRuleSummary_ = string.format("已部署 %d 项规则 ▼", #list)
+        end
+    end
+
+    function UpdateObjectiveText(objective)
+        hudObjectiveText_ = objective or ""
+    end
+
+    function UpdateExpectedScore(score)
+        hudExpectedScore_ = score and math.max(0, math.floor(score)) or nil
+    end
+
+    function UpdateInterventionCount(count)
+        hudInterventionCount_ = math.max(0, math.floor(tonumber(count) or 0))
+    end
+
+    function RefreshHUDSummary()
+        if not level_ then return end
+        UpdateRuleSummary(rules_)
+        UpdateObjectiveText(level_.shortObjective or level_.objective)
+        UpdateInterventionCount(ruleDeployCount_)
+        UpdateExpectedScore(LevelPresentation.ExpectedScore(level_.scoring, ruleDeployCount_))
+        if #hudRuleList_ < 2 and hudDropdown_ == "rules" then hudDropdown_ = nil end
+    end
+
     function DrawHUD()
         local f = frame_
-        local titleX = f.workspaceX - 37
+        local layout = ResolveHUDLayout(f)
+        local titleX = layout.titleX
         painter_:Text(titleX + 36, 19, "牛顿看了想打人", 29, Renderer2D.COLORS.white, NVG_ALIGN_LEFT + NVG_ALIGN_TOP, "maker-display")
-        painter_:Text(titleX + 36, 57, string.format("实验 %02d · %s", levelIndex_, level_.name or ""), 13, Renderer2D.COLORS.greenSecondary)
+        painter_:Text(titleX + 36, 57, ellipsize(string.format("实验 %02d · %s", levelIndex_, level_.name or ""), 200, 13, nil),
+            13, Renderer2D.COLORS.greenSecondary)
         local function DrawNavigationButton(x, key)
             local hovered = hoveredNavigation_ == key
             painter_:FillRect(x, 23, 46, 46, hovered and Renderer2D.COLORS.darkSecondary or Renderer2D.COLORS.dark, hovered and 255 or 107)
@@ -24,22 +114,73 @@ function M.Install(context)
         DrawNavigationButton(titleX + 255, "back")
         DrawNavigationButton(titleX + 315, "reset")
         DrawNavigationButton(titleX + 375, "pause")
-        painter_:Text(f.playfieldX + 300, 17, "当前实验状态", 12, Renderer2D.COLORS.secondary)
-        painter_:Text(f.playfieldX + 300, 42, status_, 17, Renderer2D.COLORS.text, NVG_ALIGN_LEFT + NVG_ALIGN_TOP, "maker-display")
-        painter_:Text(f.playfieldX + 585, 17, "当前场地规则", 12, Renderer2D.COLORS.secondary)
-        local g = Rules.GetGravity(rules_, level_.rules.initialGravity)
-        painter_:Text(f.playfieldX + 585, 42, string.format("(%d,%d) · %s", g.x, g.y, rules_.activeFields["feather-gravity"] and "轻羽" or "经典场地"), 17, Renderer2D.COLORS.text, NVG_ALIGN_LEFT + NVG_ALIGN_TOP, "maker-display")
-        painter_:Text(f.playfieldX + 800, 18, level_.objective or "让苹果进入观察皿", 16, Renderer2D.COLORS.text, NVG_ALIGN_LEFT + NVG_ALIGN_TOP, "maker-display")
-        painter_:Text(f.playfieldX + f.playfieldWidth - 290, 17, "关卡", 12, Renderer2D.COLORS.secondary)
-        for i = 1, CONFIG.levelCount do
-            local x = f.playfieldX + f.playfieldWidth - 290 + (i - 1) * 27
-            local scale = hoveredLevelIndex_ == i and 1.14 or 1
-            if painter_.images.ui and painter_.images.ui.progressNode and painter_.images.ui.progressNode >= 0 then
-                painter_:Image(painter_.images.ui.progressNode, x, 46, 22 * scale, 22 * scale, 1)
-            else
-                painter_:Circle(x, 46, 10 * scale, i == levelIndex_ and Renderer2D.COLORS.greenStrong or Renderer2D.COLORS.panelSecondary, i == levelIndex_ and Renderer2D.COLORS.primaryActive or Renderer2D.COLORS.greenLight, 1)
+        nvgStrokeColor(painter_.vg, nvgRGBA(117, 143, 120, 110)); nvgStrokeWidth(painter_.vg, 1)
+        nvgBeginPath(painter_.vg)
+        nvgMoveTo(painter_.vg, layout.left.x + layout.left.w, 23); nvgLineTo(painter_.vg, layout.left.x + layout.left.w, 69)
+        nvgMoveTo(painter_.vg, layout.center.x + layout.center.w, 23); nvgLineTo(painter_.vg, layout.center.x + layout.center.w, 69)
+        nvgStroke(painter_.vg)
+
+        local pointerX, pointerY = DesignPointer()
+        if pointerX >= layout.left.x and pointerX <= layout.left.x + layout.left.w
+            and pointerY >= layout.left.y and pointerY <= layout.left.y + layout.left.h and #hudRuleList_ >= 2 then
+            painter_:FillRect(layout.left.x + 5, 17, layout.left.w - 10, 58, Renderer2D.COLORS.greenSoft, 125)
+        end
+        if pointerX >= layout.right.x and pointerX <= layout.right.x + layout.right.w
+            and pointerY >= layout.right.y and pointerY <= layout.right.y + layout.right.h then
+            painter_:FillRect(layout.right.x + 5, 17, layout.right.w - 10, 58, Renderer2D.COLORS.greenSoft, 125)
+        end
+
+        painter_:Text(layout.left.x + 18, 46,
+            ellipsize(hudRuleSummary_, layout.left.w - 36, 17, "maker-display"), 17,
+            Renderer2D.COLORS.text, NVG_ALIGN_LEFT + NVG_ALIGN_MIDDLE, "maker-display")
+        painter_:Text(layout.center.x + layout.center.w * .5, 46,
+            ellipsize(hudObjectiveText_, layout.center.w - 42, 21, "maker-display"), 21,
+            Renderer2D.COLORS.text, NVG_ALIGN_CENTER + NVG_ALIGN_MIDDLE, "maker-display")
+
+        local right = layout.right
+        local scoreText = hudExpectedScore_ and tostring(hudExpectedScore_) or "--"
+        painter_:Text(right.x + right.w * .09, 46, "预计", 16, Renderer2D.COLORS.secondary,
+            NVG_ALIGN_LEFT + NVG_ALIGN_MIDDLE, "maker-display")
+        painter_:Text(right.x + right.w * .39, 46, scoreText, 18, Renderer2D.COLORS.text,
+            NVG_ALIGN_RIGHT + NVG_ALIGN_MIDDLE, "report-green")
+        painter_:Text(right.x + right.w * .46, 46, "·", 17, Renderer2D.COLORS.secondary,
+            NVG_ALIGN_CENTER + NVG_ALIGN_MIDDLE, "maker-display")
+        painter_:Text(right.x + right.w * .52, 46, "干预", 16, Renderer2D.COLORS.secondary,
+            NVG_ALIGN_LEFT + NVG_ALIGN_MIDDLE, "maker-display")
+        painter_:Text(right.x + right.w * .82, 46, tostring(math.min(99, hudInterventionCount_)), 18,
+            Renderer2D.COLORS.text, NVG_ALIGN_RIGHT + NVG_ALIGN_MIDDLE, "report-green")
+        painter_:Text(right.x + right.w - 15, 46, "▼", 12, Renderer2D.COLORS.secondary,
+            NVG_ALIGN_RIGHT + NVG_ALIGN_MIDDLE, "maker-display")
+    end
+
+    function DrawHUDDropdown()
+        if not hudDropdown_ or not level_ then return end
+        local rect = ResolveHUDDropdownRect(hudDropdown_)
+        painter_:FillRect(rect.x, rect.y, rect.w, rect.h, Renderer2D.COLORS.panel, 252)
+        painter_:StrokeRect(rect.x, rect.y, rect.w, rect.h, Renderer2D.COLORS.darkPrimary, 2)
+        painter_:StrokeRect(rect.x + 6, rect.y + 6, rect.w - 12, rect.h - 12, Renderer2D.COLORS.greenLight, 1, 190)
+        if hudDropdown_ == "rules" then
+            painter_:Text(rect.x + 18, rect.y + 16, "当前生效规则", 13, Renderer2D.COLORS.secondary, nil, "report-green")
+            for index, entry in ipairs(hudRuleList_) do
+                local y = rect.y + 47 + (index - 1) * 31
+                painter_:Circle(rect.x + 22, y + 3, 4, Renderer2D.COLORS.primaryActive)
+                painter_:Text(rect.x + 35, y - 7, ellipsize(entry.label, rect.w - 54, 15, "maker-display"),
+                    15, Renderer2D.COLORS.text, nil, "maker-display")
             end
-            painter_:Text(x, 46, tostring(i), 10 * scale, i == levelIndex_ and Renderer2D.COLORS.white or Renderer2D.COLORS.secondary, NVG_ALIGN_CENTER + NVG_ALIGN_MIDDLE)
+            return
+        end
+
+        painter_:Text(rect.x + 18, rect.y + 15, "实时评级摘要", 13, Renderer2D.COLORS.secondary, nil, "report-green")
+        painter_:Text(rect.x + 18, rect.y + 39,
+            string.format("当前预计 %s 分 · 有效干预 %d 次", hudExpectedScore_ and tostring(hudExpectedScore_) or "--", hudInterventionCount_),
+            16, Renderer2D.COLORS.text, nil, "maker-display")
+        painter_:FillRect(rect.x + 18, rect.y + 70, rect.w - 36, 1, Renderer2D.COLORS.greenLight, 180)
+        for index, tier in ipairs(level_.scoring and level_.scoring.tiers or {}) do
+            local y = rect.y + 84 + (index - 1) * 58
+            painter_:Text(rect.x + 18, y, string.format("%d · %s", tier.score, tier.title), 15,
+                Renderer2D.COLORS.text, nil, "maker-display")
+            painter_:Text(rect.x + 18, y + 25, ellipsize(tier.description, rect.w - 36, 13, nil), 13,
+                Renderer2D.COLORS.secondary)
         end
     end
     function DrawPlayfieldOverlay()
@@ -95,10 +236,10 @@ function M.Install(context)
                         or ((level_.name or "实验") .. " · 苹果已稳定进入观察窗"),
                     16, Renderer2D.COLORS.secondary, NVG_ALIGN_CENTER + NVG_ALIGN_TOP)
                 if assistedClear_ then
-                    overlayButton(cx - 80, cy + 65, levelIndex_ < CONFIG.levelCount and "下一实验" or "重新观测", false)
+                    overlayButton(cx - 80, cy + 65, "返回目录", false)
                     overlayButton(cx + 80, cy + 65, "再次尝试", true)
                 else
-                    overlayButton(cx - 160, cy + 65, levelIndex_ < CONFIG.levelCount and "下一实验" or "重新观测", false)
+                    overlayButton(cx - 160, cy + 65, "返回目录", false)
                     overlayButton(cx, cy + 65, "查看实验回放", true)
                     overlayButton(cx + 160, cy + 65, "再次尝试", true)
                 end

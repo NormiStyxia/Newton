@@ -2,6 +2,7 @@
 ---@class GameContext
 ---@field State any
 ---@field LevelData any
+---@field LevelPresentation any
 ---@field CoordinateMapper any
 ---@field DesignSpace any
 ---@field WorkspaceLayout any
@@ -25,6 +26,8 @@
 ---@field CARD_RENDER_HEIGHT number
 ---@field GOAL_CONTACT_SKIN number
 ---@field LEVEL_META table
+---@field LEVEL_SCORE_PROFILES table
+---@field DEFAULT_LEVEL_SCORE_PROFILE string
 ---@field design_ any
 ---@field debugDraw_ boolean
 ---@field failureCountsByLevel_ table<string, integer>
@@ -56,6 +59,15 @@
 ---@field DrawGreenAssistantOverlay fun()
 ---@field ExecuteCardPlay fun(id: string, candidate: string|nil, x: number, y: number): boolean
 ---@field resultReportState_ table|nil
+---@field screen_ "catalog"|"game"
+---@field catalogState_ table
+---@field hudRuleSummary_ string
+---@field hudRuleList_ table
+---@field hudObjectiveText_ string
+---@field hudExpectedScore_ integer|nil
+---@field hudInterventionCount_ integer
+---@field hudDropdown_ string|nil
+---@field hudEscapeConsumed_ boolean
 local State = {}
 
 local OWNERS = {}
@@ -81,7 +93,7 @@ own("goal", {
     "goalContactEventSeen_", "goalContactEndSeen_", "goalContactConfirmed_", "goalContactMissSteps_",
 })
 own("mechanisms", { "channelStates_" })
-own("input", { "pointer_", "hoveredLevelIndex_", "hoveredNavigation_", "punchHovered_" })
+own("input", { "pointer_", "hoveredNavigation_", "punchHovered_" })
 own("cards", {
     "activeCardId_", "activeCardStart_", "activeCardPointer_", "activeCardDragged_",
     "activeCardDeploying_", "activeCardPressedAt_", "activeCardPressPose_", "primedCardId_",
@@ -102,6 +114,10 @@ own("assistant", {
 own("report", {
     "resultReportState_", "resultReportClearCounts_", "resultReportHistory_", "resultReportNextId_",
     "resultReportAnimation_", "resultReportClosing_",
+})
+own("navigation", {
+    "screen_", "catalogState_", "hudRuleSummary_", "hudRuleList_", "hudObjectiveText_",
+    "hudExpectedScore_", "hudInterventionCount_", "hudDropdown_", "hudEscapeConsumed_",
 })
 
 local function refreshModes(domains)
@@ -143,7 +159,7 @@ end
 function State.New(dependencies, constants)
     local domains = {
         runtime = {}, layout = {}, experiment = {}, goal = {}, mechanisms = {}, input = {}, cards = {}, replay = {},
-        assistant = {}, report = {},
+        assistant = {}, report = {}, navigation = {},
     }
     ---@type GameContext
     local context = {}
@@ -190,7 +206,7 @@ function State.New(dependencies, constants)
     context.cardParameterStart_, context.cardDeployEnteredMs_, context.cardLastMotionAtMs_ = nil, nil, nil
     context.cardPointerSamples_, context.cardCandidate_, context.cardGestureDistance_ = {}, nil, 0
     context.hoveredCardId_, context.cardHoverStates_ = nil, {}
-    context.hoveredLevelIndex_, context.hoveredNavigation_, context.punchHovered_ = nil, nil, false
+    context.hoveredNavigation_, context.punchHovered_ = nil, false
     context.pointer_ = { activeTouchId = nil, touchX = 0, touchY = 0, touchPressed = false, touchReleased = false }
     context.launched_, context.goalContact_, context.goalContactMs_, context.goalEntryRecorded_ = false, false, 0, false
     context.goalContactEventSeen_, context.goalContactEndSeen_ = false, false
@@ -216,6 +232,20 @@ function State.New(dependencies, constants)
     context.cardHomeMotions_, context.cardHandReordering_ = {}, false
     context.cardBurns_, context.cardBurnParticles_, context.burningCardIds_ = {}, {}, {}
     context.rulePulse_, context.ruleFlash_, context.ruleDeployCount_ = nil, nil, 0
+    context.screen_ = "catalog"
+    context.catalogState_ = {
+        selectedIndex = 1,
+        levels = {},
+        scroll = 0,
+        scrollMax = 0,
+        dragStartY = nil,
+        dragStartScroll = 0,
+        toast = nil,
+        toastTime = 0,
+    }
+    context.hudRuleSummary_, context.hudRuleList_ = "经典场地", {}
+    context.hudObjectiveText_, context.hudExpectedScore_, context.hudInterventionCount_ = "", nil, 0
+    context.hudDropdown_, context.hudEscapeConsumed_ = nil, false
     refreshModes(domains)
     return context
 end

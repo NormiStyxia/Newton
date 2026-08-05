@@ -146,7 +146,7 @@ function M.Install(context)
                 end
             elseif actionName == "next" then
                 local nextIndex = levelIndex_ < CONFIG.levelCount and levelIndex_ + 1 or nil
-                if nextIndex then BuildLevel(nextIndex) else BuildLevel(1) end
+                RequestReturnToCatalog(nextIndex or 1)
             end
         end
     end

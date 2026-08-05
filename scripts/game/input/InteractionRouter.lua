@@ -7,13 +7,39 @@ function M.Install(context)
     local ReplayMode = context.ReplayMode
     local CONFIG = context.CONFIG
     local _ENV = context
+    local function pointInRect(rect, x, y)
+        return rect and x >= rect.x and x <= rect.x + rect.w and y >= rect.y and y <= rect.y + rect.h
+    end
+
+    function HandleHUDPointer(pointerFrame)
+        local layout = ResolveHUDLayout(frame_)
+        local x, y = pointerFrame.x, pointerFrame.y
+        if hudDropdown_ then
+            local dropdownRect = ResolveHUDDropdownRect(hudDropdown_)
+            if pointInRect(dropdownRect, x, y) then return true end
+        end
+        if not pointerFrame.pressed then return false end
+        if pointInRect(layout.left, x, y) and #hudRuleList_ >= 2 then
+            hudDropdown_ = hudDropdown_ == "rules" and nil or "rules"
+            return true
+        end
+        if pointInRect(layout.right, x, y) then
+            hudDropdown_ = hudDropdown_ == "rating" and nil or "rating"
+            return true
+        end
+        if hudDropdown_ then
+            hudDropdown_ = nil
+            return true
+        end
+        return false
+    end
+
     function PointerInPlayfield(x, y)
         return x >= frame_.playfieldX + 18 and x <= frame_.playfieldX + frame_.playfieldWidth - 18
             and y >= frame_.playfieldY + 18 and y <= frame_.groundY - 18
     end
     function UpdateHoverState(x, y)
         hoveredNavigation_ = nil
-        hoveredLevelIndex_ = nil
         punchHovered_ = false
         if replayActive_ or success_ or failed_ then
             SetHoveredCard(nil)
@@ -27,15 +53,6 @@ function M.Install(context)
             hoveredNavigation_ = "reset"
         elseif not isPaused_ and x >= titleX + 375 and x <= titleX + 421 and y >= 23 and y <= 69 then
             hoveredNavigation_ = "pause"
-        end
-
-        local tabStartX = frame_.playfieldX + frame_.playfieldWidth - 290
-        for index = 1, CONFIG.levelCount do
-            local dx, dy = x - (tabStartX + (index - 1) * 27), y - 46
-            if dx * dx + dy * dy <= 10 * 10 then
-                hoveredLevelIndex_ = index
-                break
-            end
         end
 
         local punchX, punchY = frame_.playfieldX + frame_.playfieldWidth - 58, frame_.cardHandY + 23
@@ -63,12 +80,17 @@ function M.Install(context)
             assistantConsumed = HandleGreenAssistantPointer(x, y, pointerFrame)
         end
         if assistantConsumed then
-            hoveredNavigation_, hoveredLevelIndex_, punchHovered_ = nil, nil, false
+            hoveredNavigation_, punchHovered_ = nil, false
             SetHoveredCard(nil)
             return
         end
         if context.assistantInputLocked_ then
-            hoveredNavigation_, hoveredLevelIndex_, punchHovered_ = nil, nil, false
+            hoveredNavigation_, punchHovered_ = nil, false
+            SetHoveredCard(nil)
+            return
+        end
+        if HandleHUDPointer(pointerFrame) then
+            hoveredNavigation_, punchHovered_ = nil, false
             SetHoveredCard(nil)
             return
         end
@@ -88,13 +110,13 @@ function M.Install(context)
                 elseif success_ then
                     if assistedClear_ then
                         if inOverlayButton(cx - 80, cy + 65) then
-                            BuildLevel(levelIndex_ < CONFIG.levelCount and levelIndex_ + 1 or 1)
+                            RequestReturnToCatalog(levelIndex_ < CONFIG.levelCount and levelIndex_ + 1 or 1)
                         elseif inOverlayButton(cx + 80, cy + 65) then
                             ResetExperiment()
                         end
                     else
                         if inOverlayButton(cx - 160, cy + 65) then
-                            BuildLevel(levelIndex_ < CONFIG.levelCount and levelIndex_ + 1 or 1)
+                            RequestReturnToCatalog(levelIndex_ < CONFIG.levelCount and levelIndex_ + 1 or 1)
                         elseif inOverlayButton(cx, cy + 65) then
                             StartReplay()
                         elseif inOverlayButton(cx + 160, cy + 65) then
@@ -107,22 +129,13 @@ function M.Install(context)
         end
         if press then
             local titleX = frame_.workspaceX - 37
-            local tabStartX = frame_.playfieldX + frame_.playfieldWidth - 290
-            for index = 1, CONFIG.levelCount do
-                local tabX = tabStartX + (index - 1) * 27
-                local dx, dy = x - tabX, y - 46
-                if dx * dx + dy * dy <= 10 * 10 then
-                    BuildLevel(index)
-                    return
-                end
-            end
             if x >= titleX + 255 and x <= titleX + 301 and y >= 23 and y <= 69 then
-                -- Phaser's back action falls back to restarting this level when
-                -- browser history is unavailable, which is the Maker runtime case.
-                ResetExperiment()
+                RequestReturnToCatalog(levelIndex_)
             elseif x >= titleX + 315 and x <= titleX + 361 and y >= 23 and y <= 69 then
+                hudDropdown_ = nil
                 ResetExperiment()
             elseif x >= titleX + 375 and x <= titleX + 421 and y >= 23 and y <= 69 then
+                hudDropdown_ = nil
                 ToggleTacticalPause()
             elseif x >= frame_.playfieldX + frame_.playfieldWidth - 98 and x <= frame_.playfieldX + frame_.playfieldWidth - 18
                 and y >= frame_.cardHandY - 17 and y <= frame_.cardHandY + 63 then
