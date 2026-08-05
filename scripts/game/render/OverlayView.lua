@@ -38,9 +38,14 @@ function M.Install(context)
         local summaryWidth = math.max(780, summaryRight - summaryX)
         local leftWidth = summaryWidth * .28
         local centerWidth = summaryWidth * .44
+        -- The communication-history button occupies the first 132 units of
+        -- the left summary band. Keep the rule affordance in the open paper
+        -- slot between that button and the center divider.
+        local ruleX = summaryX + 132 + 18
+        local ruleRight = summaryX + leftWidth - 18
         return {
             titleX = titleX,
-            left = { x = summaryX, y = 12, w = leftWidth, h = 68 },
+            left = { x = ruleX, y = 12, w = math.max(1, ruleRight - ruleX), h = 68 },
             center = { x = summaryX + leftWidth, y = 12, w = centerWidth, h = 68 },
             right = { x = summaryX + leftWidth + centerWidth, y = 12,
                 w = summaryWidth - leftWidth - centerWidth, h = 68 },
@@ -50,11 +55,11 @@ function M.Install(context)
     function ResolveHUDDropdownRect(kind)
         local layout = ResolveHUDLayout(frame_)
         if kind == "rules" then
-            return { x = layout.left.x, y = 88, w = layout.left.w,
-                h = 58 + math.max(1, #hudRuleList_) * 31 }
+            return { x = layout.left.x, y = 88, w = math.max(320, layout.left.w),
+                h = 62 + math.max(1, #hudRuleList_) * 35 }
         end
         return { x = layout.right.x - 44, y = 88, w = layout.right.w + 44,
-            h = 105 + #(level_ and level_.scoring and level_.scoring.tiers or {}) * 58 }
+            h = 112 + #(level_ and level_.scoring and level_.scoring.tiers or {}) * 64 }
     end
 
     function UpdateRuleDropdown(ruleList)
@@ -116,7 +121,7 @@ function M.Install(context)
         DrawNavigationButton(titleX + 375, "pause")
         nvgStrokeColor(painter_.vg, nvgRGBA(117, 143, 120, 110)); nvgStrokeWidth(painter_.vg, 1)
         nvgBeginPath(painter_.vg)
-        nvgMoveTo(painter_.vg, layout.left.x + layout.left.w, 23); nvgLineTo(painter_.vg, layout.left.x + layout.left.w, 69)
+        nvgMoveTo(painter_.vg, layout.center.x, 23); nvgLineTo(painter_.vg, layout.center.x, 69)
         nvgMoveTo(painter_.vg, layout.center.x + layout.center.w, 23); nvgLineTo(painter_.vg, layout.center.x + layout.center.w, 69)
         nvgStroke(painter_.vg)
 
@@ -130,8 +135,8 @@ function M.Install(context)
             painter_:FillRect(layout.right.x + 5, 17, layout.right.w - 10, 58, Renderer2D.COLORS.greenSoft, 125)
         end
 
-        painter_:Text(layout.left.x + 18, 46,
-            ellipsize(hudRuleSummary_, layout.left.w - 36, 17, "maker-display"), 17,
+        painter_:Text(layout.left.x + 14, 46,
+            ellipsize(hudRuleSummary_, layout.left.w - 28, 20, "maker-display"), 20,
             Renderer2D.COLORS.text, NVG_ALIGN_LEFT + NVG_ALIGN_MIDDLE, "maker-display")
         painter_:Text(layout.center.x + layout.center.w * .5, 46,
             ellipsize(hudObjectiveText_, layout.center.w - 42, 28, "maker-display"), 28,
@@ -139,17 +144,19 @@ function M.Install(context)
 
         local right = layout.right
         local scoreText = hudExpectedScore_ and tostring(hudExpectedScore_) or "--"
-        painter_:Text(right.x + right.w * .09, 46, "预计", 16, Renderer2D.COLORS.secondary,
+        painter_:Text(right.x + 20, 46, "预估分数：", 18, Renderer2D.COLORS.secondary,
             NVG_ALIGN_LEFT + NVG_ALIGN_MIDDLE, "maker-display")
-        painter_:Text(right.x + right.w * .39, 46, scoreText, 18, Renderer2D.COLORS.text,
+        painter_:Text(right.x + 132, 46, scoreText, 20, Renderer2D.COLORS.text,
             NVG_ALIGN_RIGHT + NVG_ALIGN_MIDDLE, "report-green")
-        painter_:Text(right.x + right.w * .46, 46, "·", 17, Renderer2D.COLORS.secondary,
+        painter_:Text(right.x + 151, 46, "·", 18, Renderer2D.COLORS.secondary,
             NVG_ALIGN_CENTER + NVG_ALIGN_MIDDLE, "maker-display")
-        painter_:Text(right.x + right.w * .52, 46, "干预", 16, Renderer2D.COLORS.secondary,
+        painter_:Text(right.x + 168, 46, "规则干预：", 18, Renderer2D.COLORS.secondary,
             NVG_ALIGN_LEFT + NVG_ALIGN_MIDDLE, "maker-display")
-        painter_:Text(right.x + right.w * .82, 46, tostring(math.min(99, hudInterventionCount_)), 18,
+        painter_:Text(right.x + 282, 46, tostring(math.min(99, hudInterventionCount_)), 20,
             Renderer2D.COLORS.text, NVG_ALIGN_RIGHT + NVG_ALIGN_MIDDLE, "report-green")
-        painter_:Text(right.x + right.w - 15, 46, "▼", 12, Renderer2D.COLORS.secondary,
+        painter_:Text(right.x + 288, 46, "次", 18, Renderer2D.COLORS.secondary,
+            NVG_ALIGN_LEFT + NVG_ALIGN_MIDDLE, "maker-display")
+        painter_:Text(right.x + 327, 46, "▼", 14, Renderer2D.COLORS.secondary,
             NVG_ALIGN_RIGHT + NVG_ALIGN_MIDDLE, "maker-display")
     end
 
@@ -160,26 +167,26 @@ function M.Install(context)
         painter_:StrokeRect(rect.x, rect.y, rect.w, rect.h, Renderer2D.COLORS.darkPrimary, 2)
         painter_:StrokeRect(rect.x + 6, rect.y + 6, rect.w - 12, rect.h - 12, Renderer2D.COLORS.greenLight, 1, 190)
         if hudDropdown_ == "rules" then
-            painter_:Text(rect.x + 18, rect.y + 16, "当前生效规则", 13, Renderer2D.COLORS.secondary, nil, "report-green")
+            painter_:Text(rect.x + 18, rect.y + 16, "当前生效规则", 15, Renderer2D.COLORS.secondary, nil, "report-green")
             for index, entry in ipairs(hudRuleList_) do
-                local y = rect.y + 47 + (index - 1) * 31
+                local y = rect.y + 50 + (index - 1) * 35
                 painter_:Circle(rect.x + 22, y + 3, 4, Renderer2D.COLORS.primaryActive)
-                painter_:Text(rect.x + 35, y - 7, ellipsize(entry.label, rect.w - 54, 15, "maker-display"),
-                    15, Renderer2D.COLORS.text, nil, "maker-display")
+                painter_:Text(rect.x + 35, y - 8, ellipsize(entry.label, rect.w - 54, 17, "maker-display"),
+                    17, Renderer2D.COLORS.text, nil, "maker-display")
             end
             return
         end
 
-        painter_:Text(rect.x + 18, rect.y + 15, "实时评级摘要", 13, Renderer2D.COLORS.secondary, nil, "report-green")
+        painter_:Text(rect.x + 18, rect.y + 15, "实时评级摘要", 15, Renderer2D.COLORS.secondary, nil, "report-green")
         painter_:Text(rect.x + 18, rect.y + 39,
-            string.format("当前预计 %s 分 · 有效干预 %d 次", hudExpectedScore_ and tostring(hudExpectedScore_) or "--", hudInterventionCount_),
-            16, Renderer2D.COLORS.text, nil, "maker-display")
-        painter_:FillRect(rect.x + 18, rect.y + 70, rect.w - 36, 1, Renderer2D.COLORS.greenLight, 180)
+            string.format("当前预估分数：%s · 规则干预：%d 次", hudExpectedScore_ and tostring(hudExpectedScore_) or "--", hudInterventionCount_),
+            18, Renderer2D.COLORS.text, nil, "maker-display")
+        painter_:FillRect(rect.x + 18, rect.y + 75, rect.w - 36, 1, Renderer2D.COLORS.greenLight, 180)
         for index, tier in ipairs(level_.scoring and level_.scoring.tiers or {}) do
-            local y = rect.y + 84 + (index - 1) * 58
-            painter_:Text(rect.x + 18, y, string.format("%d · %s", tier.score, tier.title), 15,
+            local y = rect.y + 90 + (index - 1) * 64
+            painter_:Text(rect.x + 18, y, string.format("%d · %s", tier.score, tier.title), 17,
                 Renderer2D.COLORS.text, nil, "maker-display")
-            painter_:Text(rect.x + 18, y + 25, ellipsize(tier.description, rect.w - 36, 13, nil), 13,
+            painter_:Text(rect.x + 18, y + 28, ellipsize(tier.description, rect.w - 36, 15, nil), 15,
                 Renderer2D.COLORS.secondary)
         end
     end

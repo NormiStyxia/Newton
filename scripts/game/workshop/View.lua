@@ -276,16 +276,17 @@ end
 
 local function drawTop(painter, state, layout, controls)
     painter:FillRect(0, 0, layout.full.w, layout.top.h, COLORS.top)
-    local labels = layout.mobileCompact
+    local labels = (layout.mobileCompact or layout.folded)
         and { exit = "退出", draft = "草稿", save = "保存", export = "导出", import = "导入",
-            undo = "撤", redo = "重", preview = "预览" }
+            undo = "撤", redo = "重", copyObject = "复制", preview = "预览" }
         or { exit = "退出", draft = "保存草稿", save = "保存关卡", export = "导出 JSON", import = "导入 JSON",
-            undo = "撤销", redo = "重做", preview = "快速预览" }
+            undo = "撤销", redo = "重做", copyObject = "复制", preview = "快速预览" }
     for id, rect in pairs(layout.toolbar) do
         local enabled = true
         if id == "save" or id == "draft" then enabled = not state.readOnly and state.document ~= nil end
         if id == "undo" then enabled = state.canUndo end
         if id == "redo" then enabled = state.canRedo end
+        if id == "copyObject" then enabled = state.selectedObject ~= nil and not state.readOnly end
         if id == "preview" or id == "export" then enabled = state.document ~= nil end
         drawButton(painter, rect, labels[id], { enabled = enabled, primary = id == "preview",
             fontSize = layout.ultraCompact and 16 or (layout.mobileCompact and 19 or 20) })
@@ -474,9 +475,12 @@ end
 local function fieldValue(field)
     if field.kind == "boolean" then return field.value and "开" or "关" end
     if field.kind == "readonly" then return tostring(field.value or "") end
-    if field.kind == "enum" then return tostring(field.value or "") .. "  ▾" end
+    if field.kind == "enum" then
+        return tostring(field.valueLabels and field.valueLabels[field.value] or field.value or "") .. "  ▾"
+    end
     return tostring(field.value == nil and "" or field.value)
 end
+View.FieldValue = fieldValue
 
 local function drawActiveTextEdit(painter, edit, rect, elapsed, fontSize, textColor)
     local textX, availableWidth = rect.x + 8, math.max(1, rect.w - 16)

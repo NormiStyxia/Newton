@@ -259,7 +259,6 @@ function M.Install(context)
         refreshSelection(); refreshValidation(); rebuildUI()
         current.status = "已重做"
     end
-
     local function addObject(objectType)
         local current = state()
         if not editable() then return end
@@ -271,7 +270,6 @@ function M.Install(context)
         if current.layout.folded then current.view.drawerMode = "inspector" end
         rebuildUI()
     end
-
     local function deleteSelected()
         local current = state()
         if not editable() or not current.selectedObjectId then return end
@@ -280,7 +278,6 @@ function M.Install(context)
         markChanged("删除对象")
         rebuildUI()
     end
-
     local function duplicateSelected()
         local current = state()
         if not editable() or not current.selectedObject then return end
@@ -542,6 +539,7 @@ function M.Install(context)
         elseif id == "import" then openImport()
         elseif id == "undo" then undo()
         elseif id == "redo" then redo()
+        elseif id == "copyObject" then duplicateSelected()
         elseif id == "preview" then BeginWorkshopPreview()
         elseif id == "file_new" then createCustom(false)
         elseif id == "file_copy" then createCustom(true)
@@ -692,7 +690,7 @@ function M.Install(context)
                 for _, row in ipairs(current.controls.inspectorRows or {}) do
                     if row.field.kind ~= "section" and View.PointIn(row.rect, x, y) then
                         current.hoverTooltip = { text = row.field.label .. "："
-                            .. tostring(row.field.value == nil and "" or row.field.value), x = x + 14, y = y + 18 }
+                            .. View.FieldValue(row.field), x = x + 14, y = y + 18 }
                         break
                     end
                 end
@@ -730,8 +728,10 @@ function M.Install(context)
             return
         end
         if input:GetKeyDown(KEY_CTRL) and input:GetKeyPress(KEY_S) then SaveWorkshopCurrent(); return end
+        if input:GetKeyDown(KEY_CTRL) and input:GetKeyDown(KEY_SHIFT) and input:GetKeyPress(KEY_Z) then redo(); return end
         if input:GetKeyDown(KEY_CTRL) and input:GetKeyPress(KEY_Z) then undo(); return end
         if input:GetKeyDown(KEY_CTRL) and input:GetKeyPress(KEY_Y) then redo(); return end
+        if input:GetKeyDown(KEY_CTRL) and input:GetKeyPress(KEY_C) then duplicateSelected(); return end
         if input:GetKeyDown(KEY_CTRL) and input:GetKeyPress(KEY_D) then duplicateSelected(); return end
         if input:GetKeyPress(KEY_DELETE) then deleteSelected(); return end
         if input:GetKeyPress(KEY_ESCAPE) then leaveWorkshop(); return end

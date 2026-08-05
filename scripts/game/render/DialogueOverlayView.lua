@@ -160,7 +160,7 @@ function View.DrawHistoryButton(painter, frame, controller)
     local fill = controller.historyHovered and COLORS.historyHover or COLORS.history
     painter:RoundedRect(rect.x, rect.y, rect.w, rect.h, 5, fill, COLORS.creamStroke, 1.5)
     drawHistoryIcon(painter, rect.x + 22, rect.y + rect.h * 0.5, COLORS.historyText)
-    painter:Text(rect.x + 39, rect.y + 11, "通讯记录", 15, COLORS.historyText,
+    painter:Text(rect.x + 39, rect.y + 10, "通讯记录", 17, COLORS.historyText,
         NVG_ALIGN_LEFT + NVG_ALIGN_TOP, FONT)
     if controller:HasUnread() then
         painter:Circle(rect.x + rect.w - 8, rect.y + 8, 5, COLORS.unread, COLORS.cream, 1.5)

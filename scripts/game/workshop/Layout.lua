@@ -101,8 +101,9 @@ function Layout.Resolve(frame, viewState, overrides)
         { id = "import", width = 42 },
         { id = "undo", width = 32 },
         { id = "redo", width = 32 },
+        { id = "copyObject", width = 42 },
         { id = "preview", width = 50 },
-    } or (mobileCompact and {
+    } or ((mobileCompact or folded) and {
         { id = "exit", width = 52 },
         { id = "draft", width = 60 },
         { id = "save", width = 60 },
@@ -110,6 +111,7 @@ function Layout.Resolve(frame, viewState, overrides)
         { id = "import", width = 60 },
         { id = "undo", width = 42 },
         { id = "redo", width = 42 },
+        { id = "copyObject", width = 60 },
         { id = "preview", width = 72 },
     } or {
         { id = "exit", width = 92 },
@@ -119,6 +121,7 @@ function Layout.Resolve(frame, viewState, overrides)
         { id = "import", width = 106 },
         { id = "undo", width = 46 },
         { id = "redo", width = 46 },
+        { id = "copyObject", width = 84 },
         { id = "preview", width = 116 },
     })
     local toolbarHeight = ultraCompact and 40 or (mobileCompact and 44 or 48)

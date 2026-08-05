@@ -5,6 +5,13 @@ local CARD_ORDER = {
     "up-impulse", "mirror-motion", "quantum-phase",
 }
 
+local ENUM_LABELS = {
+    UP = "上", RIGHT = "右", DOWN = "下", LEFT = "左",
+    HOLD = "持续按压", TOGGLE = "切换",
+    OPEN = "开启", CLOSE = "关闭", CLOSED = "关闭",
+    SINGLE_USE = "单次使用", REUSABLE = "可重复使用",
+}
+
 local function defaultScoring()
     return {
         profileId = "custom",
@@ -31,6 +38,7 @@ local function addField(fields, key, label, kind, value, setter, options)
     fields[#fields + 1] = {
         key = key, label = label, kind = kind, value = value, set = setter,
         editable = options.editable, options = options.options, maxLength = options.maxLength,
+        valueLabels = options.valueLabels,
     }
 end
 
@@ -78,7 +86,8 @@ local function objectFields(fields, current, LevelDocument, typeLabels)
     local function property(key, label, kind, options)
         addField(fields, "properties." .. key, label, kind, props[key],
             function(value) props[key] = value end,
-            { editable = canEdit, options = options, maxLength = LevelDocument.LIMITS.maxTextLength })
+            { editable = canEdit, options = options, valueLabels = kind == "enum" and ENUM_LABELS or nil,
+                maxLength = LevelDocument.LIMITS.maxTextLength })
     end
     if object.type == "wall" then
         section(fields, "properties", "机制参数")
@@ -115,7 +124,7 @@ local function levelFields(fields, current, LevelDocument, Rules)
     local document = current.document
     local canEdit = not current.readOnly
     section(fields, "level", "关卡")
-    addField(fields, "level.id", "levelId", "readonly", document.levelId, nil, { editable = false })
+    addField(fields, "level.id", "关卡 ID", "readonly", document.levelId, nil, { editable = false })
     addField(fields, "level.name", "名称", "text", document.name,
         function(value) document.name = value end,
         { editable = canEdit, maxLength = LevelDocument.LIMITS.maxNameLength })
@@ -138,7 +147,7 @@ local function levelFields(fields, current, LevelDocument, Rules)
         addField(fields, "card." .. cardId .. ".usage", label .. " 用法", "enum",
             card and card.usageMode or "SINGLE_USE",
             function(value) ensureCard(document, cardId).usageMode = value end,
-            { editable = canEdit, options = { "SINGLE_USE", "REUSABLE" } })
+            { editable = canEdit, options = { "SINGLE_USE", "REUSABLE" }, valueLabels = ENUM_LABELS })
     end
     section(fields, "scoring", "评分条件")
     local scoring = document.scoring

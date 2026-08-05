@@ -90,7 +90,7 @@ local function objectInspectorKeys(object)
     local keys = {}
     local fields = Inspector.Build({ document = validLevel("field_filter", "Field Filter"),
         readOnly = false, selectedObject = object }, LevelDocument, { CARDS = {} }, {})
-    for _, field in ipairs(fields) do keys[field.key] = true end
+    for _, field in ipairs(fields) do keys[field.key] = field end
     return keys
 end
 local springForInspector = LevelDocument.NewObject("spring", "spring_filter", 500, 300)
@@ -107,6 +107,14 @@ expect(goalKeys["transform.x"] and goalKeys["transform.y"]
     and not goalKeys["transform.rotation"] and not goalKeys["properties.requiredStayTime"]
     and goalForInspector.properties.requiredStayTime == 1000,
     "goal Inspector did not hide size/rotation/stay-time controls while preserving runtime data")
+local buttonKeys = objectInspectorKeys(LevelDocument.NewObject("button", "button_labels", 500, 300))
+expect(buttonKeys["properties.mode"].valueLabels.HOLD == "持续按压"
+    and buttonKeys["properties.mode"].valueLabels.TOGGLE == "切换"
+    and View.FieldValue(buttonKeys["properties.mode"]) == "持续按压  ▾",
+    "runtime enum values were not translated for Inspector display")
+local levelIdField = nil
+for _, field in ipairs(levelInspectorFields) do if field.key == "level.id" then levelIdField = field end end
+expect(levelIdField and levelIdField.label == "关卡 ID", "exposed levelId label was not localized")
 
 local edit = TextEditor.Initialize({ value = "甲乙C" }, false, 0)
 TextEditor.Move(edit, -1, 0)
@@ -309,9 +317,9 @@ local fullLayout = Layout.Resolve({
 }, { drawerMode = "files" })
 expect(fullLayout.supported and fullLayout.mode == "full" and fullLayout.left and fullLayout.right,
     "1880x840 workshop layout is not full mode")
-expect(fullLayout.toolbar.draft and fullLayout.toolbar.save
+expect(fullLayout.toolbar.draft and fullLayout.toolbar.save and fullLayout.toolbar.copyObject
     and fullLayout.toolbar.draft.x + fullLayout.toolbar.draft.w < fullLayout.toolbar.save.x,
-    "draft and formal-save controls are missing or overlapping")
+    "draft, formal-save, or object-copy controls are missing or overlapping")
 local catalogLayout = ExperimentCatalog.ResolveLayout({ logicalWidth = 1880, logicalHeight = 840 })
 expect(catalogLayout.workshopButton.x >= catalogLayout.right.x
     and catalogLayout.workshopButton.x + catalogLayout.workshopButton.w <= catalogLayout.right.x + catalogLayout.right.w

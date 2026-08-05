@@ -282,11 +282,23 @@ end
 
 function Renderer:Begin(frame)
     nvgBeginFrame(self.vg, frame.systemLogicalWidth, frame.systemLogicalHeight, frame.dpr)
+    self:FillRect(0, 0, frame.systemLogicalWidth, frame.systemLogicalHeight, COLORS.background)
+    nvgSave(self.vg)
+    self.frameTransformSaved = true
     nvgScale(self.vg, frame.renderScale, frame.renderScale)
+    if frame.mainStageActive then
+        nvgTranslate(self.vg, frame.stageOffsetX or 0, frame.stageOffsetY or 0)
+        nvgScissor(self.vg, frame.stageX or 0, frame.stageY or 0,
+            frame.stageWidth or frame.logicalWidth, frame.stageHeight or frame.logicalHeight)
+    end
     nvgTextAlign(self.vg, NVG_ALIGN_LEFT + NVG_ALIGN_TOP)
 end
 
 function Renderer:Finish()
+    if self.frameTransformSaved then
+        nvgRestore(self.vg)
+        self.frameTransformSaved = false
+    end
     nvgEndFrame(self.vg)
 end
 

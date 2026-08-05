@@ -67,6 +67,7 @@ input.mouseMoveWheel = 0
 function input:SetScreenKeyboardVisible(_) end
 function input:GetKeyDown(key) return self.downKeys and self.downKeys[key] == true or false end
 KEY_ESCAPE, KEY_CTRL, KEY_S, KEY_Z, KEY_Y, KEY_D, KEY_DELETE = 27, 1000, 83, 90, 89, 68, 127
+KEY_C = 67
 KEY_BACKSPACE, KEY_RETURN, KEY_A, KEY_V, KEY_SHIFT = 8, 13, 65, 86, 1001
 KEY_LEFT, KEY_RIGHT, KEY_HOME, KEY_END = 1101, 1102, 1103, 1104
 function input:GetKeyPress(key)
@@ -248,6 +249,13 @@ local function wheelWorkspace(targetContext, current, x, y, wheel)
     input.mouseMoveWheel = 0
 end
 
+local function pressShortcut(targetContext, key, shift)
+    input.downKeys = { [KEY_CTRL] = true, [KEY_SHIFT] = shift == true }
+    input.pressedKey = key
+    updateWorkshop(targetContext)
+    input.downKeys = nil
+end
+
 expect(context.screen_ == "workshop" and workshop.entryId == "official:level_01",
     "official entry selection mismatch")
 expect(workshop.readOnly and #workshop.entries == 2, "official repository was not read-only or complete")
@@ -289,6 +297,23 @@ context.WorkshopUndo()
 expect(#workshop.document.objects == countBefore + 1, "undo did not restore document snapshot")
 context.WorkshopRedo()
 expect(#workshop.document.objects == countBefore + 2, "redo did not restore document snapshot")
+pressShortcut(context, KEY_Z)
+expect(#workshop.document.objects == countBefore + 1, "Ctrl+Z did not undo")
+pressShortcut(context, KEY_Z, true)
+expect(#workshop.document.objects == countBefore + 2, "Ctrl+Shift+Z did not redo")
+pressShortcut(context, KEY_Z)
+pressShortcut(context, KEY_Y)
+expect(#workshop.document.objects == countBefore + 2, "Ctrl+Y did not redo")
+workshop.selectedObjectId = workshop.document.objects[#workshop.document.objects].id
+updateWorkshop(context)
+pressShortcut(context, KEY_C)
+expect(#workshop.document.objects == countBefore + 3, "Ctrl+C did not copy the selected object")
+context.WorkshopUndo()
+workshop.selectedObjectId = workshop.document.objects[#workshop.document.objects].id
+updateWorkshop(context)
+clickControl(context, workshop, "copyObject")
+expect(#workshop.document.objects == countBefore + 3, "toolbar copy did not duplicate the selected object")
+context.WorkshopUndo()
 
 context.HandleWorkshopScreenMode()
 local draft = workshop.draftStore:LoadDraft("custom_001")

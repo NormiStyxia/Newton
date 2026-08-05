@@ -17,6 +17,10 @@ function M.Install(context)
     local lastValidPhysicsTimeStep = 1 / 60
     local _ENV = context
 
+    local function usesMainStage()
+        return screen_ == "game" or screen_ == "workshop_preview"
+    end
+
     local function ResolvePhysicsTimeStep(eventData)
         local timeStep = eventData:GetFloat("TimeStep")
         -- UrhoX can expose a zero PhysicsPre/PostStep delta on the first
@@ -41,7 +45,7 @@ function M.Install(context)
     function Start()
         graphics.windowTitle = CONFIG.title
         painter_ = Renderer2D.New()
-        frame_ = context.design_:Frame()
+        frame_ = context.design_:Frame(usesMainStage())
         context.InitializeDialogue()
         context.InitializeAssistDemo()
         InitializeGreenAssistant()
@@ -77,7 +81,7 @@ function M.Install(context)
     ---@param eventData UpdateEventData
     function HandleUpdate(_eventType, eventData)
         local dt = eventData:GetFloat("TimeStep")
-        frame_ = context.design_:Frame()
+        frame_ = context.design_:Frame(usesMainStage())
         RefreshWorkspaceLayout()
         local pointerFrame = PointerState()
         if screen_ == "catalog" then
@@ -151,7 +155,8 @@ function M.Install(context)
             -- automation cannot always forward keyboard chords. Keep a deliberately
             -- middle-click as an equivalent diagnostics-only trigger. Normal
             -- gameplay uses left/right clicks and is therefore unaffected.
-            local pointerProbeRequested = not context.assistantInputLocked_ and input:GetMouseButtonPress(MOUSEB_MIDDLE)
+            local pointerProbeRequested = pointerFrame.insideStage ~= false
+                and not context.assistantInputLocked_ and input:GetMouseButtonPress(MOUSEB_MIDDLE)
             if keyboardProbeRequested or pointerProbeRequested then
                 physicsProbe:Start(probeContext)
             end
@@ -176,7 +181,8 @@ function M.Install(context)
         end
         UpdateCardParameter(dt)
         if not context.assistantInputLocked_ and input:GetKeyPress(KEY_R) then ResetExperiment() end
-        if not context.assistantInputLocked_ and input:GetMouseButtonPress(MOUSEB_RIGHT) and (activeCardId_ or primedCardId_) then
+        if pointerFrame.insideStage ~= false and not context.assistantInputLocked_
+            and input:GetMouseButtonPress(MOUSEB_RIGHT) and (activeCardId_ or primedCardId_) then
             local id = activeCardId_ or primedCardId_
             local from = activeCardId_ and CurrentCardVisualPose(id) or PrimedCardPose(id)
             activeCardId_ = nil
@@ -278,7 +284,7 @@ function M.Install(context)
         physicsStepTimeScale_ = nil
     end
     function HandleScreenMode()
-        frame_ = context.design_:Frame()
+        frame_ = context.design_:Frame(usesMainStage())
         RefreshWorkspaceLayout()
         if screen_ == "workshop" then HandleWorkshopScreenMode() end
     end
@@ -393,6 +399,11 @@ function M.Install(context)
     end
     function HandleRender()
         if not painter_ or not frame_ then return end
+        local mainStageActive = usesMainStage()
+        if frame_.mainStageActive ~= mainStageActive then
+            frame_ = context.design_:Frame(mainStageActive)
+            RefreshWorkspaceLayout()
+        end
         if screen_ == "workshop" then
             local ok, err = pcall(function()
                 painter_:Begin(frame_)
