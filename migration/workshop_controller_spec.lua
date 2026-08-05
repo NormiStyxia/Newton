@@ -291,8 +291,8 @@ expect(workshop.view.drawerMode == "files",
     "phone landscape pointer conversion missed the file drawer tab")
 
 context.frame_ = {
-    systemLogicalWidth = 719, systemLogicalHeight = 359,
-    logicalWidth = 1880, logicalHeight = 939,
+    systemLogicalWidth = 567, systemLogicalHeight = 299,
+    logicalWidth = 1880, logicalHeight = 993,
 }
 workshop.dirty = true
 input.pressedKey = KEY_ESCAPE
