@@ -316,7 +316,13 @@ function M.Install(context)
         state.levels, state.loadErrors = {}, {}
         for index = 1, CONFIG.levelCount do
             local ok, levelOrError = pcall(LoadLevelDefinition, index)
-            if ok then state.levels[index] = levelOrError else state.loadErrors[index] = tostring(levelOrError) end
+            if ok then
+                state.levels[index] = levelOrError
+            else
+                local message = tostring(levelOrError)
+                state.loadErrors[index] = message
+                print(string.format("[LevelCatalog] level_%02d load failed: %s", index, message))
+            end
         end
         state.selectedIndex = clamp(tonumber(state.selectedIndex) or 1, 1, CONFIG.levelCount)
         state.scroll, state.scrollMax = 0, 0
