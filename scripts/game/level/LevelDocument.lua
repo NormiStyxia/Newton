@@ -243,10 +243,12 @@ local function ValidateSafeTree(report, root)
             return false
         end
         local valueType = type(value)
-        if valueType == "string" and #value > LevelDocument.LIMITS.maxTextLength then
-            Error(report, "TEXT_SIZE", path, "文本长度超过安全限制")
-        elseif valueType == "number" and not IsFiniteNumber(value) then
-            Error(report, "NON_FINITE", path, "数值必须是有限值")
+        if valueType == "string" then
+            if #value > LevelDocument.LIMITS.maxTextLength then
+                Error(report, "TEXT_SIZE", path, "文本长度超过安全限制")
+            end
+        elseif valueType == "number" then
+            if not IsFiniteNumber(value) then Error(report, "NON_FINITE", path, "数值必须是有限值") end
         elseif valueType == "table" then
             if active[value] then
                 Error(report, "CYCLE", path, "关卡数据不能包含循环引用")
