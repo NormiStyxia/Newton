@@ -2,10 +2,12 @@ local View = {}
 
 local PANEL_ASPECT = 1343 / 2002
 local PANEL_HEIGHT = 660
+local PANEL_VISUAL_SCALE = 1.06
 local FONT = "maker-body"
 local NOMI_FONT = "nomi-font"
 local AVATAR_SIZE = 68
-local MESSAGE_RIGHT_RATIO = 0.70
+local MESSAGE_LEFT_INSET = 40
+local MESSAGE_RIGHT_RATIO = 0.67
 local SCROLLBAR_CENTER_RATIO = 0.75
 local FOOTER_RIGHT_RATIO = 0.82
 
@@ -313,17 +315,18 @@ end
 
 function View.Draw(painter, frame, controller)
     local model = controller:GetRenderModel()
-    local scale, panelAlpha = controller:GetPanelPresentation()
+    local presentationScale, panelAlpha = controller:GetPanelPresentation()
     if panelAlpha <= 0 then return end
+    local scale = presentationScale * PANEL_VISUAL_SCALE
 
     local rect = panelRect(frame)
     local centerX, centerY = rect.x + rect.w * 0.5, rect.y + rect.h * 0.5
     local button = buttonRect(rect)
     local messageRight = rect.x + rect.w * MESSAGE_RIGHT_RATIO
     local viewport = {
-        x = rect.x + 24,
+        x = rect.x + MESSAGE_LEFT_INSET,
         y = rect.y + rect.h * 0.132,
-        w = messageRight - (rect.x + 24),
+        w = messageRight - (rect.x + MESSAGE_LEFT_INSET),
         h = rect.h * 0.704,
     }
     local track = {
