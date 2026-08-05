@@ -4,10 +4,8 @@ local CompanionDefaults = CompanionConfig.DEFAULTS
 local GreenAssistConfig = {}
 
 GreenAssistConfig.QUALITY_PROFILES = {
-    A_MASTER_LINEAR = { variant = "master_1080", generateMipmaps = false },
     B_RUNTIME_LINEAR = { variant = "runtime_512", generateMipmaps = false },
     C_RUNTIME_MIPMAP = { variant = "runtime_512", generateMipmaps = true },
-    D_MASTER_MIPMAP = { variant = "master_1080", generateMipmaps = true },
 }
 
 local function Clone(value)
@@ -36,7 +34,8 @@ end
 local function Frames(folder, count)
     local frames = {}
     for index = 1, count do
-        frames[index] = string.format("image/green_assistant/%s/frame_%02d.png", folder, index)
+        frames[index] = string.format(
+            "image/green_assistant/runtime/runtime_512/%s/frame_%02d.png", folder, index)
     end
     return frames
 end
@@ -150,8 +149,8 @@ GreenAssistConfig.DEFAULTS = {
     assets = {
         enabled = true,
         manifest = "image/green_assistant/runtime/manifest.json",
-        -- A/D use master_1080. B/C use runtime_512.  Keep this independent
-        -- from render.generateMipmaps so all four quality variants are testable.
+        -- The project ships only runtime_512. Mipmap generation remains a
+        -- rendering choice and does not select a second asset set.
         variant = "runtime_512",
         activeVariant = nil,
     },
