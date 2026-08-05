@@ -1,8 +1,8 @@
 local Layout = {}
 
 Layout.DEFAULTS = {
-    minimumSystemWidth = 720,
-    minimumSystemHeight = 360,
+    minimumSystemWidth = 568,
+    minimumSystemHeight = 300,
     foldedSystemWidth = 1380,
     foldedSystemHeight = 680,
     safeInset = 16,
@@ -77,9 +77,11 @@ function Layout.Resolve(frame, viewState, overrides)
 
     local folded = systemWidth < config.foldedSystemWidth or systemHeight < config.foldedSystemHeight
     local mobileCompact = systemWidth < 960 or systemHeight < 480
+    local ultraCompact = systemWidth < 720 or systemHeight < 360
     local safe = resolveSafeInsets(frame, config.safeInset)
     local width, height = systemWidth, systemHeight
-    local topHeight, bottomHeight = mobileCompact and 60 or 68, 38
+    local topHeight = ultraCompact and 50 or (mobileCompact and 60 or 68)
+    local bottomHeight = ultraCompact and 28 or 38
     local bodyY = safe.top + topHeight
     local bodyHeight = height - bodyY - bottomHeight - safe.bottom
     local leftWidth = folded and 0 or 292
@@ -91,7 +93,16 @@ function Layout.Resolve(frame, viewState, overrides)
     local left = leftWidth > 0 and rect(safe.left, bodyY, leftWidth, bodyHeight) or nil
     local right = rightWidth > 0 and rect(width - safe.right - rightWidth, bodyY, rightWidth, bodyHeight) or nil
 
-    local toolbarDefinitions = mobileCompact and {
+    local toolbarDefinitions = ultraCompact and {
+        { id = "exit", width = 40 },
+        { id = "draft", width = 42 },
+        { id = "save", width = 42 },
+        { id = "export", width = 42 },
+        { id = "import", width = 42 },
+        { id = "undo", width = 32 },
+        { id = "redo", width = 32 },
+        { id = "preview", width = 50 },
+    } or (mobileCompact and {
         { id = "exit", width = 52 },
         { id = "draft", width = 60 },
         { id = "save", width = 60 },
@@ -109,9 +120,10 @@ function Layout.Resolve(frame, viewState, overrides)
         { id = "undo", width = 46 },
         { id = "redo", width = 46 },
         { id = "preview", width = 116 },
-    }
-    local toolbar = buttonRow(safe.left, safe.top, toolbarDefinitions, mobileCompact and 44 or 48,
-        mobileCompact and 6 or 8)
+    })
+    local toolbarHeight = ultraCompact and 40 or (mobileCompact and 44 or 48)
+    local toolbarGap = ultraCompact and 4 or (mobileCompact and 6 or 8)
+    local toolbar = buttonRow(safe.left, safe.top, toolbarDefinitions, toolbarHeight, toolbarGap)
     local titleX = toolbar.preview.x + toolbar.preview.w + 18
     local titleRight = width - safe.right
     if folded then titleRight = titleRight - 124 end
@@ -121,6 +133,7 @@ function Layout.Resolve(frame, viewState, overrides)
         supported = true,
         folded = folded,
         mobileCompact = mobileCompact,
+        ultraCompact = ultraCompact,
         coordinateScale = coordinateScale,
         renderScaleCompensation = 1 / coordinateScale,
         frame = frame,
@@ -133,7 +146,7 @@ function Layout.Resolve(frame, viewState, overrides)
         right = right,
         canvas = canvas,
         toolbar = toolbar,
-        title = rect(titleX, safe.top, titleRight - titleX, mobileCompact and 44 or 48),
+        title = rect(titleX, safe.top, titleRight - titleX, toolbarHeight),
     }
 
     if folded then
@@ -143,8 +156,8 @@ function Layout.Resolve(frame, viewState, overrides)
         }
         local drawerMode = viewState and viewState.drawerMode or nil
         if drawerMode == "files" or drawerMode == "inspector" then
-            local drawerWidth = math.min(mobileCompact and 360 or 420,
-                width * (mobileCompact and 0.46 or 0.38))
+            local drawerWidth = math.min(ultraCompact and 320 or (mobileCompact and 360 or 420),
+                width * (ultraCompact and 0.58 or (mobileCompact and 0.46 or 0.38)))
             result.drawer = rect(width - safe.right - drawerWidth, bodyY, drawerWidth, bodyHeight)
             if drawerMode == "files" then result.left = result.drawer else result.right = result.drawer end
         end
@@ -152,18 +165,20 @@ function Layout.Resolve(frame, viewState, overrides)
 
     if result.left then
         local panel = result.left
-        result.fileActions = buttonRow(panel.x + 10, panel.y + 44, {
-            { id = "new", width = 58 }, { id = "copy", width = 58 },
-            { id = "rename", width = 58 }, { id = "delete", width = 58 },
-        }, 34, 6)
+        local actionWidth = ultraCompact and 54 or 58
+        result.fileActions = buttonRow(panel.x + 10, panel.y + (ultraCompact and 34 or 44), {
+            { id = "new", width = actionWidth }, { id = "copy", width = actionWidth },
+            { id = "rename", width = actionWidth }, { id = "delete", width = actionWidth },
+        }, ultraCompact and 28 or 34, ultraCompact and 4 or 6)
         local paletteColumns = mobileCompact and 3 or (folded and 2 or 1)
-        local paletteRowHeight = mobileCompact and 40 or 44
+        local paletteRowHeight = ultraCompact and 34 or (mobileCompact and 40 or 44)
         local paletteRows = math.ceil(6 / paletteColumns)
         local paletteHeight = paletteRows * paletteRowHeight
         local contentBottom = panel.y + panel.h - 10
         local paletteY = contentBottom - paletteHeight
-        local fileY = panel.y + 86
-        local fileHeight = math.max(42, paletteY - fileY - 32)
+        local fileY = panel.y + (ultraCompact and 66 or 86)
+        local fileGap = ultraCompact and 6 or 32
+        local fileHeight = math.max(0, paletteY - fileY - fileGap)
         result.fileViewport = rect(panel.x + 10, fileY, panel.w - 20, fileHeight)
         result.paletteViewport = rect(panel.x + 10, paletteY, panel.w - 20, paletteHeight)
         result.paletteColumns = paletteColumns
@@ -173,7 +188,10 @@ function Layout.Resolve(frame, viewState, overrides)
         local panel = result.right
         result.inspectorViewport = rect(panel.x + 10, panel.y + 48, panel.w - 20, panel.h - 58)
     end
-    result.canvasViewport = rect(canvas.x + 12, canvas.y + 52, canvas.w - 24, canvas.h - 68)
+    local canvasHeader = ultraCompact and 46 or 52
+    local canvasFooter = ultraCompact and 12 or 16
+    result.canvasViewport = rect(canvas.x + 12, canvas.y + canvasHeader,
+        canvas.w - 24, canvas.h - canvasHeader - canvasFooter)
     result.statusText = rect(safe.left + 8, height - bottomHeight - safe.bottom + 7,
         width - safe.left - safe.right - 16, 22)
     return result

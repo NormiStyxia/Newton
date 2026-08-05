@@ -334,6 +334,18 @@ checkMobileLandscape(800, 360)
 checkMobileLandscape(844, 390)
 expect(minimumLayout.full.w == 720 and minimumLayout.full.h == 360,
     "minimum mobile landscape did not use system logical dimensions")
+local ultraCompactLayout = checkMobileLandscape(568, 300)
+checkMobileLandscape(640, 320)
+expect(ultraCompactLayout.ultraCompact
+    and ultraCompactLayout.canvasViewport.w > 0
+    and ultraCompactLayout.canvasViewport.h > 0
+    and ultraCompactLayout.fileViewport.h >= 0,
+    "minimum ultra-compact phone landscape lost an accessible workspace")
+local drawerProbeX, drawerProbeY = minimumLayout.drawer.x + 20, minimumLayout.drawer.y + 20
+expect(not View.ControlHitAllowed(minimumLayout, "canvas", drawerProbeX, drawerProbeY)
+    and not View.ControlHitAllowed(minimumLayout, "deleteObject", drawerProbeX, drawerProbeY)
+    and View.ControlHitAllowed(minimumLayout, "file_new", drawerProbeX, drawerProbeY),
+    "open mobile drawer did not occlude covered canvas input")
 local standardToolbarLayout = Layout.Resolve({
     systemLogicalWidth = 960, systemLogicalHeight = 540,
     logicalWidth = 1880, logicalHeight = 1057.5,
@@ -359,12 +371,12 @@ expect(notchedPhoneLayout.supported
         <= notchedPhoneLayout.drawerTabs.files.x,
     "phone safe-area simulation clips critical workshop controls")
 local belowMinimumLayout = Layout.Resolve({
-    systemLogicalWidth = 719, systemLogicalHeight = 359,
-    logicalWidth = 1880, logicalHeight = 939,
-    renderScale = 719 / 1880,
+    systemLogicalWidth = 567, systemLogicalHeight = 299,
+    logicalWidth = 1880, logicalHeight = 993,
+    renderScale = 567 / 1880,
 }, {})
 expect(not belowMinimumLayout.supported and belowMinimumLayout.mode == "unsupported"
-    and belowMinimumLayout.full.w == 719 and belowMinimumLayout.full.h == 359
+    and belowMinimumLayout.full.w == 567 and belowMinimumLayout.full.h == 299
     and belowMinimumLayout.renderScaleCompensation > 1,
     "below-minimum landscape was accepted or rendered in the wrong coordinate space")
 local portraitLayout = Layout.Resolve({

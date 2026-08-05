@@ -38,6 +38,15 @@ local function pointIn(rect, x, y)
     return rect and x >= rect.x and x <= rect.x + rect.w and y >= rect.y and y <= rect.y + rect.h
 end
 
+local DRAWER_OCCLUDED_CONTROLS = {
+    canvas = true, grid = true, snap = true, zoomOut = true, zoomIn = true, deleteObject = true,
+}
+
+function View.ControlHitAllowed(layout, controlId, x, y)
+    return not pointIn(layout and layout.drawer, x, y)
+        or not DRAWER_OCCLUDED_CONTROLS[controlId or "canvas"]
+end
+
 local function clamp(value, minimum, maximum)
     return math.max(minimum, math.min(maximum, value))
 end
@@ -54,6 +63,41 @@ local function truncate(value, maxCharacters)
         return value:sub(1, maxCharacters) .. "..."
     end
     return value
+end
+
+local function utf8Characters(value)
+    local result = {}
+    value = tostring(value or "")
+    if utf8 and utf8.codes and utf8.char then
+        for _, codepoint in utf8.codes(value) do result[#result + 1] = utf8.char(codepoint) end
+    else
+        for index = 1, #value do result[#result + 1] = value:sub(index, index) end
+    end
+    return result
+end
+
+local function textWidth(painter, value, font, size)
+    painter:UseFont(font)
+    nvgFontSize(painter.vg, size)
+    local measured = nvgTextBounds(painter.vg, 0, 0, tostring(value or ""), nil)
+    if type(measured) == "number" then return measured end
+    return #utf8Characters(value) * size
+end
+
+local function fitText(painter, value, font, preferredSize, minimumSize, maxWidth)
+    value = tostring(value or "")
+    local size = preferredSize
+    while size > minimumSize and textWidth(painter, value, font, size) > maxWidth do
+        size = math.max(minimumSize, size - 0.5)
+    end
+    if textWidth(painter, value, font, size) <= maxWidth then return value, size end
+    local characters = utf8Characters(value)
+    while #characters > 1 do
+        table.remove(characters)
+        local candidate = table.concat(characters) .. "..."
+        if textWidth(painter, candidate, font, size) <= maxWidth then return candidate, size end
+    end
+    return "...", size
 end
 
 local function addControl(controls, group, id, rect, data)
@@ -79,7 +123,7 @@ function View.BuildControls(state, layout, interaction)
 
     if layout.fileViewport then
         local entries = state.entries or {}
-        local rowHeight = layout.mobileCompact and 44 or 52
+        local rowHeight = layout.ultraCompact and 38 or (layout.mobileCompact and 44 or 52)
         state.view.fileScrollMax = math.max(0, #entries * rowHeight - layout.fileViewport.h)
         state.view.fileScroll = clamp(state.view.fileScroll or 0, 0, state.view.fileScrollMax)
         for index, entry in ipairs(entries) do
@@ -111,7 +155,8 @@ function View.BuildControls(state, layout, interaction)
         local y = layout.inspectorViewport.y - (state.view.inspectorScroll or 0)
         local contentHeight = 0
         for index, field in ipairs(state.inspectorFields or {}) do
-            local height = field.kind == "section" and 38 or 52
+            local height = field.kind == "section" and (layout.ultraCompact and 32 or 38)
+                or (layout.ultraCompact and 44 or 52)
             local rect = { x = layout.inspectorViewport.x, y = y, w = layout.inspectorViewport.w, h = height }
             if y + height >= layout.inspectorViewport.y and y <= layout.inspectorViewport.y + layout.inspectorViewport.h then
                 addControl(controls, "inspectorRows", field.key or tostring(index), rect, { field = field })
@@ -190,7 +235,10 @@ local function drawButton(painter, rect, label, options)
     if not enabled then fill, text = COLORS.panelMuted, COLORS.textMuted end
     painter:RoundedRect(rect.x, rect.y, rect.w, rect.h, 4, fill, enabled and COLORS.line or COLORS.panelMuted, 1,
         enabled and 255 or 150)
-    painter:Text(rect.x + rect.w * 0.5, rect.y + rect.h * 0.5, label, options.fontSize or 16, text,
+    local preferredSize = options.fontSize or math.min(20, rect.h * 0.48)
+    local fittedLabel, fittedSize = fitText(painter, label, "maker-body", preferredSize,
+        options.minimumFontSize or 10, math.max(1, rect.w - 12))
+    painter:Text(rect.x + rect.w * 0.5, rect.y + rect.h * 0.5, fittedLabel, fittedSize, text,
         NVG_ALIGN_CENTER + NVG_ALIGN_MIDDLE, "maker-body")
 end
 
@@ -207,7 +255,8 @@ local function drawPanel(painter, rect, title)
     if not rect then return end
     painter:FillRect(rect.x, rect.y, rect.w, rect.h, COLORS.panel)
     painter:StrokeRect(rect.x, rect.y, rect.w, rect.h, COLORS.line, 1)
-    painter:Text(rect.x + 12, rect.y + 13, title, 18, COLORS.text, nil, "maker-display")
+    local fittedTitle, fittedSize = fitText(painter, title, "maker-display", 21, 16, rect.w - 24)
+    painter:Text(rect.x + 12, rect.y + 12, fittedTitle, fittedSize, COLORS.text, nil, "maker-display")
 end
 
 local function drawTop(painter, state, layout, controls)
@@ -224,18 +273,20 @@ local function drawTop(painter, state, layout, controls)
         if id == "redo" then enabled = state.canRedo end
         if id == "preview" or id == "export" then enabled = state.document ~= nil end
         drawButton(painter, rect, labels[id], { enabled = enabled, primary = id == "preview",
-            fontSize = layout.mobileCompact and 14 or 16 })
+            fontSize = layout.ultraCompact and 16 or (layout.mobileCompact and 19 or 20) })
     end
     local suffix = state.dirty and "  ·  未保存" or ""
     if not layout.mobileCompact and layout.title.w >= 80 then
+        local title, titleSize = fitText(painter,
+            (state.document and state.document.name or "关卡工坊") .. suffix,
+            "maker-display", 23, 16, layout.title.w)
         painter:Text(layout.title.x, layout.title.y + layout.title.h * 0.5,
-            truncate((state.document and state.document.name or "关卡工坊") .. suffix,
-                math.max(6, math.floor(layout.title.w / 18))), 20,
+            title, titleSize,
             COLORS.lightText, NVG_ALIGN_LEFT + NVG_ALIGN_MIDDLE, "maker-display")
     end
     if layout.drawerTabs then
-        drawButton(painter, layout.drawerTabs.files, "文件", { active = state.view.drawerMode == "files", fontSize = 15 })
-        drawButton(painter, layout.drawerTabs.inspector, "属性", { active = state.view.drawerMode == "inspector", fontSize = 15 })
+        drawButton(painter, layout.drawerTabs.files, "文件", { active = state.view.drawerMode == "files", fontSize = 18 })
+        drawButton(painter, layout.drawerTabs.inspector, "属性", { active = state.view.drawerMode == "inspector", fontSize = 18 })
     end
 end
 
@@ -257,18 +308,26 @@ local function drawLeft(painter, state, layout, controls)
             painter:FillRect(row.rect.x, row.rect.y, row.rect.w, row.rect.h,
                 selected and COLORS.panelMuted or COLORS.panel, 255)
             if selected then painter:FillRect(row.rect.x, row.rect.y, 4, row.rect.h, COLORS.accent) end
-            painter:Text(row.rect.x + 10, row.rect.y + 7,
-                truncate(entry.name, math.max(4, math.floor((row.rect.w - 20) / 16))), 16,
-                COLORS.text, nil, "maker-body")
-            painter:Text(row.rect.x + 10, row.rect.y + 29,
-                truncate((entry.readOnly and "官方 · 只读" or "自定义") .. "  " .. entry.levelId,
-                    math.max(5, math.floor((row.rect.w - 20) / 12))),
-                13, COLORS.textMuted, nil, "maker-body")
+            local name, nameSize = fitText(painter, entry.name, "maker-body", 19, 14, row.rect.w - 20)
+            if layout.ultraCompact then
+                painter:Text(row.rect.x + 10, row.rect.y + row.rect.h * 0.5,
+                    name, nameSize, COLORS.text, NVG_ALIGN_LEFT + NVG_ALIGN_MIDDLE, "maker-body")
+            else
+                painter:Text(row.rect.x + 10, row.rect.y + 5, name, nameSize, COLORS.text, nil, "maker-body")
+                local metadata, metadataSize = fitText(painter,
+                    (entry.readOnly and "官方 · 只读" or "自定义") .. "  " .. entry.levelId,
+                    "maker-body", 15, 11, row.rect.w - 20)
+                painter:Text(row.rect.x + 10, row.rect.y + 30,
+                    metadata, metadataSize, COLORS.textMuted, nil, "maker-body")
+            end
         end
         nvgRestore(painter.vg)
     end
     if layout.paletteViewport then
-        painter:Text(layout.paletteViewport.x, layout.paletteViewport.y - 27, "新增对象", 16, COLORS.text, nil, "maker-display")
+        if not layout.mobileCompact then
+            painter:Text(layout.paletteViewport.x, layout.paletteViewport.y - 27,
+                "新增对象", 18, COLORS.text, nil, "maker-display")
+        end
         nvgSave(painter.vg)
         nvgScissor(painter.vg, layout.paletteViewport.x, layout.paletteViewport.y,
             layout.paletteViewport.w, layout.paletteViewport.h)
@@ -336,14 +395,18 @@ local function drawObject(painter, object, transform, selected)
         painter:FillRect(-2, -h * 0.42, 4, h * 0.84, COLORS.lightText, 150)
     end
     nvgRestore(painter.vg)
-    painter:Text(x, y, truncate(object.id, math.max(5, math.floor(w / 10))), 12, COLORS.lightText,
+    local objectId, objectIdSize = fitText(painter, object.id, "maker-body", 14, 9, math.max(10, w - 6))
+    painter:Text(x, y, objectId, objectIdSize, COLORS.lightText,
         NVG_ALIGN_CENTER + NVG_ALIGN_MIDDLE, "maker-body")
 end
 
 local function drawCanvas(painter, state, layout, controls)
     painter:FillRect(layout.canvas.x, layout.canvas.y, layout.canvas.w, layout.canvas.h, COLORS.canvas)
     painter:StrokeRect(layout.canvas.x, layout.canvas.y, layout.canvas.w, layout.canvas.h, COLORS.line, 1)
-    painter:Text(layout.canvas.x + 154, layout.canvas.y + 17, "灰盒画布", 16, COLORS.lightText, nil, "maker-display")
+    if not layout.ultraCompact then
+        painter:Text(layout.canvas.x + 154, layout.canvas.y + 17, "灰盒画布", 18,
+            COLORS.lightText, nil, "maker-display")
+    end
     drawButton(painter, controls.byId.grid, "网格", { active = state.view.showGrid })
     drawButton(painter, controls.byId.snap, "吸附", { active = state.view.snap })
     drawButton(painter, controls.byId.deleteObject, "删除对象", { enabled = state.selectedObject ~= nil and not state.readOnly, danger = true })
@@ -378,7 +441,7 @@ local function drawCanvas(painter, state, layout, controls)
             string.format("%s  x %.1f  y %.1f  %.1f × %.1f  %.1f°", state.selectedObject.id,
                 state.selectedObject.transform.x, state.selectedObject.transform.y,
                 state.selectedObject.transform.width, state.selectedObject.transform.height,
-                state.selectedObject.transform.rotation), 13, COLORS.lightText, nil, "maker-body")
+                state.selectedObject.transform.rotation), 15, COLORS.lightText, nil, "maker-body")
     end
     nvgRestore(painter.vg)
 end
@@ -401,18 +464,23 @@ local function drawInspector(painter, state, layout, controls)
         local field = row.field
         if field.kind == "section" then
             painter:FillRect(row.rect.x, row.rect.y, row.rect.w, row.rect.h, COLORS.panelMuted)
-            painter:Text(row.rect.x + 8, row.rect.y + row.rect.h * 0.5, field.label, 15, COLORS.text,
+            local section, sectionSize = fitText(painter, field.label, "maker-display", 18, 14, row.rect.w - 16)
+            painter:Text(row.rect.x + 8, row.rect.y + row.rect.h * 0.5, section, sectionSize, COLORS.text,
                 NVG_ALIGN_LEFT + NVG_ALIGN_MIDDLE, "maker-display")
         else
-            painter:Text(row.rect.x + 5, row.rect.y + 7, field.label, 14, COLORS.textMuted, nil, "maker-body")
+            local fieldLabel, labelSize = fitText(painter, field.label, "maker-body", 16, 12,
+                row.rect.w * 0.4 - 5)
+            painter:Text(row.rect.x + 5, row.rect.y + 7, fieldLabel, labelSize,
+                COLORS.textMuted, nil, "maker-body")
             local valueRect = { x = row.rect.x + row.rect.w * 0.43, y = row.rect.y + 5,
                 w = row.rect.w * 0.57 - 5, h = row.rect.h - 10 }
             local active = state.textEdit and state.textEdit.fieldKey == field.key
             painter:RoundedRect(valueRect.x, valueRect.y, valueRect.w, valueRect.h, 3,
                 active and COLORS.panel or COLORS.panelMuted, active and COLORS.accent or COLORS.line, active and 2 or 1)
             local value = active and state.textEdit.value or fieldValue(field)
+            local fittedValue, valueSize = fitText(painter, value, "maker-body", 18, 12, valueRect.w - 16)
             painter:Text(valueRect.x + 8, valueRect.y + valueRect.h * 0.5,
-                truncate(value, math.max(5, math.floor(valueRect.w / 9))), 15,
+                fittedValue, valueSize,
                 field.editable == false and COLORS.textMuted or COLORS.text,
                 NVG_ALIGN_LEFT + NVG_ALIGN_MIDDLE, "maker-body")
         end
@@ -437,7 +505,8 @@ local function drawStatus(painter, state, layout)
         text = text .. string.format("   ·   %d 对象   ·   %d 错误 / %d 警告   ·   %s",
             #(state.document.objects or {}), errors, warnings, state.persistenceKind or "memory-only")
     end
-    painter:Text(layout.statusText.x, layout.statusText.y, truncate(text, 120), 14,
+    local statusText, statusSize = fitText(painter, text, "maker-body", 16, 11, layout.statusText.w)
+    painter:Text(layout.statusText.x, layout.statusText.y, statusText, statusSize,
         errors > 0 and COLORS.warning or COLORS.lightText, nil, "maker-body")
 end
 

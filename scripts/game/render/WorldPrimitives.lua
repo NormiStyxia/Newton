@@ -203,14 +203,14 @@ function M.Install(Renderer, COLORS, color, tint)
             { "F = ma", .35, .15, 25, -.025, .19, true }, { "y = ½gt²", .59, .08, 19, .018, .15 },
             { "E = mc²", .94, .16, 18, .018, .14 }, { "ΣF = ma", .12, .38, 20, .025, .16 },
             { "ΣF = ma", .45, .3, 21, -.02, .16 }, { "F_g = Gm₁m₂ / r²", .72, .39, 20, -.018, .17, true },
-            { "a = Δv / Δt", .92, .36, 18, .02, .15 }, { "y = sin 3t + ½sin(7t + φ) + ¼cos 11t", .36, .73, 14, .015, .13 },
-            { "v² = v₀² + 2aΔx", .58, .8, 19, -.018, .16 }, { "y = kx²", .91, .55, 17, -.018, .14 },
+            { "a = Δv / Δt", .92, .27, 18, .02, .15 }, { "y = sin 3t + ½sin(7t + φ) + ¼cos 11t", .48, .66, 14, .015, .13 },
+            { "v² = v₀² + 2aΔx", .58, .8, 19, -.018, .16 }, { "y = kx²", .91, .38, 17, -.018, .14 },
         }
         self:DrawFormulaDiagram(frame, "cone", .2, .12, .09, .16, -.018, .12)
         self:DrawFormulaDiagram(frame, "orbit", .82, .12, .07, nil, .04, .13)
         self:DrawFormulaDiagram(frame, "orbit-map", .12, .64, .13, .16, -.025, .12)
-        self:DrawFormulaDiagram(frame, "shaded-wave", .36, .59, .21, .12, -.015, .13)
-        self:DrawFormulaDiagram(frame, "parabola", .9, .7, .14, .18, .012, .13)
+        self:DrawFormulaDiagram(frame, "shaded-wave", .44, .73, .18, .10, -.015, .13)
+        self:DrawFormulaDiagram(frame, "parabola", .9, .49, .14, .18, .012, .13)
         for _, f in ipairs(formulas) do
             local x, y = formulaPoint(frame, f[2], f[3])
             nvgSave(self.vg)

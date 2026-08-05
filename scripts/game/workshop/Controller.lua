@@ -741,7 +741,7 @@ function M.Install(context)
                 current.view.fileScroll = clamp(current.view.fileScroll - wheel * 48, 0, current.view.fileScrollMax)
             elseif current.layout.inspectorViewport and View.PointIn(current.layout.inspectorViewport, x, y) then
                 current.view.inspectorScroll = clamp(current.view.inspectorScroll - wheel * 48, 0, current.view.inspectorScrollMax)
-            elseif View.PointIn(current.layout.canvasViewport, x, y) then
+            elseif View.ControlHitAllowed(current.layout, "canvas", x, y) and View.PointIn(current.layout.canvasViewport, x, y) then
                 current.view.zoom = clamp(current.view.zoom * (wheel > 0 and 1.12 or .89), .35, 4)
             end
             rebuildUI()
@@ -749,7 +749,7 @@ function M.Install(context)
 
         if pointerFrame.pressed then
             for id, rect in pairs(current.controls.byId) do
-                if View.PointIn(rect, x, y) then handleControl(id); return end
+                if View.PointIn(rect, x, y) and View.ControlHitAllowed(current.layout, id, x, y) then handleControl(id); return end
             end
             for _, row in ipairs(current.controls.fileRows) do
                 if View.PointIn(row.rect, x, y) then switchEntry(row.entry.entryId); rebuildUI(); return end
@@ -760,7 +760,7 @@ function M.Install(context)
             for _, row in ipairs(current.controls.inspectorRows) do
                 if View.PointIn(row.rect, x, y) then handleInspectorRow(row); return end
             end
-            if View.PointIn(current.layout.canvasViewport, x, y) then beginCanvasGesture(pointerFrame); return end
+            if View.ControlHitAllowed(current.layout, "canvas", x, y) and View.PointIn(current.layout.canvasViewport, x, y) then beginCanvasGesture(pointerFrame); return end
         end
         updateCanvasGesture(pointerFrame)
         if pointerFrame.released or (current.transaction and not pointerFrame.down) then endCanvasGesture() end
