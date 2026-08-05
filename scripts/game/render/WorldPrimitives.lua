@@ -249,27 +249,27 @@ function M.Install(Renderer, COLORS, color, tint)
             local imageY = y + (sourceHeight * .5 - assetPadding) * verticalScale
             self:Image(angerPanel, x + w * .5, imageY,
                 sourceWidth * horizontalScale, sourceHeight * verticalScale, 1, nil, .5, .5)
-            self:Text(x + 36, y + 40, "ISAAC NEWTON", 9, COLORS.ash)
-            self:Text(x + 36, y + 55, "牛顿 · 经典定律维护者", 15, COLORS.darkPrimary, NVG_ALIGN_LEFT + NVG_ALIGN_TOP, "maker-display")
-            self:TextBox(x + 36, y + 128, w - 72, "“" .. (observation or (level and level.observation) or "先观察抛物线，再谈万有引力。") .. "”", 11, COLORS.body)
+            self:Text(x + 26, y + 38, "ISAAC NEWTON", 12, COLORS.ash)
+            self:Text(x + 26, y + 55, "牛顿 · 经典定律维护者", 20, COLORS.darkPrimary, NVG_ALIGN_LEFT + NVG_ALIGN_TOP, "maker-display")
+            self:TextBox(x + 26, y + 128, w - 52, "“" .. (observation or (level and level.observation) or "先观察抛物线，再谈万有引力。") .. "”", 16, COLORS.body, nil, nil, 1.25)
             if angerLevel >= 50 and imageReady(self.images.newtonAnger.icon) then
                 self:Image(self.images.newtonAnger.icon, x + 82, y + 216, 34, 35, 1)
             end
-            self:Text(x + 34, y + h - 103, "牛顿怒气", 14, COLORS.darkPrimary)
+            self:Text(x + 24, y + h - 105, "牛顿怒气", 18, COLORS.darkPrimary)
             self:RoundedRect(x + 44, y + 529, 162, 12, 6, COLORS.greenSoft)
             self:RoundedRect(x + 44, y + 529, 162, 12, 6, nil, COLORS.darkSecondary, 2, 230)
             self:RoundedRect(x + 47, y + 532, 156 * angerLevel / 100, 7, 3, COLORS.newtonAngerProgress)
             if imageReady(self.images.apple) then
                 self:Image(self.images.apple, x + 47 + 156 * angerLevel / 100, y + 535, 34, 34, 1)
             end
-            self:Text(x + w - 34, y + h - 103, string.format("%d%%", math.floor(angerLevel + .5)), 14, COLORS.warning, NVG_ALIGN_RIGHT + NVG_ALIGN_TOP)
+            self:Text(x + w - 24, y + h - 105, string.format("%d%%", math.floor(angerLevel + .5)), 18, COLORS.warning, NVG_ALIGN_RIGHT + NVG_ALIGN_TOP)
             return
         end
         self:RoundedRect(x, y, w, h, 7, COLORS.panel, COLORS.greenLight, 2)
         self:RoundedRect(x + 8, y + 8, w - 16, h - 16, 5, nil, COLORS.panelSecondary, 1)
         self:RoundedRect(x + 18, y + 12, w - 36, 58, 6, COLORS.dark)
-        self:Text(x + 30, y + 21, "ISAAC NEWTON", 11, COLORS.warningLow)
-        self:Text(x + 30, y + 41, "牛顿 · 经典定律维护者", 18, COLORS.white, NVG_ALIGN_LEFT + NVG_ALIGN_TOP, "maker-display")
+        self:Text(x + 24, y + 20, "ISAAC NEWTON", 12, COLORS.warningLow)
+        self:Text(x + 24, y + 40, "牛顿 · 经典定律维护者", 20, COLORS.white, NVG_ALIGN_LEFT + NVG_ALIGN_TOP, "maker-display")
         if self.images.portrait and self.images.portrait >= 0 then
             -- The Phaser source crops the portrait to its first 620 source pixels.
             nvgSave(self.vg)
@@ -281,13 +281,13 @@ function M.Install(Renderer, COLORS, color, tint)
         end
         nvgStrokeColor(self.vg, color(COLORS.warningLow, 180)); nvgStrokeWidth(self.vg, 3)
         nvgBeginPath(self.vg); nvgMoveTo(self.vg, x + 22, y + 90); nvgLineTo(self.vg, x + 22, y + 140); nvgStroke(self.vg)
-        self:TextBox(x + 36, y + 95, w - 66, "“" .. (observation or (level and level.observation) or "先观察抛物线，再谈万有引力。") .. "”", 13, COLORS.body)
+        self:TextBox(x + 26, y + 95, w - 52, "“" .. (observation or (level and level.observation) or "先观察抛物线，再谈万有引力。") .. "”", 16, COLORS.body, nil, nil, 1.25)
         nvgStrokeColor(self.vg, color(COLORS.greenLight, 163)); nvgStrokeWidth(self.vg, 2)
         nvgBeginPath(self.vg); nvgMoveTo(self.vg, x + 34, y + 472); nvgLineTo(self.vg, x + w - 34, y + 472); nvgStroke(self.vg)
-        self:Text(x + 24, y + h - 112, "牛顿怒气", 12, COLORS.secondary)
+        self:Text(x + 24, y + h - 114, "牛顿怒气", 18, COLORS.secondary)
         self:RoundedRect(x + 24, y + h - 86, w - 48, 12, 5, COLORS.warningSoft, COLORS.warningLow, 1)
         self:RoundedRect(x + 27, y + h - 84, math.max(0, w - 54) * math.max(0, math.min(1, anger / 100)), 7, 3, COLORS.warningActive)
-        self:Text(x + w - 24, y + h - 114, string.format("%d%%", math.floor(anger + 0.5)), 12, COLORS.warning, NVG_ALIGN_RIGHT + NVG_ALIGN_TOP)
+        self:Text(x + w - 24, y + h - 114, string.format("%d%%", math.floor(anger + 0.5)), 18, COLORS.warning, NVG_ALIGN_RIGHT + NVG_ALIGN_TOP)
         self:Text(x + 24, y + h - 58, "修正拳：恢复持续规则，保留运动状态", 11, COLORS.secondary)
     end
 

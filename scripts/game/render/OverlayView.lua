@@ -98,9 +98,9 @@ function M.Install(context)
         local f = frame_
         local layout = ResolveHUDLayout(f)
         local titleX = layout.titleX
-        painter_:Text(titleX + 36, 19, "牛顿看了想打人", 29, Renderer2D.COLORS.white, NVG_ALIGN_LEFT + NVG_ALIGN_TOP, "maker-display")
-        painter_:Text(titleX + 36, 57, ellipsize(string.format("实验 %02d · %s", levelIndex_, level_.name or ""), 200, 13, nil),
-            13, Renderer2D.COLORS.greenSecondary)
+        painter_:Text(titleX + 62, 19, "牛顿看了想打人", 29, Renderer2D.COLORS.white, NVG_ALIGN_LEFT + NVG_ALIGN_TOP, "maker-display")
+        painter_:Text(titleX + 62, 57, ellipsize(string.format("实验 %02d · %s", levelIndex_, level_.name or ""), 185, 16, nil),
+            16, Renderer2D.COLORS.greenSecondary)
         local function DrawNavigationButton(x, key)
             local hovered = hoveredNavigation_ == key
             painter_:FillRect(x, 23, 46, 46, hovered and Renderer2D.COLORS.darkSecondary or Renderer2D.COLORS.dark, hovered and 255 or 107)
@@ -134,7 +134,7 @@ function M.Install(context)
             ellipsize(hudRuleSummary_, layout.left.w - 36, 17, "maker-display"), 17,
             Renderer2D.COLORS.text, NVG_ALIGN_LEFT + NVG_ALIGN_MIDDLE, "maker-display")
         painter_:Text(layout.center.x + layout.center.w * .5, 46,
-            ellipsize(hudObjectiveText_, layout.center.w - 42, 21, "maker-display"), 21,
+            ellipsize(hudObjectiveText_, layout.center.w - 42, 28, "maker-display"), 28,
             Renderer2D.COLORS.text, NVG_ALIGN_CENTER + NVG_ALIGN_MIDDLE, "maker-display")
 
         local right = layout.right
