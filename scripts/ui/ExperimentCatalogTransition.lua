@@ -3,12 +3,22 @@ Transition.__index = Transition
 
 Transition.State = {
     IDLE = "IDLE",
-    TRANSITIONING = "TRANSITIONING",
+    PREPARING = "PREPARING",
+    LIFTING = "LIFTING",
+    WITHDRAWING = "WITHDRAWING",
+    COMMITTING = "COMMITTING",
 }
 
-local PAPER_DURATION = 0.40
-local PAPER_ENTRY_DELAY = 0.08
-local FAST_SETTLE_DURATION = 0.10
+-- The paper is held for one frame before motion starts so the incoming sheet
+-- is already rendered underneath the outgoing sheet.
+local LIFT_END = 0.22
+local ROTATE_START = 0.09
+local ROTATE_END = 0.26
+local WITHDRAW_END = 0.66
+local LIFT_OFFSET_Y = -7
+local LIFT_SCALE = 1.022
+local MAX_PIVOT_ANGLE = math.rad(3.2)
+local EXTRA_WITHDRAW_ANGLE = math.rad(3.0)
 
 local function clamp(value, minimum, maximum)
     return math.max(minimum, math.min(maximum, value))
@@ -19,6 +29,11 @@ local function easeOutCubic(value)
     return 1 - (1 - value) ^ 3
 end
 
+local function easeWithdraw(value)
+    value = clamp(value or 0, 0, 1)
+    return value * value * (3 - 2 * value)
+end
+
 function Transition.New(initialIndex)
     local self = setmetatable({}, Transition)
     self.currentIndex = math.max(1, tonumber(initialIndex) or 1)
@@ -27,7 +42,6 @@ function Transition.New(initialIndex)
     self.pendingIndex = nil
     self.direction = 1
     self.elapsed = 0
-    self.fastSettle = false
     self.state = Transition.State.IDLE
     return self
 end
@@ -35,18 +49,21 @@ end
 function Transition:Reset(index)
     self.currentIndex = math.max(1, tonumber(index) or self.currentIndex or 1)
     self.outgoingIndex, self.incomingIndex, self.pendingIndex = nil, nil, nil
-    self.elapsed, self.fastSettle = 0, false
+    self.elapsed = 0
     self.state = Transition.State.IDLE
 end
 
 function Transition:_start(fromIndex, toIndex)
-    if fromIndex == toIndex then self:Reset(toIndex); return false end
+    if fromIndex == toIndex then
+        self:Reset(toIndex)
+        return false
+    end
     self.currentIndex = fromIndex
     self.outgoingIndex = fromIndex
     self.incomingIndex = toIndex
     self.direction = toIndex > fromIndex and 1 or -1
-    self.elapsed, self.fastSettle = 0, false
-    self.state = Transition.State.TRANSITIONING
+    self.elapsed = 0
+    self.state = Transition.State.PREPARING
     return true
 end
 
@@ -56,37 +73,49 @@ function Transition:Request(targetIndex)
         return self:_start(self.currentIndex, targetIndex)
     end
     if targetIndex == self.pendingIndex then return false end
+
+    -- Keep only the latest request. The currently prepared pair finishes once,
+    -- then the latest target starts directly from the newly committed sheet.
     if targetIndex == self.incomingIndex then
         self.pendingIndex = nil
-        self.fastSettle = true
-        return true
+    else
+        self.pendingIndex = targetIndex
     end
-
-    -- Do not queue paper swaps. The active pair settles quickly, then the
-    -- latest requested experiment becomes the only new destination.
-    self.pendingIndex = targetIndex
-    self.fastSettle = true
     return true
 end
 
 function Transition:Update(dt)
     dt = math.max(0, tonumber(dt) or 0)
-    if self.state ~= Transition.State.TRANSITIONING then return end
+    if self.state == Transition.State.IDLE then return end
 
-    if self.fastSettle then
-        self.elapsed = math.min(PAPER_DURATION, self.elapsed + dt * PAPER_DURATION / FAST_SETTLE_DURATION)
-    else
-        self.elapsed = self.elapsed + dt
+    if self.state == Transition.State.PREPARING then
+        -- Leave one complete render pass for the next sheet to settle below the
+        -- outgoing sheet before any transform is applied.
+        self.state = Transition.State.LIFTING
+        self.elapsed = 0
+        return
     end
-    if self.elapsed < PAPER_DURATION then return end
 
-    self.currentIndex = self.incomingIndex or self.currentIndex
-    local pending = self.pendingIndex
-    self.outgoingIndex, self.incomingIndex, self.pendingIndex = nil, nil, nil
-    self.elapsed, self.fastSettle = 0, false
-    self.state = Transition.State.IDLE
-    if pending and pending ~= self.currentIndex then
-        self:_start(self.currentIndex, pending)
+    if self.state == Transition.State.COMMITTING then
+        local committedIndex = self.incomingIndex or self.currentIndex
+        local pending = self.pendingIndex
+        self.currentIndex = committedIndex
+        self.outgoingIndex, self.incomingIndex, self.pendingIndex = nil, nil, nil
+        self.elapsed = 0
+        self.state = Transition.State.IDLE
+        if pending and pending ~= self.currentIndex then
+            self:_start(self.currentIndex, pending)
+        end
+        return
+    end
+
+    self.elapsed = self.elapsed + dt
+    if self.state == Transition.State.LIFTING and self.elapsed >= LIFT_END then
+        self.state = Transition.State.WITHDRAWING
+    end
+    if self.elapsed >= WITHDRAW_END then
+        self.elapsed = WITHDRAW_END
+        self.state = Transition.State.COMMITTING
     end
 end
 
@@ -94,28 +123,41 @@ function Transition:IsSettled()
     return self.state == Transition.State.IDLE and self.pendingIndex == nil
 end
 
+local function stationaryPose()
+    return { offsetX = 0, offsetY = 0, rotation = 0, scale = 1, alpha = 1, shadow = 0 }
+end
+
 function Transition:GetPreviewPapers(viewportWidth)
     if self.state == Transition.State.IDLE then
-        return { { index = self.currentIndex, offsetX = 0, rotation = 0, alpha = 1, scale = 1 } }
+        return { { index = self.currentIndex, pose = stationaryPose() } }
     end
-    local outgoingProgress = easeOutCubic(self.elapsed / PAPER_DURATION)
-    local entryProgress = easeOutCubic((self.elapsed - PAPER_ENTRY_DELAY) / (PAPER_DURATION - PAPER_ENTRY_DELAY))
-    local span = math.max(1, viewportWidth) * 1.05
+
+    if self.state == Transition.State.COMMITTING then
+        return { { index = self.incomingIndex or self.currentIndex, pose = stationaryPose() } }
+    end
+
+    local elapsed = self.elapsed
+    local liftProgress = easeOutCubic(elapsed / LIFT_END)
+    local pivotProgress = easeOutCubic((elapsed - ROTATE_START) / (ROTATE_END - ROTATE_START))
+    local withdrawProgress = easeWithdraw((elapsed - LIFT_END) / (WITHDRAW_END - LIFT_END))
+    local pivotAngle = MAX_PIVOT_ANGLE * pivotProgress
+    local pullAngle = EXTRA_WITHDRAW_ANGLE * withdrawProgress
+    local span = math.max(1, tonumber(viewportWidth) or 1) * 1.18
+
+    local pose = {
+        offsetX = -self.direction * span * withdrawProgress,
+        offsetY = LIFT_OFFSET_Y * math.min(1, liftProgress) - 44 * withdrawProgress,
+        rotation = self.direction * (pivotAngle + pullAngle),
+        scale = 1 + (LIFT_SCALE - 1) * math.min(1, liftProgress),
+        -- Kept at one for the entire animation. The paper must not fade out.
+        alpha = 1,
+        shadow = math.max(liftProgress, withdrawProgress),
+    }
     return {
-        {
-            index = self.outgoingIndex,
-            offsetX = -self.direction * span * outgoingProgress,
-            rotation = -self.direction * math.rad(1.1) * outgoingProgress,
-            alpha = 1 - .08 * outgoingProgress,
-            scale = 1,
-        },
-        {
-            index = self.incomingIndex,
-            offsetX = self.direction * span * (1 - entryProgress),
-            rotation = self.direction * math.rad(1.1) * (1 - entryProgress),
-            alpha = .92 + .08 * entryProgress,
-            scale = 1.005 - .005 * entryProgress,
-        },
+        -- Draw the next sheet first. It is present and stationary underneath.
+        { index = self.incomingIndex, pose = stationaryPose() },
+        -- The outgoing sheet is the only animated layer.
+        { index = self.outgoingIndex, pose = pose },
     }
 end
 

@@ -592,7 +592,8 @@ function M.Install(context)
         end
         if input:GetKeyDown(KEY_SHIFT) and not current.selectedObject then current.transaction = panTransaction; return end
         local levelX, levelY = Interaction.ScreenToLevel(transform, x, y)
-        local object = Interaction.FindTopObject(current.document, levelX, levelY, 5 / transform.scale)
+        local object = Interaction.FindTopObject(current.document, levelX, levelY,
+            5 / transform.objectScale, transform)
         if not object and current.selectedObject and not current.readOnly then object = current.selectedObject end
         if object then
             current.selectedObjectId, current.selectedObject = object.id, object
@@ -631,12 +632,12 @@ function M.Install(context)
             object.transform.x, object.transform.y = Interaction.ClampPosition(current.document, object, x, y)
         elseif transaction.kind == "resize" then
             object.transform.width, object.transform.height = Interaction.ResizeFromPointer(current.document, object,
-                levelX, levelY, 4, current.view.snap and current.view.gridSize or nil)
+                levelX, levelY, 4, current.view.snap and current.view.gridSize or nil, transform)
             object.transform.x, object.transform.y = Interaction.ClampPosition(current.document, object,
                 object.transform.x, object.transform.y)
         elseif transaction.kind == "rotate" then
             object.transform.rotation = Interaction.RotationFromPointer(object, levelX, levelY,
-                current.view.snap and current.view.angleSnap or nil)
+                current.view.snap and current.view.angleSnap or nil, transform)
             object.transform.x, object.transform.y = Interaction.ClampPosition(current.document, object,
                 object.transform.x, object.transform.y)
         end

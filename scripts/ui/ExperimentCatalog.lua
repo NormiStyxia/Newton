@@ -1,4 +1,5 @@
 local CatalogTransition = require("ui.ExperimentCatalogTransition")
+local LevelPreviewTransform = require("game.layout.LevelPreviewTransform")
 
 local M = {}
 
@@ -186,11 +187,13 @@ local function drawCatalogForegroundDecor(painter, frame)
     painter:ImageRect(uiImages.catalogDecorRight, artOffsetX + 1567, 683, 305, 156, 255)
 end
 
-local function drawPreviewObject(painter, object, originX, originY, scale)
+local function drawPreviewObject(painter, object, previewTransform)
     local transform = object.transform
     if not transform then return end
-    local x, y = originX + transform.x * scale, originY + transform.y * scale
-    local w, h = math.max(3, transform.width * scale), math.max(3, transform.height * scale)
+    local x, y = LevelPreviewTransform.LevelToScreen(previewTransform, transform.x, transform.y)
+    local mappedWidth, mappedHeight = LevelPreviewTransform.SizeToScreen(
+        previewTransform, transform.width, transform.height)
+    local w, h = math.max(3, mappedWidth), math.max(3, mappedHeight)
     local properties = object.properties or {}
     local color = object.type == "launcher" and COLORS.launcher
         or object.type == "goal_sensor" and COLORS.goal
@@ -238,13 +241,24 @@ end
 
 local function drawPreviewPaper(painter, preview, level, pose)
     local vg = painter.vg
-    pose = pose or { offsetX = 0, rotation = 0, alpha = 1, scale = 1 }
+    pose = pose or { offsetX = 0, offsetY = 0, rotation = 0, scale = 1, alpha = 1, shadow = 0 }
+    local anchorX = pose.anchorX or (preview.x + preview.w * .5)
+    local anchorY = pose.anchorY or (preview.y - 12)
     nvgSave(vg)
-    nvgTranslate(vg, preview.x + preview.w * .5 + (pose.offsetX or 0), preview.y + preview.h * .5)
+    -- Keep the hinge at the fixed top clamp rather than rotating around the
+    -- paper center. The offset is applied at the hinge so the upper edge stays
+    -- visually attached until the withdrawal phase.
+    nvgTranslate(vg, anchorX + (pose.offsetX or 0), anchorY + (pose.offsetY or 0))
     nvgRotate(vg, pose.rotation or 0)
     nvgScale(vg, pose.scale or 1, pose.scale or 1)
-    nvgTranslate(vg, -(preview.x + preview.w * .5), -(preview.y + preview.h * .5))
-    nvgGlobalAlpha(vg, clamp(pose.alpha or 1, 0, 1))
+    nvgTranslate(vg, -anchorX, -anchorY)
+    if (pose.shadow or 0) > 0 then
+        local shadowAlpha = math.floor(18 * clamp(pose.shadow, 0, 1))
+        painter:FillRect(preview.x - 2, preview.y + 5, preview.w + 4, preview.h + 5,
+            { 74, 64, 45, 255 }, shadowAlpha)
+        painter:FillRect(preview.x - 1, preview.y + 2, preview.w + 2, preview.h + 3,
+            { 74, 64, 45, 255 }, math.floor(shadowAlpha * .55))
+    end
     painter:FillRect(preview.x, preview.y, preview.w, preview.h, { 252, 243, 215, 255 })
     painter:StrokeRect(preview.x, preview.y, preview.w, preview.h, COLORS.brassSoft, 1)
     if not level then
@@ -270,18 +284,16 @@ local function drawPreviewPaper(painter, preview, level, pose)
     painter:Text(preview.x + 34, preview.y + 55, "v = v₀ + gt", 17, COLORS.inkMuted, nil, "report-green", 110)
     painter:Text(preview.x + preview.w - 160, preview.y + preview.h - 60, "F = ma", 20, COLORS.inkMuted, nil, "report-green", 110)
 
-    local padding = 24
-    local scale = math.min((preview.w - padding * 2) / level.playfield.width,
-        (preview.h - padding * 2) / level.playfield.height)
-    local drawnWidth, drawnHeight = level.playfield.width * scale, level.playfield.height * scale
-    local originX = preview.x + (preview.w - drawnWidth) * .5
-    local originY = preview.y + (preview.h - drawnHeight) * .5
-    painter:StrokeRect(originX, originY, drawnWidth, drawnHeight, COLORS.border, 1, 150)
-    local groundY = originY + 580 * scale
+    local apparatusTransform = LevelPreviewTransform.Fit(level.playfield, preview, { padding = 24 })
+    local originX, originY = apparatusTransform.originX, apparatusTransform.originY
+    painter:StrokeRect(originX, originY, apparatusTransform.drawWidth, apparatusTransform.drawHeight,
+        COLORS.border, 1, 150)
+    local _, groundY = LevelPreviewTransform.LevelToScreen(apparatusTransform, 0, 580)
     nvgStrokeColor(vg, nvgRGBA(COLORS.brass[1], COLORS.brass[2], COLORS.brass[3], 180))
     nvgStrokeWidth(vg, 1)
-    nvgBeginPath(vg); nvgMoveTo(vg, originX, groundY); nvgLineTo(vg, originX + drawnWidth, groundY); nvgStroke(vg)
-    for _, object in ipairs(level.objects or {}) do drawPreviewObject(painter, object, originX, originY, scale) end
+    nvgBeginPath(vg); nvgMoveTo(vg, originX, groundY)
+    nvgLineTo(vg, originX + apparatusTransform.drawWidth, groundY); nvgStroke(vg)
+    for _, object in ipairs(level.objects or {}) do drawPreviewObject(painter, object, apparatusTransform) end
 
     -- Small compass mark, kept outside the playfield fit calculation.
     local compassX, compassY = preview.x + preview.w - 48, preview.y + 44
@@ -291,7 +303,11 @@ local function drawPreviewPaper(painter, preview, level, pose)
     nvgBeginPath(vg); nvgMoveTo(vg, compassX, compassY - 25); nvgLineTo(vg, compassX, compassY + 25)
     nvgMoveTo(vg, compassX - 25, compassY); nvgLineTo(vg, compassX + 25, compassY); nvgStroke(vg)
     painter:Text(compassX, compassY - 36, "N", 14, COLORS.ink, NVG_ALIGN_CENTER + NVG_ALIGN_TOP, "report-green")
+    nvgRestore(vg)
+end
 
+local function drawPreviewLegend(painter, preview)
+    -- The legend belongs to the fixed panel, not to either animated sheet.
     local legend = {
         { "墙体", COLORS.wall }, { "发射器", COLORS.launcher }, { "观察皿", COLORS.goal },
         { "弹簧/机构", COLORS.spring }, { "相位", COLORS.phase },
@@ -303,7 +319,6 @@ local function drawPreviewPaper(painter, preview, level, pose)
         painter:Text(legendX + 18, legendY, entry[1], 16, COLORS.inkMuted, nil, "maker-body")
         legendX = legendX + 18 + textWidth(painter, entry[1], "maker-body", 16) + 20
     end
-    nvgRestore(vg)
 end
 
 local function drawPreview(painter, rect, state)
@@ -312,14 +327,18 @@ local function drawPreview(painter, rect, state)
     local preview = { x = rect.x + 24, y = rect.y + 62, w = rect.w - 48, h = rect.h - 126 }
     local transition = state.transition
     local papers = transition and transition:GetPreviewPapers(paperViewport.w)
-        or { { index = state.selectedIndex, offsetX = 0, rotation = 0, alpha = 1, scale = 1 } }
+        or { { index = state.selectedIndex, pose = { offsetX = 0, offsetY = 0, rotation = 0, alpha = 1, scale = 1 } } }
+    local paperAnchor = { x = preview.x + preview.w * .5, y = preview.y - 12 }
     local vg = painter.vg
     nvgSave(vg)
     nvgScissor(vg, paperViewport.x, paperViewport.y, paperViewport.w, paperViewport.h)
-    for _, pose in ipairs(papers) do
-        drawPreviewPaper(painter, preview, state.levels[pose.index], pose)
+    for _, sheet in ipairs(papers) do
+        local pose = sheet.pose or sheet
+        pose.anchorX, pose.anchorY = paperAnchor.x, paperAnchor.y
+        drawPreviewPaper(painter, preview, state.levels[sheet.index], pose)
     end
     nvgRestore(vg)
+    drawPreviewLegend(painter, preview)
 end
 
 local function enabledCardNames(level, rules)

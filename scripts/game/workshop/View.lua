@@ -368,24 +368,24 @@ local function drawGrid(painter, viewport, transform, playfield)
     nvgStrokeWidth(painter.vg, 1)
     nvgBeginPath(painter.vg)
     for x = 0, playfield.width, spacing do
-        local sx = transform.originX + x * transform.scale
+        local sx = transform.originX + x * transform.positionScaleX
         nvgMoveTo(painter.vg, sx, transform.originY)
-        nvgLineTo(painter.vg, sx, transform.originY + playfield.height * transform.scale)
+        nvgLineTo(painter.vg, sx, transform.originY + transform.drawHeight)
     end
     for y = 0, playfield.height, spacing do
-        local sy = transform.originY + y * transform.scale
+        local sy = transform.originY + y * transform.positionScaleY
         nvgMoveTo(painter.vg, transform.originX, sy)
-        nvgLineTo(painter.vg, transform.originX + playfield.width * transform.scale, sy)
+        nvgLineTo(painter.vg, transform.originX + transform.drawWidth, sy)
     end
     nvgStroke(painter.vg)
     nvgRestore(painter.vg)
 end
 
 local function drawObject(painter, object, transform, selected)
-    local x = transform.originX + object.transform.x * transform.scale
-    local y = transform.originY + object.transform.y * transform.scale
-    local w = object.transform.width * transform.scale
-    local h = object.transform.height * transform.scale
+    local x = transform.originX + object.transform.x * transform.positionScaleX
+    local y = transform.originY + object.transform.y * transform.positionScaleY
+    local w = object.transform.width * transform.objectScale
+    local h = object.transform.height * transform.objectScale
     local rotation = math.rad(object.transform.rotation or 0)
     local fill = objectColor(object)
     nvgSave(painter.vg)
@@ -444,17 +444,13 @@ local function drawCanvas(painter, state, layout, controls)
     local transform = controls.canvasTransform
     nvgSave(painter.vg)
     nvgScissor(painter.vg, viewport.x, viewport.y, viewport.w, viewport.h)
-    painter:FillRect(transform.originX, transform.originY,
-        state.document.playfield.width * transform.scale, state.document.playfield.height * transform.scale,
-        COLORS.background)
+    painter:FillRect(transform.originX, transform.originY, transform.drawWidth, transform.drawHeight, COLORS.background)
     if state.view.showGrid then drawGrid(painter, viewport, transform, state.document.playfield) end
-    painter:StrokeRect(transform.originX, transform.originY,
-        state.document.playfield.width * transform.scale, state.document.playfield.height * transform.scale,
+    painter:StrokeRect(transform.originX, transform.originY, transform.drawWidth, transform.drawHeight,
         COLORS.lightText, 2, 190)
-    local groundY = transform.originY + 580 * transform.scale
-    painter:FillRect(transform.originX, groundY,
-        state.document.playfield.width * transform.scale,
-        math.max(0, (state.document.playfield.height - 580) * transform.scale), COLORS.top, 170)
+    local groundY = transform.originY + 580 * transform.positionScaleY
+    painter:FillRect(transform.originX, groundY, transform.drawWidth,
+        math.max(0, transform.originY + transform.drawHeight - groundY), COLORS.top, 170)
     for _, object in ipairs(state.document.objects or {}) do
         drawObject(painter, object, transform, state.selectedObjectId == object.id)
     end

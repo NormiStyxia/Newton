@@ -1,3 +1,5 @@
+local LevelPreviewTransform = require("game.layout.LevelPreviewTransform")
+
 local Interaction = {}
 
 local function clamp(value, minimum, maximum)
@@ -11,71 +13,68 @@ end
 
 function Interaction.CanvasTransform(document, viewport, viewState)
     local playfield = document and document.playfield or { width = 1400, height = 700 }
-    local padding = 22
-    local baseScale = math.min(
-        math.max(1, viewport.w - padding * 2) / math.max(1, playfield.width),
-        math.max(1, viewport.h - padding * 2) / math.max(1, playfield.height)
-    )
     local zoom = clamp(tonumber(viewState and viewState.zoom) or 1, 0.35, 4)
-    local scale = baseScale * zoom
-    return {
-        scale = scale,
-        originX = viewport.x + viewport.w * 0.5 - playfield.width * scale * 0.5
-            + (tonumber(viewState and viewState.panX) or 0),
-        originY = viewport.y + viewport.h * 0.5 - playfield.height * scale * 0.5
-            + (tonumber(viewState and viewState.panY) or 0),
-        playfieldWidth = playfield.width,
-        playfieldHeight = playfield.height,
-    }
+    return LevelPreviewTransform.Fit(playfield, viewport, {
+        padding = 22,
+        zoom = zoom,
+        panX = tonumber(viewState and viewState.panX) or 0,
+        panY = tonumber(viewState and viewState.panY) or 0,
+    })
 end
 
 function Interaction.LevelToScreen(transform, x, y)
-    return transform.originX + x * transform.scale, transform.originY + y * transform.scale
+    return LevelPreviewTransform.LevelToScreen(transform, x, y)
 end
 
 function Interaction.ScreenToLevel(transform, x, y)
-    return (x - transform.originX) / transform.scale, (y - transform.originY) / transform.scale
+    return LevelPreviewTransform.ScreenToLevel(transform, x, y)
 end
 
-local function localPoint(object, levelX, levelY)
+local function localPoint(object, levelX, levelY, canvasTransform)
     local transform = object.transform
     local radians = math.rad(-(transform.rotation or 0))
     local dx, dy = levelX - transform.x, levelY - transform.y
+    if canvasTransform then
+        local objectScale = math.max(0.0001, canvasTransform.objectScale or canvasTransform.scale or 1)
+        dx = dx * (canvasTransform.positionScaleX or objectScale) / objectScale
+        dy = dy * (canvasTransform.positionScaleY or objectScale) / objectScale
+    end
     local cosValue, sinValue = math.cos(radians), math.sin(radians)
     return dx * cosValue - dy * sinValue, dx * sinValue + dy * cosValue
 end
 
-function Interaction.HitObject(object, levelX, levelY, padding)
+function Interaction.HitObject(object, levelX, levelY, padding, canvasTransform)
     if not object or type(object.transform) ~= "table" then return false end
-    local x, y = localPoint(object, levelX, levelY)
+    local x, y = localPoint(object, levelX, levelY, canvasTransform)
     local extra = tonumber(padding) or 0
     return math.abs(x) <= object.transform.width * 0.5 + extra
         and math.abs(y) <= object.transform.height * 0.5 + extra
 end
 
-function Interaction.FindTopObject(document, levelX, levelY, padding)
+function Interaction.FindTopObject(document, levelX, levelY, padding, canvasTransform)
     for index = #(document.objects or {}), 1, -1 do
         local object = document.objects[index]
-        if Interaction.HitObject(object, levelX, levelY, padding) then return object, index end
+        if Interaction.HitObject(object, levelX, levelY, padding, canvasTransform) then return object, index end
     end
     return nil, nil
 end
 
 function Interaction.HandlePositions(object, canvasTransform)
     local transform = object.transform
+    local centerX, centerY = Interaction.LevelToScreen(canvasTransform, transform.x, transform.y)
+    local width = transform.width * canvasTransform.objectScale
+    local height = transform.height * canvasTransform.objectScale
     local radians = math.rad(transform.rotation or 0)
     local cosValue, sinValue = math.cos(radians), math.sin(radians)
     local function rotate(localX, localY)
-        return transform.x + localX * cosValue - localY * sinValue,
-            transform.y + localX * sinValue + localY * cosValue
+        return centerX + localX * cosValue - localY * sinValue,
+            centerY + localX * sinValue + localY * cosValue
     end
-    local resizeX, resizeY = rotate(transform.width * 0.5, transform.height * 0.5)
-    local rotateX, rotateY = rotate(0, -transform.height * 0.5 - 34 / canvasTransform.scale)
-    local rsx, rsy = Interaction.LevelToScreen(canvasTransform, resizeX, resizeY)
-    local rotx, roty = Interaction.LevelToScreen(canvasTransform, rotateX, rotateY)
+    local resizeX, resizeY = rotate(width * 0.5, height * 0.5)
+    local rotateX, rotateY = rotate(0, -height * 0.5 - 34)
     return {
-        resize = { x = rsx, y = rsy, radius = 10 },
-        rotate = { x = rotx, y = roty, radius = 10 },
+        resize = { x = resizeX, y = resizeY, radius = 10 },
+        rotate = { x = rotateX, y = rotateY, radius = 10 },
     }
 end
 
@@ -101,8 +100,8 @@ function Interaction.ClampPosition(document, object, x, y)
         clamp(y, halfY, math.max(halfY, height - halfY))
 end
 
-function Interaction.ResizeFromPointer(document, object, levelX, levelY, minimumSize, snapSize)
-    local localX, localY = localPoint(object, levelX, levelY)
+function Interaction.ResizeFromPointer(document, object, levelX, levelY, minimumSize, snapSize, canvasTransform)
+    local localX, localY = localPoint(object, levelX, levelY, canvasTransform)
     local width = math.max(minimumSize or 4, math.abs(localX) * 2)
     local height = math.max(minimumSize or 4, math.abs(localY) * 2)
     if snapSize then
@@ -114,8 +113,16 @@ function Interaction.ResizeFromPointer(document, object, levelX, levelY, minimum
     return width, height
 end
 
-function Interaction.RotationFromPointer(object, levelX, levelY, snapAngle)
-    local degrees = math.deg(math.atan(levelY - object.transform.y, levelX - object.transform.x)) + 90
+function Interaction.RotationFromPointer(object, levelX, levelY, snapAngle, canvasTransform)
+    local objectScale = canvasTransform and math.max(0.0001,
+        canvasTransform.objectScale or canvasTransform.scale or 1) or 1
+    local dx = levelX - object.transform.x
+    local dy = levelY - object.transform.y
+    if canvasTransform then
+        dx = dx * (canvasTransform.positionScaleX or objectScale) / objectScale
+        dy = dy * (canvasTransform.positionScaleY or objectScale) / objectScale
+    end
+    local degrees = math.deg(math.atan(dy, dx)) + 90
     if snapAngle then degrees = Interaction.Snap(degrees, snapAngle) end
     while degrees > 180 do degrees = degrees - 360 end
     while degrees <= -180 do degrees = degrees + 360 end
