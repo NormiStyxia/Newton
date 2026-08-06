@@ -146,11 +146,12 @@ function M.Install(context)
                 ResetExperiment()
             elseif actionName == "replay" then
                 isPaused_ = false
-                if not StartReplay() then
-                    resultReportState_ = state
-                    resultReportAnimation_ = 1
-                    isPaused_ = true
-                end
+                local replayStarted = StartReplay()
+                -- Replay mode hides the report; retaining the same state lets
+                -- StopReplay reveal it again instead of the legacy result modal.
+                resultReportState_ = state
+                resultReportAnimation_ = 1
+                if not replayStarted then isPaused_ = true end
             elseif actionName == "next" then
                 local nextIndex = levelIndex_ < CONFIG.levelCount and levelIndex_ + 1 or nil
                 if nextIndex and RequestStartLevel(nextIndex) then return end
