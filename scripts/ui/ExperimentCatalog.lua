@@ -1,7 +1,11 @@
 local CatalogTransition = require("ui.ExperimentCatalogTransition")
+local SketchDrawing = require("ui.SketchDrawing")
 local LevelPreviewTransform = require("game.layout.LevelPreviewTransform")
 
 local M = {}
+
+local CATALOG_SERIF_FONT = "report-summary"
+local sketchDrawing_ = SketchDrawing.New()
 
 local COLORS = {
     paper = { 247, 239, 211, 255 },
@@ -136,9 +140,10 @@ end
 
 local function drawSectionTitle(painter, x, y, title)
     painter:Text(x, y, "✦", 19, COLORS.brass, nil, "report-green")
-    painter:Text(x + 28, y - 3, title, 24, COLORS.ink, nil, "maker-display")
-    local titleWidth = textWidth(painter, title, "maker-display", 24)
-    painter:Text(x + 36 + titleWidth, y, "✦", 19, COLORS.brass, nil, "report-green")
+    local titleX, titleSize = x + 28, 24
+    painter:Text(titleX, y - 3, title, titleSize, COLORS.ink, nil, CATALOG_SERIF_FONT)
+    local titleWidth = textWidth(painter, title, CATALOG_SERIF_FONT, titleSize)
+    painter:Text(titleX + titleWidth + 8, y, "✦", 19, COLORS.brass, nil, "report-green")
 end
 
 local function drawDivider(painter, x, y, w, alpha)
@@ -175,7 +180,7 @@ local function drawCatalogDecor(painter, frame)
 
     -- The supplied background already contains the plaque, ruler and botanical
     -- ornaments. Only live catalog copy is painted on top of that artwork.
-    painter:Text(artOffsetX + 116, 22, "实验目录", 40, COLORS.paperLight, nil, "maker-display")
+    painter:Text(artOffsetX + 126, 18, "实验目录", 44, COLORS.paperLight, nil, CATALOG_SERIF_FONT)
     painter:Text(artOffsetX + 118, 70, "EXPERIMENT CATALOG", 14, COLORS.brassLight, nil, "report-green")
 end
 
@@ -187,7 +192,14 @@ local function drawCatalogForegroundDecor(painter, frame)
     painter:ImageRect(uiImages.catalogDecorRight, artOffsetX + 1567, 683, 305, 156, 255)
 end
 
-local function drawPreviewObject(painter, object, previewTransform)
+local function isPilotSketchObject(level, object)
+    if not level or not object or not sketchDrawing_:IsEnabled(level.levelId) then return false end
+    if object.type == "launcher" or object.type == "goal_sensor" then return true end
+    local wallIndex = object.type == "wall" and tonumber((object.id or ""):match("^wall_(%d+)$")) or nil
+    return wallIndex ~= nil and wallIndex >= 1 and wallIndex <= 15
+end
+
+local function drawPreviewObject(painter, level, object, previewTransform)
     local transform = object.transform
     if not transform then return end
     local x, y = LevelPreviewTransform.LevelToScreen(previewTransform, transform.x, transform.y)
@@ -209,7 +221,30 @@ local function drawPreviewObject(painter, object, previewTransform)
     nvgStrokeWidth(vg, 1.5)
     nvgFillColor(vg, nvgRGBA(color[1], color[2], color[3], properties.isPhaseable and 150 or 215))
 
-    if object.type == "goal_sensor" then
+    if isPilotSketchObject(level, object) then
+        local levelId, objectId = level.levelId, object.id or object.type
+        local fillAlpha = properties.isPhaseable and 150 or 215
+        if object.type == "goal_sensor" then
+            sketchDrawing_:DrawEllipse(vg, levelId, objectId, "outer",
+                0, 0, w * .5, h * .5, color, COLORS.border, 1.5,
+                { fillAlpha = fillAlpha, secondary = true })
+            local innerMark = sketchDrawing_:GetTextMark(levelId, objectId, "inner-ring")
+            sketchDrawing_:DrawEllipse(vg, levelId, objectId, "inner",
+                innerMark.offsetX * .65, innerMark.offsetY * .65, w * .31, h * .31,
+                nil, COLORS.border, 1.3, { jitter = .55, secondary = false, strokeAlpha = .76 })
+        elseif object.type == "launcher" then
+            sketchDrawing_:DrawRoundedRect(vg, levelId, objectId, "body",
+                -w * .5, -h * .5, w, h, math.min(5, h * .16), color, COLORS.border, 1.5,
+                { fillAlpha = fillAlpha, secondary = true })
+            sketchDrawing_:DrawArrow(vg, levelId, objectId, "direction",
+                -w * .18, 0, w * .27, 0, COLORS.border, 1.5,
+                { jitter = .65, secondary = true, headLength = math.min(9, h * .22) })
+        else
+            sketchDrawing_:DrawRect(vg, levelId, objectId, "wood-frame",
+                -w * .5, -h * .5, w, h, color, COLORS.border, 1.5,
+                { fillAlpha = fillAlpha, secondary = true })
+        end
+    elseif object.type == "goal_sensor" then
         nvgBeginPath(vg); nvgEllipse(vg, 0, 0, w * 0.5, h * 0.5); nvgFill(vg); nvgStroke(vg)
         nvgBeginPath(vg); nvgEllipse(vg, 0, 0, w * 0.31, h * 0.31); nvgStroke(vg)
     elseif object.type == "launcher" then
@@ -270,12 +305,20 @@ local function drawPreviewPaper(painter, preview, level, pose)
 
     -- Graph paper is deliberately drawn inside the existing preview rectangle;
     -- the level's 1400 x 700 content still receives the exact same fit scale.
-    nvgStrokeColor(vg, nvgRGBA(COLORS.grid[1], COLORS.grid[2], COLORS.grid[3], 76))
     nvgStrokeWidth(vg, 1)
+    local sketchGrid = sketchDrawing_:IsEnabled(level.levelId)
+    local gridIndex = 0
     for gridX = preview.x + 12, preview.x + preview.w - 12, 24 do
+        gridIndex = gridIndex + 1
+        local alpha = sketchGrid and sketchDrawing_:GridAlpha(level.levelId, "vertical", gridIndex, 76) or 76
+        nvgStrokeColor(vg, nvgRGBA(COLORS.grid[1], COLORS.grid[2], COLORS.grid[3], alpha))
         nvgBeginPath(vg); nvgMoveTo(vg, gridX, preview.y); nvgLineTo(vg, gridX, preview.y + preview.h); nvgStroke(vg)
     end
+    gridIndex = 0
     for gridY = preview.y + 12, preview.y + preview.h - 12, 24 do
+        gridIndex = gridIndex + 1
+        local alpha = sketchGrid and sketchDrawing_:GridAlpha(level.levelId, "horizontal", gridIndex, 76) or 76
+        nvgStrokeColor(vg, nvgRGBA(COLORS.grid[1], COLORS.grid[2], COLORS.grid[3], alpha))
         nvgBeginPath(vg); nvgMoveTo(vg, preview.x, gridY); nvgLineTo(vg, preview.x + preview.w, gridY); nvgStroke(vg)
     end
     painter:Text(preview.x + preview.w - 14, preview.y + preview.h - 24, "STATIC PLAN · 1400 × 700", 14, COLORS.inkMuted,
@@ -293,7 +336,7 @@ local function drawPreviewPaper(painter, preview, level, pose)
     nvgStrokeWidth(vg, 1)
     nvgBeginPath(vg); nvgMoveTo(vg, originX, groundY)
     nvgLineTo(vg, originX + apparatusTransform.drawWidth, groundY); nvgStroke(vg)
-    for _, object in ipairs(level.objects or {}) do drawPreviewObject(painter, object, apparatusTransform) end
+    for _, object in ipairs(level.objects or {}) do drawPreviewObject(painter, level, object, apparatusTransform) end
 
     -- Small compass mark, kept outside the playfield fit calculation.
     local compassX, compassY = preview.x + preview.w - 48, preview.y + 44
@@ -330,6 +373,7 @@ local function drawPreview(painter, rect, state)
         or { { index = state.selectedIndex, pose = { offsetX = 0, offsetY = 0, rotation = 0, alpha = 1, scale = 1 } } }
     local paperAnchor = { x = preview.x + preview.w * .5, y = preview.y - 12 }
     local vg = painter.vg
+    sketchDrawing_:BeginFrame()
     nvgSave(vg)
     nvgScissor(vg, paperViewport.x, paperViewport.y, paperViewport.w, paperViewport.h)
     for _, sheet in ipairs(papers) do
@@ -338,6 +382,7 @@ local function drawPreview(painter, rect, state)
         drawPreviewPaper(painter, preview, state.levels[sheet.index], pose)
     end
     nvgRestore(vg)
+    sketchDrawing_:EndFrame()
     drawPreviewLegend(painter, preview)
 end
 
@@ -377,8 +422,10 @@ local function drawBrief(painter, layout, level, state, rules)
     nvgSave(painter.vg)
     nvgScissor(painter.vg, viewport.x, viewport.y, viewport.w, viewport.h)
     if level then
-        painter:Text(left, y, ellipsize(painter, level.name or "未命名实验", width, "maker-display", 32),
-            32, COLORS.ink, nil, "maker-display")
+        local titleX, titleSize = left, 32
+        painter:Text(titleX, y,
+            ellipsize(painter, level.name or "未命名实验", width, CATALOG_SERIF_FONT, titleSize),
+            titleSize, COLORS.ink, nil, CATALOG_SERIF_FONT)
         y = y + 50
         drawDivider(painter, left, y - 7, width, 100)
         painter:Text(left, y, "实验目的", 17, COLORS.brass, nil, "report-green")
@@ -499,6 +546,7 @@ function M.Install(context)
 
     function InitializeExperimentCatalog()
         local state = catalogState_
+        sketchDrawing_:Clear()
         state.levels, state.loadErrors = {}, {}
         for index = 1, CONFIG.levelCount do
             local ok, levelOrError = pcall(LoadLevelDefinition, index)
@@ -528,6 +576,7 @@ function M.Install(context)
         catalogState_.progressFeedback, catalogState_.progressFeedbackElapsed = nil, 0
         if experimentProgress_ then experimentProgress_:ClearPendingFeedback() end
         catalogState_.toast, hudDropdown_ = nil, nil
+        sketchDrawing_:Clear()
         BuildLevel(index)
         return true
     end
@@ -549,7 +598,9 @@ function M.Install(context)
 
     function RequestEnterWorkshop(selectedLevelId)
         if catalogState_.transition and not catalogState_.transition:IsSettled() then return false end
-        return OpenLevelWorkshop(selectedLevelId)
+        local opened = OpenLevelWorkshop(selectedLevelId)
+        if opened then sketchDrawing_:Clear() end
+        return opened
     end
 
     local function selectLevel(index)
@@ -643,15 +694,15 @@ function M.Install(context)
                 painter:FillRect(item.x + 3, item.y + 3, item.w - 6, item.h - 6, COLORS.selected, 84)
             end
             painter:Text(item.x + 13, item.y + item.h * .5, string.format("实验 %02d", index), 18,
-                selected and COLORS.ink or COLORS.inkMuted, NVG_ALIGN_LEFT + NVG_ALIGN_MIDDLE, "report-green")
+                selected and COLORS.ink or COLORS.inkMuted, NVG_ALIGN_LEFT + NVG_ALIGN_MIDDLE, CATALOG_SERIF_FONT)
             local name = level and level.name or "数据不可用"
             local nameX = item.x + 92
             local progress = level and experimentProgress_ and experimentProgress_:Get(level.levelId) or nil
             if progress then progress.levelId = level.levelId end
             local statusLeft = drawExperimentProgress(painter, item, progress, state.progressFeedback, state.progressFeedbackElapsed)
             painter:Text(nameX, item.y + item.h * .5,
-                ellipsize(painter, name, statusLeft - nameX - 10, "maker-display", 21), 21,
-                level and COLORS.ink or COLORS.button, NVG_ALIGN_LEFT + NVG_ALIGN_MIDDLE, "maker-display")
+                ellipsize(painter, name, statusLeft - nameX - 10, CATALOG_SERIF_FONT, 21), 21,
+                level and COLORS.ink or COLORS.button, NVG_ALIGN_LEFT + NVG_ALIGN_MIDDLE, CATALOG_SERIF_FONT)
             drawDottedDivider(painter, item.x + 12, item.y + item.h - 3, item.w - 24)
         end
 
