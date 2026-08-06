@@ -142,6 +142,9 @@ function Renderer:Init()
         goalObserver = nvgCreateImage(self.vg, "image/goal/einstein_observer.png", 0),
         ui = {
             titlePlaque = nvgCreateImage(self.vg, "image/ui_svg/runtime/title_plaque@2x.png", 0),
+            catalogBackground = nvgCreateImage(self.vg, "image/catalog/catalog_background.png", 0),
+            catalogDecorLeft = nvgCreateImage(self.vg, "image/catalog/catalog_decor_left.png", 0),
+            catalogDecorRight = nvgCreateImage(self.vg, "image/catalog/catalog_decor_right.png", 0),
             hudFrame = nvgCreateImage(self.vg, "image/ui_svg/runtime/hud_frame@2x.png", 0),
             gameplayFrame = nvgCreateImage(self.vg, "image/ui_svg/runtime/gameplay_frame@2x.png", 0),
             gameplayDecorOverlay = nvgCreateImage(self.vg, "image/ui/gameplay_decor_overlay.png", 0),
@@ -185,6 +188,39 @@ function Renderer:Init()
         },
     }
     self.skins = {
+        catalogPanel = {
+            topLeft = nvgCreateImage(self.vg, "image/catalog/skins/catalog_panel/top_left.png", 0),
+            top = nvgCreateImage(self.vg, "image/catalog/skins/catalog_panel/top.png", 0),
+            topRight = nvgCreateImage(self.vg, "image/catalog/skins/catalog_panel/top_right.png", 0),
+            left = nvgCreateImage(self.vg, "image/catalog/skins/catalog_panel/left.png", 0),
+            center = nvgCreateImage(self.vg, "image/catalog/skins/catalog_panel/center.png", 0),
+            right = nvgCreateImage(self.vg, "image/catalog/skins/catalog_panel/right.png", 0),
+            bottomLeft = nvgCreateImage(self.vg, "image/catalog/skins/catalog_panel/bottom_left.png", 0),
+            bottom = nvgCreateImage(self.vg, "image/catalog/skins/catalog_panel/bottom.png", 0),
+            bottomRight = nvgCreateImage(self.vg, "image/catalog/skins/catalog_panel/bottom_right.png", 0),
+        },
+        catalogButtonPrimary = {
+            topLeft = nvgCreateImage(self.vg, "image/catalog/skins/catalog_button_primary/top_left.png", 0),
+            top = nvgCreateImage(self.vg, "image/catalog/skins/catalog_button_primary/top.png", 0),
+            topRight = nvgCreateImage(self.vg, "image/catalog/skins/catalog_button_primary/top_right.png", 0),
+            left = nvgCreateImage(self.vg, "image/catalog/skins/catalog_button_primary/left.png", 0),
+            center = nvgCreateImage(self.vg, "image/catalog/skins/catalog_button_primary/center.png", 0),
+            right = nvgCreateImage(self.vg, "image/catalog/skins/catalog_button_primary/right.png", 0),
+            bottomLeft = nvgCreateImage(self.vg, "image/catalog/skins/catalog_button_primary/bottom_left.png", 0),
+            bottom = nvgCreateImage(self.vg, "image/catalog/skins/catalog_button_primary/bottom.png", 0),
+            bottomRight = nvgCreateImage(self.vg, "image/catalog/skins/catalog_button_primary/bottom_right.png", 0),
+        },
+        catalogButtonSecondary = {
+            topLeft = nvgCreateImage(self.vg, "image/catalog/skins/catalog_button_secondary/top_left.png", 0),
+            top = nvgCreateImage(self.vg, "image/catalog/skins/catalog_button_secondary/top.png", 0),
+            topRight = nvgCreateImage(self.vg, "image/catalog/skins/catalog_button_secondary/top_right.png", 0),
+            left = nvgCreateImage(self.vg, "image/catalog/skins/catalog_button_secondary/left.png", 0),
+            center = nvgCreateImage(self.vg, "image/catalog/skins/catalog_button_secondary/center.png", 0),
+            right = nvgCreateImage(self.vg, "image/catalog/skins/catalog_button_secondary/right.png", 0),
+            bottomLeft = nvgCreateImage(self.vg, "image/catalog/skins/catalog_button_secondary/bottom_left.png", 0),
+            bottom = nvgCreateImage(self.vg, "image/catalog/skins/catalog_button_secondary/bottom.png", 0),
+            bottomRight = nvgCreateImage(self.vg, "image/catalog/skins/catalog_button_secondary/bottom_right.png", 0),
+        },
         gameplay = {
             topLeft = nvgCreateImage(self.vg, "image/skins/gameplay_frame_runtime/top_left.png", 0),
             top = nvgCreateImage(self.vg, "image/skins/gameplay_frame_runtime/top.png", 0),
@@ -283,6 +319,12 @@ end
 
 function Renderer:Begin(frame)
     nvgBeginFrame(self.vg, frame.systemLogicalWidth, frame.systemLogicalHeight, frame.dpr)
+    if frame.mainStageActive then
+        -- The fixed 1880 x 840 gameplay stage can leave letterbox padding on
+        -- taller screens. Paint that viewport padding with the established
+        -- cream background before applying the stage transform and scissor.
+        self:FillRect(0, 0, frame.systemLogicalWidth, frame.systemLogicalHeight, COLORS.background)
+    end
     nvgSave(self.vg)
     self.frameTransformSaved = true
     nvgScale(self.vg, frame.renderScale, frame.renderScale)

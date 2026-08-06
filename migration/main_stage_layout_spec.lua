@@ -94,8 +94,12 @@ renderer:Begin(highDpr)
 renderer:Finish()
 local byName = {}
 for _, call in ipairs(calls) do byName[call.name] = call end
-expect(calls[1].name == "begin" and byName.rect == nil and byName.fill == nil,
-    "renderer painted an opaque block over the viewport padding")
+expect(calls[1].name == "begin" and byName.rect and byName.fill,
+    "renderer did not restore the gameplay viewport background")
+near(byName.rect.args[2], 0, "viewport background x")
+near(byName.rect.args[3], 0, "viewport background y")
+near(byName.rect.args[4], highDpr.systemLogicalWidth, "viewport background width")
+near(byName.rect.args[5], highDpr.systemLogicalHeight, "viewport background height")
 near(byName.translate.args[3], highDpr.stageOffsetY, "renderer stage translation")
 near(byName.scissor.args[5], DesignSpace.BASE_HEIGHT, "renderer stage clip height")
 expect(byName.restore and calls[#calls].name == "end",

@@ -83,21 +83,27 @@ local function drawWrapped(painter, x, y, width, value, size, color, lineHeight,
 end
 
 function M.ResolveLayout(frame)
-    local contentWidth = math.min(1808, frame.logicalWidth - 40)
+    local contentWidth = math.min(1774, frame.logicalWidth - 40)
     local x = (frame.logicalWidth - contentWidth) * 0.5
-    local y = 126
-    local height = math.min(680, math.max(590, frame.logicalHeight - y - 34))
+    local y = 154
+    local height = math.min(584, math.max(540, frame.logicalHeight - y - 84))
     local gap = 18
-    local leftWidth = 328
-    local rightWidth = 496
+    local leftWidth = 390
+    local rightWidth = 510
     local centerWidth = contentWidth - leftWidth - rightWidth - gap * 2
     local left = { x = x, y = y, w = leftWidth, h = height }
     local center = { x = left.x + left.w + gap, y = y, w = centerWidth, h = height }
     local right = { x = center.x + center.w + gap, y = y, w = rightWidth, h = height }
-    local actionGap = 12
-    local actionY = right.y + right.h - 62
-    local actionWidth = (right.w - 36 - actionGap) * 0.5
-    local briefViewport = { x = right.x + 22, y = right.y + 72, w = right.w - 50, h = right.h - 158 }
+    local actionGap = 30
+    local actionY = right.y + right.h - 100
+    local actionWidth = (right.w - 42 - actionGap) * 0.5
+    local briefY = right.y + 72
+    local briefViewport = {
+        x = right.x + 22,
+        y = briefY,
+        w = right.w - 50,
+        h = math.max(120, actionY - briefY - 14),
+    }
     return {
         left = left,
         center = center,
@@ -105,25 +111,24 @@ function M.ResolveLayout(frame)
         listTop = left.y + 54,
         listItemHeight = (left.h - 70) / 9,
         briefViewport = briefViewport,
-        startButton = { x = right.x + 18, y = actionY, w = actionWidth, h = 44 },
-        workshopButton = { x = right.x + 18 + actionWidth + actionGap, y = actionY, w = actionWidth, h = 44 },
+        startButton = { x = right.x + 21, y = actionY, w = actionWidth, h = 76 },
+        workshopButton = { x = right.x + 21 + actionWidth + actionGap, y = actionY, w = actionWidth, h = 76 },
     }
 end
 
 local function drawPaperPanel(painter, rect)
-    -- The gameplay frame skin is authored as nine independent slices. Keeping
+    -- The catalog frame skin is authored as nine independent slices. Keeping
     -- the paper fill separate means the ornate corners remain intact while
     -- each catalog column can retain its existing width and height.
     painter:FillRect(rect.x, rect.y, rect.w, rect.h, COLORS.paperLight)
-    local skin = painter.skins and painter.skins.gameplay
+    local skin = painter.skins and painter.skins.catalogPanel
     if skin then
         painter:NineSlice(skin, rect.x, rect.y, rect.w, rect.h,
-            { left = 38, right = 38, top = 38, bottom = 38 }, 255)
+            { left = 30, right = 30, top = 30, bottom = 30 }, 255)
     else
         painter:StrokeRect(rect.x, rect.y, rect.w, rect.h, COLORS.border, 2)
+        painter:StrokeRect(rect.x + 9, rect.y + 9, rect.w - 18, rect.h - 18, COLORS.brassSoft, 1, 170)
     end
-    painter:StrokeRect(rect.x, rect.y, rect.w, rect.h, COLORS.border, 1, 180)
-    painter:StrokeRect(rect.x + 9, rect.y + 9, rect.w - 18, rect.h - 18, COLORS.brassSoft, 1, 170)
 end
 
 local function drawSectionTitle(painter, x, y, title)
@@ -157,62 +162,29 @@ end
 
 local function drawCatalogDecor(painter, frame)
     painter:FillRect(0, 0, frame.logicalWidth, frame.logicalHeight, COLORS.paper)
-    painter:FillRect(0, 0, frame.logicalWidth, 104, COLORS.paperLight)
-    painter:FillRect(0, 101, frame.logicalWidth, 3, COLORS.brass)
-
-    local plaque = painter.images and painter.images.ui and painter.images.ui.titlePlaque
-    if plaque and plaque >= 0 then
-        painter:ImageRect(plaque, 28, 10, 404, 88, 1)
-        painter:Text(120, 24, "实验目录", 36, COLORS.paperLight, nil, "maker-display")
-        painter:Text(122, 66, "EXPERIMENT CATALOG", 12, COLORS.brassLight, nil, "report-green")
+    local background = painter.images and painter.images.ui and painter.images.ui.catalogBackground
+    local artOffsetX = math.max(0, (frame.logicalWidth - 1880) * .5)
+    if background and background >= 0 then
+        painter:ImageRect(background, artOffsetX, 0, 1880, 840, 255)
     else
-        painter:RoundedRect(30, 12, 398, 82, 10, COLORS.ink, COLORS.brass, 2)
-        painter:Text(52, 24, "实验目录", 36, COLORS.paperLight, nil, "maker-display")
-        painter:Text(54, 66, "EXPERIMENT CATALOG", 12, COLORS.brassLight, nil, "report-green")
+        painter:FillRect(0, 0, frame.logicalWidth, frame.logicalHeight, COLORS.paper)
     end
 
-    painter:RoundedRect(frame.logicalWidth - 310, 27, 264, 46, 8, COLORS.paper, COLORS.brassSoft, 2)
+    -- The supplied background already contains the plaque, ruler and botanical
+    -- ornaments. Only live catalog copy is painted on top of that artwork.
+    painter:Text(artOffsetX + 116, 26, "实验目录", 36, COLORS.paperLight, nil, "maker-display")
+    painter:Text(artOffsetX + 118, 68, "EXPERIMENT CATALOG", 12, COLORS.brassLight, nil, "report-green")
+    painter:RoundedRect(frame.logicalWidth - 310, 27, 264, 46, 8, { 247, 239, 211, 210 }, COLORS.brassSoft, 2)
     painter:Text(frame.logicalWidth - 178, 39, "牛顿实验档案 · 01—09", 14, COLORS.ink,
         NVG_ALIGN_RIGHT + NVG_ALIGN_TOP, "maker-display")
+end
 
-    -- A restrained archive ruler and an orbit sketch carry the botanical
-    -- laboratory language without taking space from the three columns.
-    drawDivider(painter, 454, 87, frame.logicalWidth - 500, 150)
-    nvgStrokeColor(painter.vg, nvgRGBA(COLORS.brass[1], COLORS.brass[2], COLORS.brass[3], 150))
-    nvgStrokeWidth(painter.vg, 1)
-    nvgBeginPath(painter.vg)
-    for x = 470, frame.logicalWidth - 70, 40 do
-        nvgMoveTo(painter.vg, x, 83)
-        nvgLineTo(painter.vg, x, 83 + ((x - 470) % 160 == 0 and 12 or 7))
-    end
-    nvgStroke(painter.vg)
-    nvgStrokeWidth(painter.vg, 1.2)
-    nvgBeginPath(painter.vg)
-    nvgEllipse(painter.vg, frame.logicalWidth * .48, 44, 34, 10)
-    nvgEllipse(painter.vg, frame.logicalWidth * .48, 44, 10, 34)
-    nvgStroke(painter.vg)
-
-    local rulerY = frame.logicalHeight - 18
-    painter:FillRect(0, rulerY, frame.logicalWidth, 18, COLORS.brassLight)
-    nvgStrokeColor(painter.vg, nvgRGBA(COLORS.ink[1], COLORS.ink[2], COLORS.ink[3], 180))
-    nvgStrokeWidth(painter.vg, 1)
-    nvgBeginPath(painter.vg)
-    for x = 18, frame.logicalWidth - 18, 24 do
-        nvgMoveTo(painter.vg, x, rulerY)
-        nvgLineTo(painter.vg, x, rulerY + ((x - 18) % 96 == 0 and 14 or 8))
-    end
-    nvgStroke(painter.vg)
-
-    local leafX, leafY = frame.logicalWidth - 92, 76
-    nvgStrokeColor(painter.vg, nvgRGBA(COLORS.border[1], COLORS.border[2], COLORS.border[3], 180))
-    nvgStrokeWidth(painter.vg, 3)
-    nvgBeginPath(painter.vg); nvgMoveTo(painter.vg, leafX, leafY); nvgLineTo(painter.vg, leafX + 34, leafY + 40); nvgStroke(painter.vg)
-    for index = 0, 2 do
-        local x, y = leafX + index * 10, leafY + index * 11
-        nvgBeginPath(painter.vg); nvgEllipse(painter.vg, x - 6, y, 10, 5)
-        nvgFillColor(painter.vg, nvgRGBA(COLORS.selected[1], COLORS.selected[2], COLORS.selected[3], 255)); nvgFill(painter.vg)
-        nvgStroke(painter.vg)
-    end
+local function drawCatalogForegroundDecor(painter, frame)
+    local uiImages = painter.images and painter.images.ui
+    if not uiImages then return end
+    local artOffsetX = math.max(0, (frame.logicalWidth - 1880) * .5)
+    painter:ImageRect(uiImages.catalogDecorLeft, artOffsetX + 8, 627, 379, 213, 255)
+    painter:ImageRect(uiImages.catalogDecorRight, artOffsetX + 1567, 683, 305, 156, 255)
 end
 
 local function drawPreviewObject(painter, object, originX, originY, scale)
@@ -415,11 +387,17 @@ local function drawButton(painter, rect, label, primary, hovered, enabled)
     local text = primary and COLORS.paperLight or COLORS.ink
     if not enabled then fill, text = COLORS.borderSoft, COLORS.paper end
     if hovered and enabled then fill = primary and COLORS.border or COLORS.selected end
-    painter:RoundedRect(rect.x, rect.y, rect.w, rect.h, 4, fill, primary and COLORS.brass or COLORS.border, 2)
-    painter:StrokeRect(rect.x + 5, rect.y + 5, rect.w - 10, rect.h - 10, primary and COLORS.brassSoft or COLORS.borderSoft, 1, 180)
-    painter:Text(rect.x + rect.w * .5, rect.y + rect.h * .5, label, 17, text,
+    local skin = painter.skins and (primary and painter.skins.catalogButtonPrimary or painter.skins.catalogButtonSecondary)
+    if skin then
+        painter:NineSlice(skin, rect.x, rect.y, rect.w, rect.h,
+            { left = 38, right = 45, top = 26, bottom = 33 }, enabled and 255 or 125)
+    else
+        painter:RoundedRect(rect.x, rect.y, rect.w, rect.h, 4, fill, primary and COLORS.brass or COLORS.border, 2)
+        painter:StrokeRect(rect.x + 5, rect.y + 5, rect.w - 10, rect.h - 10, primary and COLORS.brassSoft or COLORS.borderSoft, 1, 180)
+    end
+    painter:Text(rect.x + rect.w * .5, rect.y + rect.h * .5, label, 21, text,
         NVG_ALIGN_CENTER + NVG_ALIGN_MIDDLE, "maker-display")
-    if enabled then
+    if enabled and not skin then
         painter:Text(rect.x + rect.w - 14, rect.y + rect.h * .5, primary and "✦" or "❧", 11,
             primary and COLORS.brassLight or COLORS.brass, NVG_ALIGN_CENTER + NVG_ALIGN_MIDDLE, "maker-display")
     end
@@ -538,6 +516,7 @@ function M.Install(context)
         drawPaperPanel(painter, layout.left)
         drawPaperPanel(painter, layout.center)
         drawPaperPanel(painter, layout.right)
+        drawCatalogForegroundDecor(painter, frame_)
         drawSectionTitle(painter, layout.left.x + 20, layout.left.y + 20, "关卡目录")
         drawSectionTitle(painter, layout.right.x + 20, layout.right.y + 20, "实验简报")
 
