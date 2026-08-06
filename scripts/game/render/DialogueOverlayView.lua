@@ -10,6 +10,19 @@ local MESSAGE_LEFT_INSET = 40
 local MESSAGE_RIGHT_RATIO = 0.67
 local SCROLLBAR_CENTER_RATIO = 0.75
 local FOOTER_RIGHT_RATIO = 0.82
+local CONTENT_COLUMN_OFFSET = 55
+local AVATAR_CENTER_X_OFFSET = 23
+local AVATAR_CENTER_Y_OFFSET = 25
+local BODY_FONT_SIZE = 19
+local NAME_FONT_SIZE = 16
+local BODY_LINE_HEIGHT = 25
+local BUBBLE_PADDING_X = 16
+local BUBBLE_PADDING_TOP = 12
+local BUBBLE_PADDING_BOTTOM = 12
+local NAME_BUBBLE_GAP = 5
+local MESSAGE_GAP = 14
+
+local LAYOUT_CACHE = setmetatable({}, { __mode = "k" })
 
 local function fontForMessage(message)
     if message and message.speaker == "nomi" then
@@ -72,6 +85,17 @@ local function transformRect(rect, scale, centerX, centerY)
     }
 end
 
+local function applyCenteredScale(vg, scale, centerX, centerY)
+    nvgTranslate(vg, centerX, centerY)
+    nvgScale(vg, scale, scale)
+    nvgTranslate(vg, -centerX, -centerY)
+end
+
+local function snapToPixel(value, pixelScale)
+    pixelScale = math.max(0.001, pixelScale or 1)
+    return math.floor(value * pixelScale + 0.5) / pixelScale
+end
+
 local function utf8Length(value)
     local length = utf8.len(value)
     return length or #value
@@ -106,26 +130,32 @@ local function wrapText(painter, value, maxWidth, font, size)
     return lines
 end
 
-local function layoutMessages(painter, messages, visibleCount, viewport)
-    local bubbleWidth = math.max(120, viewport.w - 55)
+local function layoutMessages(painter, messages, viewport)
+    local bubbleWidth = math.max(120, viewport.w - CONTENT_COLUMN_OFFSET)
     local entries = {}
     local cursorY = 6
 
-    for index = 1, visibleCount do
+    for index = 1, #messages do
         local message = messages[index]
         if message.style == "SYSTEM" then
             entries[index] = { y = cursorY, h = 32, system = true, message = message }
             cursorY = cursorY + 42
         else
             local font = fontForMessage(message)
-            local lines = wrapText(painter, message.text or "", bubbleWidth - 28, font, 16)
-            local bubbleHeight = 38 + #lines * 22
-            local rowHeight = math.max(48, bubbleHeight) + 13
+            local lines = wrapText(painter, message.text or "",
+                bubbleWidth - BUBBLE_PADDING_X * 2, font, BODY_FONT_SIZE)
+            local textHeight = BODY_FONT_SIZE + math.max(0, #lines - 1) * BODY_LINE_HEIGHT
+            local bubbleHeight = BUBBLE_PADDING_TOP + textHeight + BUBBLE_PADDING_BOTTOM
+            local bubbleOffsetY = NAME_FONT_SIZE + NAME_BUBBLE_GAP
+            local contentHeight = bubbleOffsetY + bubbleHeight
+            local avatarHeight = AVATAR_CENTER_Y_OFFSET + AVATAR_SIZE * 0.5
+            local rowHeight = math.max(contentHeight, avatarHeight) + MESSAGE_GAP
             entries[index] = {
                 y = cursorY,
                 h = rowHeight,
                 bubbleW = bubbleWidth,
                 bubbleH = bubbleHeight,
+                bubbleOffsetY = bubbleOffsetY,
                 lines = lines,
                 font = font,
                 message = message,
@@ -134,6 +164,32 @@ local function layoutMessages(painter, messages, visibleCount, viewport)
         end
     end
     return entries, math.max(0, cursorY - 3)
+end
+
+local function cachedLayout(painter, controller, messages, viewport)
+    local widthKey = math.floor(viewport.w * 1000 + 0.5)
+    local messageCount = #messages
+    local cache = LAYOUT_CACHE[controller]
+    if cache and cache.messages == messages and cache.messageCount == messageCount
+        and cache.widthKey == widthKey then
+        return cache.entries
+    end
+
+    local entries = layoutMessages(painter, messages, viewport)
+    LAYOUT_CACHE[controller] = {
+        messages = messages,
+        messageCount = messageCount,
+        widthKey = widthKey,
+        entries = entries,
+    }
+    return entries
+end
+
+local function visibleContentHeight(entries, visibleCount)
+    if visibleCount <= 0 then return 0 end
+    local last = entries[visibleCount]
+    if not last then return 0 end
+    return math.max(0, last.y + last.h - 3)
 end
 
 local function drawHistoryIcon(painter, x, y, color)
@@ -225,20 +281,21 @@ local function drawPanelButton(painter, rect, kind)
     drawButtonGlyph(painter, rect, kind)
 end
 
-local function drawMessage(painter, controller, entry, index, viewport, scrollOffset, panelAlpha)
+local function drawMessage(painter, controller, entry, index, viewport, scrollOffset, panelAlpha, pixelScale)
     local message = entry.message
     local reveal = controller:GetBubbleProgress(index)
     if reveal <= 0 then return end
-    local y = viewport.y + entry.y - scrollOffset
+    local y = snapToPixel(viewport.y + entry.y - scrollOffset, pixelScale)
     if y + entry.h < viewport.y - 4 or y > viewport.y + viewport.h + 4 then return end
 
     local vg = painter.vg
-    local xOffset = -12 * (1 - reveal)
+    local xOffset = snapToPixel(-12 * (1 - reveal), pixelScale)
     nvgSave(vg)
     nvgGlobalAlpha(vg, panelAlpha * reveal)
 
     if entry.system then
-        painter:Text(viewport.x + viewport.w * 0.5 + xOffset, y + 8, message.text or "", 13,
+        local systemX = snapToPixel(viewport.x + viewport.w * 0.5 + xOffset, pixelScale)
+        painter:Text(systemX, snapToPixel(y + 8, pixelScale), message.text or "", 13,
             { 161, 133, 73, 255 }, NVG_ALIGN_CENTER + NVG_ALIGN_TOP, FONT)
         nvgRestore(vg)
         return
@@ -249,9 +306,13 @@ local function drawMessage(painter, controller, entry, index, viewport, scrollOf
     local isEinstein = speaker == "einstein"
     local isNomi = speaker == "nomi"
     local messageFont = entry.font or (isNomi and NOMI_FONT or FONT)
-    local avatarX = viewport.x + 23 + xOffset
-    local avatarY = y + 25
-    local bubbleX = viewport.x + 55 + xOffset
+    local avatarX = snapToPixel(viewport.x + AVATAR_CENTER_X_OFFSET + xOffset, pixelScale)
+    local avatarY = snapToPixel(y + AVATAR_CENTER_Y_OFFSET, pixelScale)
+    local bubbleX = snapToPixel(viewport.x + CONTENT_COLUMN_OFFSET + xOffset, pixelScale)
+    local nameY = y
+    local bubbleY = snapToPixel(y + entry.bubbleOffsetY, pixelScale)
+    local bubbleWidth = snapToPixel(entry.bubbleW, pixelScale)
+    local bubbleHeight = snapToPixel(entry.bubbleH, pixelScale)
     local bubbleFill = isGreen and COLORS.greenBubble
         or (isEinstein and COLORS.einsteinBubble or (isNomi and COLORS.nomiBubble or COLORS.cream))
     local bubbleStroke = isGreen and COLORS.greenStroke
@@ -267,11 +328,13 @@ local function drawMessage(painter, controller, entry, index, viewport, scrollOf
         painter:Text(avatarX, avatarY, message.avatarText or "?", 17, COLORS.dark,
             NVG_ALIGN_CENTER + NVG_ALIGN_MIDDLE, messageFont)
     end
-    painter:RoundedRect(bubbleX, y, entry.bubbleW, entry.bubbleH, 7, bubbleFill, bubbleStroke, 1.5)
-    painter:Text(bubbleX + 14, y + 9, message.displayName or "", 15, COLORS.dark,
+    painter:Text(bubbleX, nameY, message.displayName or "", NAME_FONT_SIZE, COLORS.dark,
         NVG_ALIGN_LEFT + NVG_ALIGN_TOP, messageFont)
+    painter:RoundedRect(bubbleX, bubbleY, bubbleWidth, bubbleHeight, 7, bubbleFill, bubbleStroke, 1.5)
     for lineIndex, line in ipairs(entry.lines) do
-        painter:Text(bubbleX + 14, y + 34 + (lineIndex - 1) * 22, line, 16, COLORS.body,
+        local lineY = bubbleY + BUBBLE_PADDING_TOP + (lineIndex - 1) * BODY_LINE_HEIGHT
+        painter:Text(snapToPixel(bubbleX + BUBBLE_PADDING_X, pixelScale),
+            snapToPixel(lineY, pixelScale), line, BODY_FONT_SIZE, COLORS.body,
             NVG_ALIGN_LEFT + NVG_ALIGN_TOP, messageFont)
     end
     nvgRestore(vg)
@@ -317,7 +380,8 @@ function View.Draw(painter, frame, controller)
     local model = controller:GetRenderModel()
     local presentationScale, panelAlpha = controller:GetPanelPresentation()
     if panelAlpha <= 0 then return end
-    local scale = presentationScale * PANEL_VISUAL_SCALE
+    local contentScale = PANEL_VISUAL_SCALE
+    local backgroundScale = presentationScale * PANEL_VISUAL_SCALE
 
     local rect = panelRect(frame)
     local centerX, centerY = rect.x + rect.w * 0.5, rect.y + rect.h * 0.5
@@ -336,7 +400,8 @@ function View.Draw(painter, frame, controller)
         h = viewport.h - 24,
     }
     local thumbSize = 34
-    local entries, contentHeight = layoutMessages(painter, model.messages, model.visibleCount, viewport)
+    local entries = cachedLayout(painter, controller, model.messages, viewport)
+    local contentHeight = visibleContentHeight(entries, model.visibleCount)
     controller:SetScrollMetrics(contentHeight, viewport.h)
     model.scrollOffset = controller.scrollOffset
     model.maxScroll = controller.maxScroll
@@ -344,26 +409,41 @@ function View.Draw(painter, frame, controller)
     local thumb = { x = track.x + track.w * 0.5 - thumbSize * 0.5, y = thumbY, w = thumbSize, h = thumbSize }
 
     controller:SetViewGeometry({
-        button = transformRect(button, scale, centerX, centerY),
-        viewport = transformRect(viewport, scale, centerX, centerY),
-        track = transformRect({ x = track.x - 12, y = track.y, w = 34, h = track.h }, scale, centerX, centerY),
-        thumb = transformRect(thumb, scale, centerX, centerY),
+        button = transformRect(button, contentScale, centerX, centerY),
+        viewport = transformRect(viewport, contentScale, centerX, centerY),
+        track = transformRect({ x = track.x - 12, y = track.y, w = 34, h = track.h },
+            contentScale, centerX, centerY),
+        thumb = transformRect(thumb, contentScale, centerX, centerY),
     })
 
     local vg = painter.vg
-    nvgSave(vg)
-    nvgTranslate(vg, centerX, centerY)
-    nvgScale(vg, scale, scale)
-    nvgTranslate(vg, -centerX, -centerY)
-    nvgGlobalAlpha(vg, panelAlpha)
+    local revealScale = math.max(0, math.min(1, presentationScale))
+    local animatedClip = transformRect(rect, revealScale, centerX, centerY)
+    local pixelScale = math.max(0.001,
+        (frame.dpr or 1) * (frame.renderScale or 1) * contentScale)
 
+    -- The panel keeps the established center-scale animation.
+    nvgSave(vg)
+    applyCenteredScale(vg, backgroundScale, centerX, centerY)
+    nvgGlobalAlpha(vg, panelAlpha)
     drawPanelBackground(painter, rect)
+    nvgRestore(vg)
+
+    -- Interactive content stays at its final coordinates; the animated clip reveals it.
+    nvgSave(vg)
+    applyCenteredScale(vg, contentScale, centerX, centerY)
+    nvgGlobalAlpha(vg, panelAlpha)
+    nvgIntersectScissor(vg, animatedClip.x, animatedClip.y, animatedClip.w, animatedClip.h)
     drawPanelButton(painter, button, model.buttonKind)
 
     nvgSave(vg)
     nvgIntersectScissor(vg, viewport.x, viewport.y, viewport.w, viewport.h)
-    for index, entry in ipairs(entries) do
-        drawMessage(painter, controller, entry, index, viewport, model.scrollOffset, panelAlpha)
+    for index = 1, model.visibleCount do
+        local entry = entries[index]
+        if entry then
+            drawMessage(painter, controller, entry, index, viewport,
+                model.scrollOffset, panelAlpha, pixelScale)
+        end
     end
     nvgRestore(vg)
 
