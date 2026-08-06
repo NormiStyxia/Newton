@@ -476,7 +476,7 @@ local function fieldValue(field)
     if field.kind == "boolean" then return field.value and "开" or "关" end
     if field.kind == "readonly" then return tostring(field.value or "") end
     if field.kind == "enum" then
-        return tostring(field.valueLabels and field.valueLabels[field.value] or field.value or "") .. "  ▾"
+        return tostring(field.valueLabels and field.valueLabels[field.value] or field.value or "")
     end
     return tostring(field.value == nil and "" or field.value)
 end
@@ -508,6 +508,17 @@ function View.PlaceTextCursor(painter, edit, rect, pointerX, elapsed, fontSize)
     TextEditor.UpdateHorizontalScroll(edit, math.max(1, rect.w - 16), measure)
 end
 
+local function drawEnumArrow(painter, rect, arrowColor)
+    local x, y = rect.x + rect.w - 12, rect.y + rect.h * 0.5
+    nvgBeginPath(painter.vg)
+    nvgMoveTo(painter.vg, x - 4, y - 2)
+    nvgLineTo(painter.vg, x + 4, y - 2)
+    nvgLineTo(painter.vg, x, y + 3)
+    nvgClosePath(painter.vg)
+    nvgFillColor(painter.vg, nvgRGBA(arrowColor[1], arrowColor[2], arrowColor[3], arrowColor[4] or 255))
+    nvgFill(painter.vg)
+end
+
 local function drawInspector(painter, state, layout, controls)
     if not layout.right then return end
     drawPanel(painter, layout.right, state.selectedObject and "对象 Inspector" or "关卡 Inspector")
@@ -534,11 +545,13 @@ local function drawInspector(painter, state, layout, controls)
             if active then
                 drawActiveTextEdit(painter, state.textEdit, valueRect, state.elapsed, 18, COLORS.text)
             else
+                local fieldColor = field.editable == false and COLORS.textMuted or COLORS.text
+                local valuePadding = field.kind == "enum" and 28 or 16
                 local fittedValue, valueSize = fitText(painter, fieldValue(field), "maker-body", 18, 12,
-                    valueRect.w - 16)
+                    math.max(1, valueRect.w - valuePadding))
                 painter:Text(valueRect.x + 8, valueRect.y + valueRect.h * 0.5, fittedValue, valueSize,
-                    field.editable == false and COLORS.textMuted or COLORS.text,
-                    NVG_ALIGN_LEFT + NVG_ALIGN_MIDDLE, "maker-body")
+                    fieldColor, NVG_ALIGN_LEFT + NVG_ALIGN_MIDDLE, "maker-body")
+                if field.kind == "enum" then drawEnumArrow(painter, valueRect, fieldColor) end
             end
         end
     end

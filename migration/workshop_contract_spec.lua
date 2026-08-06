@@ -110,7 +110,7 @@ expect(goalKeys["transform.x"] and goalKeys["transform.y"]
 local buttonKeys = objectInspectorKeys(LevelDocument.NewObject("button", "button_labels", 500, 300))
 expect(buttonKeys["properties.mode"].valueLabels.HOLD == "持续按压"
     and buttonKeys["properties.mode"].valueLabels.TOGGLE == "切换"
-    and View.FieldValue(buttonKeys["properties.mode"]) == "持续按压  ▾",
+    and View.FieldValue(buttonKeys["properties.mode"]) == "持续按压",
     "runtime enum values were not translated for Inspector display")
 local levelIdField = nil
 for _, field in ipairs(levelInspectorFields) do if field.key == "level.id" then levelIdField = field end end

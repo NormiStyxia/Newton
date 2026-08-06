@@ -465,6 +465,20 @@ expect(spring.transform.x ~= beforeMoveX or spring.transform.y ~= beforeMoveY,
     "selected-object move gesture did not update transform")
 
 updateWorkshop(context)
+local canvasViewport = workshop.layout.canvasViewport
+local emptyX, emptyY = canvasViewport.x + 18, canvasViewport.y + 18
+local emptyLevelX, emptyLevelY = Interaction.ScreenToLevel(workshop.controls.canvasTransform, emptyX, emptyY)
+expect(Interaction.FindTopObject(workshop.document, emptyLevelX, emptyLevelY,
+    5 / workshop.controls.canvasTransform.scale) == nil, "selected drag test point unexpectedly overlaps an object")
+local selectedXBefore, selectedYBefore = spring.transform.x, spring.transform.y
+local selectedPanXBefore, selectedPanYBefore = workshop.view.panX, workshop.view.panY
+dragWorkspace(context, workshop, emptyX, emptyY, emptyX + 24, emptyY + 16)
+expect(spring.transform.x ~= selectedXBefore or spring.transform.y ~= selectedYBefore,
+    "dragging with an editable selection did not move the selected object")
+expect(workshop.view.panX == selectedPanXBefore and workshop.view.panY == selectedPanYBefore,
+    "dragging with an editable selection unexpectedly panned the canvas")
+
+updateWorkshop(context)
 local beforeWidth, beforeHeight = spring.transform.width, spring.transform.height
 local resizeHandle = workshop.controls.handles.resize
 dragWorkspace(context, workshop, resizeHandle.x, resizeHandle.y, resizeHandle.x + 48, resizeHandle.y + 36)
@@ -673,6 +687,7 @@ expect(workshop.view.inspectorScroll > 20 and workshop.textEdit == nil and works
     "touch Inspector swipe did not scroll cleanly or accidentally edited a field")
 
 workshop.view.drawerMode = nil
+workshop.selectedObjectId, workshop.selectedObject = nil, nil
 updateWorkshop(context)
 local canvasViewport = workshop.layout.canvasViewport
 local transformBeforePan = workshop.controls.canvasTransform

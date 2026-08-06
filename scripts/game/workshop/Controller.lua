@@ -11,7 +11,6 @@ local TextTransfer = require("game.workshop.TextTransfer")
 local TextEditor = require("game.workshop.TextEditor")
 local TouchScroller = require("game.workshop.TouchScroller")
 local PreviewSession = require("game.workshop.PreviewSession")
-
 local M = {}
 local function clone(levelDocument, value) return levelDocument.Clone(value) end
 local function clamp(value, minimum, maximum)
@@ -591,9 +590,10 @@ function M.Install(context)
                 return
             end
         end
-        if input:GetKeyDown(KEY_SHIFT) then current.transaction = panTransaction; return end
+        if input:GetKeyDown(KEY_SHIFT) and not current.selectedObject then current.transaction = panTransaction; return end
         local levelX, levelY = Interaction.ScreenToLevel(transform, x, y)
         local object = Interaction.FindTopObject(current.document, levelX, levelY, 5 / transform.scale)
+        if not object and current.selectedObject and not current.readOnly then object = current.selectedObject end
         if object then
             current.selectedObjectId, current.selectedObject = object.id, object
             if current.layout.folded then current.view.drawerMode = "inspector" end
