@@ -17,6 +17,7 @@
 ---@field fontGreen integer
 ---@field fontReportSummary integer
 ---@field images RendererImageSet
+---@field skins table
 local Renderer = {}
 Renderer.__index = Renderer
 
