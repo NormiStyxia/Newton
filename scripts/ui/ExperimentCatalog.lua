@@ -1,3 +1,5 @@
+local CatalogTransition = require("ui.ExperimentCatalogTransition")
+
 local M = {}
 
 local COLORS = {
@@ -174,9 +176,6 @@ local function drawCatalogDecor(painter, frame)
     -- ornaments. Only live catalog copy is painted on top of that artwork.
     painter:Text(artOffsetX + 116, 22, "实验目录", 40, COLORS.paperLight, nil, "maker-display")
     painter:Text(artOffsetX + 118, 70, "EXPERIMENT CATALOG", 14, COLORS.brassLight, nil, "report-green")
-    painter:RoundedRect(frame.logicalWidth - 310, 27, 264, 46, 8, { 247, 239, 211, 210 }, COLORS.brassSoft, 2)
-    painter:Text(frame.logicalWidth - 178, 39, "牛顿实验档案 · 01—09", 14, COLORS.ink,
-        NVG_ALIGN_RIGHT + NVG_ALIGN_TOP, "maker-display")
 end
 
 local function drawCatalogForegroundDecor(painter, frame)
@@ -237,31 +236,36 @@ local function drawPreviewObject(painter, object, originX, originY, scale)
     nvgRestore(vg)
 end
 
-local function drawPreview(painter, rect, level)
-    drawSectionTitle(painter, rect.x + 22, rect.y + 20, "实验装置概览")
-    painter:Text(rect.x + rect.w - 22, rect.y + 23, "STATIC PLAN · 1400 × 700", 14, COLORS.inkMuted,
-        NVG_ALIGN_RIGHT + NVG_ALIGN_TOP, "report-green")
-    local preview = { x = rect.x + 24, y = rect.y + 62, w = rect.w - 48, h = rect.h - 126 }
+local function drawPreviewPaper(painter, preview, level, pose)
+    local vg = painter.vg
+    pose = pose or { offsetX = 0, rotation = 0, alpha = 1, scale = 1 }
+    nvgSave(vg)
+    nvgTranslate(vg, preview.x + preview.w * .5 + (pose.offsetX or 0), preview.y + preview.h * .5)
+    nvgRotate(vg, pose.rotation or 0)
+    nvgScale(vg, pose.scale or 1, pose.scale or 1)
+    nvgTranslate(vg, -(preview.x + preview.w * .5), -(preview.y + preview.h * .5))
+    nvgGlobalAlpha(vg, clamp(pose.alpha or 1, 0, 1))
     painter:FillRect(preview.x, preview.y, preview.w, preview.h, { 252, 243, 215, 255 })
     painter:StrokeRect(preview.x, preview.y, preview.w, preview.h, COLORS.brassSoft, 1)
     if not level then
         painter:Text(preview.x + preview.w * .5, preview.y + preview.h * .5, "实验数据不可用", 22, COLORS.button,
             NVG_ALIGN_CENTER + NVG_ALIGN_MIDDLE, "maker-display")
+        nvgRestore(vg)
         return
     end
 
-    nvgSave(painter.vg)
-    nvgScissor(painter.vg, preview.x, preview.y, preview.w, preview.h)
     -- Graph paper is deliberately drawn inside the existing preview rectangle;
     -- the level's 1400 x 700 content still receives the exact same fit scale.
-    nvgStrokeColor(painter.vg, nvgRGBA(COLORS.grid[1], COLORS.grid[2], COLORS.grid[3], 76))
-    nvgStrokeWidth(painter.vg, 1)
+    nvgStrokeColor(vg, nvgRGBA(COLORS.grid[1], COLORS.grid[2], COLORS.grid[3], 76))
+    nvgStrokeWidth(vg, 1)
     for gridX = preview.x + 12, preview.x + preview.w - 12, 24 do
-        nvgBeginPath(painter.vg); nvgMoveTo(painter.vg, gridX, preview.y); nvgLineTo(painter.vg, gridX, preview.y + preview.h); nvgStroke(painter.vg)
+        nvgBeginPath(vg); nvgMoveTo(vg, gridX, preview.y); nvgLineTo(vg, gridX, preview.y + preview.h); nvgStroke(vg)
     end
     for gridY = preview.y + 12, preview.y + preview.h - 12, 24 do
-        nvgBeginPath(painter.vg); nvgMoveTo(painter.vg, preview.x, gridY); nvgLineTo(painter.vg, preview.x + preview.w, gridY); nvgStroke(painter.vg)
+        nvgBeginPath(vg); nvgMoveTo(vg, preview.x, gridY); nvgLineTo(vg, preview.x + preview.w, gridY); nvgStroke(vg)
     end
+    painter:Text(preview.x + preview.w - 14, preview.y + preview.h - 24, "STATIC PLAN · 1400 × 700", 14, COLORS.inkMuted,
+        NVG_ALIGN_RIGHT + NVG_ALIGN_TOP, "report-green")
     painter:Text(preview.x + 34, preview.y + 28, "s = ½ gt²", 17, COLORS.inkMuted, nil, "report-green", 110)
     painter:Text(preview.x + 34, preview.y + 55, "v = v₀ + gt", 17, COLORS.inkMuted, nil, "report-green", 110)
     painter:Text(preview.x + preview.w - 160, preview.y + preview.h - 60, "F = ma", 20, COLORS.inkMuted, nil, "report-green", 110)
@@ -274,32 +278,48 @@ local function drawPreview(painter, rect, level)
     local originY = preview.y + (preview.h - drawnHeight) * .5
     painter:StrokeRect(originX, originY, drawnWidth, drawnHeight, COLORS.border, 1, 150)
     local groundY = originY + 580 * scale
-    nvgStrokeColor(painter.vg, nvgRGBA(COLORS.brass[1], COLORS.brass[2], COLORS.brass[3], 180))
-    nvgStrokeWidth(painter.vg, 1)
-    nvgBeginPath(painter.vg); nvgMoveTo(painter.vg, originX, groundY); nvgLineTo(painter.vg, originX + drawnWidth, groundY); nvgStroke(painter.vg)
+    nvgStrokeColor(vg, nvgRGBA(COLORS.brass[1], COLORS.brass[2], COLORS.brass[3], 180))
+    nvgStrokeWidth(vg, 1)
+    nvgBeginPath(vg); nvgMoveTo(vg, originX, groundY); nvgLineTo(vg, originX + drawnWidth, groundY); nvgStroke(vg)
     for _, object in ipairs(level.objects or {}) do drawPreviewObject(painter, object, originX, originY, scale) end
 
     -- Small compass mark, kept outside the playfield fit calculation.
     local compassX, compassY = preview.x + preview.w - 48, preview.y + 44
-    nvgStrokeColor(painter.vg, nvgRGBA(COLORS.brass[1], COLORS.brass[2], COLORS.brass[3], 190))
-    nvgStrokeWidth(painter.vg, 1.5)
-    nvgBeginPath(painter.vg); nvgCircle(painter.vg, compassX, compassY, 18); nvgStroke(painter.vg)
-    nvgBeginPath(painter.vg); nvgMoveTo(painter.vg, compassX, compassY - 25); nvgLineTo(painter.vg, compassX, compassY + 25)
-    nvgMoveTo(painter.vg, compassX - 25, compassY); nvgLineTo(painter.vg, compassX + 25, compassY); nvgStroke(painter.vg)
+    nvgStrokeColor(vg, nvgRGBA(COLORS.brass[1], COLORS.brass[2], COLORS.brass[3], 190))
+    nvgStrokeWidth(vg, 1.5)
+    nvgBeginPath(vg); nvgCircle(vg, compassX, compassY, 18); nvgStroke(vg)
+    nvgBeginPath(vg); nvgMoveTo(vg, compassX, compassY - 25); nvgLineTo(vg, compassX, compassY + 25)
+    nvgMoveTo(vg, compassX - 25, compassY); nvgLineTo(vg, compassX + 25, compassY); nvgStroke(vg)
     painter:Text(compassX, compassY - 36, "N", 14, COLORS.ink, NVG_ALIGN_CENTER + NVG_ALIGN_TOP, "report-green")
-    nvgRestore(painter.vg)
 
     local legend = {
         { "墙体", COLORS.wall }, { "发射器", COLORS.launcher }, { "观察皿", COLORS.goal },
         { "弹簧/机构", COLORS.spring }, { "相位", COLORS.phase },
     }
-    local legendX, legendY = rect.x + 28, rect.y + rect.h - 40
+    local legendX, legendY = preview.x + 4, preview.y + preview.h + 24
     for _, entry in ipairs(legend) do
         painter:FillRect(legendX, legendY + 4, 12, 12, entry[2])
         painter:StrokeRect(legendX, legendY + 4, 12, 12, COLORS.border, 1, 150)
         painter:Text(legendX + 18, legendY, entry[1], 16, COLORS.inkMuted, nil, "maker-body")
         legendX = legendX + 18 + textWidth(painter, entry[1], "maker-body", 16) + 20
     end
+    nvgRestore(vg)
+end
+
+local function drawPreview(painter, rect, state)
+    drawSectionTitle(painter, rect.x + 22, rect.y + 20, "实验装置概览")
+    local paperViewport = { x = rect.x + 18, y = rect.y + 54, w = rect.w - 36, h = rect.h - 74 }
+    local preview = { x = rect.x + 24, y = rect.y + 62, w = rect.w - 48, h = rect.h - 126 }
+    local transition = state.transition
+    local papers = transition and transition:GetPreviewPapers(paperViewport.w)
+        or { { index = state.selectedIndex, offsetX = 0, rotation = 0, alpha = 1, scale = 1 } }
+    local vg = painter.vg
+    nvgSave(vg)
+    nvgScissor(vg, paperViewport.x, paperViewport.y, paperViewport.w, paperViewport.h)
+    for _, pose in ipairs(papers) do
+        drawPreviewPaper(painter, preview, state.levels[pose.index], pose)
+    end
+    nvgRestore(vg)
 end
 
 local function enabledCardNames(level, rules)
@@ -331,11 +351,12 @@ local function drawScoreBadge(painter, x, y, score)
     nvgClosePath(painter.vg); nvgStroke(painter.vg)
 end
 
-local function drawBrief(painter, layout, level, state, rules)
+local function drawBrief(painter, layout, level, state, rules, alpha)
     local viewport = layout.briefViewport
     local y = viewport.y - state.scroll
     local left, width = viewport.x, viewport.w - 10
     nvgSave(painter.vg)
+    nvgGlobalAlpha(painter.vg, clamp(alpha or 1, 0, 1))
     nvgScissor(painter.vg, viewport.x, viewport.y, viewport.w, viewport.h)
     if level then
         painter:Text(left, y, ellipsize(painter, level.name or "未命名实验", width, "maker-display", 32),
@@ -403,6 +424,54 @@ local function drawButton(painter, rect, label, primary, hovered, enabled)
     end
 end
 
+local function drawCompletionMark(painter, x, y, alpha, scale)
+    local vg = painter.vg
+    nvgSave(vg)
+    nvgTranslate(vg, x, y)
+    nvgScale(vg, scale or 1, scale or 1)
+    nvgStrokeColor(vg, nvgRGBA(COLORS.border[1], COLORS.border[2], COLORS.border[3], alpha or 255))
+    nvgStrokeWidth(vg, 2.4)
+    nvgLineCap(vg, NVG_ROUND)
+    nvgBeginPath(vg)
+    nvgMoveTo(vg, -8, -1)
+    nvgLineTo(vg, -2, 5)
+    nvgLineTo(vg, 9, -7)
+    nvgStroke(vg)
+    nvgRestore(vg)
+end
+
+local function drawExperimentProgress(painter, item, record, feedback, feedbackElapsed)
+    local statusLeft = item.x + item.w - 82
+    if not record or record.completed ~= true then return statusLeft end
+
+    local elapsed = math.max(0, feedbackElapsed or 0)
+    local matchingFeedback = feedback and feedback.levelId == record.levelId and feedback or nil
+    local checkProgress = matchingFeedback and matchingFeedback.firstCompletion and clamp(elapsed / .16, 0, 1) or 1
+    local checkEase = 1 - (1 - checkProgress) ^ 3
+    drawCompletionMark(painter, statusLeft + 10, item.y + item.h * .5, math.floor(255 * checkEase), .85 + .15 * checkEase)
+
+    if not record.bestScore then return statusLeft end
+    local scoreRight = item.x + item.w - 12
+    local scoreY = item.y + item.h * .5
+    if matchingFeedback and matchingFeedback.bestImproved then
+        local oldScore = tonumber(matchingFeedback.previousScore)
+        if oldScore and elapsed < .11 then
+            local fade = 1 - clamp(elapsed / .11, 0, 1)
+            painter:Text(scoreRight, scoreY, tostring(oldScore), 19, COLORS.border,
+                NVG_ALIGN_RIGHT + NVG_ALIGN_MIDDLE, "report-green", math.floor(255 * fade))
+            return statusLeft
+        end
+        local reveal = clamp((elapsed - .08) / .18, 0, 1)
+        local ease = 1 - (1 - reveal) ^ 3
+        painter:Text(scoreRight, scoreY + 3 * (1 - ease), tostring(record.bestScore), 19, COLORS.border,
+            NVG_ALIGN_RIGHT + NVG_ALIGN_MIDDLE, "report-green", math.floor(255 * ease))
+        return statusLeft
+    end
+    painter:Text(scoreRight, scoreY, tostring(record.bestScore), 19, COLORS.border,
+        NVG_ALIGN_RIGHT + NVG_ALIGN_MIDDLE, "report-green")
+    return statusLeft
+end
+
 ---@param context GameContext
 function M.Install(context)
     local CONFIG = context.CONFIG
@@ -425,9 +494,12 @@ function M.Install(context)
         end
         state.selectedIndex = clamp(tonumber(state.selectedIndex) or 1, 1, CONFIG.levelCount)
         state.scroll, state.scrollMax = 0, 0
+        state.transition = CatalogTransition.New(state.selectedIndex)
+        state.progressFeedback, state.progressFeedbackElapsed = nil, 0
     end
 
     function RequestStartLevel(index)
+        if catalogState_.transition and not catalogState_.transition:IsSettled() then return false end
         index = clamp(tonumber(index) or catalogState_.selectedIndex or 1, 1, CONFIG.levelCount)
         if not catalogState_.levels[index] then
             catalogState_.toast = "实验数据不可用"
@@ -435,6 +507,8 @@ function M.Install(context)
             return false
         end
         catalogState_.selectedIndex = index
+        catalogState_.progressFeedback, catalogState_.progressFeedbackElapsed = nil, 0
+        if experimentProgress_ then experimentProgress_:ClearPendingFeedback() end
         catalogState_.toast, hudDropdown_ = nil, nil
         BuildLevel(index)
         return true
@@ -448,11 +522,15 @@ function M.Install(context)
         catalogState_.selectedIndex = clamp(selected, 1, CONFIG.levelCount)
         catalogState_.scroll, catalogState_.scrollMax = 0, 0
         catalogState_.dragStartY, catalogState_.toast = nil, nil
+        if catalogState_.transition then catalogState_.transition:Reset(catalogState_.selectedIndex) end
+        catalogState_.progressFeedback = experimentProgress_ and experimentProgress_:ConsumeFeedback() or nil
+        catalogState_.progressFeedbackElapsed = 0
         hudDropdown_ = nil
         return true
     end
 
     function RequestEnterWorkshop(selectedLevelId)
+        if catalogState_.transition and not catalogState_.transition:IsSettled() then return false end
         return OpenLevelWorkshop(selectedLevelId)
     end
 
@@ -461,10 +539,18 @@ function M.Install(context)
         if catalogState_.selectedIndex == index then return end
         catalogState_.selectedIndex = index
         catalogState_.scroll, catalogState_.scrollMax = 0, 0
+        if catalogState_.transition then catalogState_.transition:Request(index) end
     end
 
     function UpdateExperimentCatalog(dt, pointerFrame)
         local state = catalogState_
+        if state.transition then state.transition:Update(dt) end
+        if state.progressFeedback then
+            state.progressFeedbackElapsed = (state.progressFeedbackElapsed or 0) + math.max(0, dt)
+            if state.progressFeedbackElapsed >= .28 then
+                state.progressFeedback, state.progressFeedbackElapsed = nil, 0
+            end
+        end
         state.toastTime = math.max(0, (state.toastTime or 0) - math.max(0, dt))
         if state.toastTime <= 0 then state.toast = nil end
         if frame_.physicalWidth < frame_.physicalHeight then return end
@@ -473,7 +559,8 @@ function M.Install(context)
         local x, y = pointerFrame.x, pointerFrame.y
         if input:GetKeyPress(KEY_UP) then selectLevel(state.selectedIndex - 1) end
         if input:GetKeyPress(KEY_DOWN) then selectLevel(state.selectedIndex + 1) end
-        if input:GetKeyPress(KEY_RETURN) then RequestStartLevel(state.selectedIndex); return end
+        local actionsEnabled = not state.transition or state.transition:IsSettled()
+        if input:GetKeyPress(KEY_RETURN) and actionsEnabled then RequestStartLevel(state.selectedIndex); return end
 
         if pointerFrame.pressed then
             for index = 1, CONFIG.levelCount do
@@ -481,8 +568,8 @@ function M.Install(context)
                     w = layout.left.w - 24, h = layout.listItemHeight - 4 }
                 if pointIn(item, x, y) then selectLevel(index); return end
             end
-            if pointIn(layout.startButton, x, y) then RequestStartLevel(state.selectedIndex); return end
-            if pointIn(layout.workshopButton, x, y) then
+            if actionsEnabled and pointIn(layout.startButton, x, y) then RequestStartLevel(state.selectedIndex); return end
+            if actionsEnabled and pointIn(layout.workshopButton, x, y) then
                 local level = state.levels[state.selectedIndex]
                 RequestEnterWorkshop(level and level.levelId or nil)
                 return
@@ -490,6 +577,10 @@ function M.Install(context)
             if pointIn(layout.briefViewport, x, y) then
                 state.dragStartY, state.dragStartScroll = y, state.scroll
             end
+        end
+        if not actionsEnabled then
+            state.dragStartY = nil
+            return
         end
         if pointerFrame.down and state.dragStartY then
             state.scroll = clamp(state.dragStartScroll + state.dragStartY - y, 0, state.scrollMax)
@@ -537,18 +628,23 @@ function M.Install(context)
                 selected and COLORS.ink or COLORS.inkMuted, NVG_ALIGN_LEFT + NVG_ALIGN_MIDDLE, "report-green")
             local name = level and level.name or "数据不可用"
             local nameX = item.x + 92
+            local progress = level and experimentProgress_ and experimentProgress_:Get(level.levelId) or nil
+            if progress then progress.levelId = level.levelId end
+            local statusLeft = drawExperimentProgress(painter, item, progress, state.progressFeedback, state.progressFeedbackElapsed)
             painter:Text(nameX, item.y + item.h * .5,
-                ellipsize(painter, name, item.x + item.w - nameX - 10, "maker-display", 21), 21,
+                ellipsize(painter, name, statusLeft - nameX - 10, "maker-display", 21), 21,
                 level and COLORS.ink or COLORS.button, NVG_ALIGN_LEFT + NVG_ALIGN_MIDDLE, "maker-display")
             drawDottedDivider(painter, item.x + 12, item.y + item.h - 3, item.w - 24)
         end
 
         local level = state.levels[state.selectedIndex]
-        drawPreview(painter, layout.center, level)
-        drawBrief(painter, layout, level, state, Rules)
-        local startEnabled = level ~= nil
+        drawPreview(painter, layout.center, state)
+        local briefView = state.transition and state.transition:GetBriefView() or { index = state.selectedIndex, alpha = 1 }
+        if briefView then drawBrief(painter, layout, state.levels[briefView.index], state, Rules, briefView.alpha) end
+        local actionsEnabled = not state.transition or state.transition:IsSettled()
+        local startEnabled = level ~= nil and actionsEnabled
         drawButton(painter, layout.startButton, "开始实验", true, pointIn(layout.startButton, pointer.x, pointer.y), startEnabled)
-        drawButton(painter, layout.workshopButton, "实验工坊", false, pointIn(layout.workshopButton, pointer.x, pointer.y), true)
+        drawButton(painter, layout.workshopButton, "实验工坊", false, pointIn(layout.workshopButton, pointer.x, pointer.y), actionsEnabled)
 
         if state.toast then
             local width = math.max(250, textWidth(painter, state.toast, "maker-display", 18) + 50)

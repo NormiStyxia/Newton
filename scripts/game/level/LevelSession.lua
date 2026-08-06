@@ -237,6 +237,15 @@ function M.Install(context)
             level_.assistedClear = assisted
             level_.resultOverlayVisible = true
         end
+        if not assisted and experimentProgress_ and level_
+            and runtimeSession_ and runtimeSession_.sourceKind == "official" then
+            local scoreSummary = LevelPresentation.BuildResultSummary(level_.scoring, ruleDeployCount_)
+            local progressRecord, progressError = experimentProgress_:Record(level_.levelId, scoreSummary and scoreSummary.score)
+            if not progressRecord then
+                print(string.format("[ExperimentProgress] record failed for %s: %s",
+                    tostring(level_.levelId), tostring(progressError)))
+            end
+        end
         if GenerateResultReport then GenerateResultReport() end
         if apple_ and apple_.body then
             apple_.body.bodyType = BT_STATIC

@@ -19,6 +19,7 @@
 ---@field ReplayFeed any
 ---@field ReplayMode any
 ---@field PhaseWallEffects any
+---@field ExperimentProgress any
 ---@field CONFIG table
 ---@field CARD_DESIGN_WIDTH number
 ---@field CARD_DESIGN_HEIGHT number
@@ -63,6 +64,7 @@
 ---@field screen_ "catalog"|"game"|"workshop"|"workshop_preview"
 ---@field runtimeSession_ table|nil
 ---@field catalogState_ table
+---@field experimentProgress_ table
 ---@field workshopState_ table
 ---@field hudRuleSummary_ string
 ---@field hudRuleList_ table
@@ -122,6 +124,7 @@ own("navigation", {
     "screen_", "catalogState_", "hudRuleSummary_", "hudRuleList_", "hudObjectiveText_",
     "hudExpectedScore_", "hudInterventionCount_", "hudDropdown_", "hudEscapeConsumed_",
 })
+own("progress", { "experimentProgress_" })
 own("workshop", { "workshopState_" })
 
 local function refreshModes(domains)
@@ -163,7 +166,7 @@ end
 function State.New(dependencies, constants)
     local domains = {
         runtime = {}, layout = {}, experiment = {}, goal = {}, mechanisms = {}, input = {}, cards = {}, replay = {},
-        assistant = {}, report = {}, navigation = {}, workshop = {},
+        assistant = {}, report = {}, navigation = {}, progress = {}, workshop = {},
     }
     ---@type GameContext
     local context = {}
@@ -244,6 +247,7 @@ function State.New(dependencies, constants)
     context.cardBurns_, context.cardBurnParticles_, context.burningCardIds_ = {}, {}, {}
     context.rulePulse_, context.ruleFlash_, context.ruleDeployCount_ = nil, nil, 0
     context.screen_ = "catalog"
+    context.experimentProgress_ = dependencies.ExperimentProgress.New({ json = cjson })
     context.catalogState_ = {
         selectedIndex = 1,
         levels = {},

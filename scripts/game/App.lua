@@ -18,6 +18,7 @@ local ReplayTimeline = require("game.replay.Timeline")
 local ReplayFeed = require("game.replay.Feed")
 local ReplayMode = require("game.replay.Mode")
 local PhaseWallEffects = require("game.render.PhaseWallEffects")
+local ExperimentProgress = require("game.progress.ExperimentProgress")
 
 local INSTALLERS = {
     "game.gameplay.Status", "game.replay.Controller", "game.gameplay.RuleController",
@@ -41,7 +42,7 @@ function App.New()
         MatterCalibration = MatterCalibration, PhysicsProfiles = PhysicsProfiles, PhysicsProbe = PhysicsProbe,
         Rules = Rules, RuntimeFactory = RuntimeFactory, Renderer2D = Renderer2D, SynthAudio = SynthAudio,
         TrajectoryPrediction = TrajectoryPrediction, ReplayTimeline = ReplayTimeline, ReplayFeed = ReplayFeed,
-        ReplayMode = ReplayMode, PhaseWallEffects = PhaseWallEffects,
+        ReplayMode = ReplayMode, PhaseWallEffects = PhaseWallEffects, ExperimentProgress = ExperimentProgress,
     }
     local context = State.New(dependencies, Config.LegacyConstants())
     for _, moduleName in ipairs(INSTALLERS) do require(moduleName).Install(context) end
