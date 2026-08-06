@@ -153,6 +153,7 @@ function M.Install(context)
                 end
             elseif actionName == "next" then
                 local nextIndex = levelIndex_ < CONFIG.levelCount and levelIndex_ + 1 or nil
+                if nextIndex and RequestStartLevel(nextIndex) then return end
                 RequestReturnToCatalog(nextIndex or 1)
             end
         end
