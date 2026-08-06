@@ -17,6 +17,7 @@ function M.Install(context)
     local LEVEL_META = context.LEVEL_META
     local LEVEL_SCORE_PROFILES = context.LEVEL_SCORE_PROFILES
     local DEFAULT_LEVEL_SCORE_PROFILE = context.DEFAULT_LEVEL_SCORE_PROFILE
+    local experimentProgress_ = context.experimentProgress_
     local _ENV = context
     function LoadLevelDefinition(index)
         index = math.max(1, math.min(CONFIG.levelCount, index))

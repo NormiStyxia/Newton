@@ -617,6 +617,7 @@ function M.Install(context)
     local CONFIG = context.CONFIG
     local Rules = context.Rules
     local catalogState_ = context.catalogState_
+    local experimentProgress_ = context.experimentProgress_
     local _ENV = context
 
     function InitializeExperimentCatalog()
