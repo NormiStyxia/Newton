@@ -145,6 +145,8 @@ function Renderer:Init()
             catalogBackground = nvgCreateImage(self.vg, "image/catalog/catalog_background.png", 0),
             catalogDecorLeft = nvgCreateImage(self.vg, "image/catalog/catalog_decor_left.png", 0),
             catalogDecorRight = nvgCreateImage(self.vg, "image/catalog/catalog_decor_right.png", 0),
+            catalogPreviewApple = nvgCreateImage(self.vg, "image/catalog/objects/apple.png", 0),
+            catalogPreviewSensor = nvgCreateImage(self.vg, "image/catalog/objects/sensor.png", 0),
             hudFrame = nvgCreateImage(self.vg, "image/ui_svg/runtime/hud_frame@2x.png", 0),
             gameplayFrame = nvgCreateImage(self.vg, "image/ui_svg/runtime/gameplay_frame@2x.png", 0),
             gameplayDecorOverlay = nvgCreateImage(self.vg, "image/ui/gameplay_decor_overlay.png", 0),
