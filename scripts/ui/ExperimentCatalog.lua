@@ -228,17 +228,17 @@ local function drawPreviewObject(painter, level, object, previewTransform)
             sketchDrawing_:DrawEllipse(vg, levelId, objectId, "outer",
                 0, 0, w * .5, h * .5, color, COLORS.border, 1.5,
                 { fillAlpha = fillAlpha, secondary = true })
-            local innerMark = sketchDrawing_:GetShapeOffset(levelId, objectId, "inner-ring", .3, .6)
+            local innerMark = sketchDrawing_:GetTextMark(levelId, objectId, "inner-ring")
             sketchDrawing_:DrawEllipse(vg, levelId, objectId, "inner",
-                innerMark.x, innerMark.y, w * .31, h * .31,
-                nil, COLORS.border, 1.3, { secondary = false, strokeAlpha = .76 })
+                innerMark.offsetX * .65, innerMark.offsetY * .65, w * .31, h * .31,
+                nil, COLORS.border, 1.3, { jitter = .55, secondary = false, strokeAlpha = .76 })
         elseif object.type == "launcher" then
             sketchDrawing_:DrawRoundedRect(vg, levelId, objectId, "body",
                 -w * .5, -h * .5, w, h, math.min(5, h * .16), color, COLORS.border, 1.5,
                 { fillAlpha = fillAlpha, secondary = true })
             sketchDrawing_:DrawArrow(vg, levelId, objectId, "direction",
                 -w * .18, 0, w * .27, 0, COLORS.border, 1.5,
-                { secondary = true, headLength = math.min(9, h * .22) })
+                { jitter = .65, secondary = true, headLength = math.min(9, h * .22) })
         else
             sketchDrawing_:DrawRect(vg, levelId, objectId, "wood-frame",
                 -w * .5, -h * .5, w, h, color, COLORS.border, 1.5,
