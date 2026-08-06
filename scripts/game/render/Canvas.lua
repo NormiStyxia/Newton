@@ -282,7 +282,6 @@ end
 
 function Renderer:Begin(frame)
     nvgBeginFrame(self.vg, frame.systemLogicalWidth, frame.systemLogicalHeight, frame.dpr)
-    self:FillRect(0, 0, frame.systemLogicalWidth, frame.systemLogicalHeight, COLORS.background)
     nvgSave(self.vg)
     self.frameTransformSaved = true
     nvgScale(self.vg, frame.renderScale, frame.renderScale)

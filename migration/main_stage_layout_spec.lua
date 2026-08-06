@@ -94,10 +94,8 @@ renderer:Begin(highDpr)
 renderer:Finish()
 local byName = {}
 for _, call in ipairs(calls) do byName[call.name] = call end
-expect(calls[1].name == "begin" and byName.rect.args[2] == 0 and byName.rect.args[3] == 0
-    and byName.rect.args[4] == highDpr.systemLogicalWidth
-    and byName.rect.args[5] == highDpr.systemLogicalHeight,
-    "viewport background was not painted before the stage transform")
+expect(calls[1].name == "begin" and byName.rect == nil and byName.fill == nil,
+    "renderer painted an opaque block over the viewport padding")
 near(byName.translate.args[3], highDpr.stageOffsetY, "renderer stage translation")
 near(byName.scissor.args[5], DesignSpace.BASE_HEIGHT, "renderer stage clip height")
 expect(byName.restore and calls[#calls].name == "end",
