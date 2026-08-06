@@ -32,6 +32,15 @@ local RuntimeManifest = {
                         dragGrab = { x = 242, y = 87, normalizedX = 242 / 360, normalizedY = 87 / 512 },
                     }),
                 } },
+                takeover_raise = { fps = 10, loop = false, frames = {
+                    SourceFrame("raise-1", 320, 512), SourceFrame("raise-2", 320, 512),
+                } },
+                takeover_loop = { fps = 10, loop = true, frames = {
+                    SourceFrame("loop-1", 320, 512), SourceFrame("loop-2", 320, 512),
+                } },
+                takeover_finish = { fps = 10, loop = false, frames = {
+                    SourceFrame("finish-1", 320, 512), SourceFrame("finish-2", 320, 512),
+                } },
             },
         },
     },
@@ -43,6 +52,9 @@ local sourceConfig = {
         blink = { assetClip = "blink", frames = { "fallback" }, fps = 12, loop = false },
         walk = { assetClip = "move", frames = { "fallback" }, fps = 10, loop = true },
         drag = { assetClip = "drag", frames = { "fallback" }, fps = 16, loop = true },
+        takeover_raise = { assetClip = "takeover_raise", frames = { "fallback" }, fps = 10, loop = false },
+        takeover_loop = { assetClip = "takeover_loop", frames = { "fallback" }, fps = 10, loop = true },
+        takeover_finish = { assetClip = "takeover_finish", frames = { "fallback" }, fps = 10, loop = false },
     },
 }
 expect(AnimationSource.Apply(sourceConfig, RuntimeManifest, "runtime_512"),
@@ -148,6 +160,9 @@ local assistant = GreenAssistant.new({
             idle = { frames = { "idle-1", "idle-2" }, fps = 10, loop = true },
             move = { frames = { "move-1", "move-2" }, fps = 10, loop = true },
             blink = { frames = { "blink-1", "blink-2" }, fps = 10, loop = false },
+            takeover_raise = { frames = { "raise-1", "raise-2" }, fps = 10, loop = false },
+            takeover_loop = { frames = { "loop-1", "loop-2" }, fps = 10, loop = true },
+            takeover_finish = { frames = { "finish-1", "finish-2" }, fps = 10, loop = false },
         },
         blink = { enabled = true, animation = "blink", minInterval = .05, maxInterval = .05 },
         interaction = { duration = .05, consecutiveWindow = 1, pokeLines = { "在。", "别戳。" } },
@@ -211,10 +226,18 @@ expect(assistant.failureAssist.hasOfferedThisLevel, "offer flag was not retained
 expect(assistant:acceptTakeover(), "takeover acceptance failed")
 expect(assistant:getBehavior() == GreenAssistant.Behavior.TAKEOVER and adapter.locked and adapter.began,
     "takeover did not lock input and start replay")
+expect(assistant.animator:getCurrentAnimation() == "takeover_raise",
+    "takeover did not begin with the raise animation")
+assistant:update(.21)
+expect(assistant:getBehavior() == GreenAssistant.Behavior.TAKEOVER
+    and assistant.animator:getCurrentAnimation() == "takeover_loop",
+    "takeover raise did not transition into the looping animation")
 adapter.finished = true
 assistant:update(.016)
 expect(adapter.assisted and not adapter.locked, "takeover did not finish assisted and unlock input")
 expect(assistant:getBehavior() == GreenAssistant.Behavior.SUCCESS, "takeover did not enter success behavior")
+expect(assistant.animator:getCurrentAnimation() == "takeover_finish",
+    "takeover completion did not begin the finish animation")
 assistant:onLevelChanged("level_02")
 expect(assistant.failureAssist.failureCount == 0 and not assistant.failureAssist.hasOfferedThisLevel,
     "new level did not reset failure assist")

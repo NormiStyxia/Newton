@@ -78,16 +78,19 @@ def main() -> int:
            "manifest must ship only the runtime_512 asset variant")
 
     expected_clips = {
-        "idle": {"fps": 10.0, "loop": True, "duration": 1.6, "grounded": True},
-        "blink": {"fps": 10.0, "loop": False, "duration": 1.6, "grounded": True},
-        "move": {"fps": 16.0, "loop": True, "duration": 1.0, "grounded": False},
-        "drag": {"fps": 16.0, "loop": True, "duration": 1.0, "grounded": False},
-        "tap_react_a": {"fps": 16.0, "loop": False, "duration": 1.0, "grounded": True},
-        "tap_react_b": {"fps": 16.0, "loop": False, "duration": 1.0, "grounded": True},
+        "idle": {"frames": 16, "fps": 10.0, "loop": True, "duration": 1.6, "grounded": True},
+        "blink": {"frames": 16, "fps": 10.0, "loop": False, "duration": 1.6, "grounded": True},
+        "move": {"frames": 16, "fps": 16.0, "loop": True, "duration": 1.0, "grounded": False},
+        "drag": {"frames": 16, "fps": 16.0, "loop": True, "duration": 1.0, "grounded": False},
+        "tap_react_a": {"frames": 16, "fps": 16.0, "loop": False, "duration": 1.0, "grounded": True},
+        "tap_react_b": {"frames": 16, "fps": 16.0, "loop": False, "duration": 1.0, "grounded": True},
+        "takeover_raise": {"frames": 15, "fps": 16.0, "loop": False, "duration": 15 / 16, "grounded": True},
+        "takeover_loop": {"frames": 16, "fps": 16.0, "loop": True, "duration": 1.0, "grounded": True},
+        "takeover_finish": {"frames": 16, "fps": 16.0, "loop": False, "duration": 1.0, "grounded": True},
     }
     for clip_name, expected_clip in expected_clips.items():
         runtime_clip = runtime["clips"][clip_name]
-        expect(runtime_clip["frameCount"] == 16,
+        expect(runtime_clip["frameCount"] == expected_clip["frames"],
                f"{clip_name}: frame count changed")
         expect(runtime_clip["frameHeight"] == 512 and runtime_clip["frameWidth"] < 512,
                f"{clip_name}: runtime frame is not compact portrait data")
@@ -172,6 +175,10 @@ def main() -> int:
         expect(preset in config_source, f"missing quality preset {preset}")
     expect("master_1080" not in config_source,
            "GreenAssistant config still references the removed master asset set")
+    expect('TAKEOVER = { "takeover_raise", "takeover_loop" }' in config_source,
+           "GreenAssistant takeover raise/loop animation sequence is missing")
+    expect('SUCCESS = { "takeover_finish" }' in config_source,
+           "GreenAssistant takeover finish animation sequence is missing")
 
     runtime_memory = rgba_memory(runtime)
     variants = {

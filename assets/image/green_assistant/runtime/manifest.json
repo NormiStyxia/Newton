@@ -1,6 +1,6 @@
 {
   "schemaVersion": 1,
-  "processorVersion": 3,
+  "processorVersion": 4,
   "assetId": "green_assistant",
   "runtimePolicy": {
     "targetFrameHeight": 512,
@@ -2200,6 +2200,1406 @@
               }
             ]
           }
+        },
+        "takeover_finish": {
+          "sourceType": "imageSequence",
+          "fps": 16.0,
+          "loop": false,
+          "frameCount": 16,
+          "frameWidth": 360,
+          "frameHeight": 512,
+          "visualBounds": {
+            "x": 35,
+            "y": 59,
+            "width": 292,
+            "height": 453
+          },
+          "footAnchor": {
+            "x": 234.0,
+            "y": 512.0,
+            "normalizedX": 0.65,
+            "normalizedY": 1.0
+          },
+          "sourceCrop": {
+            "scaledCanvasWidth": 512,
+            "left": 22,
+            "right": 382
+          },
+          "scaleFromMaster": 0.4740740740740741,
+          "frames": [
+            {
+              "texture": "image/green_assistant/runtime/runtime_512/takeover_finish/frame_01.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 360,
+                "height": 512
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 360,
+              "frameHeight": 512,
+              "footAnchor": {
+                "x": 234.0,
+                "y": 512.0,
+                "normalizedX": 0.65,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 35,
+                "y": 59,
+                "width": 289,
+                "height": 453
+              },
+              "sourceHash": "72b1ca57d0e6a796bb7b6a9fae10c881e720fc9f96ce673318c489ca910b3bfb"
+            },
+            {
+              "texture": "image/green_assistant/runtime/runtime_512/takeover_finish/frame_02.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 360,
+                "height": 512
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 360,
+              "frameHeight": 512,
+              "footAnchor": {
+                "x": 234.0,
+                "y": 512.0,
+                "normalizedX": 0.65,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 35,
+                "y": 59,
+                "width": 289,
+                "height": 453
+              },
+              "sourceHash": "7a06147883c5571147b5c01acb2cafa89f909b16dc25caf661bb37374be40ac3"
+            },
+            {
+              "texture": "image/green_assistant/runtime/runtime_512/takeover_finish/frame_03.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 360,
+                "height": 512
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 360,
+              "frameHeight": 512,
+              "footAnchor": {
+                "x": 234.0,
+                "y": 512.0,
+                "normalizedX": 0.65,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 37,
+                "y": 59,
+                "width": 287,
+                "height": 453
+              },
+              "sourceHash": "65a32bb22a76422f4068b675c22e8ef68a2e3f61005358539cb43e35c6f393ed"
+            },
+            {
+              "texture": "image/green_assistant/runtime/runtime_512/takeover_finish/frame_04.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 360,
+                "height": 512
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 360,
+              "frameHeight": 512,
+              "footAnchor": {
+                "x": 234.0,
+                "y": 512.0,
+                "normalizedX": 0.65,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 38,
+                "y": 59,
+                "width": 286,
+                "height": 453
+              },
+              "sourceHash": "6c157880a7c5b904805df7353a10ccb0b7f320a4b8d72e57435c50866ef57054"
+            },
+            {
+              "texture": "image/green_assistant/runtime/runtime_512/takeover_finish/frame_05.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 360,
+                "height": 512
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 360,
+              "frameHeight": 512,
+              "footAnchor": {
+                "x": 234.0,
+                "y": 512.0,
+                "normalizedX": 0.65,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 39,
+                "y": 59,
+                "width": 284,
+                "height": 453
+              },
+              "sourceHash": "a955c2e8fb507a8000ba3ae7bdc24f23a713ca4eb122503e38fa38699f8beab5"
+            },
+            {
+              "texture": "image/green_assistant/runtime/runtime_512/takeover_finish/frame_06.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 360,
+                "height": 512
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 360,
+              "frameHeight": 512,
+              "footAnchor": {
+                "x": 234.0,
+                "y": 512.0,
+                "normalizedX": 0.65,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 40,
+                "y": 59,
+                "width": 283,
+                "height": 453
+              },
+              "sourceHash": "0b9ff468d6cf4a1457f188f7511f8e27196f609bed121596f90fd94d9cb2b497"
+            },
+            {
+              "texture": "image/green_assistant/runtime/runtime_512/takeover_finish/frame_07.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 360,
+                "height": 512
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 360,
+              "frameHeight": 512,
+              "footAnchor": {
+                "x": 234.0,
+                "y": 512.0,
+                "normalizedX": 0.65,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 42,
+                "y": 59,
+                "width": 281,
+                "height": 453
+              },
+              "sourceHash": "7687992dda974b036cc52ac9b28856ce9d7092024b1e6e1c32d4855c6c10fd79"
+            },
+            {
+              "texture": "image/green_assistant/runtime/runtime_512/takeover_finish/frame_08.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 360,
+                "height": 512
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 360,
+              "frameHeight": 512,
+              "footAnchor": {
+                "x": 234.0,
+                "y": 512.0,
+                "normalizedX": 0.65,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 52,
+                "y": 59,
+                "width": 272,
+                "height": 453
+              },
+              "sourceHash": "5a571edcee8f3084bc6178152f4f8ecb6781bfc7effae97d5e11d2eb4b8ff93d"
+            },
+            {
+              "texture": "image/green_assistant/runtime/runtime_512/takeover_finish/frame_09.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 360,
+                "height": 512
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 360,
+              "frameHeight": 512,
+              "footAnchor": {
+                "x": 234.0,
+                "y": 512.0,
+                "normalizedX": 0.65,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 76,
+                "y": 59,
+                "width": 248,
+                "height": 453
+              },
+              "sourceHash": "cdf80ed529ffee7f9916bd3dea112ac4754521a17132eaa6633a50700d83752a"
+            },
+            {
+              "texture": "image/green_assistant/runtime/runtime_512/takeover_finish/frame_10.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 360,
+                "height": 512
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 360,
+              "frameHeight": 512,
+              "footAnchor": {
+                "x": 234.0,
+                "y": 512.0,
+                "normalizedX": 0.65,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 94,
+                "y": 59,
+                "width": 230,
+                "height": 453
+              },
+              "sourceHash": "a6be8bc1c0fea9b2b1182ffb7f1bd1b0e03b6fa90ed8c0f411592f29dc6f34f8"
+            },
+            {
+              "texture": "image/green_assistant/runtime/runtime_512/takeover_finish/frame_11.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 360,
+                "height": 512
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 360,
+              "frameHeight": 512,
+              "footAnchor": {
+                "x": 234.0,
+                "y": 512.0,
+                "normalizedX": 0.65,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 95,
+                "y": 59,
+                "width": 229,
+                "height": 453
+              },
+              "sourceHash": "9b8dea43528ddc4e793d28d70260b0e12f893e6b0058b025714433805584ee9b"
+            },
+            {
+              "texture": "image/green_assistant/runtime/runtime_512/takeover_finish/frame_12.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 360,
+                "height": 512
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 360,
+              "frameHeight": 512,
+              "footAnchor": {
+                "x": 234.0,
+                "y": 512.0,
+                "normalizedX": 0.65,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 97,
+                "y": 59,
+                "width": 228,
+                "height": 453
+              },
+              "sourceHash": "870b01b3e84b18ef3dbdbb8d0a8ed57775804d22b57338ac2eaf8a065fb3ad90"
+            },
+            {
+              "texture": "image/green_assistant/runtime/runtime_512/takeover_finish/frame_13.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 360,
+                "height": 512
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 360,
+              "frameHeight": 512,
+              "footAnchor": {
+                "x": 234.0,
+                "y": 512.0,
+                "normalizedX": 0.65,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 143,
+                "y": 59,
+                "width": 182,
+                "height": 453
+              },
+              "sourceHash": "8a7170d218b8b3fdebb617a2b772935f8e5a367a459df99d539b8c8221533510"
+            },
+            {
+              "texture": "image/green_assistant/runtime/runtime_512/takeover_finish/frame_14.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 360,
+                "height": 512
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 360,
+              "frameHeight": 512,
+              "footAnchor": {
+                "x": 234.0,
+                "y": 512.0,
+                "normalizedX": 0.65,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 143,
+                "y": 59,
+                "width": 183,
+                "height": 453
+              },
+              "sourceHash": "1f15b4ef9f9c4ff5d79e66d23f7263c7166504c9f76be3da5bad3617b1a3148c"
+            },
+            {
+              "texture": "image/green_assistant/runtime/runtime_512/takeover_finish/frame_15.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 360,
+                "height": 512
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 360,
+              "frameHeight": 512,
+              "footAnchor": {
+                "x": 234.0,
+                "y": 512.0,
+                "normalizedX": 0.65,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 144,
+                "y": 59,
+                "width": 183,
+                "height": 453
+              },
+              "sourceHash": "b696cfb5508fbbb94ab896f293aaa02ab7bf2f73633ac36fc71988e025a6e626"
+            },
+            {
+              "texture": "image/green_assistant/runtime/runtime_512/takeover_finish/frame_16.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 360,
+                "height": 512
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 360,
+              "frameHeight": 512,
+              "footAnchor": {
+                "x": 234.0,
+                "y": 512.0,
+                "normalizedX": 0.65,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 143,
+                "y": 59,
+                "width": 183,
+                "height": 453
+              },
+              "sourceHash": "9af889703819ac3f4b712110cf8ce6d5f9654b694ce2b03fee5302ce7b897025"
+            }
+          ]
+        },
+        "takeover_loop": {
+          "sourceType": "imageSequence",
+          "fps": 16.0,
+          "loop": true,
+          "frameCount": 16,
+          "frameWidth": 360,
+          "frameHeight": 512,
+          "visualBounds": {
+            "x": 36,
+            "y": 59,
+            "width": 289,
+            "height": 453
+          },
+          "footAnchor": {
+            "x": 224.0,
+            "y": 512.0,
+            "normalizedX": 0.6222222222222222,
+            "normalizedY": 1.0
+          },
+          "sourceCrop": {
+            "scaledCanvasWidth": 512,
+            "left": 32,
+            "right": 392
+          },
+          "scaleFromMaster": 0.4740740740740741,
+          "frames": [
+            {
+              "texture": "image/green_assistant/runtime/runtime_512/takeover_loop/frame_01.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 360,
+                "height": 512
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 360,
+              "frameHeight": 512,
+              "footAnchor": {
+                "x": 224.0,
+                "y": 512.0,
+                "normalizedX": 0.6222222222222222,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 36,
+                "y": 59,
+                "width": 288,
+                "height": 453
+              },
+              "sourceHash": "bbdbf292027a3f99f1542b9705fb1247e5e3339e9d5f7116b43bf5a2a08924f3"
+            },
+            {
+              "texture": "image/green_assistant/runtime/runtime_512/takeover_loop/frame_02.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 360,
+                "height": 512
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 360,
+              "frameHeight": 512,
+              "footAnchor": {
+                "x": 224.0,
+                "y": 512.0,
+                "normalizedX": 0.6222222222222222,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 36,
+                "y": 59,
+                "width": 288,
+                "height": 453
+              },
+              "sourceHash": "a303a4878bcf7474301ae8991aae960d648fc8e03970afa806eb2b41392108bb"
+            },
+            {
+              "texture": "image/green_assistant/runtime/runtime_512/takeover_loop/frame_03.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 360,
+                "height": 512
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 360,
+              "frameHeight": 512,
+              "footAnchor": {
+                "x": 224.0,
+                "y": 512.0,
+                "normalizedX": 0.6222222222222222,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 36,
+                "y": 59,
+                "width": 288,
+                "height": 453
+              },
+              "sourceHash": "f44e1d067dd02c7398ab841813019741c7faa22efb7d82388b78d44172ab9a10"
+            },
+            {
+              "texture": "image/green_assistant/runtime/runtime_512/takeover_loop/frame_04.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 360,
+                "height": 512
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 360,
+              "frameHeight": 512,
+              "footAnchor": {
+                "x": 224.0,
+                "y": 512.0,
+                "normalizedX": 0.6222222222222222,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 36,
+                "y": 59,
+                "width": 288,
+                "height": 453
+              },
+              "sourceHash": "038ef73a06768945ba2733a4c06f1e915cf8fa3472d783e01060c035987f069d"
+            },
+            {
+              "texture": "image/green_assistant/runtime/runtime_512/takeover_loop/frame_05.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 360,
+                "height": 512
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 360,
+              "frameHeight": 512,
+              "footAnchor": {
+                "x": 224.0,
+                "y": 512.0,
+                "normalizedX": 0.6222222222222222,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 36,
+                "y": 59,
+                "width": 289,
+                "height": 453
+              },
+              "sourceHash": "e0e7c4598c562d4a27ce09d7e12798382f3389e26df80c354f16b3e599543aff"
+            },
+            {
+              "texture": "image/green_assistant/runtime/runtime_512/takeover_loop/frame_06.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 360,
+                "height": 512
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 360,
+              "frameHeight": 512,
+              "footAnchor": {
+                "x": 224.0,
+                "y": 512.0,
+                "normalizedX": 0.6222222222222222,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 36,
+                "y": 59,
+                "width": 289,
+                "height": 453
+              },
+              "sourceHash": "0583efd2b22e99685d9e21360ca518291b64b2d1c8ec815d4eb9d99eca82c411"
+            },
+            {
+              "texture": "image/green_assistant/runtime/runtime_512/takeover_loop/frame_07.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 360,
+                "height": 512
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 360,
+              "frameHeight": 512,
+              "footAnchor": {
+                "x": 224.0,
+                "y": 512.0,
+                "normalizedX": 0.6222222222222222,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 36,
+                "y": 59,
+                "width": 289,
+                "height": 453
+              },
+              "sourceHash": "7cf88d6144ab3eb96a85931ec9440e39ff43c1f3cf481ec5c3e63d6659e6abde"
+            },
+            {
+              "texture": "image/green_assistant/runtime/runtime_512/takeover_loop/frame_08.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 360,
+                "height": 512
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 360,
+              "frameHeight": 512,
+              "footAnchor": {
+                "x": 224.0,
+                "y": 512.0,
+                "normalizedX": 0.6222222222222222,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 36,
+                "y": 59,
+                "width": 289,
+                "height": 453
+              },
+              "sourceHash": "fcd18b6e3c154d54db151f653f9549a9fb2214a01ef706966bcd172531167cd0"
+            },
+            {
+              "texture": "image/green_assistant/runtime/runtime_512/takeover_loop/frame_09.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 360,
+                "height": 512
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 360,
+              "frameHeight": 512,
+              "footAnchor": {
+                "x": 224.0,
+                "y": 512.0,
+                "normalizedX": 0.6222222222222222,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 36,
+                "y": 59,
+                "width": 289,
+                "height": 453
+              },
+              "sourceHash": "03a46a955de223f602401f8bdac1e354862fc53b44dc00cda5ec92a4970c070d"
+            },
+            {
+              "texture": "image/green_assistant/runtime/runtime_512/takeover_loop/frame_10.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 360,
+                "height": 512
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 360,
+              "frameHeight": 512,
+              "footAnchor": {
+                "x": 224.0,
+                "y": 512.0,
+                "normalizedX": 0.6222222222222222,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 36,
+                "y": 59,
+                "width": 289,
+                "height": 453
+              },
+              "sourceHash": "0652f34ac96c0f79f67e9997c9c476691c93a7111d88d3a44ca63654d4c64456"
+            },
+            {
+              "texture": "image/green_assistant/runtime/runtime_512/takeover_loop/frame_11.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 360,
+                "height": 512
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 360,
+              "frameHeight": 512,
+              "footAnchor": {
+                "x": 224.0,
+                "y": 512.0,
+                "normalizedX": 0.6222222222222222,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 36,
+                "y": 59,
+                "width": 289,
+                "height": 453
+              },
+              "sourceHash": "bdf2f399a216e94df550165e0c2202da889f5b202c9970542349c05fafe20615"
+            },
+            {
+              "texture": "image/green_assistant/runtime/runtime_512/takeover_loop/frame_12.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 360,
+                "height": 512
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 360,
+              "frameHeight": 512,
+              "footAnchor": {
+                "x": 224.0,
+                "y": 512.0,
+                "normalizedX": 0.6222222222222222,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 36,
+                "y": 59,
+                "width": 289,
+                "height": 453
+              },
+              "sourceHash": "710caad624956f3b31545e9b85d02ae5a5bc3f9b04fb82b5cf1b86ca9169adef"
+            },
+            {
+              "texture": "image/green_assistant/runtime/runtime_512/takeover_loop/frame_13.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 360,
+                "height": 512
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 360,
+              "frameHeight": 512,
+              "footAnchor": {
+                "x": 224.0,
+                "y": 512.0,
+                "normalizedX": 0.6222222222222222,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 36,
+                "y": 59,
+                "width": 289,
+                "height": 453
+              },
+              "sourceHash": "4bdb2c7ad23d88674f7dd952d379fa207d8155f37bd494a194e2613634b99e4b"
+            },
+            {
+              "texture": "image/green_assistant/runtime/runtime_512/takeover_loop/frame_14.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 360,
+                "height": 512
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 360,
+              "frameHeight": 512,
+              "footAnchor": {
+                "x": 224.0,
+                "y": 512.0,
+                "normalizedX": 0.6222222222222222,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 36,
+                "y": 59,
+                "width": 289,
+                "height": 453
+              },
+              "sourceHash": "61b6e078dc537481991c292b4461e7c4feaa45b84a10274ea9eb1eada7cca133"
+            },
+            {
+              "texture": "image/green_assistant/runtime/runtime_512/takeover_loop/frame_15.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 360,
+                "height": 512
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 360,
+              "frameHeight": 512,
+              "footAnchor": {
+                "x": 224.0,
+                "y": 512.0,
+                "normalizedX": 0.6222222222222222,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 36,
+                "y": 59,
+                "width": 289,
+                "height": 453
+              },
+              "sourceHash": "2e03b1e62d9a39a2b20b7efa3abfe2f9a1420e40d7a828eaa37e2431017e26fc"
+            },
+            {
+              "texture": "image/green_assistant/runtime/runtime_512/takeover_loop/frame_16.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 360,
+                "height": 512
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 360,
+              "frameHeight": 512,
+              "footAnchor": {
+                "x": 224.0,
+                "y": 512.0,
+                "normalizedX": 0.6222222222222222,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 36,
+                "y": 59,
+                "width": 288,
+                "height": 453
+              },
+              "sourceHash": "7bd89b1c750317c092ddc866fc8f781d117dbaaa026e3a71e437de203c9ecab0"
+            }
+          ]
+        },
+        "takeover_raise": {
+          "sourceType": "imageSequence",
+          "fps": 16.0,
+          "loop": false,
+          "frameCount": 15,
+          "frameWidth": 360,
+          "frameHeight": 512,
+          "visualBounds": {
+            "x": 34,
+            "y": 59,
+            "width": 292,
+            "height": 453
+          },
+          "footAnchor": {
+            "x": 235.0,
+            "y": 512.0,
+            "normalizedX": 0.6527777777777778,
+            "normalizedY": 1.0
+          },
+          "sourceCrop": {
+            "scaledCanvasWidth": 512,
+            "left": 21,
+            "right": 381
+          },
+          "scaleFromMaster": 0.4740740740740741,
+          "frames": [
+            {
+              "texture": "image/green_assistant/runtime/runtime_512/takeover_raise/frame_01.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 360,
+                "height": 512
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 360,
+              "frameHeight": 512,
+              "footAnchor": {
+                "x": 235.0,
+                "y": 512.0,
+                "normalizedX": 0.6527777777777778,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 143,
+                "y": 59,
+                "width": 183,
+                "height": 453
+              },
+              "sourceHash": "c450157bd3c60f7d0c2a981300979108427298a8a776bc8afbca0177a3bf4035"
+            },
+            {
+              "texture": "image/green_assistant/runtime/runtime_512/takeover_raise/frame_02.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 360,
+                "height": 512
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 360,
+              "frameHeight": 512,
+              "footAnchor": {
+                "x": 235.0,
+                "y": 512.0,
+                "normalizedX": 0.6527777777777778,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 143,
+                "y": 59,
+                "width": 183,
+                "height": 453
+              },
+              "sourceHash": "e91f508b74675a63b91332c6a8ed8919ed04eef0b1b8380a3912a702aa0d08c3"
+            },
+            {
+              "texture": "image/green_assistant/runtime/runtime_512/takeover_raise/frame_03.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 360,
+                "height": 512
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 360,
+              "frameHeight": 512,
+              "footAnchor": {
+                "x": 235.0,
+                "y": 512.0,
+                "normalizedX": 0.6527777777777778,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 143,
+                "y": 59,
+                "width": 183,
+                "height": 453
+              },
+              "sourceHash": "9f10c22d360b2e3c10f648327e1c16aec49f5a283fa4805efe3da4e27a25eac4"
+            },
+            {
+              "texture": "image/green_assistant/runtime/runtime_512/takeover_raise/frame_04.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 360,
+                "height": 512
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 360,
+              "frameHeight": 512,
+              "footAnchor": {
+                "x": 235.0,
+                "y": 512.0,
+                "normalizedX": 0.6527777777777778,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 142,
+                "y": 59,
+                "width": 182,
+                "height": 453
+              },
+              "sourceHash": "e11b7d96aacced78fe009093541a951462c3855fd83a57f0389a5d433796c9bb"
+            },
+            {
+              "texture": "image/green_assistant/runtime/runtime_512/takeover_raise/frame_05.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 360,
+                "height": 512
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 360,
+              "frameHeight": 512,
+              "footAnchor": {
+                "x": 235.0,
+                "y": 512.0,
+                "normalizedX": 0.6527777777777778,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 138,
+                "y": 59,
+                "width": 184,
+                "height": 453
+              },
+              "sourceHash": "2b87295a926e08b7dc4db1b6550ef1fe198e49c62afdfdcc0776ccae4f741dbc"
+            },
+            {
+              "texture": "image/green_assistant/runtime/runtime_512/takeover_raise/frame_06.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 360,
+                "height": 512
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 360,
+              "frameHeight": 512,
+              "footAnchor": {
+                "x": 235.0,
+                "y": 512.0,
+                "normalizedX": 0.6527777777777778,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 134,
+                "y": 60,
+                "width": 186,
+                "height": 452
+              },
+              "sourceHash": "70937e7d41b308d66ecd76d08f6178402dcc159e53014f0222d5ab3ef173364d"
+            },
+            {
+              "texture": "image/green_assistant/runtime/runtime_512/takeover_raise/frame_07.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 360,
+                "height": 512
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 360,
+              "frameHeight": 512,
+              "footAnchor": {
+                "x": 235.0,
+                "y": 512.0,
+                "normalizedX": 0.6527777777777778,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 131,
+                "y": 60,
+                "width": 188,
+                "height": 452
+              },
+              "sourceHash": "bcb1bf2f910f5962b67df2dc7a97951b06ca3bdd20a9a1282be1695eeb8bbcfa"
+            },
+            {
+              "texture": "image/green_assistant/runtime/runtime_512/takeover_raise/frame_08.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 360,
+                "height": 512
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 360,
+              "frameHeight": 512,
+              "footAnchor": {
+                "x": 235.0,
+                "y": 512.0,
+                "normalizedX": 0.6527777777777778,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 130,
+                "y": 61,
+                "width": 186,
+                "height": 451
+              },
+              "sourceHash": "495e6bd256dabae7fc965e0a28a8d1b52ee455cafb46cfb8f6ef5ccb94e377f7"
+            },
+            {
+              "texture": "image/green_assistant/runtime/runtime_512/takeover_raise/frame_09.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 360,
+                "height": 512
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 360,
+              "frameHeight": 512,
+              "footAnchor": {
+                "x": 235.0,
+                "y": 512.0,
+                "normalizedX": 0.6527777777777778,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 131,
+                "y": 61,
+                "width": 185,
+                "height": 451
+              },
+              "sourceHash": "9e09aeab229628cb474c153f6671d75fcb4620feeb4ef59331e12b72f8fb677c"
+            },
+            {
+              "texture": "image/green_assistant/runtime/runtime_512/takeover_raise/frame_10.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 360,
+                "height": 512
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 360,
+              "frameHeight": 512,
+              "footAnchor": {
+                "x": 235.0,
+                "y": 512.0,
+                "normalizedX": 0.6527777777777778,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 132,
+                "y": 60,
+                "width": 184,
+                "height": 452
+              },
+              "sourceHash": "daca67563ef585635253e6b58a486eedd6079199d690fd7f90915c9a23f5d1ce"
+            },
+            {
+              "texture": "image/green_assistant/runtime/runtime_512/takeover_raise/frame_11.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 360,
+                "height": 512
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 360,
+              "frameHeight": 512,
+              "footAnchor": {
+                "x": 235.0,
+                "y": 512.0,
+                "normalizedX": 0.6527777777777778,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 84,
+                "y": 59,
+                "width": 236,
+                "height": 453
+              },
+              "sourceHash": "f1062c42721b7738563b972669579cc39e6fcb2d92c083494c9ae4485ea8b845"
+            },
+            {
+              "texture": "image/green_assistant/runtime/runtime_512/takeover_raise/frame_12.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 360,
+                "height": 512
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 360,
+              "frameHeight": 512,
+              "footAnchor": {
+                "x": 235.0,
+                "y": 512.0,
+                "normalizedX": 0.6527777777777778,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 41,
+                "y": 59,
+                "width": 285,
+                "height": 453
+              },
+              "sourceHash": "d5de5c788fc05d584d5172729c0ef7d10eaaa3295cd9164723f7f9c2c45d63e4"
+            },
+            {
+              "texture": "image/green_assistant/runtime/runtime_512/takeover_raise/frame_13.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 360,
+                "height": 512
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 360,
+              "frameHeight": 512,
+              "footAnchor": {
+                "x": 235.0,
+                "y": 512.0,
+                "normalizedX": 0.6527777777777778,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 35,
+                "y": 59,
+                "width": 289,
+                "height": 453
+              },
+              "sourceHash": "c8b08a164fd6df6d19099bf56da639cda0d08a0f82797f982ef6963d44228824"
+            },
+            {
+              "texture": "image/green_assistant/runtime/runtime_512/takeover_raise/frame_14.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 360,
+                "height": 512
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 360,
+              "frameHeight": 512,
+              "footAnchor": {
+                "x": 235.0,
+                "y": 512.0,
+                "normalizedX": 0.6527777777777778,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 34,
+                "y": 59,
+                "width": 289,
+                "height": 453
+              },
+              "sourceHash": "c00ca369c3d38b1193221dea5ddec96ebc2069f01650e5701086f68442967474"
+            },
+            {
+              "texture": "image/green_assistant/runtime/runtime_512/takeover_raise/frame_15.png",
+              "sourceRect": {
+                "x": 0,
+                "y": 0,
+                "width": 360,
+                "height": 512
+              },
+              "sourceOffset": {
+                "x": 0,
+                "y": 0
+              },
+              "frameWidth": 360,
+              "frameHeight": 512,
+              "footAnchor": {
+                "x": 235.0,
+                "y": 512.0,
+                "normalizedX": 0.6527777777777778,
+                "normalizedY": 1.0
+              },
+              "visualBounds": {
+                "x": 34,
+                "y": 59,
+                "width": 288,
+                "height": 453
+              },
+              "sourceHash": "ffec9fc6f24d50a9b2d004c009b178f0b3b763f76f2ed040cedea67e83697514"
+            }
+          ]
         },
         "tap_react_a": {
           "sourceType": "imageSequence",

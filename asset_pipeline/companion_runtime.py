@@ -12,7 +12,7 @@ from typing import Any, Iterable
 from PIL import Image
 
 
-PROCESSOR_VERSION = 3
+PROCESSOR_VERSION = 4
 DEFAULT_SPEC = Path(__file__).with_name("companion_runtime.json")
 
 
@@ -491,6 +491,12 @@ def build(spec_path: Path) -> dict[str, Any]:
         master_clips[clip_name] = master
         runtime_clips[clip_name] = runtime
 
+    variants = {
+        spec["runtimeVariant"]: {"kind": "runtime", "clips": runtime_clips},
+    }
+    if spec["output"].get("includeMasterVariant", True):
+        variants[spec["masterVariant"]] = {"kind": "master", "clips": master_clips}
+
     manifest = {
         "schemaVersion": 1,
         "processorVersion": PROCESSOR_VERSION,
@@ -505,10 +511,7 @@ def build(spec_path: Path) -> dict[str, Any]:
             "registrationPolicy": "optional-reference-relative-xy",
             "visualAlphaThreshold": 32,
         },
-        "variants": {
-            spec["masterVariant"]: {"kind": "master", "clips": master_clips},
-            spec["runtimeVariant"]: {"kind": "runtime", "clips": runtime_clips},
-        },
+        "variants": variants,
     }
 
     json_path = project_root / spec["output"]["jsonManifest"]

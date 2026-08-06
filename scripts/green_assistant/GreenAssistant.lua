@@ -45,6 +45,7 @@ local function CopyOptions(options)
     if options.features then config.features = options.features end
     if options.animations then config.animations = options.animations end
     if options.behaviorAnimationMap then config.behaviorAnimationMap = options.behaviorAnimationMap end
+    if options.behaviorAnimationSequences then config.behaviorAnimationSequences = options.behaviorAnimationSequences end
     if options.debug ~= nil then config.debug = type(options.debug) == "table" and options.debug or { enabled = options.debug == true } end
     return config
 end
@@ -109,6 +110,7 @@ function GreenAssistant.New(options)
     self.blinkActive = false
     self.blinkJustFinished = false
     self.relocationEffect = nil
+    self.animationSequenceToken = 0
 
     for name, callback in pairs(options.events or {}) do self:on(name, callback) end
 
@@ -187,7 +189,39 @@ function GreenAssistant:_scheduleBlink()
     self.blinkTimer = RandomRange(blink.minInterval, blink.maxInterval)
 end
 
+function GreenAssistant:_playBehaviorAnimationSequence(behavior, sequence, startIndex, token)
+    if token ~= self.animationSequenceToken or self.behaviorState:get() ~= behavior then return false end
+
+    local index = startIndex
+    while index <= #sequence and not self.animator:hasAnimation(sequence[index]) do index = index + 1 end
+    if index > #sequence then
+        return self.animator:play(self.config.fallbackAnimation, {
+            restart = true,
+            fallbackAnimation = self.config.fallbackAnimation,
+        })
+    end
+
+    local requested = sequence[index]
+    local options = {
+        restart = true,
+        fallbackAnimation = self.config.fallbackAnimation,
+    }
+    if index < #sequence then
+        options.onFinished = function()
+            self:_playBehaviorAnimationSequence(behavior, sequence, index + 1, token)
+        end
+    end
+    return self.animator:play(requested, options)
+end
+
 function GreenAssistant:_playBehaviorAnimation(behavior, restart)
+    self.animationSequenceToken = self.animationSequenceToken + 1
+    local sequence = self.config.behaviorAnimationSequences
+        and self.config.behaviorAnimationSequences[behavior]
+    if type(sequence) == "table" and #sequence > 0 then
+        return self:_playBehaviorAnimationSequence(behavior, sequence, 1, self.animationSequenceToken)
+    end
+
     local requested = self.animationState:getBehaviorAnimation(behavior) or self.config.fallbackAnimation
     local options = {
         restart = restart == true,
@@ -545,9 +579,12 @@ function GreenAssistant:removeAnimation(name)
 end
 
 function GreenAssistant:setBehaviorAnimation(behavior, animation)
-    self.animationState:setBehaviorAnimation(behavior, animation)
     local normalized = string.upper(behavior)
     if normalized == "DRAG" then normalized = BehaviorState.DRAGGING end
+    self.animationState:setBehaviorAnimation(normalized, animation)
+    if self.config.behaviorAnimationSequences then
+        self.config.behaviorAnimationSequences[normalized] = nil
+    end
     if normalized == self.behaviorState:get() then self:_playBehaviorAnimation(self.behaviorState:get(), true) end
     return self
 end
