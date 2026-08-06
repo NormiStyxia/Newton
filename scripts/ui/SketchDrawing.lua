@@ -4,13 +4,15 @@ SketchDrawing.__index = SketchDrawing
 SketchDrawing.DEFAULT_STYLE = {
     enabled = true,
     pilotLevelId = "level_01",
-    version = 1,
-    lineJitter = 0.8,
-    largeShapeJitter = 0.8,
-    circleRadiusJitter = 0.8,
+    version = 2,
+    -- Kept as compatibility switches. Stage one deliberately uses exact geometry.
+    lineJitter = 0,
+    largeShapeJitter = 0,
+    circleRadiusJitter = 0,
     mainStrokeAlpha = 0.86,
     secondaryStrokeEnabled = true,
     secondaryStrokeOffset = 0.45,
+    secondaryStrokeRotationMax = 0.18,
     secondaryStrokeAlpha = 0.20,
     secondaryStrokeWidthScale = 0.75,
     fillOffsetMax = 0.8,
@@ -68,135 +70,146 @@ local function point(x, y)
     return { x = x, y = y }
 end
 
-local function intermediateCount(length)
-    if length < 40 then return 1 end
-    if length <= 150 then return math.max(2, math.min(4, math.floor(length / 42))) end
-    return math.max(4, math.min(7, math.floor(length / 55)))
-end
-
-local function buildLinePoints(x1, y1, x2, y2, seed, amplitude, offsetX, offsetY)
-    offsetX, offsetY = offsetX or 0, offsetY or 0
-    local dx, dy = x2 - x1, y2 - y1
-    local length = math.sqrt(dx * dx + dy * dy)
-    if length < .001 then return { point(x1 + offsetX, y1 + offsetY) } end
-    local normalX, normalY = -dy / length, dx / length
-    local tangentX, tangentY = dx / length, dy / length
-    local points = { point(x1 + offsetX, y1 + offsetY) }
-    local count = intermediateCount(length)
-    for index = 1, count do
-        local progress = index / (count + 1)
-        local envelope = math.sin(math.pi * progress)
-        local normalOffset = noise(seed, index) * amplitude * envelope
-        local tangentOffset = noise(seed, index + 37) * amplitude * .08 * envelope
-        points[#points + 1] = point(
-            x1 + dx * progress + normalX * normalOffset + tangentX * tangentOffset + offsetX,
-            y1 + dy * progress + normalY * normalOffset + tangentY * tangentOffset + offsetY)
+local function polylinePath(vertices, closed)
+    local points = {}
+    local minX, minY, maxX, maxY
+    for index, vertex in ipairs(vertices) do
+        local x, y = vertex.x, vertex.y
+        points[index] = point(x, y)
+        minX, minY = math.min(minX or x, x), math.min(minY or y, y)
+        maxX, maxY = math.max(maxX or x, x), math.max(maxY or y, y)
     end
-    points[#points + 1] = point(x2 + offsetX, y2 + offsetY)
-    return points
+    return {
+        kind = "polyline",
+        points = points,
+        closed = closed == true,
+        pivotX = ((minX or 0) + (maxX or 0)) * .5,
+        pivotY = ((minY or 0) + (maxY or 0)) * .5,
+    }
 end
 
-local function appendSegment(target, segment)
-    for index = #target > 0 and 2 or 1, #segment do target[#target + 1] = segment[index] end
+local function rectPath(x, y, width, height)
+    return {
+        kind = "rect",
+        x = x, y = y, width = width, height = height,
+        pivotX = x + width * .5,
+        pivotY = y + height * .5,
+    }
 end
 
-local function buildPolylinePoints(vertices, seed, amplitude, closed, offsetX, offsetY)
-    local result = {}
-    local segmentCount = closed and #vertices or #vertices - 1
-    for index = 1, segmentCount do
-        local from = vertices[index]
-        local to = vertices[index % #vertices + 1]
-        appendSegment(result, buildLinePoints(from.x, from.y, to.x, to.y,
-            hashParts(seed, index), amplitude, offsetX, offsetY))
-    end
-    if closed and #result > 1 then table.remove(result) end
-    return result
+local function roundedRectPath(x, y, width, height, radius)
+    return {
+        kind = "roundedRect",
+        x = x, y = y, width = width, height = height,
+        radius = clamp(radius or 0, 0, math.min(width, height) * .5),
+        pivotX = x + width * .5,
+        pivotY = y + height * .5,
+    }
 end
 
-local function tracePolyline(vg, points, closed)
-    if not points or #points == 0 then return end
+local function ellipsePath(centerX, centerY, radiusX, radiusY)
+    return {
+        kind = "ellipse",
+        centerX = centerX, centerY = centerY,
+        radiusX = radiusX, radiusY = radiusY,
+        pivotX = centerX, pivotY = centerY,
+    }
+end
+
+local function commandPath(commands, pivotX, pivotY)
+    return {
+        kind = "commands",
+        commands = commands,
+        pivotX = pivotX,
+        pivotY = pivotY,
+    }
+end
+
+local function tracePath(vg, path)
     nvgBeginPath(vg)
-    nvgMoveTo(vg, points[1].x, points[1].y)
-    for index = 2, #points do nvgLineTo(vg, points[index].x, points[index].y) end
-    if closed then nvgClosePath(vg) end
-end
-
-local function traceSmoothClosed(vg, points)
-    local count = points and #points or 0
-    if count < 4 then tracePolyline(vg, points, true); return end
-    nvgBeginPath(vg)
-    nvgMoveTo(vg, points[1].x, points[1].y)
-    for index = 1, count do
-        local previous = points[(index - 2) % count + 1]
-        local current = points[index]
-        local following = points[index % count + 1]
-        local after = points[(index + 1) % count + 1]
-        nvgBezierTo(vg,
-            current.x + (following.x - previous.x) / 6,
-            current.y + (following.y - previous.y) / 6,
-            following.x - (after.x - current.x) / 6,
-            following.y - (after.y - current.y) / 6,
-            following.x, following.y)
+    if path.kind == "rect" then
+        nvgRect(vg, path.x, path.y, path.width, path.height)
+    elseif path.kind == "roundedRect" then
+        nvgRoundedRect(vg, path.x, path.y, path.width, path.height, path.radius)
+    elseif path.kind == "ellipse" then
+        nvgEllipse(vg, path.centerX, path.centerY, path.radiusX, path.radiusY)
+    elseif path.kind == "commands" then
+        for _, command in ipairs(path.commands) do
+            if command[1] == "M" then
+                nvgMoveTo(vg, command[2], command[3])
+            elseif command[1] == "L" then
+                nvgLineTo(vg, command[2], command[3])
+            end
+        end
+    elseif path.points and #path.points > 0 then
+        nvgMoveTo(vg, path.points[1].x, path.points[1].y)
+        for index = 2, #path.points do
+            nvgLineTo(vg, path.points[index].x, path.points[index].y)
+        end
+        if path.closed then nvgClosePath(vg) end
     end
-    nvgClosePath(vg)
 end
 
-local function strokePath(vg, points, closed, smooth, strokeColor, width, alpha)
-    if smooth then traceSmoothClosed(vg, points) else tracePolyline(vg, points, closed) end
+local function beginPathTransform(vg, path, transform)
+    if not transform then return false end
+    nvgSave(vg)
+    nvgTranslate(vg, transform.offsetX or 0, transform.offsetY or 0)
+    if transform.rotation and transform.rotation ~= 0 then
+        nvgTranslate(vg, path.pivotX or 0, path.pivotY or 0)
+        nvgRotate(vg, transform.rotation)
+        nvgTranslate(vg, -(path.pivotX or 0), -(path.pivotY or 0))
+    end
+    return true
+end
+
+local function endPathTransform(vg, transformed)
+    if transformed then nvgRestore(vg) end
+end
+
+local function strokePath(vg, path, strokeColor, width, alpha, transform)
+    local transformed = beginPathTransform(vg, path, transform)
+    tracePath(vg, path)
+    nvgLineJoin(vg, NVG_ROUND)
+    nvgLineCap(vg, NVG_ROUND)
     nvgStrokeColor(vg, color(strokeColor, alpha))
     nvgStrokeWidth(vg, width)
     nvgStroke(vg)
+    endPathTransform(vg, transformed)
 end
 
-local function fillPath(vg, points, smooth, fillColor, alpha)
-    if smooth then traceSmoothClosed(vg, points) else tracePolyline(vg, points, true) end
+local function fillPath(vg, path, fillColor, alpha, transform)
+    local transformed = beginPathTransform(vg, path, transform)
+    tracePath(vg, path)
     nvgFillColor(vg, color(fillColor, alpha))
     nvgFill(vg)
+    endPathTransform(vg, transformed)
 end
 
-local function buildRectVertices(x, y, width, height, seed, jitter)
-    local base = {
-        point(x, y), point(x + width, y), point(x + width, y + height), point(x, y + height),
+local function fixedOffset(seed, index, magnitude)
+    local angle = noise(seed, index) * math.pi
+    return point(math.cos(angle) * magnitude, math.sin(angle) * magnitude)
+end
+
+local function secondaryTransform(style, seed)
+    local offset = clamp(style.secondaryStrokeOffset or .45, .3, .6)
+    local translation = fixedOffset(seed, 91, offset)
+    local rotationMax = style.secondaryStrokeRotationMax or 0
+    local rotation = 0
+    if rotationMax > 0 then
+        rotationMax = clamp(rotationMax, .1, .25)
+        rotation = math.rad(noise(seed, 92) * rotationMax)
+    end
+    return {
+        offsetX = translation.x,
+        offsetY = translation.y,
+        rotation = rotation,
     }
-    for index, value in ipairs(base) do
-        value.x = value.x + noise(seed, index * 2 - 1) * jitter
-        value.y = value.y + noise(seed, index * 2) * jitter
-    end
-    return base
 end
 
-local function roundedRectVertices(x, y, width, height, radius, seed, jitter)
-    radius = clamp(radius or 0, 0, math.min(width, height) * .5)
-    local centers = {
-        { x + radius, y + radius, math.pi, math.pi * 1.5 },
-        { x + width - radius, y + radius, math.pi * 1.5, math.pi * 2 },
-        { x + width - radius, y + height - radius, 0, math.pi * .5 },
-        { x + radius, y + height - radius, math.pi * .5, math.pi },
-    }
-    local result, sample = {}, 0
-    for _, corner in ipairs(centers) do
-        for step = 0, 3 do
-            sample = sample + 1
-            local angle = corner[3] + (corner[4] - corner[3]) * step / 3
-            local radialOffset = noise(seed, sample) * jitter
-            result[#result + 1] = point(
-                corner[1] + math.cos(angle) * (radius + radialOffset),
-                corner[2] + math.sin(angle) * (radius + radialOffset))
-        end
-    end
-    return result
-end
-
-local function ellipseVertices(centerX, centerY, radiusX, radiusY, seed, jitter)
-    local result = {}
-    for index = 1, 20 do
-        local angle = (index - 1) * math.pi * 2 / 20
-        local radialOffset = noise(seed, index) * jitter
-        result[index] = point(
-            centerX + math.cos(angle) * (radiusX + radialOffset),
-            centerY + math.sin(angle) * (radiusY + radialOffset))
-    end
-    return result
+local function fillTransform(style, seed)
+    if (style.fillOffsetMax or 0) <= 0 then return nil end
+    local offset = fixedOffset(seed, 81, clamp(style.fillOffsetMax, .5, 1))
+    return { offsetX = offset.x, offsetY = offset.y, rotation = 0 }
 end
 
 function SketchDrawing.New(styleOverrides)
@@ -256,33 +269,37 @@ function SketchDrawing:_geometry(key, builder)
     return geometry
 end
 
+function SketchDrawing:_shapeGeometry(key, levelId, objectId, builder)
+    return self:_geometry(key, function(seed)
+        return {
+            main = builder(),
+            secondaryTransform = secondaryTransform(
+                self.style, hashParts(self.style.version, levelId, objectId, "object")),
+            fillTransform = fillTransform(self.style, seed),
+        }
+    end)
+end
+
 function SketchDrawing:_strokePair(vg, geometry, strokeColor, width, options)
     options = options or {}
-    strokePath(vg, geometry.main, options.closed, options.smooth, strokeColor, width,
+    strokePath(vg, geometry.main, strokeColor, width,
         options.strokeAlpha or self.style.mainStrokeAlpha)
-    if options.secondary ~= false and self.style.secondaryStrokeEnabled and geometry.secondary then
-        strokePath(vg, geometry.secondary, options.closed, options.smooth, strokeColor,
-            width * self.style.secondaryStrokeWidthScale, self.style.secondaryStrokeAlpha)
+    if options.secondary ~= false and self.style.secondaryStrokeEnabled and geometry.secondaryTransform then
+        strokePath(vg, geometry.main, strokeColor,
+            width * self.style.secondaryStrokeWidthScale,
+            self.style.secondaryStrokeAlpha, geometry.secondaryTransform)
     end
 end
 
-function SketchDrawing:DrawFill(vg, points, fillColor, alpha, smooth)
-    fillPath(vg, points, smooth == true, fillColor, alpha)
+function SketchDrawing:DrawFill(vg, points, fillColor, alpha)
+    fillPath(vg, polylinePath(points, true), fillColor, alpha)
 end
 
 function SketchDrawing:DrawLine(vg, levelId, objectId, primitiveType,
         x1, y1, x2, y2, strokeColor, width, options)
-    options = options or {}
-    local amplitude = options.jitter or self.style.lineJitter
-    local key = self:_key(levelId, objectId, primitiveType, x1, y1, x2, y2, amplitude)
-    local geometry = self:_geometry(key, function(seed)
-        local offsetAngle = noise(seed, 91) * math.pi
-        local offset = self.style.secondaryStrokeOffset
-        return {
-            main = buildLinePoints(x1, y1, x2, y2, seed, amplitude),
-            secondary = buildLinePoints(x1, y1, x2, y2, hashParts(seed, "secondary"), amplitude,
-                math.cos(offsetAngle) * offset, math.sin(offsetAngle) * offset),
-        }
+    local key = self:_key(levelId, objectId, primitiveType, x1, y1, x2, y2)
+    local geometry = self:_shapeGeometry(key, levelId, objectId, function()
+        return polylinePath({ point(x1, y1), point(x2, y2) }, false)
     end)
     self:_strokePair(vg, geometry, strokeColor, width, options)
 end
@@ -295,103 +312,66 @@ function SketchDrawing:DrawPolyline(vg, levelId, objectId, primitiveType,
         signature[#signature + 1] = geometryNumber(value.x)
         signature[#signature + 1] = geometryNumber(value.y)
     end
-    local amplitude = options.jitter or self.style.lineJitter
     local key = table.concat({ self.style.version, levelId, objectId, primitiveType,
-        options.closed and "closed" or "open", geometryNumber(amplitude), table.concat(signature, ",") }, "|")
-    local geometry = self:_geometry(key, function(seed)
-        local offsetAngle = noise(seed, 91) * math.pi
-        local offset = self.style.secondaryStrokeOffset
-        return {
-            main = buildPolylinePoints(vertices, seed, amplitude, options.closed),
-            secondary = buildPolylinePoints(vertices, hashParts(seed, "secondary"), amplitude,
-                options.closed, math.cos(offsetAngle) * offset, math.sin(offsetAngle) * offset),
-        }
+        options.closed and "closed" or "open", table.concat(signature, ",") }, "|")
+    local geometry = self:_shapeGeometry(key, levelId, objectId, function()
+        return polylinePath(vertices, options.closed)
     end)
     self:_strokePair(vg, geometry, strokeColor, width, options)
 end
 
 local function drawFilledShape(self, vg, geometry, fillColor, strokeColor, width, options)
     options = options or {}
+    if fillColor and self.style.fillOverlayAlpha > 0 and geometry.fillTransform then
+        fillPath(vg, geometry.main, fillColor, self.style.fillOverlayAlpha, geometry.fillTransform)
+    end
+
+    -- Fill and the primary outline share this exact NanoVG path. The path is
+    -- traced once, so their corners and closure cannot diverge.
+    tracePath(vg, geometry.main)
     if fillColor then
-        fillPath(vg, geometry.main, options.smooth, fillColor, options.fillAlpha)
-        if self.style.fillOverlayAlpha > 0 and geometry.fillOffset then
-            nvgSave(vg)
-            nvgTranslate(vg, geometry.fillOffset.x, geometry.fillOffset.y)
-            fillPath(vg, geometry.main, options.smooth, fillColor, self.style.fillOverlayAlpha)
-            nvgRestore(vg)
-        end
+        nvgFillColor(vg, color(fillColor, options.fillAlpha))
+        nvgFill(vg)
     end
     if strokeColor and width and width > 0 then
-        self:_strokePair(vg, geometry, strokeColor, width, options)
+        nvgLineJoin(vg, NVG_ROUND)
+        nvgLineCap(vg, NVG_ROUND)
+        nvgStrokeColor(vg, color(strokeColor,
+            options.strokeAlpha or self.style.mainStrokeAlpha))
+        nvgStrokeWidth(vg, width)
+        nvgStroke(vg)
+        if options.secondary ~= false and self.style.secondaryStrokeEnabled and geometry.secondaryTransform then
+            strokePath(vg, geometry.main, strokeColor,
+                width * self.style.secondaryStrokeWidthScale,
+                self.style.secondaryStrokeAlpha, geometry.secondaryTransform)
+        end
     end
 end
 
 function SketchDrawing:DrawRect(vg, levelId, objectId, primitiveType,
         x, y, width, height, fillColor, strokeColor, strokeWidth, options)
-    options = options or {}
-    local jitter = options.jitter or self.style.largeShapeJitter
-    local key = self:_key(levelId, objectId, primitiveType, x, y, width, height, jitter)
-    local geometry = self:_geometry(key, function(seed)
-        local mainVertices = buildRectVertices(x, y, width, height, seed, jitter)
-        local secondaryVertices = buildRectVertices(x, y, width, height,
-            hashParts(seed, "secondary"), jitter)
-        local angle = noise(seed, 77) * math.pi
-        return {
-            main = buildPolylinePoints(mainVertices, seed, jitter * .55, true),
-            secondary = buildPolylinePoints(secondaryVertices, hashParts(seed, "secondary-line"),
-                jitter * .55, true, math.cos(angle) * self.style.secondaryStrokeOffset,
-                math.sin(angle) * self.style.secondaryStrokeOffset),
-            fillOffset = point(noise(seed, 81) * self.style.fillOffsetMax,
-                noise(seed, 82) * self.style.fillOffsetMax),
-        }
+    local key = self:_key(levelId, objectId, primitiveType, x, y, width, height)
+    local geometry = self:_shapeGeometry(key, levelId, objectId, function()
+        return rectPath(x, y, width, height)
     end)
-    options.closed = true
     drawFilledShape(self, vg, geometry, fillColor, strokeColor, strokeWidth, options)
 end
 
 function SketchDrawing:DrawRoundedRect(vg, levelId, objectId, primitiveType,
         x, y, width, height, radius, fillColor, strokeColor, strokeWidth, options)
-    options = options or {}
-    local jitter = options.jitter or self.style.largeShapeJitter
-    local key = self:_key(levelId, objectId, primitiveType, x, y, width, height, radius, jitter)
-    local geometry = self:_geometry(key, function(seed)
-        local angle = noise(seed, 77) * math.pi
-        local dx = math.cos(angle) * self.style.secondaryStrokeOffset
-        local dy = math.sin(angle) * self.style.secondaryStrokeOffset
-        local secondary = roundedRectVertices(x, y, width, height, radius,
-            hashParts(seed, "secondary"), jitter)
-        for _, value in ipairs(secondary) do value.x, value.y = value.x + dx, value.y + dy end
-        return {
-            main = roundedRectVertices(x, y, width, height, radius, seed, jitter),
-            secondary = secondary,
-            fillOffset = point(noise(seed, 81) * self.style.fillOffsetMax,
-                noise(seed, 82) * self.style.fillOffsetMax),
-        }
+    local key = self:_key(levelId, objectId, primitiveType, x, y, width, height, radius)
+    local geometry = self:_shapeGeometry(key, levelId, objectId, function()
+        return roundedRectPath(x, y, width, height, radius)
     end)
-    options.closed, options.smooth = true, true
     drawFilledShape(self, vg, geometry, fillColor, strokeColor, strokeWidth, options)
 end
 
 function SketchDrawing:DrawEllipse(vg, levelId, objectId, primitiveType,
         centerX, centerY, radiusX, radiusY, fillColor, strokeColor, strokeWidth, options)
-    options = options or {}
-    local jitter = options.jitter or self.style.circleRadiusJitter
-    local key = self:_key(levelId, objectId, primitiveType, centerX, centerY, radiusX, radiusY, jitter)
-    local geometry = self:_geometry(key, function(seed)
-        local angle = noise(seed, 77) * math.pi
-        local dx = math.cos(angle) * self.style.secondaryStrokeOffset
-        local dy = math.sin(angle) * self.style.secondaryStrokeOffset
-        local secondary = ellipseVertices(centerX, centerY, radiusX, radiusY,
-            hashParts(seed, "secondary"), jitter)
-        for _, value in ipairs(secondary) do value.x, value.y = value.x + dx, value.y + dy end
-        return {
-            main = ellipseVertices(centerX, centerY, radiusX, radiusY, seed, jitter),
-            secondary = secondary,
-            fillOffset = point(noise(seed, 81) * self.style.fillOffsetMax,
-                noise(seed, 82) * self.style.fillOffsetMax),
-        }
+    local key = self:_key(levelId, objectId, primitiveType, centerX, centerY, radiusX, radiusY)
+    local geometry = self:_shapeGeometry(key, levelId, objectId, function()
+        return ellipsePath(centerX, centerY, radiusX, radiusY)
     end)
-    options.closed, options.smooth = true, true
     drawFilledShape(self, vg, geometry, fillColor, strokeColor, strokeWidth, options)
 end
 
@@ -408,18 +388,29 @@ function SketchDrawing:DrawArrow(vg, levelId, objectId, primitiveType,
     local angle = math.atan(dy, dx)
     local length = math.sqrt(dx * dx + dy * dy)
     local headLength = options.headLength or math.min(12, math.max(5, length * .28))
-    local seed = hashParts(levelId, objectId, primitiveType, self.style.version)
-    local leftLength = headLength * (1 + noise(seed, 1) * .05)
-    local rightLength = headLength * (1 + noise(seed, 2) * .05)
     local spread = options.headSpread or .55
-    self:DrawLine(vg, levelId, objectId, primitiveType .. ":shaft",
-        x1, y1, x2, y2, strokeColor, width, options)
-    self:DrawLine(vg, levelId, objectId, primitiveType .. ":head-left",
-        x2, y2, x2 - math.cos(angle - spread) * leftLength,
-        y2 - math.sin(angle - spread) * leftLength, strokeColor, width, options)
-    self:DrawLine(vg, levelId, objectId, primitiveType .. ":head-right",
-        x2, y2, x2 - math.cos(angle + spread) * rightLength,
-        y2 - math.sin(angle + spread) * rightLength, strokeColor, width, options)
+    local leftX = x2 - math.cos(angle - spread) * headLength
+    local leftY = y2 - math.sin(angle - spread) * headLength
+    local rightX = x2 - math.cos(angle + spread) * headLength
+    local rightY = y2 - math.sin(angle + spread) * headLength
+    local key = self:_key(levelId, objectId, primitiveType,
+        x1, y1, x2, y2, headLength, spread)
+    local geometry = self:_shapeGeometry(key, levelId, objectId, function()
+        return commandPath({
+            { "M", x1, y1 }, { "L", x2, y2 },
+            { "M", leftX, leftY }, { "L", x2, y2 }, { "L", rightX, rightY },
+        }, (x1 + x2) * .5, (y1 + y2) * .5)
+    end)
+    self:_strokePair(vg, geometry, strokeColor, width, options)
+end
+
+function SketchDrawing:GetShapeOffset(levelId, objectId, primitiveType, minimum, maximum)
+    minimum, maximum = minimum or .3, maximum or .6
+    local key = table.concat({ self.style.version, levelId, objectId, primitiveType, "shape-offset" }, "|")
+    return self:_geometry(key, function(seed)
+        local progress = (noise(seed, 1) + 1) * .5
+        return fixedOffset(seed, 2, minimum + (maximum - minimum) * progress)
+    end)
 end
 
 function SketchDrawing:GetTextMark(levelId, objectId, primitiveType)
