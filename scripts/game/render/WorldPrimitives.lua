@@ -121,11 +121,17 @@ function M.Install(Renderer, COLORS, color, tint)
             self:FillRect(0, 0, frame.logicalWidth, 94, COLORS.panel, 250)
             self:FillRect(0, 92, frame.logicalWidth, 2, COLORS.greenLight, 230)
         end
+        -- The title plaque intentionally extends 18 units above the authored
+        -- stage. Let only this decoration use the viewport padding, then
+        -- restore the main-stage scissor for all gameplay content.
+        nvgSave(self.vg)
+        nvgResetScissor(self.vg)
         if imageReady(self.images.ui and self.images.ui.titlePlaque) then
             self:ImageRect(self.images.ui.titlePlaque, frame.workspaceX - 55, -18, 448, 112, 1)
         else
             self:RoundedRect(frame.workspaceX - 55, -18, 448, 112, 20, COLORS.darkPrimary)
         end
+        nvgRestore(self.vg)
         self:RoundedRect(frame.newtonX + 6, frame.newtonY + 6, frame.newtonWidth, frame.newtonHeight, 7, COLORS.floor, nil, nil, 20)
         self:RoundedRect(frame.playfieldX + 7, frame.playfieldY + 9, frame.playfieldWidth, frame.playfieldHeight, 7, COLORS.floor, nil, nil, 20)
         if imageReady(self.images.ui and self.images.ui.gameplayFrame) then
