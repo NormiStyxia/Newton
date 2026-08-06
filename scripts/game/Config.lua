@@ -26,9 +26,9 @@ local LEVEL_SCORE_PROFILES = {
     intervention_standard = {
         metric = "ruleDeployCount",
         tiers = {
-            { score = 100, maxInterventions = 1, title = "精准实验", description = "以不超过 1 次有效干预完成观测" },
-            { score = 80, maxInterventions = 3, title = "有效实验", description = "以不超过 3 次有效干预完成观测" },
-            { score = 60, title = "观测成立", description = "让苹果稳定进入观察皿" },
+            { score = 100, maxInterventions = 1, title = "精准实验", description = "仅使用 1 次有效干预完成观测" },
+            { score = 80, maxInterventions = 3, title = "有效实验", description = "不超过 3 次有效干预完成观测" },
+            { score = 60, title = "观测成立", description = "使苹果稳定进入观察皿" },
         },
     },
 }
@@ -40,7 +40,7 @@ local LEVEL_META = {
     level_01 = {
         objective = "让苹果进入观察皿",
         observation = "先观察抛物线，再谈万有引力。",
-        description = "校准发射方向与力度，让第一颗苹果稳定落入观察皿。",
+        description = "校准发射方向与力度，使苹果稳定落入观察皿。",
     },
     level_02 = {
         objective = "用轻羽引力越过矮台",

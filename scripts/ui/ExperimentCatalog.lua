@@ -94,7 +94,7 @@ function M.ResolveLayout(frame)
     local left = { x = x, y = y, w = leftWidth, h = height }
     local center = { x = left.x + left.w + gap, y = y, w = centerWidth, h = height }
     local right = { x = center.x + center.w + gap, y = y, w = rightWidth, h = height }
-    local actionGap = 30
+    local actionGap = 14
     local actionY = right.y + right.h - 100
     local actionWidth = (right.w - 42 - actionGap) * 0.5
     local briefY = right.y + 72
@@ -124,7 +124,7 @@ local function drawPaperPanel(painter, rect)
     local skin = painter.skins and painter.skins.catalogPanel
     if skin then
         painter:NineSlice(skin, rect.x, rect.y, rect.w, rect.h,
-            { left = 30, right = 30, top = 30, bottom = 30 }, 255)
+            { left = 60, right = 60, top = 60, bottom = 60 }, 255)
     else
         painter:StrokeRect(rect.x, rect.y, rect.w, rect.h, COLORS.border, 2)
         painter:StrokeRect(rect.x + 9, rect.y + 9, rect.w - 18, rect.h - 18, COLORS.brassSoft, 1, 170)
@@ -132,10 +132,10 @@ local function drawPaperPanel(painter, rect)
 end
 
 local function drawSectionTitle(painter, x, y, title)
-    painter:Text(x, y, "✦", 16, COLORS.brass, nil, "maker-display")
-    painter:Text(x + 24, y - 2, title, 19, COLORS.ink, nil, "maker-display")
-    local titleWidth = textWidth(painter, title, "maker-display", 19)
-    painter:Text(x + 31 + titleWidth, y, "✦", 16, COLORS.brass, nil, "maker-display")
+    painter:Text(x, y, "✦", 19, COLORS.brass, nil, "maker-display")
+    painter:Text(x + 28, y - 3, title, 24, COLORS.ink, nil, "maker-display")
+    local titleWidth = textWidth(painter, title, "maker-display", 24)
+    painter:Text(x + 36 + titleWidth, y, "✦", 19, COLORS.brass, nil, "maker-display")
 end
 
 local function drawDivider(painter, x, y, w, alpha)
@@ -172,8 +172,8 @@ local function drawCatalogDecor(painter, frame)
 
     -- The supplied background already contains the plaque, ruler and botanical
     -- ornaments. Only live catalog copy is painted on top of that artwork.
-    painter:Text(artOffsetX + 116, 26, "实验目录", 36, COLORS.paperLight, nil, "maker-display")
-    painter:Text(artOffsetX + 118, 68, "EXPERIMENT CATALOG", 12, COLORS.brassLight, nil, "report-green")
+    painter:Text(artOffsetX + 116, 22, "实验目录", 40, COLORS.paperLight, nil, "maker-display")
+    painter:Text(artOffsetX + 118, 70, "EXPERIMENT CATALOG", 14, COLORS.brassLight, nil, "report-green")
     painter:RoundedRect(frame.logicalWidth - 310, 27, 264, 46, 8, { 247, 239, 211, 210 }, COLORS.brassSoft, 2)
     painter:Text(frame.logicalWidth - 178, 39, "牛顿实验档案 · 01—09", 14, COLORS.ink,
         NVG_ALIGN_RIGHT + NVG_ALIGN_TOP, "maker-display")
@@ -238,14 +238,14 @@ local function drawPreviewObject(painter, object, originX, originY, scale)
 end
 
 local function drawPreview(painter, rect, level)
-    drawSectionTitle(painter, rect.x + 22, rect.y + 20, "平面预览")
-    painter:Text(rect.x + rect.w - 22, rect.y + 23, "STATIC PLAN · 1400 × 700", 10, COLORS.inkMuted,
+    drawSectionTitle(painter, rect.x + 22, rect.y + 20, "实验装置概览")
+    painter:Text(rect.x + rect.w - 22, rect.y + 23, "STATIC PLAN · 1400 × 700", 14, COLORS.inkMuted,
         NVG_ALIGN_RIGHT + NVG_ALIGN_TOP, "report-green")
     local preview = { x = rect.x + 24, y = rect.y + 62, w = rect.w - 48, h = rect.h - 126 }
     painter:FillRect(preview.x, preview.y, preview.w, preview.h, { 252, 243, 215, 255 })
     painter:StrokeRect(preview.x, preview.y, preview.w, preview.h, COLORS.brassSoft, 1)
     if not level then
-        painter:Text(preview.x + preview.w * .5, preview.y + preview.h * .5, "关卡数据不可用", 18, COLORS.button,
+        painter:Text(preview.x + preview.w * .5, preview.y + preview.h * .5, "实验数据不可用", 22, COLORS.button,
             NVG_ALIGN_CENTER + NVG_ALIGN_MIDDLE, "maker-display")
         return
     end
@@ -262,9 +262,9 @@ local function drawPreview(painter, rect, level)
     for gridY = preview.y + 12, preview.y + preview.h - 12, 24 do
         nvgBeginPath(painter.vg); nvgMoveTo(painter.vg, preview.x, gridY); nvgLineTo(painter.vg, preview.x + preview.w, gridY); nvgStroke(painter.vg)
     end
-    painter:Text(preview.x + 34, preview.y + 28, "s = ½ gt²", 14, COLORS.inkMuted, nil, "report-green", 110)
-    painter:Text(preview.x + 34, preview.y + 51, "v = v₀ + gt", 14, COLORS.inkMuted, nil, "report-green", 110)
-    painter:Text(preview.x + preview.w - 160, preview.y + preview.h - 56, "F = ma", 17, COLORS.inkMuted, nil, "report-green", 110)
+    painter:Text(preview.x + 34, preview.y + 28, "s = ½ gt²", 17, COLORS.inkMuted, nil, "report-green", 110)
+    painter:Text(preview.x + 34, preview.y + 55, "v = v₀ + gt", 17, COLORS.inkMuted, nil, "report-green", 110)
+    painter:Text(preview.x + preview.w - 160, preview.y + preview.h - 60, "F = ma", 20, COLORS.inkMuted, nil, "report-green", 110)
 
     local padding = 24
     local scale = math.min((preview.w - padding * 2) / level.playfield.width,
@@ -286,7 +286,7 @@ local function drawPreview(painter, rect, level)
     nvgBeginPath(painter.vg); nvgCircle(painter.vg, compassX, compassY, 18); nvgStroke(painter.vg)
     nvgBeginPath(painter.vg); nvgMoveTo(painter.vg, compassX, compassY - 25); nvgLineTo(painter.vg, compassX, compassY + 25)
     nvgMoveTo(painter.vg, compassX - 25, compassY); nvgLineTo(painter.vg, compassX + 25, compassY); nvgStroke(painter.vg)
-    painter:Text(compassX, compassY - 34, "N", 11, COLORS.ink, NVG_ALIGN_CENTER + NVG_ALIGN_TOP, "report-green")
+    painter:Text(compassX, compassY - 36, "N", 14, COLORS.ink, NVG_ALIGN_CENTER + NVG_ALIGN_TOP, "report-green")
     nvgRestore(painter.vg)
 
     local legend = {
@@ -295,10 +295,10 @@ local function drawPreview(painter, rect, level)
     }
     local legendX, legendY = rect.x + 28, rect.y + rect.h - 40
     for _, entry in ipairs(legend) do
-        painter:FillRect(legendX, legendY + 3, 10, 10, entry[2])
-        painter:StrokeRect(legendX, legendY + 3, 10, 10, COLORS.border, 1, 150)
-        painter:Text(legendX + 15, legendY, entry[1], 11, COLORS.inkMuted, nil, "maker-body")
-        legendX = legendX + 15 + textWidth(painter, entry[1], "maker-body", 11) + 20
+        painter:FillRect(legendX, legendY + 4, 12, 12, entry[2])
+        painter:StrokeRect(legendX, legendY + 4, 12, 12, COLORS.border, 1, 150)
+        painter:Text(legendX + 18, legendY, entry[1], 16, COLORS.inkMuted, nil, "maker-body")
+        legendX = legendX + 18 + textWidth(painter, entry[1], "maker-body", 16) + 20
     end
 end
 
@@ -338,33 +338,33 @@ local function drawBrief(painter, layout, level, state, rules)
     nvgSave(painter.vg)
     nvgScissor(painter.vg, viewport.x, viewport.y, viewport.w, viewport.h)
     if level then
-        painter:Text(left, y, ellipsize(painter, level.name or "未命名实验", width, "maker-display", 27),
-            27, COLORS.ink, nil, "maker-display")
-        y = y + 44
+        painter:Text(left, y, ellipsize(painter, level.name or "未命名实验", width, "maker-display", 32),
+            32, COLORS.ink, nil, "maker-display")
+        y = y + 50
         drawDivider(painter, left, y - 7, width, 100)
-        painter:Text(left, y, "实验目标", 13, COLORS.brass, nil, "report-green")
-        y = y + 22 + drawWrapped(painter, left, y + 20, width, level.objective or "", 17, COLORS.ink, 24, "maker-display")
-        y = y + 10
-        painter:Text(left, y, "简短说明", 13, COLORS.brass, nil, "report-green")
-        y = y + 22 + drawWrapped(painter, left, y + 20, width, level.description or "暂无说明", 14, COLORS.inkMuted, 21)
-        y = y + 10
-        painter:Text(left, y, "可使用的规则牌", 13, COLORS.brass, nil, "report-green")
-        local cards = enabledCardNames(level, rules)
-        local cardText = #cards > 0 and table.concat(cards, " · ") or "无需规则牌"
-        y = y + 22 + drawWrapped(painter, left, y + 20, width, cardText, 14, COLORS.ink, 21)
+        painter:Text(left, y, "实验目的", 17, COLORS.brass, nil, "report-green")
+        y = y + 26 + drawWrapped(painter, left, y + 25, width, level.objective or "", 21, COLORS.ink, 29, "maker-display")
         y = y + 12
-        painter:Text(left, y, "评级标准", 13, COLORS.brass, nil, "report-green")
-        y = y + 24
+        painter:Text(left, y, "实验说明", 17, COLORS.brass, nil, "report-green")
+        y = y + 26 + drawWrapped(painter, left, y + 25, width, level.description or "暂无说明", 18, COLORS.inkMuted, 26)
+        y = y + 12
+        painter:Text(left, y, "可用规则", 17, COLORS.brass, nil, "report-green")
+        local cards = enabledCardNames(level, rules)
+        local cardText = #cards > 0 and table.concat(cards, " · ") or "无需规则干预"
+        y = y + 26 + drawWrapped(painter, left, y + 25, width, cardText, 18, COLORS.ink, 26)
+        y = y + 14
+        painter:Text(left, y, "评定标准", 17, COLORS.brass, nil, "report-green")
+        y = y + 30
         for _, tier in ipairs(level.scoring and level.scoring.tiers or {}) do
-            drawScoreBadge(painter, left + 16, y + 12, tonumber(tier.score) or 0)
-            painter:Text(left + 42, y, string.format("%d · %s", tier.score, tier.title), 16, COLORS.ink, nil, "maker-display")
-            y = y + 23
-            y = y + drawWrapped(painter, left + 42, y, width - 42, tier.description or "", 13, COLORS.inkMuted, 19)
-            y = y + 12
-            drawDivider(painter, left + 42, y - 5, width - 42, 72)
+            drawScoreBadge(painter, left + 18, y + 14, tonumber(tier.score) or 0)
+            painter:Text(left + 46, y, string.format("%d · %s", tier.score, tier.title), 20, COLORS.ink, nil, "maker-display")
+            y = y + 29
+            y = y + drawWrapped(painter, left + 46, y, width - 46, tier.description or "", 17, COLORS.inkMuted, 24)
+            y = y + 14
+            drawDivider(painter, left + 46, y - 5, width - 46, 72)
         end
     else
-        painter:Text(left, y, "关卡数据读取失败", 18, COLORS.button, nil, "maker-display")
+        painter:Text(left, y, "实验数据读取失败", 22, COLORS.button, nil, "maker-display")
         y = y + 40
     end
     nvgRestore(painter.vg)
@@ -395,7 +395,7 @@ local function drawButton(painter, rect, label, primary, hovered, enabled)
         painter:RoundedRect(rect.x, rect.y, rect.w, rect.h, 4, fill, primary and COLORS.brass or COLORS.border, 2)
         painter:StrokeRect(rect.x + 5, rect.y + 5, rect.w - 10, rect.h - 10, primary and COLORS.brassSoft or COLORS.borderSoft, 1, 180)
     end
-    painter:Text(rect.x + rect.w * .5, rect.y + rect.h * .5, label, 21, text,
+    painter:Text(rect.x + rect.w * .5, rect.y + rect.h * .5, label, 23, text,
         NVG_ALIGN_CENTER + NVG_ALIGN_MIDDLE, "maker-display")
     if enabled and not skin then
         painter:Text(rect.x + rect.w - 14, rect.y + rect.h * .5, primary and "✦" or "❧", 11,
@@ -430,7 +430,7 @@ function M.Install(context)
     function RequestStartLevel(index)
         index = clamp(tonumber(index) or catalogState_.selectedIndex or 1, 1, CONFIG.levelCount)
         if not catalogState_.levels[index] then
-            catalogState_.toast = "关卡数据不可用"
+            catalogState_.toast = "实验数据不可用"
             catalogState_.toastTime = 2.4
             return false
         end
@@ -505,9 +505,9 @@ function M.Install(context)
         local painter, state = painter_, catalogState_
         drawCatalogDecor(painter, frame_)
         if frame_.physicalWidth < frame_.physicalHeight then
-            painter:Text(frame_.logicalWidth * .5, frame_.logicalHeight * .5 - 10, "请使用横屏进入实验目录", 28,
+            painter:Text(frame_.logicalWidth * .5, frame_.logicalHeight * .5 - 10, "请使用横屏进入实验目录", 32,
                 COLORS.ink, NVG_ALIGN_CENTER + NVG_ALIGN_MIDDLE, "maker-display")
-            painter:Text(frame_.logicalWidth * .5, frame_.logicalHeight * .5 + 34, "LANDSCAPE ORIENTATION REQUIRED", 11,
+            painter:Text(frame_.logicalWidth * .5, frame_.logicalHeight * .5 + 38, "LANDSCAPE ORIENTATION REQUIRED", 14,
                 COLORS.inkMuted, NVG_ALIGN_CENTER + NVG_ALIGN_MIDDLE, "report-green")
             return
         end
@@ -517,8 +517,8 @@ function M.Install(context)
         drawPaperPanel(painter, layout.center)
         drawPaperPanel(painter, layout.right)
         drawCatalogForegroundDecor(painter, frame_)
-        drawSectionTitle(painter, layout.left.x + 20, layout.left.y + 20, "关卡目录")
-        drawSectionTitle(painter, layout.right.x + 20, layout.right.y + 20, "实验简报")
+        drawSectionTitle(painter, layout.left.x + 20, layout.left.y + 20, "实验清单")
+        drawSectionTitle(painter, layout.right.x + 20, layout.right.y + 20, "预习报告")
 
         local pointerX, pointerY = DesignPointer()
         local pointer = { x = pointerX, y = pointerY }
@@ -533,12 +533,12 @@ function M.Install(context)
             elseif hovered then
                 painter:FillRect(item.x + 3, item.y + 3, item.w - 6, item.h - 6, COLORS.selected, 84)
             end
-            painter:Text(item.x + 13, item.y + item.h * .5, string.format("实验 %02d", index), 14,
+            painter:Text(item.x + 13, item.y + item.h * .5, string.format("实验 %02d", index), 18,
                 selected and COLORS.ink or COLORS.inkMuted, NVG_ALIGN_LEFT + NVG_ALIGN_MIDDLE, "report-green")
             local name = level and level.name or "数据不可用"
             local nameX = item.x + 92
             painter:Text(nameX, item.y + item.h * .5,
-                ellipsize(painter, name, item.x + item.w - nameX - 10, "maker-display", 17), 17,
+                ellipsize(painter, name, item.x + item.w - nameX - 10, "maker-display", 21), 21,
                 level and COLORS.ink or COLORS.button, NVG_ALIGN_LEFT + NVG_ALIGN_MIDDLE, "maker-display")
             drawDottedDivider(painter, item.x + 12, item.y + item.h - 3, item.w - 24)
         end
@@ -548,14 +548,14 @@ function M.Install(context)
         drawBrief(painter, layout, level, state, Rules)
         local startEnabled = level ~= nil
         drawButton(painter, layout.startButton, "开始实验", true, pointIn(layout.startButton, pointer.x, pointer.y), startEnabled)
-        drawButton(painter, layout.workshopButton, "关卡工坊", false, pointIn(layout.workshopButton, pointer.x, pointer.y), true)
+        drawButton(painter, layout.workshopButton, "实验工坊", false, pointIn(layout.workshopButton, pointer.x, pointer.y), true)
 
         if state.toast then
-            local width = math.max(230, textWidth(painter, state.toast, "maker-display", 15) + 46)
-            local toast = { x = frame_.logicalWidth * .5 - width * .5, y = 104, w = width, h = 42 }
+            local width = math.max(250, textWidth(painter, state.toast, "maker-display", 18) + 50)
+            local toast = { x = frame_.logicalWidth * .5 - width * .5, y = 104, w = width, h = 46 }
             painter:FillRect(toast.x, toast.y, toast.w, toast.h, COLORS.overlay, 245)
             painter:StrokeRect(toast.x, toast.y, toast.w, toast.h, COLORS.brass, 2)
-            painter:Text(toast.x + toast.w * .5, toast.y + toast.h * .5, state.toast, 15, COLORS.paperLight,
+            painter:Text(toast.x + toast.w * .5, toast.y + toast.h * .5, state.toast, 18, COLORS.paperLight,
                 NVG_ALIGN_CENTER + NVG_ALIGN_MIDDLE, "maker-display")
         end
     end
