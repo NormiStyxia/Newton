@@ -6,18 +6,13 @@ local PANEL_VISUAL_SCALE = 1.06
 local FONT = "maker-body"
 local NOMI_FONT = "nomi-font"
 local AVATAR_SIZE = 68
-local CONVERSATION_LEFT_INSET = 20
-local CONVERSATION_RIGHT_INSET = 14
-local CONVERSATION_TOP_RATIO = 0.132
-local CONVERSATION_BOTTOM_RATIO = 0.836
-local MESSAGE_ROW_LEFT_PADDING = 18
-local AVATAR_COLUMN_WIDTH = 64
-local BUBBLE_COLUMN_GAP = 8
-local AVATAR_CENTER_Y_OFFSET = AVATAR_SIZE * 0.5
-local SCROLLBAR_WIDTH = 9
-local SCROLLBAR_RIGHT_INSET = 14
-local SCROLLBAR_BUBBLE_GAP = 14
-local SCROLLBAR_THUMB_SIZE = 28
+local MESSAGE_LEFT_INSET = 40
+local MESSAGE_RIGHT_RATIO = 0.67
+local SCROLLBAR_CENTER_RATIO = 0.75
+local FOOTER_RIGHT_RATIO = 0.82
+local CONTENT_COLUMN_OFFSET = 55
+local AVATAR_CENTER_X_OFFSET = 23
+local AVATAR_CENTER_Y_OFFSET = 25
 local BODY_FONT_SIZE = 19
 local NAME_FONT_SIZE = 16
 local BODY_LINE_HEIGHT = 25
@@ -26,18 +21,8 @@ local BUBBLE_PADDING_TOP = 12
 local BUBBLE_PADDING_BOTTOM = 12
 local NAME_BUBBLE_GAP = 5
 local MESSAGE_GAP = 14
-local FOOTER_TOP_RATIO = 0.852
-local FOOTER_CONTENT_LEFT_RATIO = 0.27
-local FOOTER_CONTENT_RIGHT_RATIO = 0.86
-local FOOTER_TITLE_SIZE = 22
-local FOOTER_PERCENT_SIZE = 29
-local ANGER_TRACK_HEIGHT = 20
-local ANGER_APPLE_SIZE = 28
-local ANGER_FOLLOW_SPEED = 12
-local ANGER_PULSE_DURATION = 0.22
 
 local LAYOUT_CACHE = setmetatable({}, { __mode = "k" })
-local FOOTER_STATE = setmetatable({}, { __mode = "k" })
 
 local function fontForMessage(message)
     if message and message.speaker == "nomi" then
@@ -62,10 +47,9 @@ local COLORS = {
     einsteinStroke = { 126, 119, 148, 255 },
     nomiBubble = { 211, 222, 233, 255 },
     nomiStroke = { 105, 127, 151, 255 },
-    scrollTrack = { 79, 117, 72, 88 },
-    scrollTrackInner = { 190, 211, 157, 82 },
+    track = { 79, 117, 72, 255 },
+    trackInner = { 190, 211, 157, 255 },
     angerFill = { 217, 130, 118, 255 },
-    angerFillHigh = { 187, 73, 67, 255 },
     angerTrack = { 231, 226, 189, 255 },
     history = { 47, 73, 56, 255 },
     historyHover = { 82, 117, 93, 255 },
@@ -112,63 +96,6 @@ local function snapToPixel(value, pixelScale)
     return math.floor(value * pixelScale + 0.5) / pixelScale
 end
 
-local function clamp(value, minimum, maximum)
-    return math.max(minimum, math.min(maximum, value))
-end
-
-local function lerpColor(from, to, progress)
-    return {
-        math.floor(from[1] + (to[1] - from[1]) * progress + 0.5),
-        math.floor(from[2] + (to[2] - from[2]) * progress + 0.5),
-        math.floor(from[3] + (to[3] - from[3]) * progress + 0.5),
-        math.floor((from[4] or 255) + ((to[4] or 255) - (from[4] or 255)) * progress + 0.5),
-    }
-end
-
-local function elapsedSeconds()
-    if GetTime then
-        local clock = GetTime()
-        if clock then return clock:GetElapsedTime() end
-    end
-    return os.clock()
-end
-
-local function updateFooterState(controller, targetProgress)
-    local now = elapsedSeconds()
-    local targetPercent = math.floor(targetProgress * 100 + 0.5)
-    local state = FOOTER_STATE[controller]
-    if not state then
-        state = {
-            displayedProgress = targetProgress,
-            targetProgress = targetProgress,
-            targetPercent = targetPercent,
-            lastTime = now,
-            pulseElapsed = ANGER_PULSE_DURATION,
-        }
-        FOOTER_STATE[controller] = state
-        return state
-    end
-
-    local dt = clamp(now - state.lastTime, 0, 0.1)
-    state.lastTime = now
-    if math.abs(targetProgress - state.targetProgress) > 0.0001 then
-        state.targetProgress = targetProgress
-    end
-    if targetPercent ~= state.targetPercent then
-        state.targetPercent = targetPercent
-        state.pulseElapsed = 0
-    end
-
-    local follow = 1 - math.exp(-ANGER_FOLLOW_SPEED * dt)
-    state.displayedProgress = state.displayedProgress
-        + (state.targetProgress - state.displayedProgress) * follow
-    if math.abs(state.targetProgress - state.displayedProgress) < 0.0005 then
-        state.displayedProgress = state.targetProgress
-    end
-    state.pulseElapsed = math.min(ANGER_PULSE_DURATION, state.pulseElapsed + dt)
-    return state
-end
-
 local function utf8Length(value)
     local length = utf8.len(value)
     return length or #value
@@ -204,7 +131,7 @@ local function wrapText(painter, value, maxWidth, font, size)
 end
 
 local function layoutMessages(painter, messages, viewport)
-    local bubbleWidth = viewport.bubbleW
+    local bubbleWidth = math.max(120, viewport.w - CONTENT_COLUMN_OFFSET)
     local entries = {}
     local cursorY = 6
 
@@ -240,7 +167,7 @@ local function layoutMessages(painter, messages, viewport)
 end
 
 local function cachedLayout(painter, controller, messages, viewport)
-    local widthKey = math.floor(viewport.bubbleW * 1000 + 0.5)
+    local widthKey = math.floor(viewport.w * 1000 + 0.5)
     local messageCount = #messages
     local cache = LAYOUT_CACHE[controller]
     if cache and cache.messages == messages and cache.messageCount == messageCount
@@ -314,26 +241,6 @@ local function buttonRect(rect)
     }
 end
 
-local function conversationGeometry(rect)
-    local viewport = {
-        x = rect.x + CONVERSATION_LEFT_INSET,
-        y = rect.y + rect.h * CONVERSATION_TOP_RATIO,
-        w = rect.w - CONVERSATION_LEFT_INSET - CONVERSATION_RIGHT_INSET,
-        h = rect.h * (CONVERSATION_BOTTOM_RATIO - CONVERSATION_TOP_RATIO),
-    }
-    local track = {
-        x = rect.x + rect.w - SCROLLBAR_RIGHT_INSET - SCROLLBAR_WIDTH,
-        y = viewport.y + 12,
-        w = SCROLLBAR_WIDTH,
-        h = viewport.h - 24,
-    }
-    local avatarLeft = viewport.x + MESSAGE_ROW_LEFT_PADDING
-    viewport.avatarCenterX = avatarLeft + AVATAR_SIZE * 0.5
-    viewport.bubbleX = avatarLeft + AVATAR_COLUMN_WIDTH + BUBBLE_COLUMN_GAP
-    viewport.bubbleW = math.max(80, track.x - SCROLLBAR_BUBBLE_GAP - viewport.bubbleX)
-    return viewport, track
-end
-
 local function drawButtonGlyph(painter, rect, kind)
     local vg = painter.vg
     nvgBeginPath(vg)
@@ -399,9 +306,9 @@ local function drawMessage(painter, controller, entry, index, viewport, scrollOf
     local isEinstein = speaker == "einstein"
     local isNomi = speaker == "nomi"
     local messageFont = entry.font or (isNomi and NOMI_FONT or FONT)
-    local avatarX = snapToPixel(viewport.avatarCenterX + xOffset, pixelScale)
+    local avatarX = snapToPixel(viewport.x + AVATAR_CENTER_X_OFFSET + xOffset, pixelScale)
     local avatarY = snapToPixel(y + AVATAR_CENTER_Y_OFFSET, pixelScale)
-    local bubbleX = snapToPixel(viewport.bubbleX + xOffset, pixelScale)
+    local bubbleX = snapToPixel(viewport.x + CONTENT_COLUMN_OFFSET + xOffset, pixelScale)
     local nameY = y
     local bubbleY = snapToPixel(y + entry.bubbleOffsetY, pixelScale)
     local bubbleWidth = snapToPixel(entry.bubbleW, pixelScale)
@@ -433,11 +340,10 @@ local function drawMessage(painter, controller, entry, index, viewport, scrollOf
     nvgRestore(vg)
 end
 
-local function drawScrollbar(painter, track, thumbY, thumbSize, scrollable)
-    if not scrollable then return end
-    painter:RoundedRect(track.x, track.y, track.w, track.h, track.w * 0.5, COLORS.scrollTrack)
+local function drawScrollbar(painter, track, thumbY, thumbSize)
+    painter:RoundedRect(track.x, track.y, track.w, track.h, track.w * 0.5, COLORS.track, COLORS.dark, 1)
     painter:RoundedRect(track.x + 3, track.y + 3, track.w - 6, track.h - 6,
-        math.max(1, (track.w - 6) * 0.5), COLORS.scrollTrackInner)
+        math.max(1, (track.w - 6) * 0.5), COLORS.trackInner)
     local apple = painter.images.apple
     if apple and apple >= 0 then
         painter:Image(apple, track.x + track.w * 0.5, thumbY + thumbSize * 0.5, thumbSize, thumbSize, 1)
@@ -447,50 +353,27 @@ local function drawScrollbar(painter, track, thumbY, thumbSize, scrollable)
     end
 end
 
-local function drawAngerFooter(painter, rect, model, controller, pixelScale)
-    local anger = clamp(model.anger or 0, 0, model.maxAnger or 0)
-    local targetProgress = model.maxAnger > 0 and anger / model.maxAnger or 0
-    local state = updateFooterState(controller, targetProgress)
-    local progress = clamp(state.displayedProgress, 0, 1)
-    local footerY = rect.y + rect.h * FOOTER_TOP_RATIO
-    local contentLeft = rect.x + rect.w * FOOTER_CONTENT_LEFT_RATIO
-    local contentRight = rect.x + rect.w * FOOTER_CONTENT_RIGHT_RATIO
-    local labelY = footerY + 12
-    local pulseProgress = clamp(state.pulseElapsed / ANGER_PULSE_DURATION, 0, 1)
-    local percentScale = 1 + math.sin(pulseProgress * math.pi) * 0.07
+local function drawFooter(painter, rect, model)
+    local footerY = rect.y + rect.h * 0.858
+    local labelX = rect.x + rect.w * 0.18
+    local right = rect.x + rect.w * FOOTER_RIGHT_RATIO
+    local anger = math.max(0, math.min(model.maxAnger, model.anger))
+    local progress = model.maxAnger > 0 and anger / model.maxAnger or 0
 
-    painter:Text(contentLeft, labelY, "牛顿怒气", FOOTER_TITLE_SIZE, COLORS.dark,
+    painter:Text(labelX, footerY + 14, "牛顿怒气", 15, COLORS.dark,
         NVG_ALIGN_LEFT + NVG_ALIGN_TOP, FONT)
-    painter:Text(contentRight, labelY - 2,
-        string.format("%d%%", math.floor(progress * 100 + 0.5)),
-        FOOTER_PERCENT_SIZE * percentScale, COLORS.unread,
-        NVG_ALIGN_RIGHT + NVG_ALIGN_TOP, FONT)
+    painter:Text(right, footerY + 14, string.format("%d%%", math.floor(progress * 100 + 0.5)), 15,
+        COLORS.unread, NVG_ALIGN_RIGHT + NVG_ALIGN_TOP, FONT)
 
-    local track = {
-        x = contentLeft + ANGER_APPLE_SIZE * 0.5,
-        y = footerY + 54,
-        w = math.max(80, contentRight - contentLeft - ANGER_APPLE_SIZE),
-        h = ANGER_TRACK_HEIGHT,
-    }
-    painter:RoundedRect(track.x, track.y, track.w, track.h, track.h * 0.5,
-        COLORS.angerTrack, COLORS.creamStroke, 1.5)
-    if progress > 0.001 then
-        local fillWidth = track.w * progress
-        local fill = lerpColor(COLORS.angerFill, COLORS.angerFillHigh, progress)
-        painter:RoundedRect(track.x, track.y, fillWidth, track.h,
-            math.min(track.h * 0.5, fillWidth * 0.5), fill)
+    local barX = rect.x + rect.w * 0.24
+    local barY = footerY + 48
+    local barW = math.max(80, right - barX)
+    painter:RoundedRect(barX, barY, barW, 13, 6.5, COLORS.angerTrack, COLORS.creamStroke, 1.5)
+    if progress > 0 then
+        painter:RoundedRect(barX + 2, barY + 2, math.max(1, (barW - 4) * progress), 9, 4.5, COLORS.angerFill)
     end
-
-    local appleCenterX = snapToPixel(track.x + track.w * progress, pixelScale)
-    local appleCenterY = snapToPixel(track.y + track.h * 0.5, pixelScale)
     local apple = painter.images.apple
-    if apple and apple >= 0 then
-        painter:Image(apple, appleCenterX, appleCenterY,
-            ANGER_APPLE_SIZE, ANGER_APPLE_SIZE, 1)
-    else
-        painter:Circle(appleCenterX, appleCenterY, ANGER_APPLE_SIZE * 0.43,
-            COLORS.unread, COLORS.creamStroke, 1.5)
-    end
+    if apple and apple >= 0 then painter:Image(apple, labelX + 10, barY + 6, 30, 30, 1) end
 end
 
 function View.Draw(painter, frame, controller)
@@ -503,8 +386,20 @@ function View.Draw(painter, frame, controller)
     local rect = panelRect(frame)
     local centerX, centerY = rect.x + rect.w * 0.5, rect.y + rect.h * 0.5
     local button = buttonRect(rect)
-    local viewport, track = conversationGeometry(rect)
-    local thumbSize = SCROLLBAR_THUMB_SIZE
+    local messageRight = rect.x + rect.w * MESSAGE_RIGHT_RATIO
+    local viewport = {
+        x = rect.x + MESSAGE_LEFT_INSET,
+        y = rect.y + rect.h * 0.132,
+        w = messageRight - (rect.x + MESSAGE_LEFT_INSET),
+        h = rect.h * 0.704,
+    }
+    local track = {
+        x = rect.x + rect.w * SCROLLBAR_CENTER_RATIO - 5,
+        y = viewport.y + 12,
+        w = 10,
+        h = viewport.h - 24,
+    }
+    local thumbSize = 34
     local entries = cachedLayout(painter, controller, model.messages, viewport)
     local contentHeight = visibleContentHeight(entries, model.visibleCount)
     controller:SetScrollMetrics(contentHeight, viewport.h)
@@ -516,7 +411,7 @@ function View.Draw(painter, frame, controller)
     controller:SetViewGeometry({
         button = transformRect(button, contentScale, centerX, centerY),
         viewport = transformRect(viewport, contentScale, centerX, centerY),
-        track = transformRect({ x = track.x - 11, y = track.y, w = 31, h = track.h },
+        track = transformRect({ x = track.x - 12, y = track.y, w = 34, h = track.h },
             contentScale, centerX, centerY),
         thumb = transformRect(thumb, contentScale, centerX, centerY),
     })
@@ -534,8 +429,7 @@ function View.Draw(painter, frame, controller)
     drawPanelBackground(painter, rect)
     nvgRestore(vg)
 
-    -- Header, conversation, scrollbar overlay, and footer use final coordinates.
-    -- Only scrolling message rows are clipped by the conversation viewport.
+    -- Interactive content stays at its final coordinates; the animated clip reveals it.
     nvgSave(vg)
     applyCenteredScale(vg, contentScale, centerX, centerY)
     nvgGlobalAlpha(vg, panelAlpha)
@@ -553,8 +447,8 @@ function View.Draw(painter, frame, controller)
     end
     nvgRestore(vg)
 
-    drawScrollbar(painter, track, thumbY, thumbSize, model.maxScroll > 0)
-    drawAngerFooter(painter, rect, model, controller, pixelScale)
+    drawScrollbar(painter, track, thumbY, thumbSize)
+    drawFooter(painter, rect, model)
     nvgRestore(vg)
 end
 
