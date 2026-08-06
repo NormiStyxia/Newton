@@ -148,9 +148,9 @@
       "fps": 16,
       "loop": true,
       "footAnchor": {
-        "x": 0.5,
-        "y": 1.0,
-        "unit": "normalized"
+        "x": 565,
+        "y": 1080,
+        "unit": "pixels"
       },
       "source": {
         "type": "imageSequence",

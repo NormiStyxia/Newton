@@ -164,6 +164,34 @@ def main() -> int:
         expect(frame.get("semanticAnchors", {}).get("dragGrab") == runtime_grab,
                "drag: per-frame dragGrab anchor drifted")
 
+    runtime_raise = runtime["clips"]["takeover_raise"]
+    runtime_loop = runtime["clips"]["takeover_loop"]
+    runtime_finish = runtime["clips"]["takeover_finish"]
+    loop_master_anchor_x = (
+        runtime_loop["footAnchor"]["x"] + runtime_loop["sourceCrop"]["left"]
+    ) / runtime_loop["scaleFromMaster"]
+    expect(abs(loop_master_anchor_x - 565) < 1e-6,
+           "takeover_loop: clip-level horizontal registration changed")
+
+    def root_bounds(frame: dict) -> tuple[float, float, float, float]:
+        bounds = frame["visualBounds"]
+        anchor = frame["footAnchor"]
+        return (
+            bounds["x"] - anchor["x"],
+            bounds["y"] - anchor["y"],
+            bounds["x"] + bounds["width"] - anchor["x"],
+            bounds["y"] + bounds["height"] - anchor["y"],
+        )
+
+    raise_end = root_bounds(runtime_raise["frames"][-1])
+    loop_start = root_bounds(runtime_loop["frames"][0])
+    loop_end = root_bounds(runtime_loop["frames"][-1])
+    finish_start = root_bounds(runtime_finish["frames"][0])
+    expect(abs(raise_end[0] - loop_start[0]) <= 2 and abs(raise_end[1] - loop_start[1]) <= 1,
+           "takeover transition: raise-to-loop root alignment drifted")
+    expect(abs(loop_end[0] - finish_start[0]) <= 2 and abs(loop_end[1] - finish_start[1]) <= 1,
+           "takeover transition: loop-to-finish root alignment drifted")
+
     view_source = VIEW_PATH.read_text(encoding="utf-8")
     config_source = CONFIG_PATH.read_text(encoding="utf-8")
     expect("NVG_IMAGE_NEAREST" not in view_source, "Companion enabled nearest-neighbor filtering")
