@@ -3,8 +3,10 @@ ExperimentProgress.__index = ExperimentProgress
 
 local ROOT = "experiment-progress"
 local PROGRESS_PATH = ROOT .. "/official-experiments.json"
-local SCHEMA_VERSION = 1
+local SCHEMA_VERSION = 2
 local VALID_SCORES = { [60] = true, [80] = true, [100] = true }
+local SNAPSHOT_SCHEMA_VERSION = 1
+local MAX_RULES = 12
 
 local function closeFile(file)
     if file.Close then file:Close() elseif file.Dispose then file:Dispose() end
@@ -45,12 +47,60 @@ local function validScore(value)
     return value and VALID_SCORES[value] and value or nil
 end
 
+local function cleanText(value, fallback)
+    if type(value) ~= "string" or value == "" then return fallback end
+    return value
+end
+
+local function cloneStringList(values)
+    local result = {}
+    if type(values) ~= "table" then return result end
+    for _, value in ipairs(values) do
+        if type(value) == "string" and value ~= "" then
+            result[#result + 1] = value
+            if #result >= MAX_RULES then break end
+        end
+    end
+    return result
+end
+
+local function cloneSnapshot(snapshot)
+    if type(snapshot) ~= "table" or not validLevelId(snapshot.levelId) then return nil end
+    local score = validScore(snapshot.score)
+    if not score then return nil end
+    local clearedAt = math.max(0, math.floor(tonumber(snapshot.clearedAt) or 0))
+    return {
+        schemaVersion = SNAPSHOT_SCHEMA_VERSION,
+        levelId = snapshot.levelId,
+        experimentNumber = math.max(1, math.floor(tonumber(snapshot.experimentNumber) or 1)),
+        experimentName = cleanText(snapshot.experimentName, "未命名实验"),
+        title = cleanText(snapshot.title, "观测成立"),
+        clearedAt = clearedAt,
+        score = score,
+        maxScore = math.max(score, math.floor(tonumber(snapshot.maxScore) or 100)),
+        ratingLabel = cleanText(snapshot.ratingLabel, "观测成立"),
+        interventionCount = math.max(0, math.floor(tonumber(snapshot.interventionCount) or 0)),
+        summaryText = cleanText(snapshot.summaryText, "实验结果已归档"),
+        resultDescription = cleanText(snapshot.resultDescription, "实验结果已归档"),
+        selectedSelfReview = cleanText(snapshot.selectedSelfReview, nil),
+        newtonReview = cleanText(snapshot.newtonReview, "暂无评语。"),
+        einsteinReview = cleanText(snapshot.einsteinReview, "暂无评语。"),
+        greenReview = cleanText(snapshot.greenReview, "暂无评语。"),
+        anger = math.max(0, math.min(100, math.floor(tonumber(snapshot.anger) or 0))),
+        newtonDangerAccent = snapshot.newtonDangerAccent == true,
+        usedRules = cloneStringList(snapshot.usedRules),
+    }
+end
+
 local function cloneRecord(record)
-    if type(record) ~= "table" then return { completed = false, bestScore = nil } end
+    if type(record) ~= "table" then
+        return { completed = false, bestScore = nil, lastReportSnapshot = nil }
+    end
     local bestScore = validScore(record.bestScore)
     return {
         completed = record.completed == true or bestScore ~= nil,
         bestScore = bestScore,
+        lastReportSnapshot = cloneSnapshot(record.lastReportSnapshot),
     }
 end
 
@@ -130,23 +180,43 @@ function ExperimentProgress:Get(levelId)
     return cloneRecord(self.records[levelId])
 end
 
-function ExperimentProgress:Record(levelId, score)
+function ExperimentProgress:GetReportSnapshot(levelId)
+    if not validLevelId(levelId) then return nil end
+    return cloneSnapshot(self.records[levelId] and self.records[levelId].lastReportSnapshot)
+end
+
+function ExperimentProgress:HasReportSnapshot(levelId)
+    return validLevelId(levelId)
+        and self.records[levelId] ~= nil
+        and self.records[levelId].lastReportSnapshot ~= nil
+end
+
+function ExperimentProgress:Record(levelId, score, reportSnapshot)
     if not validLevelId(levelId) then return nil, "invalid level id" end
     local previous = cloneRecord(self.records[levelId])
     local newScore = validScore(score)
+    local snapshot = reportSnapshot ~= nil and cloneSnapshot(reportSnapshot) or nil
+    local snapshotError = reportSnapshot ~= nil and not snapshot and "invalid report snapshot" or nil
     local nextRecord = cloneRecord(previous)
     nextRecord.completed = true
     if newScore and (not nextRecord.bestScore or newScore > nextRecord.bestScore) then
         nextRecord.bestScore = newScore
     end
+    local previousSnapshot = previous.lastReportSnapshot
+    -- Keep the highest-scoring report; a same-score clear replaces it with the latest details.
+    local snapshotUpdated = snapshot ~= nil
+        and (not previousSnapshot or snapshot.score >= previousSnapshot.score)
+    if snapshotUpdated then nextRecord.lastReportSnapshot = snapshot end
 
     local firstCompletion = previous.completed ~= true
     local bestImproved = nextRecord.bestScore ~= previous.bestScore
     self.records[levelId] = nextRecord
 
     local persisted, persistenceError = true, nil
-    if firstCompletion or bestImproved then
+    if firstCompletion or bestImproved or snapshotUpdated then
         persisted, persistenceError = writeAtomic(self)
+    end
+    if firstCompletion or bestImproved then
         self.pendingFeedback = {
             levelId = levelId,
             firstCompletion = firstCompletion,
@@ -160,9 +230,24 @@ function ExperimentProgress:Record(levelId, score)
         firstCompletion = firstCompletion,
         bestImproved = bestImproved,
         bestScore = nextRecord.bestScore,
+        snapshotUpdated = snapshotUpdated,
+        snapshotError = snapshotError,
         persisted = persisted,
         persistenceError = persistenceError,
     }, nil
+end
+
+function ExperimentProgress:UpdateReportSnapshot(levelId, reportSnapshot)
+    if not validLevelId(levelId) then return false, "invalid level id" end
+    local snapshot = cloneSnapshot(reportSnapshot)
+    if not snapshot or snapshot.levelId ~= levelId then return false, "invalid report snapshot" end
+    local record = cloneRecord(self.records[levelId])
+    if not record.completed then return false, "experiment is not completed" end
+    local previousSnapshot = record.lastReportSnapshot
+    if previousSnapshot and snapshot.score < previousSnapshot.score then return true, nil end
+    record.lastReportSnapshot = snapshot
+    self.records[levelId] = record
+    return writeAtomic(self)
 end
 
 function ExperimentProgress:ConsumeFeedback()

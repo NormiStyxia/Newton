@@ -65,7 +65,7 @@
 ---@field runtimeSession_ table|nil
 ---@field catalogState_ table
 ---@field experimentProgress_ table
----@field RecordOfficialExperimentProgress fun(assisted: boolean|nil): table|nil, string|nil
+---@field RecordOfficialExperimentProgress fun(assisted: boolean|nil, reportState: table|nil): table|nil, string|nil
 ---@field workshopState_ table
 ---@field hudRuleSummary_ string
 ---@field hudRuleList_ table
@@ -259,6 +259,9 @@ function State.New(dependencies, constants)
         toast = nil,
         toastTime = 0,
         hoverTooltip = nil,
+        reportSnapshot = nil,
+        reportSnapshotAnimation = 0,
+        reportSnapshotClosing = false,
     }
     context.workshopState_ = {
         initialized = false,

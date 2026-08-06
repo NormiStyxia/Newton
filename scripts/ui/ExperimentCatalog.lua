@@ -1,6 +1,7 @@
 local CatalogTransition = require("ui.ExperimentCatalogTransition")
 local SketchDrawing = require("ui.SketchDrawing")
 local LevelPreviewTransform = require("game.layout.LevelPreviewTransform")
+local ResultReportConfig = require("ui.result_report_config")
 
 local M = {}
 
@@ -61,6 +62,11 @@ end
 
 local function clamp(value, minimum, maximum)
     return math.max(minimum, math.min(maximum, value))
+end
+
+local function easeOut(value)
+    value = clamp(value or 0, 0, 1)
+    return 1 - (1 - value) * (1 - value)
 end
 
 local function utf8Characters(value)
@@ -147,6 +153,7 @@ function M.ResolveLayout(frame)
         briefViewport = briefViewport,
         startButton = { x = right.x + 21, y = actionY, w = actionWidth, h = 76 },
         workshopButton = { x = right.x + 21 + actionWidth + actionGap, y = actionY, w = actionWidth, h = 76 },
+        reportButton = { x = right.x + right.w - 174, y = right.y + 15, w = 150, h = 40 },
     }
 end
 
@@ -409,17 +416,6 @@ local function drawPreviewLegend(painter, preview)
     end
 end
 
-local function drawPaperPanelCornerOverlay(painter, rect)
-    local skin = painter.skins and painter.skins.catalogPanel
-    if not skin then return end
-    local corner = math.min(60, rect.w * .5, rect.h * .5)
-    painter:ImageRect(skin.topLeft, rect.x, rect.y, corner, corner, 255)
-    painter:ImageRect(skin.topRight, rect.x + rect.w - corner, rect.y, corner, corner, 255)
-    painter:ImageRect(skin.bottomLeft, rect.x, rect.y + rect.h - corner, corner, corner, 255)
-    painter:ImageRect(skin.bottomRight, rect.x + rect.w - corner,
-        rect.y + rect.h - corner, corner, corner, 255)
-end
-
 local function drawSheetMotionLayer(painter, outerClip, preview, levels, papers, paperAnchor)
     local vg = painter.vg
     nvgSave(vg)
@@ -448,10 +444,9 @@ local function drawPreview(painter, rect, state)
     drawSheetMotionLayer(painter, sheetOuterClip, preview, state.levels, papers, paperAnchor)
     sketchDrawing_:EndFrame()
 
-    -- The outer frame stroke stays outside the inset clip. Repaint its ornate
-    -- corners, then the title and legend, so all fixed chrome remains above the
-    -- moving sheets without covering the newly available title-side space.
-    drawPaperPanelCornerOverlay(painter, rect)
+    -- The panel nine-slice was painted before the sheets, so lifted graph
+    -- paper correctly passes over its four inner corner ornaments. Only the
+    -- title and legend remain fixed above the moving paper.
     drawSectionTitle(painter, rect.x + 22, rect.y + 20, "实验装置概览")
     drawPreviewLegend(painter, preview)
 end
@@ -564,6 +559,19 @@ local function drawButton(painter, rect, label, primary, hovered, enabled)
     end
 end
 
+local function drawReportSnapshotButton(painter, rect, hovered, available)
+    local fill = hovered and COLORS.selected or COLORS.paperLight
+    local ink = available and COLORS.ink or COLORS.inkMuted
+    painter:RoundedRect(rect.x, rect.y, rect.w, rect.h, 3, fill, COLORS.border, 1.4)
+    painter:StrokeRect(rect.x + 4, rect.y + 4, rect.w - 8, rect.h - 8, COLORS.brassSoft, 1, 145)
+    local icon = { x = rect.x + 13, y = rect.y + 10, w = 15, h = 19 }
+    painter:StrokeRect(icon.x, icon.y, icon.w, icon.h, ink, 1.2, 220)
+    painter:FillRect(icon.x + 3, icon.y + 5, icon.w - 6, 1, ink, 150)
+    painter:FillRect(icon.x + 3, icon.y + 9, icon.w - 6, 1, ink, 150)
+    painter:Text(rect.x + 37, rect.y + rect.h * .5, "通关报告", 18, ink,
+        NVG_ALIGN_LEFT + NVG_ALIGN_MIDDLE, CATALOG_HEADING_FONT)
+end
+
 local function drawCompletionMark(painter, x, y, alpha, scale)
     local vg = painter.vg
     nvgSave(vg)
@@ -638,6 +646,32 @@ function M.Install(context)
         state.scroll, state.scrollMax = 0, 0
         state.transition = CatalogTransition.New(state.selectedIndex)
         state.progressFeedback, state.progressFeedbackElapsed = nil, 0
+        state.reportSnapshot, state.reportSnapshotAnimation = nil, 0
+        state.reportSnapshotClosing = false
+    end
+
+    local function closeReportSnapshot()
+        if catalogState_.reportSnapshot then catalogState_.reportSnapshotClosing = true end
+    end
+
+    function RequestOpenCatalogReportSnapshot()
+        local state = catalogState_
+        local level = state.levels[state.selectedIndex]
+        local snapshot = level and experimentProgress_
+            and experimentProgress_:GetReportSnapshot(level.levelId) or nil
+        if not snapshot then
+            state.toast = "尚未完成本实验，暂无通关记录"
+            state.toastTime = 2.4
+            return false
+        end
+        snapshot.reviewOverflowLogged = {}
+        snapshot.newtonTier = { dangerAccent = snapshot.newtonDangerAccent == true }
+        state.reportSnapshot = snapshot
+        state.reportSnapshotAnimation = 0
+        state.reportSnapshotClosing = false
+        state.dragStartY = nil
+        state.toast = nil
+        return true
     end
 
     function RequestStartLevel(index)
@@ -665,6 +699,8 @@ function M.Install(context)
         catalogState_.selectedIndex = clamp(selected, 1, CONFIG.levelCount)
         catalogState_.scroll, catalogState_.scrollMax = 0, 0
         catalogState_.dragStartY, catalogState_.toast = nil, nil
+        catalogState_.reportSnapshot, catalogState_.reportSnapshotAnimation = nil, 0
+        catalogState_.reportSnapshotClosing = false
         if catalogState_.transition then catalogState_.transition:Reset(catalogState_.selectedIndex) end
         catalogState_.progressFeedback = experimentProgress_ and experimentProgress_:ConsumeFeedback() or nil
         catalogState_.progressFeedbackElapsed = 0
@@ -698,6 +734,34 @@ function M.Install(context)
         end
         state.toastTime = math.max(0, (state.toastTime or 0) - math.max(0, dt))
         if state.toastTime <= 0 then state.toast = nil end
+        if state.reportSnapshot then
+            local duration = state.reportSnapshotClosing
+                and ResultReportConfig.Layout.exitDuration or ResultReportConfig.Layout.enterDuration
+            local direction = state.reportSnapshotClosing and -1 or 1
+            state.reportSnapshotAnimation = clamp((state.reportSnapshotAnimation or 0)
+                + direction * math.max(0, dt) / duration, 0, 1)
+            if state.reportSnapshotClosing and state.reportSnapshotAnimation <= 0 then
+                state.reportSnapshot = nil
+                state.reportSnapshotClosing = false
+            else
+                if not state.reportSnapshotClosing and input:GetKeyPress(KEY_ESCAPE) then
+                    closeReportSnapshot()
+                    return
+                end
+                if pointerFrame.pressed and not state.reportSnapshotClosing then
+                    local rect = ResultReportConfig.ResolveRect(frame_)
+                    local progress = easeOut(state.reportSnapshotAnimation)
+                    local offsetY = -(1 - progress) * 24
+                    local visualRect = { x = rect.x, y = rect.y + offsetY, w = rect.w, h = rect.h }
+                    local close = ResultReportConfig.ResolveSnapshotCloseZone(rect, offsetY)
+                    if pointIn(close, pointerFrame.x, pointerFrame.y)
+                        or not pointIn(visualRect, pointerFrame.x, pointerFrame.y) then
+                        closeReportSnapshot()
+                    end
+                end
+                return
+            end
+        end
         if frame_.physicalWidth < frame_.physicalHeight then return end
 
         local layout = M.ResolveLayout(frame_)
@@ -717,6 +781,10 @@ function M.Install(context)
             if actionsEnabled and pointIn(layout.workshopButton, x, y) then
                 local level = state.levels[state.selectedIndex]
                 RequestEnterWorkshop(level and level.levelId or nil)
+                return
+            end
+            if actionsEnabled and pointIn(layout.reportButton, x, y) then
+                RequestOpenCatalogReportSnapshot()
                 return
             end
             if pointIn(layout.briefViewport, x, y) then
@@ -783,6 +851,10 @@ function M.Install(context)
         end
 
         local level = state.levels[state.selectedIndex]
+        local reportAvailable = level and experimentProgress_
+            and experimentProgress_:HasReportSnapshot(level.levelId) or false
+        drawReportSnapshotButton(painter, layout.reportButton,
+            pointIn(layout.reportButton, pointer.x, pointer.y), reportAvailable)
         drawPreview(painter, layout.center, state)
         drawBrief(painter, layout, level, state, Rules)
         local actionsEnabled = not state.transition or state.transition:IsSettled()
@@ -797,6 +869,9 @@ function M.Install(context)
             painter:StrokeRect(toast.x, toast.y, toast.w, toast.h, COLORS.brass, 2)
             painter:Text(toast.x + toast.w * .5, toast.y + toast.h * .5, state.toast, 18, COLORS.paperLight,
                 NVG_ALIGN_CENTER + NVG_ALIGN_MIDDLE, CATALOG_BODY_FONT)
+        end
+        if state.reportSnapshot and DrawCatalogReportSnapshot then
+            DrawCatalogReportSnapshot(state.reportSnapshot, state.reportSnapshotAnimation)
         end
     end
 end

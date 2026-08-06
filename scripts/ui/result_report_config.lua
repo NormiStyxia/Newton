@@ -132,6 +132,12 @@ function M.ResolveReportArtRect(rect, x, y, w, h)
     }
 end
 
+function M.ResolveSnapshotCloseZone(rect, offsetY)
+    local close = M.ResolveReportArtRect(rect, 956, 64, 72, 72)
+    close.y = close.y + (offsetY or 0)
+    return close
+end
+
 function M.NewtonReview(anger)
     anger = clamp(tonumber(anger) or 0, 0, 100)
     for _, tier in ipairs(M.NewtonReviewTiers) do

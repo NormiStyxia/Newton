@@ -7,6 +7,7 @@ local M = {}
 ---@param context GameContext
 function M.Install(context)
     local LevelPresentation = context.LevelPresentation
+    local Rules = context.Rules
     local _ENV = context
     local CONFIG = context.CONFIG
 
@@ -41,6 +42,53 @@ function M.Install(context)
         return string.format("%s-%02d-%03d", tostring(levelId or "EXP"), clearCount, resultReportNextId_)
     end
 
+    local function currentRuleLabels()
+        local labels = {}
+        for _, entry in ipairs(Rules.ActiveRuleList(rules_ or Rules.NewState())) do
+            labels[#labels + 1] = entry.label
+        end
+        return labels
+    end
+
+    function BuildResultReportSnapshot(state)
+        state = state or resultReportState_
+        if not state or state.assistUsed then return nil end
+        return {
+            schemaVersion = 1,
+            levelId = state.levelId,
+            experimentNumber = state.experimentNumber,
+            experimentName = state.experimentName,
+            title = state.title,
+            clearedAt = state.clearedAt,
+            score = state.score,
+            maxScore = state.maxScore,
+            ratingLabel = state.ratingLabel,
+            interventionCount = state.interventionCount,
+            summaryText = state.summaryText,
+            resultDescription = state.resultDescription,
+            selectedSelfReview = state.selectedSelfReview,
+            newtonReview = state.newtonReview,
+            einsteinReview = state.einsteinReview,
+            greenReview = state.greenReview,
+            anger = state.anger,
+            newtonDangerAccent = state.newtonTier and state.newtonTier.dangerAccent == true,
+            usedRules = state.usedRules or currentRuleLabels(),
+        }
+    end
+
+    function PersistResultReportSnapshot(state)
+        state = state or resultReportState_
+        if not state or state.assistUsed or not experimentProgress_ then return false end
+        local snapshot = BuildResultReportSnapshot(state)
+        if not snapshot then return false end
+        local persisted, persistenceError = experimentProgress_:UpdateReportSnapshot(state.levelId, snapshot)
+        if not persisted then
+            print(string.format("[ResultReport] snapshot update failed for %s: %s",
+                tostring(state.levelId), tostring(persistenceError)))
+        end
+        return persisted, persistenceError
+    end
+
     function GenerateResultReport()
         if resultReportState_ and resultReportState_.levelId == (level_ and level_.levelId) then return resultReportState_ end
         if not level_ then return nil end
@@ -69,6 +117,7 @@ function M.Install(context)
             experimentNumber = tonumber(levelIndex_) or 1,
             levelId = levelId,
             clearCount = clearCount,
+            clearedAt = os.time and os.time() or 0,
             title = assistUsed and "辅助观测成立" or "观测成立",
             experimentName = level_.name or "第一颗苹果",
             resultDescription = assistUsed and "本次观测由绿毛同事协助完成。评分不计入个人实验记录。"
@@ -93,6 +142,7 @@ function M.Install(context)
             ratingLabel = scoreSummary.ratingLabel,
             interventionCount = scoreSummary.interventionCount,
             summaryText = scoreSummary.summaryText,
+            usedRules = currentRuleLabels(),
         }
         resultReportAnimation_ = 0
         resultReportClosing_ = nil
@@ -140,6 +190,7 @@ function M.Install(context)
             state.selectedSelfReview = Config.Layout.fallbackSelfReview
             state.validationMessage = nil
         end
+        PersistResultReportSnapshot(state)
         state.isDropdownOpen = false
         resultReportClosing_ = function()
             if actionName == "retry" then

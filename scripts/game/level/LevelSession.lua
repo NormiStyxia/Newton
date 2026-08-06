@@ -229,19 +229,24 @@ function M.Install(context)
         ResetSessionState(false)
     end
 
-    function RecordOfficialExperimentProgress(assisted)
+    function RecordOfficialExperimentProgress(assisted, reportState)
         if assisted == true or not experimentProgress_ or not level_
             or not runtimeSession_ or runtimeSession_.sourceKind ~= "official" then
             return nil, nil
         end
         local scoreSummary = LevelPresentation.BuildResultSummary(level_.scoring, ruleDeployCount_)
-        local progressRecord, progressError = experimentProgress_:Record(level_.levelId, scoreSummary and scoreSummary.score)
+        local reportSnapshot = BuildResultReportSnapshot and BuildResultReportSnapshot(reportState) or nil
+        local progressRecord, progressError = experimentProgress_:Record(
+            level_.levelId, scoreSummary and scoreSummary.score, reportSnapshot)
         if not progressRecord then
             print(string.format("[ExperimentProgress] record failed for %s: %s",
                 tostring(level_.levelId), tostring(progressError)))
         elseif progressRecord.persistenceError then
             print(string.format("[ExperimentProgress] local save unavailable for %s: %s",
                 tostring(level_.levelId), tostring(progressRecord.persistenceError)))
+        elseif progressRecord.snapshotError then
+            print(string.format("[ExperimentProgress] report snapshot skipped for %s: %s",
+                tostring(level_.levelId), tostring(progressRecord.snapshotError)))
         end
         return progressRecord, progressError
     end
@@ -255,8 +260,8 @@ function M.Install(context)
             level_.assistedClear = assisted
             level_.resultOverlayVisible = true
         end
-        RecordOfficialExperimentProgress(assisted)
-        if GenerateResultReport then GenerateResultReport() end
+        local reportState = GenerateResultReport and GenerateResultReport() or nil
+        RecordOfficialExperimentProgress(assisted, reportState)
         if apple_ and apple_.body then
             apple_.body.bodyType = BT_STATIC
             apple_.body.linearVelocity = Vector2(0, 0)

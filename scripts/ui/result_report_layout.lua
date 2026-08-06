@@ -415,6 +415,108 @@ function M.Install(context)
             end
         end
     end
+
+    local function formatSnapshotTime(timestamp)
+        timestamp = tonumber(timestamp)
+        if not timestamp or timestamp <= 0 or not os.date then return nil end
+        local ok, value = pcall(os.date, "%Y-%m-%d  %H:%M", timestamp)
+        return ok and value or nil
+    end
+
+    function DrawCatalogReportSnapshot(state, animation)
+        if not state then return end
+        state.reviewOverflowLogged = state.reviewOverflowLogged or {}
+        state.newtonTier = state.newtonTier or { dangerAccent = state.newtonDangerAccent == true }
+
+        local progress = easeOut(animation or 0)
+        local alpha = math.floor(255 * progress)
+        local frame = frame_
+        local rect = Config.ResolveRect(frame)
+        local y = rect.y - (1 - progress) * 24
+        local x, w = rect.x, rect.w
+        local c = Config.ReportColors
+        local offsetY = y - rect.y
+
+        painter_:FillRect(0, 0, frame.logicalWidth, frame.logicalHeight, c.overlay,
+            math.floor(106 * progress))
+        local reportImages = painter_.images and painter_.images.ui
+        local reportBase = reportImages and reportImages.reportBase
+        if reportBase and reportBase >= 0 then
+            painter_:ImageRect(reportBase, x, y, w, rect.h, progress)
+        else
+            painter_:FillRect(x, y, w, rect.h, c.paper, alpha)
+        end
+
+        local function artPoint(px, py)
+            return x + w * px / Config.Layout.artWidth, y + rect.h * py / Config.Layout.artHeight
+        end
+        local function artWidth(value)
+            return w * value / Config.Layout.artWidth
+        end
+        local function artHeight(value)
+            return rect.h * value / Config.Layout.artHeight
+        end
+
+        drawScoreSummary(painter_, state, w, artPoint, artWidth, artHeight, alpha)
+        painter_:Text(x + w * 0.90, y + rect.h * 0.124,
+            string.format("No. EXP-%02d", state.experimentNumber or 1), 10, c.inkMuted,
+            NVG_ALIGN_RIGHT + NVG_ALIGN_TOP, "maker-body", alpha)
+        local recordedAt = formatSnapshotTime(state.clearedAt)
+        if recordedAt then
+            painter_:Text(x + w * 0.90, y + rect.h * 0.143, recordedAt, 9, c.inkMuted,
+                NVG_ALIGN_RIGHT + NVG_ALIGN_TOP, "report-green", alpha)
+        end
+        local experimentX, experimentY = artPoint(543, 336)
+        drawWrappedText(painter_, experimentX, experimentY, artWidth(760),
+            string.format("实验 %02d · %s", state.experimentNumber or 1, state.experimentName or "未命名实验"),
+            "maker-display", 17, 17, 1, c.ink, NVG_ALIGN_CENTER + NVG_ALIGN_TOP, 18, alpha)
+
+        local selfAuthorX, selfY = artPoint(96, 654)
+        painter_:Text(selfAuthorX, selfY, "诺米", Config.ReviewAuthorStyles.nomi.fontSize, c.ink,
+            NVG_ALIGN_LEFT + NVG_ALIGN_TOP, Config.ReviewAuthorStyles.nomi.font, alpha)
+        local selfTextX, selfTextY = artPoint(272, 655)
+        local selfReview = state.selectedSelfReview or state.resultDescription
+            or state.summaryText or "本次实验结果已归档"
+        drawWrappedText(painter_, selfTextX, selfTextY, artWidth(610), selfReview,
+            Config.ReviewAuthorStyles.nomi.font, Config.Layout.selfReviewFontSize, 12, 2,
+            c.ink, NVG_ALIGN_LEFT + NVG_ALIGN_TOP, 18, alpha)
+
+        local reviewColumns = {
+            nameX = artPoint(92, 0),
+            bodyX = artPoint(296, 0),
+            bodyW = artWidth(590),
+        }
+        local _, newtonY = artPoint(92, 808)
+        local _, einsteinY = artPoint(92, 926)
+        local _, greenY = artPoint(92, 1043)
+        drawReview(painter_, state, "newton", "牛顿", newtonY, reviewColumns, alpha)
+        drawReview(painter_, state, "einstein", "爱因斯坦", einsteinY, reviewColumns, alpha)
+        drawReview(painter_, state, "green", "绿毛同事", greenY, reviewColumns, alpha)
+
+        local dividerLeft, dividerY = artPoint(124, 1152)
+        local dividerRight = artPoint(962, 1152)
+        drawHairline(painter_, dividerLeft, dividerY, dividerRight, dividerY,
+            c.summaryRule, math.max(0.7, artHeight(1.4)), math.floor(alpha * 0.7))
+        local signatureLabelX, signatureLabelY = artPoint(150, 1242)
+        painter_:Text(signatureLabelX, signatureLabelY, "学生签名：", 18, c.ink,
+            NVG_ALIGN_LEFT + NVG_ALIGN_TOP, "maker-display", alpha)
+        local signature = reportImages and reportImages.reportSignature
+        if signature and signature >= 0 then
+            local signatureRect = Config.ResolveReportArtRect(
+                { x = x, y = y, w = w, h = rect.h }, 342, 1168, 520, 271)
+            painter_:ImageRect(signature, signatureRect.x, signatureRect.y,
+                signatureRect.w, signatureRect.h, progress)
+        end
+
+        local close = Config.ResolveSnapshotCloseZone(rect, offsetY)
+        painter_:RoundedRect(close.x, close.y, close.w, close.h, 4,
+            c.paperLight, c.border, 1.4, math.floor(alpha * 0.96))
+        local inset = math.min(close.w, close.h) * 0.31
+        drawHairline(painter_, close.x + inset, close.y + inset,
+            close.x + close.w - inset, close.y + close.h - inset, c.primary, 1.8, alpha)
+        drawHairline(painter_, close.x + close.w - inset, close.y + inset,
+            close.x + inset, close.y + close.h - inset, c.primary, 1.8, alpha)
+    end
 end
 
 return M

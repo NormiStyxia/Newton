@@ -110,8 +110,11 @@ function M.Install(context)
                     -- the report pauses its update. Finalization opens the report.
                     level_.resultOverlayVisible = context.assistDemoActive_ ~= true
                 end
-                RecordOfficialExperimentProgress(assistedClear_)
-                if not context.assistDemoActive_ and GenerateResultReport then GenerateResultReport() end
+                local reportState = nil
+                if not context.assistDemoActive_ and GenerateResultReport then
+                    reportState = GenerateResultReport()
+                end
+                RecordOfficialExperimentProgress(assistedClear_, reportState)
                 SetStatus("CLEARED · 观测成立")
                 NotifyGreenAssistantAttemptSucceeded()
             end
