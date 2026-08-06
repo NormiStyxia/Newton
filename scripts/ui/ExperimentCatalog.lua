@@ -135,10 +135,10 @@ local function drawPaperPanel(painter, rect)
 end
 
 local function drawSectionTitle(painter, x, y, title)
-    painter:Text(x, y, "✦", 19, COLORS.brass, nil, "maker-display")
+    painter:Text(x, y, "✦", 19, COLORS.brass, nil, "report-green")
     painter:Text(x + 28, y - 3, title, 24, COLORS.ink, nil, "maker-display")
     local titleWidth = textWidth(painter, title, "maker-display", 24)
-    painter:Text(x + 36 + titleWidth, y, "✦", 19, COLORS.brass, nil, "maker-display")
+    painter:Text(x + 36 + titleWidth, y, "✦", 19, COLORS.brass, nil, "report-green")
 end
 
 local function drawDivider(painter, x, y, w, alpha)
