@@ -142,11 +142,9 @@ function Renderer:Init()
         goalObserver = nvgCreateImage(self.vg, "image/goal/einstein_observer.png", 0),
         ui = {
             titlePlaque = nvgCreateImage(self.vg, "image/ui_svg/runtime/title_plaque@2x.png", 0),
-            catalogHeaderPlaque = nvgCreateImage(self.vg, "image/catalog/responsive/header_plaque.png", 0),
-            catalogHeaderInstrument = nvgCreateImage(self.vg, "image/catalog/responsive/decor_header_instrument.png", 0),
-            catalogDecorTopRight = nvgCreateImage(self.vg, "image/catalog/responsive/decor_top_right.png", 0),
-            catalogDecorBottomLeft = nvgCreateImage(self.vg, "image/catalog/responsive/decor_bottom_left.png", 0),
-            catalogDecorBottomRight = nvgCreateImage(self.vg, "image/catalog/responsive/decor_bottom_right.png", 0),
+            catalogBackground = nvgCreateImage(self.vg, "image/catalog/catalog_background.png", 0),
+            catalogDecorLeft = nvgCreateImage(self.vg, "image/catalog/catalog_decor_left.png", 0),
+            catalogDecorRight = nvgCreateImage(self.vg, "image/catalog/catalog_decor_right.png", 0),
             hudFrame = nvgCreateImage(self.vg, "image/ui_svg/runtime/hud_frame@2x.png", 0),
             gameplayFrame = nvgCreateImage(self.vg, "image/ui_svg/runtime/gameplay_frame@2x.png", 0),
             gameplayDecorOverlay = nvgCreateImage(self.vg, "image/ui/gameplay_decor_overlay.png", 0),
@@ -190,17 +188,6 @@ function Renderer:Init()
         },
     }
     self.skins = {
-        catalogOuterFrame = {
-            topLeft = nvgCreateImage(self.vg, "image/catalog/responsive/skins/outer_frame/top_left.png", 0),
-            top = nvgCreateImage(self.vg, "image/catalog/responsive/skins/outer_frame/top.png", 0),
-            topRight = nvgCreateImage(self.vg, "image/catalog/responsive/skins/outer_frame/top_right.png", 0),
-            left = nvgCreateImage(self.vg, "image/catalog/responsive/skins/outer_frame/left.png", 0),
-            center = nvgCreateImage(self.vg, "image/catalog/responsive/skins/outer_frame/center.png", 0),
-            right = nvgCreateImage(self.vg, "image/catalog/responsive/skins/outer_frame/right.png", 0),
-            bottomLeft = nvgCreateImage(self.vg, "image/catalog/responsive/skins/outer_frame/bottom_left.png", 0),
-            bottom = nvgCreateImage(self.vg, "image/catalog/responsive/skins/outer_frame/bottom.png", 0),
-            bottomRight = nvgCreateImage(self.vg, "image/catalog/responsive/skins/outer_frame/bottom_right.png", 0),
-        },
         catalogPanel = {
             topLeft = nvgCreateImage(self.vg, "image/catalog/skins/catalog_panel/top_left.png", 0),
             top = nvgCreateImage(self.vg, "image/catalog/skins/catalog_panel/top.png", 0),
