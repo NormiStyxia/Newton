@@ -351,12 +351,11 @@ local function drawScoreBadge(painter, x, y, score)
     nvgClosePath(painter.vg); nvgStroke(painter.vg)
 end
 
-local function drawBrief(painter, layout, level, state, rules, alpha)
+local function drawBrief(painter, layout, level, state, rules)
     local viewport = layout.briefViewport
     local y = viewport.y - state.scroll
     local left, width = viewport.x, viewport.w - 10
     nvgSave(painter.vg)
-    nvgGlobalAlpha(painter.vg, clamp(alpha or 1, 0, 1))
     nvgScissor(painter.vg, viewport.x, viewport.y, viewport.w, viewport.h)
     if level then
         painter:Text(left, y, ellipsize(painter, level.name or "未命名实验", width, "maker-display", 32),
@@ -639,8 +638,7 @@ function M.Install(context)
 
         local level = state.levels[state.selectedIndex]
         drawPreview(painter, layout.center, state)
-        local briefView = state.transition and state.transition:GetBriefView() or { index = state.selectedIndex, alpha = 1 }
-        if briefView then drawBrief(painter, layout, state.levels[briefView.index], state, Rules, briefView.alpha) end
+        drawBrief(painter, layout, level, state, Rules)
         local actionsEnabled = not state.transition or state.transition:IsSettled()
         local startEnabled = level ~= nil and actionsEnabled
         drawButton(painter, layout.startButton, "开始实验", true, pointIn(layout.startButton, pointer.x, pointer.y), startEnabled)
