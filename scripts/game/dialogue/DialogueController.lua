@@ -66,6 +66,8 @@ function Controller:Init(context)
     self.maxScroll = 0
     self.contentHeight = 0
     self.viewportHeight = 0
+    self.scrollProgressByLevel = {}
+    self.pendingScrollProgress = nil
     self.followBottom = true
     self.scrollbarDragging = false
     self.scrollbarGrabY = 0
@@ -98,7 +100,11 @@ function Controller:SetScrollMetrics(contentHeight, viewportHeight)
     self.contentHeight = math.max(0, contentHeight or 0)
     self.viewportHeight = math.max(0, viewportHeight or 0)
     self.maxScroll = math.max(0, self.contentHeight - self.viewportHeight)
-    if self.followBottom then
+    if self.pendingScrollProgress ~= nil then
+        self.scrollOffset = self.maxScroll * clamp(self.pendingScrollProgress, 0, 1)
+        self.pendingScrollProgress = nil
+        self.followBottom = self.maxScroll - self.scrollOffset <= 18
+    elseif self.followBottom then
         self.scrollOffset = self.maxScroll
     else
         self.scrollOffset = clamp(self.scrollOffset, 0, self.maxScroll)
@@ -126,8 +132,17 @@ function Controller:SetScrollProgress(progress)
     self.followBottom = self.maxScroll - self.scrollOffset <= 18
 end
 
+function Controller:_RememberScrollPosition()
+    if self.currentLevelId == nil or self.maxScroll <= 0 then return end
+    self.scrollProgressByLevel[self.currentLevelId] = self:GetScrollProgress()
+end
+
 function Controller:_BeginOpen(mode)
     if self.state ~= STATE.CLOSED then return false end
+    local restoreProgress = nil
+    if mode == "history" and not self.log:HasUnread(self.currentLevelId) then
+        restoreProgress = self.scrollProgressByLevel[self.currentLevelId]
+    end
     self.openMode = mode
     self.messages = self.log:GetMessages(self.currentLevelId)
     self.visibleCount = mode == "history" and #self.messages or 0
@@ -137,7 +152,8 @@ function Controller:_BeginOpen(mode)
     self.messageElapsed = 0
     self.scrollOffset = 0
     self.maxScroll = 0
-    self.followBottom = true
+    self.pendingScrollProgress = restoreProgress
+    self.followBottom = restoreProgress == nil
     self.scrollbarDragging = false
     self.state = STATE.OPENING
     self.log:MarkRead(self.currentLevelId)
@@ -176,6 +192,7 @@ end
 
 function Controller:Close()
     if self.state == STATE.CLOSED or self.state == STATE.CLOSING then return end
+    self:_RememberScrollPosition()
     self.state = STATE.CLOSING
     self.stateElapsed = 0
     self.scrollbarDragging = false
@@ -190,6 +207,7 @@ function Controller:_FinishClose()
     self.stateElapsed = 0
     self.messageElapsed = 0
     self.scrollbarDragging = false
+    self.pendingScrollProgress = nil
     self.viewGeometry = nil
 end
 
@@ -198,11 +216,31 @@ function Controller:Destroy()
 end
 
 function Controller:OnLevelReady(levelId, anger)
+    if self:IsActive() then
+        self:_RememberScrollPosition()
+        self:_FinishClose()
+    end
     self.currentLevelId = levelId
+    self.historyButtonGeometry = nil
     self.lastAnger = clamp(anger or 0, 0, MAX_ANGER)
     if levelId ~= DialogueData.FIRST_LEVEL_ID or self.log:HasIntro(levelId) then return end
     self.log:RecordIntro(levelId, DialogueData.Intro(levelId))
     self:OpenIntro()
+end
+
+function Controller:_SyncAppendedMessages()
+    if self.state == STATE.CLOSED or self.state == STATE.CLOSING
+        or self.visibleCount >= #self.messages then return end
+    if self.openMode == "history" then
+        for index = self.visibleCount + 1, #self.messages do
+            self.messageAges[index] = BUBBLE_DURATION
+        end
+        self.visibleCount = #self.messages
+        if self.followBottom then self.scrollOffset = self.maxScroll end
+    elseif self.state == STATE.REVEALED then
+        self.state = STATE.PLAYING
+        self:_RevealNext()
+    end
 end
 
 function Controller:_TrackAnger(anger)
@@ -224,6 +262,7 @@ function Controller:_TrackAnger(anger)
     end
     if highest then
         self.log:RecordThresholds(self.currentLevelId, crossed, DialogueData.AngerMessage(highest))
+        self:_SyncAppendedMessages()
     end
     self.lastAnger = current
 end
