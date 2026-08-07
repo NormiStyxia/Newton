@@ -22,13 +22,14 @@
   "assets": {
     "icon": "",
     "screenshots": [],
-    "promotional_image": ""
+    "promotional_image": "./game_material/promotional.png",
+    "promotional_image_url": "https://tapcode-sce.spark.xd.com/assets/game_material/p_ss8c/promotional.png"
   },
   "test_qrcode": {
     "url": "https://tapcode-sce.spark.xd.com/qrcode/p_ss8c_1786058005282.png",
     "generated_at": "2026-08-06T23:13:25.424Z"
   },
   "metadata": {
-    "updated_at": "2026-08-06T23:13:25.424Z"
+    "updated_at": "2026-08-07T22:18:39.020Z"
   }
 }
