@@ -1,5 +1,6 @@
 -- replay/Controller: private runtime functions installed into the App context.
 local M = {}
+local WallImpactShake = require("game.render.WallImpactShake")
 
 ---@param context GameContext
 function M.Install(context)
@@ -23,6 +24,7 @@ function M.Install(context)
         replayActive_ = mode ~= "none"
         replayPaused_ = mode == "paused" or mode == "finished"
         replayFinished_ = mode == "finished"
+        if mode ~= "none" then WallImpactShake.ResetRuntime(runtime_) end
         -- Replay exclusively owns the modal layer. Outcome state remains intact
         -- so an explicit exit can restore it, but it must never receive input or
         -- draw over replay controls while a replay mode is active.

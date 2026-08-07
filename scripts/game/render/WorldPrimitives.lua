@@ -473,9 +473,13 @@ function M.Install(Renderer, COLORS, color, tint)
         if object.type == "wall" then
             local fill = object.phaseable and COLORS.glass or COLORS.wall
             local edge = object.phaseable and COLORS.glassEdge or COLORS.wallEdge
+            local shake = object.wallShake
+            local visualShakeX = shake and shake.visualShakeX or 0
+            local visualShakeY = shake and shake.visualShakeY or 0
+            local visualShakeRotation = shake and shake.visualShakeRotation or 0
             nvgSave(self.vg)
-            nvgTranslate(self.vg, x, y)
-            nvgRotate(self.vg, rotation)
+            nvgTranslate(self.vg, x + visualShakeX, y + visualShakeY)
+            nvgRotate(self.vg, rotation + visualShakeRotation)
             local isNarrow = math.min(t.width or 0, t.height or 0) <= NARROW_WALL_MAX_THICKNESS
             local wallSkin = isNarrow and self.skins.wallNarrow or self.skins.wall
             local wallBorder = isNarrow and NARROW_WALL_BORDER or WALL_BORDER

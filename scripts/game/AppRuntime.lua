@@ -1,6 +1,7 @@
 -- AppRuntime: private runtime functions installed into the App context.
 local M = {}
 local EinsteinObserver = require("game.render.EinsteinObserver")
+local WallImpactShake = require("game.render.WallImpactShake")
 
 ---@param context GameContext
 function M.Install(context)
@@ -114,6 +115,9 @@ function M.Install(context)
         uiElapsed_ = uiElapsed_ + dt
         UpdateRuleFeedback(dt)
         UpdatePhaseWallEffects(dt)
+        if not isPaused_ and not replayActive_ then
+            WallImpactShake.UpdateRuntime(runtime_, dt * CurrentPhysicsTimeScale())
+        end
         context.UpdateAssistDemo(dt)
         -- Sample once, then give the screen-space Companion first chance to
         -- apply a rigid drag before its animation/update and before rendering.
@@ -289,6 +293,33 @@ function M.Install(context)
         if screen_ == "workshop" then HandleWorkshopScreenMode() end
     end
 
+    ---@param eventData PhysicsBeginContact2DEventData
+    ---@param nodeA Node
+    ---@param velocity Vector2
+    local function ReadAppleContact(eventData, nodeA, velocity)
+        ---@diagnostic disable-next-line: undefined-field
+        local contacts = eventData["Contacts"]:GetBuffer()
+        if not contacts then return nil, nil, nil, nil end
+        local bestSpeed = -math.huge
+        local bestNormalX, bestNormalY, bestContactX, bestContactY = nil, nil, nil, nil
+        while not contacts.eof do
+            local position = contacts:ReadVector2()
+            local normal = contacts:ReadVector2()
+            contacts:ReadFloat() -- separation
+            -- Box2D points from fixture A to B; expose the surface normal that
+            -- points from the wall toward the apple for both fixture orders.
+            if IsAppleNode(nodeA) then normal = Vector2(-normal.x, -normal.y) end
+            ---@type number
+            local speed = math.abs(velocity.x * normal.x + velocity.y * normal.y)
+            if speed > bestSpeed then
+                bestSpeed = speed
+                bestNormalX, bestNormalY = normal.x, normal.y
+                bestContactX, bestContactY = position.x, position.y
+            end
+        end
+        return bestNormalX, bestNormalY, bestContactX, bestContactY
+    end
+
     ---@param _eventType string
     ---@param eventData PhysicsBeginContact2DEventData
     function HandleCollisionBegin(_eventType, eventData)
@@ -307,6 +338,20 @@ function M.Install(context)
         local object = runtime_.byId[other.name]
         if launched_ and not replayActive_ then PlaySound("impact") end
         if not object then return end
+        if object.type == "wall" and object.collisionEnabled then
+            local velocity = applePreSolveVelocity_ or apple_.body.linearVelocity
+            local normalX, normalY, contactX, contactY = ReadAppleContact(eventData, nodeA, velocity)
+            if normalX == nil or normalY == nil then
+                -- BeginContact normally supplies a manifold. Keep a rotated-box
+                -- geometric fallback rather than falling back to total speed.
+                local normal = MatterContactNormal(object, velocity)
+                normalX, normalY = normal.x, normal.y
+                local position = apple_.node.position2D
+                contactX, contactY = position.x, position.y
+            end
+            WallImpactShake.Trigger(object, velocity, Vector2(normalX, normalY),
+                contactX, contactY, CurrentPhysicsStepScale())
+        end
         if object.type == "wall" and object.phaseable then
             -- A charged apple skips this contact through its collision mask;
             -- uncharged impacts use the existing begin-contact event for ripples.

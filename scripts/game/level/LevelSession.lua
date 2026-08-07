@@ -1,5 +1,6 @@
 -- level/LevelSession: private runtime functions installed into the App context.
 local M = {}
+local WallImpactShake = require("game.render.WallImpactShake")
 
 ---@param context GameContext
 function M.Install(context)
@@ -68,6 +69,7 @@ function M.Install(context)
         if level_ and level_.physicsProbe then level_.physicsProbe:Stop({ apple = apple_ }) end
         if ClearResultReportState then ClearResultReportState() end
         if SetReplayMode then SetReplayMode("none") end
+        WallImpactShake.ResetRuntime(runtime_)
         if scene_ then scene_:SetUpdateEnabled(false) end
         renderer:SetNumViewports(0)
         if audio_ then audio_.scene = nil end
@@ -213,6 +215,7 @@ function M.Install(context)
         apple_.shape.trigger = false
         if runtime_ then
             PhaseWallEffects.ResetRuntime(runtime_)
+            WallImpactShake.ResetRuntime(runtime_)
             for _, object in ipairs(runtime_.ordered) do
                 object.contactMs = 0
                 if object.type == "goal_sensor" then

@@ -33,13 +33,6 @@ local function easeOutCubic(value)
     return 1 - inverse * inverse * inverse
 end
 
-local function easeOutBack(value)
-    local t = clamp(value, 0, 1) - 1
-    local c1 = 1.70158
-    local c3 = c1 + 1
-    return 1 + c3 * t * t * t + c1 * t * t
-end
-
 ---@class DialogueController
 local Controller = {}
 Controller.__index = Controller
@@ -371,10 +364,12 @@ end
 function Controller:GetPanelPresentation()
     if self.state == STATE.OPENING then
         local progress = clamp(self.stateElapsed / OPEN_DURATION, 0, 1)
-        return 0.72 + 0.28 * easeOutBack(progress), progress
+        local motion = easeOutCubic(progress)
+        return 0.72 + 0.28 * motion, motion
     elseif self.state == STATE.CLOSING then
         local progress = clamp(self.stateElapsed / CLOSE_DURATION, 0, 1)
-        return 1 - 0.28 * easeOutCubic(progress), 1 - progress
+        local motion = 1 - easeOutCubic(progress)
+        return 0.72 + 0.28 * motion, motion
     end
     return 1, 1
 end

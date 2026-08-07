@@ -35,6 +35,7 @@ local FOOTER_TITLE_SIZE = 26
 local FOOTER_PERCENT_SIZE = 32
 local ANGER_TRACK_HEIGHT = 20
 local ANGER_APPLE_SIZE = 28
+local ANGER_TRACK_Y_OFFSET = 48
 local ANGER_FOLLOW_SPEED = 12
 local ANGER_PULSE_DURATION = 0.22
 
@@ -472,7 +473,7 @@ local function drawAngerFooter(painter, rect, model, controller, pixelScale)
 
     local track = {
         x = trackLeft,
-        y = footerY + 54,
+        y = footerY + ANGER_TRACK_Y_OFFSET,
         w = math.max(80, trackRight - trackLeft),
         h = ANGER_TRACK_HEIGHT,
     }

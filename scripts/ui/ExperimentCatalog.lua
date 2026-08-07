@@ -230,7 +230,6 @@ end
 
 local function isPilotSketchObject(level, object)
     if not level or not object or not sketchDrawing_:IsEnabled(level.levelId) then return false end
-    if object.type == "launcher" or object.type == "goal_sensor" then return true end
     local wallIndex = object.type == "wall" and tonumber((object.id or ""):match("^wall_(%d+)$")) or nil
     return wallIndex ~= nil and wallIndex >= 1 and wallIndex <= 15
 end
