@@ -159,7 +159,9 @@ end
 
 function Controller:OpenHistory()
     if not self:IsHistoryAvailable() then return false end
-    return self:_BeginOpen("history")
+    local opened = self:_BeginOpen("history")
+    if opened then self.context.playUIClick() end
+    return opened
 end
 
 function Controller:_RevealNext()
@@ -173,6 +175,7 @@ end
 
 function Controller:RevealAll()
     if self.state == STATE.CLOSED or self.state == STATE.CLOSING then return end
+    self.context.playUIClick()
     self.visibleCount = #self.messages
     for index = 1, self.visibleCount do self.messageAges[index] = BUBBLE_DURATION end
     self.stateElapsed = OPEN_DURATION
@@ -185,6 +188,7 @@ end
 
 function Controller:Close()
     if self.state == STATE.CLOSED or self.state == STATE.CLOSING then return end
+    self.context.playUIClick()
     self:_RememberScrollPosition()
     self.state = STATE.CLOSING
     self.stateElapsed = 0

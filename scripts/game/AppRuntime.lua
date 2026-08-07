@@ -52,6 +52,10 @@ function M.Install(context)
         context.globalBGM_:setBGMVolume(volume)
     end
 
+    function playUIClick()
+        if context.uiAudio_ then context.uiAudio_:PlayUIClick() end
+    end
+
     function HandleFirstAudioGesture()
         StartGlobalBGM()
     end
@@ -95,6 +99,7 @@ function M.Install(context)
     end
     function Stop()
         context.globalBGM_:stopBGM()
+        if context.uiAudio_ then context.uiAudio_:Dispose() end
         ShutdownLevelWorkshop()
         if scene_ or level_ then ReleaseLevelRuntime() end
         context.DestroyDialogue()
@@ -121,6 +126,7 @@ function M.Install(context)
             return
         end
         if screen_ == "workshop_preview" and input:GetKeyPress(KEY_ESCAPE) then
+            playUIClick()
             ExitWorkshopPreview("escape")
             return
         end
@@ -133,6 +139,7 @@ function M.Install(context)
         hudEscapeConsumed_ = false
         if not assistEscapeHandled and hudDropdown_ and input:GetKeyPress(KEY_ESCAPE) then
             hudDropdown_ = nil
+            playUIClick()
             hudEscapeConsumed_ = true
         end
         local reportVisible = IsResultReportVisible and IsResultReportVisible()

@@ -655,7 +655,10 @@ function M.Install(context)
     end
 
     local function closeReportSnapshot()
-        if catalogState_.reportSnapshot then catalogState_.reportSnapshotClosing = true end
+        if catalogState_.reportSnapshot then
+            catalogState_.reportSnapshotClosing = true
+            playUIClick()
+        end
     end
 
     function RequestOpenCatalogReportSnapshot()
@@ -671,10 +674,11 @@ function M.Install(context)
         state.reportSnapshotClosing = false
         state.dragStartY = nil
         state.toast = nil
+        playUIClick()
         return true
     end
 
-    function RequestStartLevel(index)
+    function RequestStartLevel(index, suppressUIClick)
         if catalogState_.transition and not catalogState_.transition:IsSettled() then return false end
         index = clamp(tonumber(index) or catalogState_.selectedIndex or 1, 1, CONFIG.levelCount)
         if not catalogState_.levels[index] then
@@ -688,10 +692,11 @@ function M.Install(context)
         catalogState_.toast, hudDropdown_ = nil, nil
         sketchDrawing_:Clear()
         BuildLevel(index)
+        if not suppressUIClick then playUIClick() end
         return true
     end
 
-    function RequestReturnToCatalog(preselectIndex)
+    function RequestReturnToCatalog(preselectIndex, suppressUIClick)
         if screen_ == "workshop_preview" then return ExitWorkshopPreview("navigation") end
         local selected = tonumber(preselectIndex) or levelIndex_ or catalogState_.selectedIndex or 1
         if scene_ or level_ then ReleaseLevelRuntime() end
@@ -705,6 +710,7 @@ function M.Install(context)
         catalogState_.progressFeedback = experimentProgress_ and experimentProgress_:ConsumeFeedback() or nil
         catalogState_.progressFeedbackElapsed = 0
         hudDropdown_ = nil
+        if not suppressUIClick then playUIClick() end
         return true
     end
 
@@ -712,6 +718,7 @@ function M.Install(context)
         if catalogState_.transition and not catalogState_.transition:IsSettled() then return false end
         local opened = OpenLevelWorkshop(selectedLevelId)
         if opened then sketchDrawing_:Clear() end
+        if opened then playUIClick() end
         return opened
     end
 
@@ -721,6 +728,7 @@ function M.Install(context)
         catalogState_.selectedIndex = index
         catalogState_.scroll, catalogState_.scrollMax = 0, 0
         if catalogState_.transition then catalogState_.transition:Request(index) end
+        playUIClick()
     end
 
     function UpdateExperimentCatalog(dt, pointerFrame)

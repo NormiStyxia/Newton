@@ -2,8 +2,10 @@ local Effects = require("urhox-libs.Effects.Effects")
 
 ---@class SynthAudio
 ---@field scene Scene
+---@field ownsScene boolean
 ---@field elapsedMs number
 ---@field lastImpactMs number
+---@field lastUIClickIndex integer|nil
 local SynthAudio = {}
 SynthAudio.__index = SynthAudio
 
@@ -17,13 +19,22 @@ local PATHS = {
     spring = "audio/sfx/spring_trigger_02_light.mp3",
 }
 
----@param scene Scene
+local UI_CLICK_PATHS = {
+    "audio/sfx/UI_Click_01.mp3",
+    "audio/sfx/UI_Click_02.mp3",
+    "audio/sfx/UI_Click_03.mp3",
+    "audio/sfx/UI_Click_04.mp3",
+}
+
+---@param scene Scene|nil
 ---@return SynthAudio
 function SynthAudio.New(scene)
     local self = setmetatable({}, SynthAudio)
-    self.scene = scene
+    self.scene = scene or Scene()
+    self.ownsScene = scene == nil
     self.elapsedMs = 0
     self.lastImpactMs = -math.huge
+    self.lastUIClickIndex = nil
     return self
 end
 
@@ -41,6 +52,23 @@ function SynthAudio:Play(kind)
         self.lastImpactMs = self.elapsedMs
     end
     Effects.PlaySound(self.scene, path, { gain = 1 })
+end
+
+function SynthAudio:PlayUIClick()
+    if not self.scene then return end
+    local index = math.random(1, #UI_CLICK_PATHS)
+    if #UI_CLICK_PATHS > 1 and index == self.lastUIClickIndex then
+        index = index % #UI_CLICK_PATHS + 1
+    end
+    self.lastUIClickIndex = index
+    Effects.PlaySound(self.scene, UI_CLICK_PATHS[index], { gain = 0.55 })
+end
+
+function SynthAudio:Dispose()
+    if self.ownsScene and self.scene then
+        self.scene:Dispose()
+    end
+    self.scene = nil
 end
 
 return SynthAudio

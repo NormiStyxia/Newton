@@ -190,6 +190,7 @@ function M.Install(context)
             state.selectedSelfReview = Config.Layout.fallbackSelfReview
             state.validationMessage = nil
         end
+        playUIClick()
         PersistResultReportSnapshot(state)
         state.isDropdownOpen = false
         resultReportClosing_ = function()
@@ -205,8 +206,8 @@ function M.Install(context)
                 if not replayStarted then isPaused_ = true end
             elseif actionName == "next" then
                 local nextIndex = levelIndex_ < CONFIG.levelCount and levelIndex_ + 1 or nil
-                if nextIndex and RequestStartLevel(nextIndex) then return end
-                RequestReturnToCatalog(nextIndex or 1)
+                if nextIndex and RequestStartLevel(nextIndex, true) then return end
+                RequestReturnToCatalog(nextIndex or 1, true)
             end
         end
     end

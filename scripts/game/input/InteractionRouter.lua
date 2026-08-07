@@ -21,14 +21,17 @@ function M.Install(context)
         if not pointerFrame.pressed then return false end
         if pointInRect(layout.left, x, y) and #hudRuleList_ >= 2 then
             hudDropdown_ = hudDropdown_ == "rules" and nil or "rules"
+            playUIClick()
             return true
         end
         if pointInRect(layout.right, x, y) then
             hudDropdown_ = hudDropdown_ == "rating" and nil or "rating"
+            playUIClick()
             return true
         end
         if hudDropdown_ then
             hudDropdown_ = nil
+            playUIClick()
             return true
         end
         return false
@@ -136,6 +139,7 @@ function M.Install(context)
                 ResetExperiment()
             elseif x >= titleX + 375 and x <= titleX + 421 and y >= 23 and y <= 69 then
                 hudDropdown_ = nil
+                playUIClick()
                 ToggleTacticalPause()
             elseif x >= frame_.playfieldX + frame_.playfieldWidth - 98 and x <= frame_.playfieldX + frame_.playfieldWidth - 18
                 and y >= frame_.cardHandY - 17 and y <= frame_.cardHandY + 63 then

@@ -67,6 +67,8 @@
 ---@field catalogState_ table
 ---@field experimentProgress_ table
 ---@field globalBGM_ GlobalBGM
+---@field uiAudio_ SynthAudio
+---@field playUIClick fun()
 ---@field playBGM fun(path: string, options?: BGMOptions): boolean
 ---@field stopBGM fun()
 ---@field setBGMVolume fun(volume: number)
@@ -131,7 +133,7 @@ own("navigation", {
     "hudExpectedScore_", "hudInterventionCount_", "hudDropdown_", "hudEscapeConsumed_",
 })
 own("progress", { "experimentProgress_" })
-own("appAudio", { "globalBGM_" })
+own("appAudio", { "globalBGM_", "uiAudio_" })
 own("workshop", { "workshopState_" })
 
 local function refreshModes(domains)
@@ -256,6 +258,7 @@ function State.New(dependencies, constants)
     context.screen_ = "catalog"
     context.experimentProgress_ = dependencies.ExperimentProgress.New({ json = cjson })
     context.globalBGM_ = dependencies.GlobalBGM.New()
+    context.uiAudio_ = dependencies.SynthAudio.New()
     context.catalogState_ = {
         selectedIndex = 1,
         levels = {},

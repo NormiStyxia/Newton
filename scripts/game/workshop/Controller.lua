@@ -517,6 +517,7 @@ function M.Install(context)
         local current = state()
         local modal = current.modal
         if not modal then return end
+        playUIClick()
         if modal.kind == "dirtySwitch" then finishDirtyAction(id)
         elseif modal.kind == "recovery" then handleRecovery(id)
         elseif modal.kind == "confirmDelete" then if id == "confirm" then deleteCurrent() else current.modal = nil; rebuildUI() end
@@ -529,8 +530,25 @@ function M.Install(context)
         else current.modal = nil; rebuildUI() end
     end
 
+    local function isControlEnabled(id, current)
+        if id == "save" or id == "draft" then return not current.readOnly and current.document ~= nil end
+        if id == "undo" then return current.canUndo == true end
+        if id == "redo" then return current.canRedo == true end
+        if id == "copyObject" then return current.selectedObject ~= nil and not current.readOnly end
+        if id == "preview" or id == "export" then return current.document ~= nil end
+        if id == "file_rename" or id == "file_delete" then
+            return current.document ~= nil and not current.readOnly
+        end
+        if id == "file_copy" or id == "deleteObject" then
+            return current.document ~= nil and current.selectedObject ~= nil and not current.readOnly
+        end
+        return true
+    end
+
     local function handleControl(id)
         local current = state()
+        if not isControlEnabled(id, current) then return false end
+        playUIClick()
         if id == "exit" then leaveWorkshop()
         elseif id == "draft" then if editable() and saveDraft("草稿已手动保存") then toast("草稿已保存") end
         elseif id == "save" then SaveWorkshopCurrent()
