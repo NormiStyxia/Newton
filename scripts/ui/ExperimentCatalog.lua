@@ -6,6 +6,7 @@ local ResultReportConfig = require("ui.result_report_config")
 local M = {}
 
 local CATALOG_TITLE_FONT = "report-summary"
+local CATALOG_ORNAMENT_FONT = "report-green"
 local CATALOG_HEADING_FONT = "maker-display"
 local CATALOG_BODY_FONT = "maker-body"
 local CATALOG_MONO_FONT = "report-green"
@@ -46,7 +47,9 @@ local COLORS = {
     brassLight = { 220, 198, 126, 255 },
     brassSoft = { 205, 184, 132, 255 },
     grid = { 211, 193, 145, 255 },
+    sketchGrid = { 72, 109, 84, 255 },
     wall = { 164, 184, 151, 255 },
+    wood = { 174, 126, 76, 255 },
     launcher = { 171, 91, 67, 255 },
     goal = { 87, 139, 100, 255 },
     spring = { 178, 143, 59, 255 },
@@ -173,11 +176,11 @@ local function drawPaperPanel(painter, rect)
 end
 
 local function drawSectionTitle(painter, x, y, title)
-    painter:Text(x, y, "✦", 19, COLORS.brass, nil, CATALOG_TITLE_FONT)
+    painter:Text(x, y, "✦", 19, COLORS.brass, nil, CATALOG_ORNAMENT_FONT)
     local titleX, titleSize = x + 28, 24
     painter:Text(titleX, y - 3, title, titleSize, COLORS.ink, nil, CATALOG_HEADING_FONT)
     local titleWidth = textWidth(painter, title, CATALOG_HEADING_FONT, titleSize)
-    painter:Text(titleX + titleWidth + 8, y, "✦", 19, COLORS.brass, nil, CATALOG_TITLE_FONT)
+    painter:Text(titleX + titleWidth + 8, y, "✦", 19, COLORS.brass, nil, CATALOG_ORNAMENT_FONT)
 end
 
 local function drawDivider(painter, x, y, w, alpha)
@@ -256,7 +259,9 @@ local function drawPreviewObject(painter, level, object, previewTransform)
         previewTransform, transform.width, transform.height)
     local w, h = math.max(3, mappedWidth), math.max(3, mappedHeight)
     local properties = object.properties or {}
-    local color = object.type == "launcher" and COLORS.launcher
+    local sketchObject = isPilotSketchObject(level, object)
+    local color = object.type == "wall" and sketchObject and COLORS.wood
+        or object.type == "launcher" and COLORS.launcher
         or object.type == "goal_sensor" and COLORS.goal
         or object.type == "spring" and COLORS.spring
         or object.type == "button" and COLORS.button
@@ -268,14 +273,17 @@ local function drawPreviewObject(painter, level, object, previewTransform)
     nvgRotate(vg, math.rad(transform.rotation or 0))
     nvgStrokeColor(vg, nvgRGBA(COLORS.border[1], COLORS.border[2], COLORS.border[3], 235))
     nvgStrokeWidth(vg, 1.5)
-    nvgFillColor(vg, nvgRGBA(color[1], color[2], color[3], properties.isPhaseable and 150 or 215))
+    local fillAlpha = object.type == "wall" and sketchObject and 245
+        or properties.isPhaseable and 150 or 215
+    nvgFillColor(vg, nvgRGBA(color[1], color[2], color[3], fillAlpha))
 
-    if drawPreviewImage(painter, object.type, w, h) then
+    if not sketchObject and drawPreviewImage(painter, object.type, w, h) then
         -- Catalog images replace only the launcher/apple and goal sensor marks.
         -- Existing vector drawing below remains the resource-failure fallback.
-    elseif isPilotSketchObject(level, object) then
+    elseif sketchObject then
         local levelId, objectId = level.levelId, object.id or object.type
-        local fillAlpha = properties.isPhaseable and 150 or 215
+        local fillAlpha = object.type == "wall" and 245
+            or properties.isPhaseable and 150 or 215
         if object.type == "goal_sensor" then
             sketchDrawing_:DrawEllipse(vg, levelId, objectId, "outer",
                 0, 0, w * .5, h * .5, color, COLORS.border, 1.5,
@@ -359,18 +367,19 @@ local function drawPreviewPaper(painter, preview, level, pose)
     -- the level's 1400 x 700 content still receives the exact same fit scale.
     nvgStrokeWidth(vg, 1)
     local sketchGrid = sketchDrawing_:IsEnabled(level.levelId)
+    local gridColor = sketchGrid and COLORS.sketchGrid or COLORS.grid
     local gridIndex = 0
     for gridX = preview.x + 12, preview.x + preview.w - 12, 24 do
         gridIndex = gridIndex + 1
         local alpha = sketchGrid and sketchDrawing_:GridAlpha(level.levelId, "vertical", gridIndex, 76) or 76
-        nvgStrokeColor(vg, nvgRGBA(COLORS.grid[1], COLORS.grid[2], COLORS.grid[3], alpha))
+        nvgStrokeColor(vg, nvgRGBA(gridColor[1], gridColor[2], gridColor[3], sketchGrid and math.min(160, alpha + 48) or alpha))
         nvgBeginPath(vg); nvgMoveTo(vg, gridX, preview.y); nvgLineTo(vg, gridX, preview.y + preview.h); nvgStroke(vg)
     end
     gridIndex = 0
     for gridY = preview.y + 12, preview.y + preview.h - 12, 24 do
         gridIndex = gridIndex + 1
         local alpha = sketchGrid and sketchDrawing_:GridAlpha(level.levelId, "horizontal", gridIndex, 76) or 76
-        nvgStrokeColor(vg, nvgRGBA(COLORS.grid[1], COLORS.grid[2], COLORS.grid[3], alpha))
+        nvgStrokeColor(vg, nvgRGBA(gridColor[1], gridColor[2], gridColor[3], sketchGrid and math.min(160, alpha + 48) or alpha))
         nvgBeginPath(vg); nvgMoveTo(vg, preview.x, gridY); nvgLineTo(vg, preview.x + preview.w, gridY); nvgStroke(vg)
     end
     painter:Text(preview.x + preview.w - 14, preview.y + preview.h - 24, "STATIC PLAN · 1400 × 700", 14, COLORS.inkMuted,
@@ -555,7 +564,7 @@ local function drawButton(painter, rect, label, primary, hovered, enabled)
         NVG_ALIGN_CENTER + NVG_ALIGN_MIDDLE, CATALOG_HEADING_FONT)
     if enabled and not skin then
         painter:Text(rect.x + rect.w - 14, rect.y + rect.h * .5, primary and "✦" or "❧", 11,
-            primary and COLORS.brassLight or COLORS.brass, NVG_ALIGN_CENTER + NVG_ALIGN_MIDDLE, CATALOG_TITLE_FONT)
+            primary and COLORS.brassLight or COLORS.brass, NVG_ALIGN_CENTER + NVG_ALIGN_MIDDLE, CATALOG_ORNAMENT_FONT)
     end
 end
 

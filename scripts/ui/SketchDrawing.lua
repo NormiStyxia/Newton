@@ -4,10 +4,12 @@ SketchDrawing.__index = SketchDrawing
 SketchDrawing.DEFAULT_STYLE = {
     enabled = true,
     pilotLevelId = "level_01",
-    version = 1,
-    lineJitter = 0.8,
-    largeShapeJitter = 0.8,
-    circleRadiusJitter = 0.8,
+    -- The first catalog sketch uses stable object paths. The hand-made feel
+    -- comes from the fixed secondary stroke, not per-edge noise.
+    version = 2,
+    lineJitter = 0,
+    largeShapeJitter = 0,
+    circleRadiusJitter = 0,
     mainStrokeAlpha = 0.86,
     secondaryStrokeEnabled = true,
     secondaryStrokeOffset = 0.45,
@@ -143,6 +145,8 @@ end
 
 local function strokePath(vg, points, closed, smooth, strokeColor, width, alpha)
     if smooth then traceSmoothClosed(vg, points) else tracePolyline(vg, points, closed) end
+    nvgLineJoin(vg, NVG_ROUND)
+    nvgLineCap(vg, NVG_ROUND)
     nvgStrokeColor(vg, color(strokeColor, alpha))
     nvgStrokeWidth(vg, width)
     nvgStroke(vg)
