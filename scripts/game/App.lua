@@ -13,6 +13,7 @@ local Rules = require("game.gameplay.Rules")
 local RuntimeFactory = require("game.level.RuntimeFactory")
 local Renderer2D = require("game.render.Canvas")
 local SynthAudio = require("game.audio.Audio")
+local GlobalBGM = require("game.audio.GlobalBGM")
 local TrajectoryPrediction = require("game.physics.Trajectory")
 local ReplayTimeline = require("game.replay.Timeline")
 local ReplayFeed = require("game.replay.Feed")
@@ -41,6 +42,7 @@ function App.New()
         WorkspaceLayout = WorkspaceLayout,
         MatterCalibration = MatterCalibration, PhysicsProfiles = PhysicsProfiles, PhysicsProbe = PhysicsProbe,
         Rules = Rules, RuntimeFactory = RuntimeFactory, Renderer2D = Renderer2D, SynthAudio = SynthAudio,
+        GlobalBGM = GlobalBGM,
         TrajectoryPrediction = TrajectoryPrediction, ReplayTimeline = ReplayTimeline, ReplayFeed = ReplayFeed,
         ReplayMode = ReplayMode, PhaseWallEffects = PhaseWallEffects, ExperimentProgress = ExperimentProgress,
     }
@@ -55,6 +57,7 @@ function App:Update(eventType, eventData) self.context.HandleUpdate(eventType, e
 function App:OnPhysicsPreStep(eventType, eventData) self.context.HandlePhysicsPreStep(eventType, eventData) end
 function App:OnPhysicsPostStep(eventType, eventData) self.context.HandlePhysicsPostStep(eventType, eventData) end
 function App:OnScreenMode() self.context.HandleScreenMode() end
+function App:OnFirstAudioGesture(eventType, eventData) self.context.HandleFirstAudioGesture(eventType, eventData) end
 function App:OnTouchBegin(eventType, eventData) self.context.HandleTouchBegin(eventType, eventData) end
 function App:OnTouchMove(eventType, eventData) self.context.HandleTouchMove(eventType, eventData) end
 function App:OnTouchEnd(eventType, eventData) self.context.HandleTouchEnd(eventType, eventData) end

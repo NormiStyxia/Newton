@@ -58,6 +58,7 @@ function M.Install(context)
             false)
     end
     function HandleTouchBegin(_eventType, eventData)
+        context.HandleFirstAudioGesture()
         if context.pointer_.activeTouchId ~= nil then return end
         context.pointer_.activeTouchId = eventData:GetInt("TouchID")
         context.pointer_.touchX = eventData:GetInt("X")

@@ -78,10 +78,10 @@ function M.Install(context)
 
     function PersistResultReportSnapshot(state)
         state = state or resultReportState_
-        if not state or state.assistUsed or not experimentProgress_ then return false end
+        if not state or state.assistUsed or not context.experimentProgress_ then return false end
         local snapshot = BuildResultReportSnapshot(state)
         if not snapshot then return false end
-        local persisted, persistenceError = experimentProgress_:UpdateReportSnapshot(state.levelId, snapshot)
+        local persisted, persistenceError = context.experimentProgress_:UpdateReportSnapshot(state.levelId, snapshot)
         if not persisted then
             print(string.format("[ResultReport] snapshot update failed for %s: %s",
                 tostring(state.levelId), tostring(persistenceError)))

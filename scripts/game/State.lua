@@ -14,6 +14,7 @@
 ---@field RuntimeFactory any
 ---@field Renderer2D any
 ---@field SynthAudio any
+---@field GlobalBGM any
 ---@field TrajectoryPrediction any
 ---@field ReplayTimeline any
 ---@field ReplayFeed any
@@ -65,6 +66,10 @@
 ---@field runtimeSession_ table|nil
 ---@field catalogState_ table
 ---@field experimentProgress_ table
+---@field globalBGM_ GlobalBGM
+---@field playBGM fun(path: string, options?: BGMOptions): boolean
+---@field stopBGM fun()
+---@field setBGMVolume fun(volume: number)
 ---@field RecordOfficialExperimentProgress fun(assisted: boolean|nil, reportState: table|nil): table|nil, string|nil
 ---@field workshopState_ table
 ---@field hudRuleSummary_ string
@@ -126,6 +131,7 @@ own("navigation", {
     "hudExpectedScore_", "hudInterventionCount_", "hudDropdown_", "hudEscapeConsumed_",
 })
 own("progress", { "experimentProgress_" })
+own("appAudio", { "globalBGM_" })
 own("workshop", { "workshopState_" })
 
 local function refreshModes(domains)
@@ -167,7 +173,7 @@ end
 function State.New(dependencies, constants)
     local domains = {
         runtime = {}, layout = {}, experiment = {}, goal = {}, mechanisms = {}, input = {}, cards = {}, replay = {},
-        assistant = {}, report = {}, navigation = {}, progress = {}, workshop = {},
+        assistant = {}, report = {}, navigation = {}, progress = {}, appAudio = {}, workshop = {},
     }
     ---@type GameContext
     local context = {}
@@ -249,6 +255,7 @@ function State.New(dependencies, constants)
     context.rulePulse_, context.ruleFlash_, context.ruleDeployCount_ = nil, nil, 0
     context.screen_ = "catalog"
     context.experimentProgress_ = dependencies.ExperimentProgress.New({ json = cjson })
+    context.globalBGM_ = dependencies.GlobalBGM.New()
     context.catalogState_ = {
         selectedIndex = 1,
         levels = {},

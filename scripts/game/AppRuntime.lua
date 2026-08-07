@@ -3,6 +3,9 @@ local M = {}
 local EinsteinObserver = require("game.render.EinsteinObserver")
 local WallImpactShake = require("game.render.WallImpactShake")
 
+local BGM_PATH = "audio/music_1786095252543.ogg"
+local BGM_OPTIONS = { volume = 0.4, fadeIn = 0.45 }
+
 ---@param context GameContext
 function M.Install(context)
     local Rules = context.Rules
@@ -33,6 +36,26 @@ function M.Install(context)
         end
         return lastValidPhysicsTimeStep
     end
+    local function StartGlobalBGM()
+        return context.globalBGM_:playBGM(BGM_PATH, BGM_OPTIONS)
+    end
+
+    function playBGM(path, options)
+        return context.globalBGM_:playBGM(path, options)
+    end
+
+    function stopBGM()
+        context.globalBGM_:stopBGM()
+    end
+
+    function setBGMVolume(volume)
+        context.globalBGM_:setBGMVolume(volume)
+    end
+
+    function HandleFirstAudioGesture()
+        StartGlobalBGM()
+    end
+
     function RefreshWorkspaceLayout()
         if not frame_ then return end
         local entries = CardEntries and CardEntries() or {}
@@ -56,6 +79,7 @@ function M.Install(context)
         RefreshWorkspaceLayout()
         SubscribeToEvent("Update", "HandleUpdate")
         SubscribeToEvent("ScreenMode", "HandleScreenMode")
+        SubscribeToEvent("MouseButtonDown", "HandleFirstAudioGesture")
         SubscribeToEvent("TouchBegin", "HandleTouchBegin")
         SubscribeToEvent("TouchMove", "HandleTouchMove")
         SubscribeToEvent("TouchEnd", "HandleTouchEnd")
@@ -66,9 +90,11 @@ function M.Install(context)
         SubscribeToEvent("PhysicsUpdateContact2D", "HandleCollisionUpdate")
         SubscribeToEvent("PhysicsEndContact2D", "HandleCollisionEnd")
         SubscribeToEvent(painter_.vg, "NanoVGRender", "HandleRender")
+        if context.globalBGM_:canStartWithoutGesture() then StartGlobalBGM() end
         print("[Migration] 1:1 design-space runtime started")
     end
     function Stop()
+        context.globalBGM_:stopBGM()
         ShutdownLevelWorkshop()
         if scene_ or level_ then ReleaseLevelRuntime() end
         context.DestroyDialogue()
@@ -82,6 +108,7 @@ function M.Install(context)
     ---@param eventData UpdateEventData
     function HandleUpdate(_eventType, eventData)
         local dt = eventData:GetFloat("TimeStep")
+        context.globalBGM_:Update(dt)
         frame_ = context.design_:Frame(usesMainStage())
         RefreshWorkspaceLayout()
         local pointerFrame = PointerState()
