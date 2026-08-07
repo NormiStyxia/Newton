@@ -47,7 +47,6 @@ local COLORS = {
     brassLight = { 220, 198, 126, 255 },
     brassSoft = { 205, 184, 132, 255 },
     grid = { 211, 193, 145, 255 },
-    sketchGrid = { 72, 109, 84, 255 },
     wall = { 164, 184, 151, 255 },
     wood = { 174, 126, 76, 255 },
     launcher = { 171, 91, 67, 255 },
@@ -367,19 +366,18 @@ local function drawPreviewPaper(painter, preview, level, pose)
     -- the level's 1400 x 700 content still receives the exact same fit scale.
     nvgStrokeWidth(vg, 1)
     local sketchGrid = sketchDrawing_:IsEnabled(level.levelId)
-    local gridColor = sketchGrid and COLORS.sketchGrid or COLORS.grid
     local gridIndex = 0
     for gridX = preview.x + 12, preview.x + preview.w - 12, 24 do
         gridIndex = gridIndex + 1
         local alpha = sketchGrid and sketchDrawing_:GridAlpha(level.levelId, "vertical", gridIndex, 76) or 76
-        nvgStrokeColor(vg, nvgRGBA(gridColor[1], gridColor[2], gridColor[3], sketchGrid and math.min(160, alpha + 48) or alpha))
+        nvgStrokeColor(vg, nvgRGBA(COLORS.grid[1], COLORS.grid[2], COLORS.grid[3], alpha))
         nvgBeginPath(vg); nvgMoveTo(vg, gridX, preview.y); nvgLineTo(vg, gridX, preview.y + preview.h); nvgStroke(vg)
     end
     gridIndex = 0
     for gridY = preview.y + 12, preview.y + preview.h - 12, 24 do
         gridIndex = gridIndex + 1
         local alpha = sketchGrid and sketchDrawing_:GridAlpha(level.levelId, "horizontal", gridIndex, 76) or 76
-        nvgStrokeColor(vg, nvgRGBA(gridColor[1], gridColor[2], gridColor[3], sketchGrid and math.min(160, alpha + 48) or alpha))
+        nvgStrokeColor(vg, nvgRGBA(COLORS.grid[1], COLORS.grid[2], COLORS.grid[3], alpha))
         nvgBeginPath(vg); nvgMoveTo(vg, preview.x, gridY); nvgLineTo(vg, preview.x + preview.w, gridY); nvgStroke(vg)
     end
     painter:Text(preview.x + preview.w - 14, preview.y + preview.h - 24, "STATIC PLAN · 1400 × 700", 14, COLORS.inkMuted,

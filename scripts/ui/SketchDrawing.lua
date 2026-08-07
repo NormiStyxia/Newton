@@ -4,15 +4,15 @@ SketchDrawing.__index = SketchDrawing
 SketchDrawing.DEFAULT_STYLE = {
     enabled = true,
     pilotLevelId = "level_01",
-    -- The first catalog sketch uses stable object paths. The hand-made feel
-    -- comes from the fixed secondary stroke, not per-edge noise.
-    version = 2,
-    lineJitter = 0,
-    largeShapeJitter = 0,
-    circleRadiusJitter = 0,
+    -- Keep the irregularity visible after mobile downscaling, while every
+    -- object still owns one continuous path with shared corners.
+    version = 3,
+    lineJitter = 1.15,
+    largeShapeJitter = 1.6,
+    circleRadiusJitter = 0.8,
     mainStrokeAlpha = 0.86,
     secondaryStrokeEnabled = true,
-    secondaryStrokeOffset = 0.45,
+    secondaryStrokeOffset = 0.7,
     secondaryStrokeAlpha = 0.20,
     secondaryStrokeWidthScale = 0.75,
     fillOffsetMax = 0.8,
@@ -112,6 +112,14 @@ local function buildPolylinePoints(vertices, seed, amplitude, closed, offsetX, o
             hashParts(seed, index), amplitude, offsetX, offsetY))
     end
     if closed and #result > 1 then table.remove(result) end
+    return result
+end
+
+local function offsetPoints(points, offsetX, offsetY)
+    local result = {}
+    for index, value in ipairs(points or {}) do
+        result[index] = point(value.x + (offsetX or 0), value.y + (offsetY or 0))
+    end
     return result
 end
 
@@ -282,9 +290,10 @@ function SketchDrawing:DrawLine(vg, levelId, objectId, primitiveType,
     local geometry = self:_geometry(key, function(seed)
         local offsetAngle = noise(seed, 91) * math.pi
         local offset = self.style.secondaryStrokeOffset
+        local main = buildLinePoints(x1, y1, x2, y2, seed, amplitude)
         return {
-            main = buildLinePoints(x1, y1, x2, y2, seed, amplitude),
-            secondary = buildLinePoints(x1, y1, x2, y2, hashParts(seed, "secondary"), amplitude,
+            main = main,
+            secondary = offsetPoints(main,
                 math.cos(offsetAngle) * offset, math.sin(offsetAngle) * offset),
         }
     end)
@@ -305,10 +314,11 @@ function SketchDrawing:DrawPolyline(vg, levelId, objectId, primitiveType,
     local geometry = self:_geometry(key, function(seed)
         local offsetAngle = noise(seed, 91) * math.pi
         local offset = self.style.secondaryStrokeOffset
+        local main = buildPolylinePoints(vertices, seed, amplitude, options.closed)
         return {
-            main = buildPolylinePoints(vertices, seed, amplitude, options.closed),
-            secondary = buildPolylinePoints(vertices, hashParts(seed, "secondary"), amplitude,
-                options.closed, math.cos(offsetAngle) * offset, math.sin(offsetAngle) * offset),
+            main = main,
+            secondary = offsetPoints(main,
+                math.cos(offsetAngle) * offset, math.sin(offsetAngle) * offset),
         }
     end)
     self:_strokePair(vg, geometry, strokeColor, width, options)
@@ -337,13 +347,12 @@ function SketchDrawing:DrawRect(vg, levelId, objectId, primitiveType,
     local key = self:_key(levelId, objectId, primitiveType, x, y, width, height, jitter)
     local geometry = self:_geometry(key, function(seed)
         local mainVertices = buildRectVertices(x, y, width, height, seed, jitter)
-        local secondaryVertices = buildRectVertices(x, y, width, height,
-            hashParts(seed, "secondary"), jitter)
         local angle = noise(seed, 77) * math.pi
+        local main = buildPolylinePoints(mainVertices, seed, jitter * .55, true)
         return {
-            main = buildPolylinePoints(mainVertices, seed, jitter * .55, true),
-            secondary = buildPolylinePoints(secondaryVertices, hashParts(seed, "secondary-line"),
-                jitter * .55, true, math.cos(angle) * self.style.secondaryStrokeOffset,
+            main = main,
+            secondary = offsetPoints(main,
+                math.cos(angle) * self.style.secondaryStrokeOffset,
                 math.sin(angle) * self.style.secondaryStrokeOffset),
             fillOffset = point(noise(seed, 81) * self.style.fillOffsetMax,
                 noise(seed, 82) * self.style.fillOffsetMax),
@@ -362,12 +371,10 @@ function SketchDrawing:DrawRoundedRect(vg, levelId, objectId, primitiveType,
         local angle = noise(seed, 77) * math.pi
         local dx = math.cos(angle) * self.style.secondaryStrokeOffset
         local dy = math.sin(angle) * self.style.secondaryStrokeOffset
-        local secondary = roundedRectVertices(x, y, width, height, radius,
-            hashParts(seed, "secondary"), jitter)
-        for _, value in ipairs(secondary) do value.x, value.y = value.x + dx, value.y + dy end
+        local main = roundedRectVertices(x, y, width, height, radius, seed, jitter)
         return {
-            main = roundedRectVertices(x, y, width, height, radius, seed, jitter),
-            secondary = secondary,
+            main = main,
+            secondary = offsetPoints(main, dx, dy),
             fillOffset = point(noise(seed, 81) * self.style.fillOffsetMax,
                 noise(seed, 82) * self.style.fillOffsetMax),
         }
@@ -385,12 +392,10 @@ function SketchDrawing:DrawEllipse(vg, levelId, objectId, primitiveType,
         local angle = noise(seed, 77) * math.pi
         local dx = math.cos(angle) * self.style.secondaryStrokeOffset
         local dy = math.sin(angle) * self.style.secondaryStrokeOffset
-        local secondary = ellipseVertices(centerX, centerY, radiusX, radiusY,
-            hashParts(seed, "secondary"), jitter)
-        for _, value in ipairs(secondary) do value.x, value.y = value.x + dx, value.y + dy end
+        local main = ellipseVertices(centerX, centerY, radiusX, radiusY, seed, jitter)
         return {
-            main = ellipseVertices(centerX, centerY, radiusX, radiusY, seed, jitter),
-            secondary = secondary,
+            main = main,
+            secondary = offsetPoints(main, dx, dy),
             fillOffset = point(noise(seed, 81) * self.style.fillOffsetMax,
                 noise(seed, 82) * self.style.fillOffsetMax),
         }
