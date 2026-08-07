@@ -402,6 +402,7 @@ function M.Install(context)
             local impulse = object.impulseStrength * Rules.GetRestitutionMultiplier(rules_)
                 * CurrentMatterVelocityToWorld(CurrentPhysicsStepScale())
             object.pendingExitVelocity = Vector2(v.x + ix * impulse, v.y + iy * impulse)
+            PlaySound("spring")
             object.triggeredAt = uiElapsed_ * 1000
             object.spent = object.oneShot
             object.pulseElapsedMs = 0

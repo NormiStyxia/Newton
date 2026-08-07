@@ -14,6 +14,7 @@ local PATHS = {
     punch = "audio/phase1/punch.wav",
     success = "audio/phase1/success.wav",
     reset = "audio/phase1/reset.wav",
+    spring = "audio/sfx/spring_trigger_02_light.mp3",
 }
 
 ---@param scene Scene
@@ -31,7 +32,7 @@ function SynthAudio:Update(dt)
     self.elapsedMs = self.elapsedMs + math.max(0, dt) * 1000
 end
 
----@param kind "launch"|"card"|"impact"|"punch"|"success"|"reset"
+---@param kind "launch"|"card"|"impact"|"punch"|"success"|"reset"|"spring"
 function SynthAudio:Play(kind)
     local path = PATHS[kind]
     if not path or not self.scene then return end
