@@ -319,7 +319,15 @@ function M.Install(context)
             next = shiftZone(zones.next),
         }
 
-        painter_:FillRect(0, 0, frame.logicalWidth, frame.logicalHeight, c.overlay, math.floor(82 * progress))
+        -- Dim the same full viewport that Canvas:Begin backgrounds. The
+        -- report mask must include letterbox padding without inheriting the
+        -- gameplay stage scissor; the companion is drawn afterward.
+        nvgSave(painter_.vg)
+        nvgResetScissor(painter_.vg)
+        painter_:FillRect(0, -(frame.stageOffsetY or 0), frame.logicalWidth,
+            frame.viewportLogicalHeight or frame.logicalHeight,
+            c.overlay, math.floor(82 * progress))
+        nvgRestore(painter_.vg)
         local reportBase = painter_.images and painter_.images.ui and painter_.images.ui.reportBase
         if reportBase and reportBase >= 0 then
             painter_:ImageRect(reportBase, x, y, w, rect.h, progress)

@@ -22,7 +22,7 @@ function M.Install(context)
     local _ENV = context
 
     local function usesMainStage()
-        return screen_ == "game" or screen_ == "workshop_preview"
+        return screen_ == "catalog" or screen_ == "game" or screen_ == "workshop_preview"
     end
 
     local function ResolvePhysicsTimeStep(eventData)
@@ -38,6 +38,19 @@ function M.Install(context)
     end
     local function StartGlobalBGM()
         return context.globalBGM_:playBGM(BGM_PATH, BGM_OPTIONS)
+    end
+
+    local function DrawGreenAssistantTopLayer(draw)
+        if not painter_ or not painter_.vg then
+            draw()
+            return
+        end
+        -- The companion is a presentation-layer character. It may occupy the
+        -- letterbox padding, so do not inherit the gameplay stage scissor.
+        nvgSave(painter_.vg)
+        nvgResetScissor(painter_.vg)
+        draw()
+        nvgRestore(painter_.vg)
     end
 
     function playBGM(path, options)
@@ -73,12 +86,14 @@ function M.Install(context)
     function Start()
         graphics.windowTitle = CONFIG.title
         painter_ = Renderer2D.New()
+        -- The catalog uses the same fixed 1880 x 840 stage as gameplay, so its
+        -- authored artwork is centered on taller viewports from the first frame.
+        screen_ = "catalog"
         frame_ = context.design_:Frame(usesMainStage())
         context.InitializeDialogue()
         context.InitializeAssistDemo()
         InitializeGreenAssistant()
         InitializeExperimentCatalog()
-        screen_ = "catalog"
         renderer:SetNumViewports(0)
         RefreshWorkspaceLayout()
         SubscribeToEvent("Update", "HandleUpdate")
@@ -536,11 +551,11 @@ function M.Install(context)
             DrawRuleFlash()
             if replayActive_ then DrawReplay() end
             context.DrawAssistDemo()
-            DrawGreenAssistant()
             DrawHUDDropdown()
             context.DrawDialogueOverlay()
             DrawResultOverlay()
-            context.DrawGreenAssistantOverlay()
+            DrawGreenAssistantTopLayer(DrawGreenAssistant)
+            DrawGreenAssistantTopLayer(context.DrawGreenAssistantOverlay)
             painter_:Finish()
         end)
         State.EndGameSnapshot(context)

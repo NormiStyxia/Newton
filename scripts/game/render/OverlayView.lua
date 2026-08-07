@@ -229,7 +229,15 @@ function M.Install(context)
                 DrawResultReport()
                 return
             end
-            painter_:FillRect(0, 0, frame_.logicalWidth, frame_.logicalHeight, Renderer2D.COLORS.background, 199)
+            -- The result mask covers the entire viewport, including the
+            -- letterbox padding painted by Canvas:Begin. Keep it above the
+            -- bottom-most background but below the report and companion.
+            nvgSave(painter_.vg)
+            nvgResetScissor(painter_.vg)
+            painter_:FillRect(0, -(frame_.stageOffsetY or 0), frame_.logicalWidth,
+                frame_.viewportLogicalHeight or frame_.logicalHeight,
+                Renderer2D.COLORS.background, 199)
+            nvgRestore(painter_.vg)
             local cx, cy = frame_.playfieldX + frame_.playfieldWidth * .5, frame_.playfieldY + frame_.playfieldHeight * .5
             local function overlayButton(x, y, label, secondary)
                 painter_:RoundedRect(x - 73, y - 23, 146, 46, 4, secondary and Renderer2D.COLORS.panelSecondary or Renderer2D.COLORS.greenStrong, secondary and Renderer2D.COLORS.dark or Renderer2D.COLORS.primaryActive, 2)

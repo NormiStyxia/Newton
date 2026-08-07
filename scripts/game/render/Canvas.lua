@@ -323,7 +323,7 @@ end
 function Renderer:Begin(frame)
     nvgBeginFrame(self.vg, frame.systemLogicalWidth, frame.systemLogicalHeight, frame.dpr)
     if frame.mainStageActive then
-        -- The fixed 1880 x 840 gameplay stage can leave letterbox padding on
+        -- The fixed 1880 x 840 main stage can leave letterbox padding on
         -- taller screens. Paint that viewport padding with the established
         -- cream background before applying the stage transform and scissor.
         self:FillRect(0, 0, frame.systemLogicalWidth, frame.systemLogicalHeight, COLORS.background)
