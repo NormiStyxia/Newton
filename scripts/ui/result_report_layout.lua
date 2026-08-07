@@ -435,7 +435,6 @@ function M.Install(context)
         local y = rect.y - (1 - progress) * 24
         local x, w = rect.x, rect.w
         local c = Config.ReportColors
-        local offsetY = y - rect.y
 
         painter_:FillRect(0, 0, frame.logicalWidth, frame.logicalHeight, c.overlay,
             math.floor(106 * progress))
@@ -508,14 +507,10 @@ function M.Install(context)
                 signatureRect.w, signatureRect.h, progress)
         end
 
-        local close = Config.ResolveSnapshotCloseZone(rect, offsetY)
-        painter_:RoundedRect(close.x, close.y, close.w, close.h, 4,
-            c.paperLight, c.border, 1.4, math.floor(alpha * 0.96))
-        local inset = math.min(close.w, close.h) * 0.31
-        drawHairline(painter_, close.x + inset, close.y + inset,
-            close.x + close.w - inset, close.y + close.h - inset, c.primary, 1.8, alpha)
-        drawHairline(painter_, close.x + close.w - inset, close.y + inset,
-            close.x + inset, close.y + close.h - inset, c.primary, 1.8, alpha)
+        local hintY = math.min(frame.logicalHeight - 18, y + rect.h + 28)
+        local pulse = 0.28 + 0.72 * (0.5 + 0.5 * math.sin((uiElapsed_ or 0) * 2.4))
+        painter_:Text(frame.logicalWidth * 0.5, hintY, "点击空白处关闭", 18, c.white,
+            NVG_ALIGN_CENTER + NVG_ALIGN_MIDDLE, "maker-body", math.floor(alpha * pulse))
     end
 end
 

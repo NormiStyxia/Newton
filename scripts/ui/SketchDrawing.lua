@@ -3,7 +3,8 @@ SketchDrawing.__index = SketchDrawing
 
 SketchDrawing.DEFAULT_STYLE = {
     enabled = true,
-    pilotLevelId = "level_01",
+    -- The catalog preview uses the same hand-drawn treatment for every level.
+    pilotLevelId = nil,
     -- Keep the irregularity visible after mobile downscaling, while every
     -- object still owns one continuous path with shared corners.
     version = 3,

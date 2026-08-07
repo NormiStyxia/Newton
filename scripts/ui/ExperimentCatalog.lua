@@ -48,7 +48,6 @@ local COLORS = {
     brassSoft = { 205, 184, 132, 255 },
     grid = { 211, 193, 145, 255 },
     wall = { 164, 184, 151, 255 },
-    wood = { 174, 126, 76, 255 },
     launcher = { 171, 91, 67, 255 },
     goal = { 87, 139, 100, 255 },
     spring = { 178, 143, 59, 255 },
@@ -155,7 +154,7 @@ function M.ResolveLayout(frame)
         briefViewport = briefViewport,
         startButton = { x = right.x + 21, y = actionY, w = actionWidth, h = 76 },
         workshopButton = { x = right.x + 21 + actionWidth + actionGap, y = actionY, w = actionWidth, h = 76 },
-        reportButton = { x = right.x + right.w - 174, y = right.y + 15, w = 150, h = 40 },
+        reportButton = { x = right.x + right.w - 296, y = right.y + 15, w = 272, h = 40 },
     }
 end
 
@@ -230,8 +229,7 @@ end
 
 local function isPilotSketchObject(level, object)
     if not level or not object or not sketchDrawing_:IsEnabled(level.levelId) then return false end
-    local wallIndex = object.type == "wall" and tonumber((object.id or ""):match("^wall_(%d+)$")) or nil
-    return wallIndex ~= nil and wallIndex >= 1 and wallIndex <= 15
+    return object.type == "wall"
 end
 
 local function drawPreviewImage(painter, objectType, w, h)
@@ -258,7 +256,7 @@ local function drawPreviewObject(painter, level, object, previewTransform)
     local w, h = math.max(3, mappedWidth), math.max(3, mappedHeight)
     local properties = object.properties or {}
     local sketchObject = isPilotSketchObject(level, object)
-    local color = object.type == "wall" and sketchObject and COLORS.wood
+    local color = object.type == "wall" and sketchObject and COLORS.wall
         or object.type == "launcher" and COLORS.launcher
         or object.type == "goal_sensor" and COLORS.goal
         or object.type == "spring" and COLORS.spring
@@ -565,16 +563,16 @@ local function drawButton(painter, rect, label, primary, hovered, enabled)
     end
 end
 
-local function drawReportSnapshotButton(painter, rect, hovered, available)
+local function drawReportSnapshotButton(painter, rect, hovered)
     local fill = hovered and COLORS.selected or COLORS.paperLight
-    local ink = available and COLORS.ink or COLORS.inkMuted
+    local ink = COLORS.ink
     painter:RoundedRect(rect.x, rect.y, rect.w, rect.h, 3, fill, COLORS.border, 1.4)
     painter:StrokeRect(rect.x + 4, rect.y + 4, rect.w - 8, rect.h - 8, COLORS.brassSoft, 1, 145)
     local icon = { x = rect.x + 13, y = rect.y + 10, w = 15, h = 19 }
     painter:StrokeRect(icon.x, icon.y, icon.w, icon.h, ink, 1.2, 220)
     painter:FillRect(icon.x + 3, icon.y + 5, icon.w - 6, 1, ink, 150)
     painter:FillRect(icon.x + 3, icon.y + 9, icon.w - 6, 1, ink, 150)
-    painter:Text(rect.x + 37, rect.y + rect.h * .5, "通关报告", 18, ink,
+    painter:Text(rect.x + 37, rect.y + rect.h * .5, "实验报告_最最最终版.pdf", 18, ink,
         NVG_ALIGN_LEFT + NVG_ALIGN_MIDDLE, CATALOG_HEADING_FONT)
 end
 
@@ -665,11 +663,7 @@ function M.Install(context)
         local level = state.levels[state.selectedIndex]
         local snapshot = level and experimentProgress_
             and experimentProgress_:GetReportSnapshot(level.levelId) or nil
-        if not snapshot then
-            state.toast = "尚未完成本实验，暂无通关记录"
-            state.toastTime = 2.4
-            return false
-        end
+        if not snapshot then return false end
         snapshot.reviewOverflowLogged = {}
         snapshot.newtonTier = { dangerAccent = snapshot.newtonDangerAccent == true }
         state.reportSnapshot = snapshot
@@ -759,9 +753,7 @@ function M.Install(context)
                     local progress = easeOut(state.reportSnapshotAnimation)
                     local offsetY = -(1 - progress) * 24
                     local visualRect = { x = rect.x, y = rect.y + offsetY, w = rect.w, h = rect.h }
-                    local close = ResultReportConfig.ResolveSnapshotCloseZone(rect, offsetY)
-                    if pointIn(close, pointerFrame.x, pointerFrame.y)
-                        or not pointIn(visualRect, pointerFrame.x, pointerFrame.y) then
+                    if not pointIn(visualRect, pointerFrame.x, pointerFrame.y) then
                         closeReportSnapshot()
                     end
                 end
@@ -789,7 +781,10 @@ function M.Install(context)
                 RequestEnterWorkshop(level and level.levelId or nil)
                 return
             end
-            if actionsEnabled and pointIn(layout.reportButton, x, y) then
+            local selectedLevel = state.levels[state.selectedIndex]
+            local reportAvailable = selectedLevel and experimentProgress_
+                and experimentProgress_:HasReportSnapshot(selectedLevel.levelId) or false
+            if actionsEnabled and reportAvailable and pointIn(layout.reportButton, x, y) then
                 RequestOpenCatalogReportSnapshot()
                 return
             end
@@ -859,8 +854,10 @@ function M.Install(context)
         local level = state.levels[state.selectedIndex]
         local reportAvailable = level and experimentProgress_
             and experimentProgress_:HasReportSnapshot(level.levelId) or false
-        drawReportSnapshotButton(painter, layout.reportButton,
-            pointIn(layout.reportButton, pointer.x, pointer.y), reportAvailable)
+        if reportAvailable then
+            drawReportSnapshotButton(painter, layout.reportButton,
+                pointIn(layout.reportButton, pointer.x, pointer.y))
+        end
         drawPreview(painter, layout.center, state)
         drawBrief(painter, layout, level, state, Rules)
         local actionsEnabled = not state.transition or state.transition:IsSettled()
