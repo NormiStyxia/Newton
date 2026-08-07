@@ -96,10 +96,11 @@ end
 local springForInspector = LevelDocument.NewObject("spring", "spring_filter", 500, 300)
 local springKeys = objectInspectorKeys(springForInspector)
 expect(springKeys["properties.direction"]
-    and not springKeys["properties.impulseStrength"] and not springKeys["properties.cooldown"]
+    and springKeys["properties.impulseStrength"]
+    and not springKeys["properties.cooldown"]
     and not springKeys["properties.oneShot"] and not springKeys["properties.enabled"]
     and not springKeys["properties.enabledChannel"] and springForInspector.properties.impulseStrength ~= nil,
-    "spring Inspector did not hide the requested controls while preserving runtime data")
+    "spring Inspector did not expose impulse strength while hiding the requested controls")
 local goalForInspector = LevelDocument.NewObject("goal_sensor", "goal_filter", 500, 300)
 local goalKeys = objectInspectorKeys(goalForInspector)
 expect(goalKeys["transform.x"] and goalKeys["transform.y"]

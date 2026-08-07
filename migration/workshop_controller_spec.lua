@@ -436,10 +436,12 @@ expect(workshop.selectedObject and workshop.selectedObject.type == "spring",
     "palette click did not add and select a spring")
 local spring = workshop.selectedObject
 local hiddenSpringFields = {
-    ["properties.impulseStrength"] = true, ["properties.cooldown"] = true,
+    ["properties.cooldown"] = true,
     ["properties.oneShot"] = true, ["properties.enabled"] = true,
     ["properties.enabledChannel"] = true,
 }
+expect(inspectorRow(context, workshop, "properties.impulseStrength").field.value == 10,
+    "spring impulse strength was not exposed with its runtime default")
 for _, field in ipairs(workshop.inspectorFields) do
     expect(not hiddenSpringFields[field.key], "hidden spring mechanism field remained editable: " .. tostring(field.key))
 end

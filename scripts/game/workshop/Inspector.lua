@@ -100,6 +100,7 @@ local function objectFields(fields, current, LevelDocument, typeLabels)
     elseif object.type == "spring" then
         section(fields, "properties", "机制参数")
         property("direction", "方向", "enum", { "UP", "RIGHT", "DOWN", "LEFT" })
+        property("impulseStrength", "冲量强度", "number")
     elseif object.type == "button" then
         section(fields, "properties", "机制参数")
         property("mode", "模式", "enum", { "HOLD", "TOGGLE" })

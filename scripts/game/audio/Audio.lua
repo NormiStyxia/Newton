@@ -12,6 +12,7 @@ SynthAudio.__index = SynthAudio
 local PATHS = {
     launch = "audio/phase1/launch.wav",
     card = "audio/phase1/card.wav",
+    cardBurn = "audio/phase1/card_burn.wav",
     impact = "audio/phase1/impact.wav",
     punch = "audio/phase1/punch.wav",
     success = "audio/phase1/success.wav",
@@ -43,7 +44,7 @@ function SynthAudio:Update(dt)
     self.elapsedMs = self.elapsedMs + math.max(0, dt) * 1000
 end
 
----@param kind "launch"|"card"|"impact"|"punch"|"success"|"reset"|"spring"
+---@param kind "launch"|"card"|"cardBurn"|"impact"|"punch"|"success"|"reset"|"spring"
 function SynthAudio:Play(kind)
     local path = PATHS[kind]
     if not path or not self.scene then return end

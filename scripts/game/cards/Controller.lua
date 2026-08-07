@@ -77,6 +77,7 @@ function M.Install(context)
             startScale = (pose and pose.scale) or 1.05,
             startAngle = (pose and pose.angle) or 0,
         }
+        PlaySound("cardBurn")
         SetStatus("CARD RESOLVING · 燃烧")
     end
     function CardEntries()
