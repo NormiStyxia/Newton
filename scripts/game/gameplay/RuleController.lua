@@ -82,8 +82,12 @@ function M.Install(context)
             end
         end
         local cardState = cardStates_[id]
-        local reusable = cardState and cardState.usageMode == "REUSABLE"
-        if not Rules.UseDecision(rules_, id, reusable) then return false end
+        -- Card inventory already owns decision-use limits. A SINGLE_USE card
+        -- with count > 1 must be allowed to apply once per remaining copy;
+        -- Rules.usedDecisions only protects callers that have no card use left.
+        local hasAvailableUse = cardState and (cardState.usageMode == "REUSABLE"
+            or (cardState.remainingUses or 0) > 0)
+        if not Rules.UseDecision(rules_, id, hasAvailableUse) then return false end
         if id == "up-impulse" then
             local v = apple_.body.linearVelocity
             apple_.body.linearVelocity = Vector2(v.x, v.y + 5.52 * CurrentPhysicsTimeScale())

@@ -41,6 +41,9 @@ local gravity = Rules.GetGravity(rules, { x = 0, y = 1, strength = 1 })
 near(gravity.strength, 1.05 * 0.55, 1e-12, "feather gravity")
 expect(Rules.UseDecision(rules, "quantum-phase", false) and rules.phaseActive, "phase decision failed")
 expect(not Rules.UseDecision(rules, "quantum-phase", false), "single-use decision repeated")
+Rules.EndPhase(rules)
+expect(Rules.UseDecision(rules, "quantum-phase", true) and rules.phaseActive,
+    "phase decision with another available card use failed")
 expect(Rules.CanPunch(rules) and Rules.Punch(rules), "Newton punch failed")
 expect(not Rules.CanPunch(rules), "Newton punch repeated")
 for count = 1, 10 do
