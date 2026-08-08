@@ -271,6 +271,13 @@ function State.New(dependencies, constants)
         muted = false,
         academyIdCardCharacter = nil,
         academyIdCardElapsed = 0,
+        profileMode = "TITLE_IDLE",
+        profileElapsed = 0,
+        profileCharacterId = nil,
+        profileSketchElapsed = 0,
+        profileBackHover = false,
+        profileBackHoverProgress = 0,
+        profileBackPressed = false,
     }
     context.experimentProgress_ = dependencies.ExperimentProgress.New({ json = cjson })
     context.globalBGM_ = dependencies.GlobalBGM.New()

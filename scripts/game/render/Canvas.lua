@@ -168,6 +168,15 @@ function Renderer:Init()
                     right1 = nvgCreateImage(self.vg, "image/title_screen/character_right_1_hover.png", 0),
                     right2 = nvgCreateImage(self.vg, "image/title_screen/character_right_2_hover.png", 0),
                 },
+                profiles = {
+                    newton = {
+                        body = nvgCreateImage(self.vg, "image/title_screen/profile_newton/body.png", 0),
+                        head = nvgCreateImage(self.vg, "image/title_screen/profile_newton/head.png", 0),
+                        doodle = nvgCreateImage(self.vg, "image/title_screen/profile_newton/doodle.png", 0),
+                        signature = nvgCreateImage(self.vg, "image/title_screen/profile_newton/signature.png", 0),
+                        back = nvgCreateImage(self.vg, "image/title_screen/profile_newton/back.png", 0),
+                    },
+                },
             },
             hudFrame = nvgCreateImage(self.vg, "image/ui_svg/runtime/hud_frame@2x.png", 0),
             gameplayFrame = nvgCreateImage(self.vg, "image/ui_svg/runtime/gameplay_frame@2x.png", 0),

@@ -73,6 +73,81 @@ local CHARACTER_NODES = {
         idle = { kind = "scale", from = 1, to = 1.015, duration = 2.15, delay = .41, phase = .34 } },
 }
 
+local PROFILE_MODE = {
+    TITLE_IDLE = "TITLE_IDLE",
+    ENTERING = "ENTERING_PROFILE",
+    IDLE = "PROFILE_IDLE",
+    EXITING = "EXITING_PROFILE",
+}
+
+-- The supplied profile layers share a 1280 x 576 logical canvas.  Doodle,
+-- signature, and back were exported at 2000 x 900, the exact same aspect and
+-- offsets, so every layer can be drawn over the full 1870 x 841 title stage.
+local PROFILE = {
+    characterId = "newton",
+    plateColor = { 251, 234, 212, 255 },
+    root = {
+        pivotX = 438.3,
+        pivotY = 774.0,
+        startOffsetX = 431.2,
+        startOffsetY = 1.2,
+        startScale = .64,
+        targetScale = 1,
+    },
+    enter = {
+        sketchFlipStart = 0,
+        sketchFlipEnd = .16,
+        formalFlipStart = .16,
+        formalFlipEnd = .31,
+        moveStart = .31,
+        moveEnd = .71,
+        plateEnd = .30,
+        frameStart = .55,
+        frameDuration = .17,
+        frameStagger = .09,
+        doodleStart = .91,
+        doodleEnd = 1.07,
+        signatureStart = .99,
+        signatureEnd = 1.19,
+        backStart = 1.08,
+        backEnd = 1.22,
+        total = 1.22,
+    },
+    exit = {
+        backStart = 0,
+        backEnd = .12,
+        signatureStart = .05,
+        signatureEnd = .22,
+        doodleStart = .12,
+        doodleEnd = .30,
+        frameStart = .24,
+        frameDuration = .13,
+        frameStagger = .07,
+        moveStart = .56,
+        moveEnd = .96,
+        formalFlipStart = .96,
+        formalFlipEnd = 1.11,
+        sketchFlipStart = 1.11,
+        sketchFlipEnd = 1.27,
+        plateFadeStart = .96,
+        plateFadeEnd = 1.27,
+        total = 1.27,
+    },
+    doodlePivot = { x = 358, y = 413 },
+    signatureOffset = 16,
+    backPivot = { x = 134, y = 79 },
+    backHit = { x = 30, y = 20, w = 230, h = 125 },
+}
+
+-- Stable tapered quadrilaterals form a counter-clockwise chain.  These are
+-- intentionally broad graphic bands, not a conventional UI border.
+local PROFILE_FRAME_BANDS = {
+    { x1 = 690, y1 = 310, x2 = 176, y2 = 378, t1 = 66, t2 = 52, color = { 218, 70, 26, 255 } },
+    { x1 = 184, y1 = 350, x2 = 106, y2 = 706, t1 = 54, t2 = 72, color = { 177, 47, 28, 255 } },
+    { x1 = 104, y1 = 706, x2 = 704, y2 = 654, t1 = 78, t2 = 62, color = { 239, 145, 25, 255 } },
+    { x1 = 692, y1 = 670, x2 = 708, y2 = 292, t1 = 58, t2 = 68, color = { 230, 85, 24, 255 } },
+}
+
 local SETTINGS = {
     x = 1138, y = 206, w = 560, h = 384,
     music = { x = 1210, y = 332, w = 380 },
@@ -91,6 +166,20 @@ end
 
 local function lerp(from, to, amount)
     return from + (to - from) * clamp(amount, 0, 1)
+end
+
+local function rangeProgress(elapsed, startTime, endTime)
+    return clamp((elapsed - startTime) / math.max(.001, endTime - startTime), 0, 1)
+end
+
+local function easeOutCubic(value)
+    local inverse = 1 - clamp(value, 0, 1)
+    return 1 - inverse * inverse * inverse
+end
+
+local function easeInCubic(value)
+    local t = clamp(value, 0, 1)
+    return t * t * t
 end
 
 local function easeInOutSine(value)
@@ -146,15 +235,24 @@ local function characterAt(x, y)
     return nil
 end
 
+local function characterById(characterId)
+    for _, character in ipairs(CHARACTER_NODES) do
+        if character.id == characterId then return character end
+    end
+    return nil
+end
+
 local function image(painter, handle, x, y, w, h, alpha)
     if handle and handle >= 0 then painter:ImageRect(handle, x, y, w, h, alpha or 255) end
 end
 
-local function beginVisualTransform(vg, pivotX, pivotY, offsetX, offsetY, rotation, scale)
+local function beginVisualTransform(vg, pivotX, pivotY, offsetX, offsetY, rotation, scaleX, scaleY)
     nvgSave(vg)
     nvgTranslate(vg, pivotX + (offsetX or 0), pivotY + (offsetY or 0))
     if rotation and rotation ~= 0 then nvgRotate(vg, rotation * DEGREES_TO_RADIANS) end
-    if scale and scale ~= 1 then nvgScale(vg, scale, scale) end
+    local sx = scaleX or 1
+    local sy = scaleY or sx
+    if sx ~= 1 or sy ~= 1 then nvgScale(vg, sx, sy) end
     nvgTranslate(vg, -pivotX, -pivotY)
 end
 
@@ -192,6 +290,165 @@ local function drawCharacterNode(painter, art, node, state)
     end
     image(painter, art.characters[node.key], node.base.x, node.base.y, node.base.w, node.base.h)
     nvgRestore(painter.vg)
+end
+
+local function drawSketchCharacterFlip(painter, art, node, elapsed, flipScaleX)
+    local idleOffsetY, idleRotation, idleScale = characterIdleTransform(node, elapsed)
+    local rootScale = (node.baseScale or 1) * idleScale
+    local pivotX = node.base.x + node.base.w * node.pivotX
+    local pivotY = node.base.y + node.base.h * node.pivotY
+    beginVisualTransform(painter.vg, pivotX, pivotY, 0, idleOffsetY,
+        (node.baseRotation or 0) + idleRotation, rootScale * flipScaleX, rootScale)
+    image(painter, art.characters[node.key], node.base.x, node.base.y, node.base.w, node.base.h)
+    nvgRestore(painter.vg)
+end
+
+local function profilePlateProgress(state)
+    local mode = state.profileMode
+    local elapsed = state.profileElapsed or 0
+    if mode == PROFILE_MODE.ENTERING then
+        return easeOutCubic(rangeProgress(elapsed, 0, PROFILE.enter.plateEnd))
+    elseif mode == PROFILE_MODE.IDLE then
+        return 1
+    elseif mode == PROFILE_MODE.EXITING then
+        return 1 - easeOutCubic(rangeProgress(elapsed, PROFILE.exit.plateFadeStart, PROFILE.exit.plateFadeEnd))
+    end
+    return 0
+end
+
+local function profileLayerProgress(state, layer)
+    local mode = state.profileMode
+    local elapsed = state.profileElapsed or 0
+    if mode == PROFILE_MODE.IDLE then return 1 end
+    if mode == PROFILE_MODE.ENTERING then
+        return easeOutCubic(rangeProgress(elapsed, PROFILE.enter[layer .. "Start"], PROFILE.enter[layer .. "End"]))
+    end
+    if mode == PROFILE_MODE.EXITING then
+        return 1 - easeOutCubic(rangeProgress(elapsed, PROFILE.exit[layer .. "Start"], PROFILE.exit[layer .. "End"]))
+    end
+    return 0
+end
+
+local function profileRootTransform(state)
+    local root = PROFILE.root
+    local mode = state.profileMode
+    local elapsed = state.profileElapsed or 0
+    local amount = 0
+    local flipScaleX = 0
+    if mode == PROFILE_MODE.ENTERING then
+        amount = easeOutCubic(rangeProgress(elapsed, PROFILE.enter.moveStart, PROFILE.enter.moveEnd))
+        flipScaleX = rangeProgress(elapsed, PROFILE.enter.formalFlipStart, PROFILE.enter.formalFlipEnd)
+    elseif mode == PROFILE_MODE.IDLE then
+        amount = 1
+        flipScaleX = 1
+    elseif mode == PROFILE_MODE.EXITING then
+        amount = 1 - easeInCubic(rangeProgress(elapsed, PROFILE.exit.moveStart, PROFILE.exit.moveEnd))
+        flipScaleX = 1 - rangeProgress(elapsed, PROFILE.exit.formalFlipStart, PROFILE.exit.formalFlipEnd)
+    end
+    return lerp(root.startOffsetX, 0, amount), lerp(root.startOffsetY, 0, amount),
+        lerp(root.startScale, root.targetScale, amount), flipScaleX
+end
+
+local function drawProfileCharacterLayer(painter, handle, offsetX, offsetY, scale, flipScaleX)
+    if not handle or handle < 0 or flipScaleX <= .001 then return end
+    local root = PROFILE.root
+    beginVisualTransform(painter.vg, root.pivotX, root.pivotY, offsetX, offsetY, 0,
+        scale * flipScaleX, scale)
+    image(painter, handle, 0, 0, 1870, 841)
+    nvgRestore(painter.vg)
+end
+
+local function profileFrameProgress(state, index)
+    local mode = state.profileMode
+    if mode == PROFILE_MODE.IDLE then return 1 end
+    local elapsed = state.profileElapsed or 0
+    if mode == PROFILE_MODE.ENTERING then
+        local startTime = PROFILE.enter.frameStart + (index - 1) * PROFILE.enter.frameStagger
+        return easeOutCubic(rangeProgress(elapsed, startTime, startTime + PROFILE.enter.frameDuration))
+    elseif mode == PROFILE_MODE.EXITING then
+        local reverseIndex = #PROFILE_FRAME_BANDS - index
+        local startTime = PROFILE.exit.frameStart + reverseIndex * PROFILE.exit.frameStagger
+        return 1 - easeOutCubic(rangeProgress(elapsed, startTime, startTime + PROFILE.exit.frameDuration))
+    end
+    return 0
+end
+
+local function drawGrowingBand(vg, band, progress)
+    local amount = clamp(progress, 0, 1)
+    if amount <= .001 then return end
+    local dx, dy = band.x2 - band.x1, band.y2 - band.y1
+    local length = math.sqrt(dx * dx + dy * dy)
+    if length <= .001 then return end
+    local nx, ny = -dy / length, dx / length
+    local endX, endY = lerp(band.x1, band.x2, amount), lerp(band.y1, band.y2, amount)
+    local endThickness = lerp(band.t1, band.t2, amount)
+    local startHalf, endHalf = band.t1 * .5, endThickness * .5
+    nvgBeginPath(vg)
+    nvgMoveTo(vg, band.x1 + nx * startHalf, band.y1 + ny * startHalf)
+    nvgLineTo(vg, endX + nx * endHalf, endY + ny * endHalf)
+    nvgLineTo(vg, endX - nx * endHalf, endY - ny * endHalf)
+    nvgLineTo(vg, band.x1 - nx * startHalf, band.y1 - ny * startHalf)
+    nvgClosePath(vg)
+    nvgFillColor(vg, nvgRGBA(band.color[1], band.color[2], band.color[3], band.color[4]))
+    nvgFill(vg)
+end
+
+local function drawProfileFrames(painter, state)
+    for index, band in ipairs(PROFILE_FRAME_BANDS) do
+        drawGrowingBand(painter.vg, band, profileFrameProgress(state, index))
+    end
+end
+
+local function drawProfileDoodle(painter, handle, state)
+    local progress = profileLayerProgress(state, "doodle")
+    if progress <= .001 then return end
+    local scale = .97 + .03 * smoothStep(progress)
+    beginVisualTransform(painter.vg, PROFILE.doodlePivot.x, PROFILE.doodlePivot.y, 0, 0, 0, scale)
+    image(painter, handle, 0, 0, 1870, 841, progress)
+    nvgRestore(painter.vg)
+end
+
+local function drawProfileSignature(painter, handle, state)
+    local progress = profileLayerProgress(state, "signature")
+    if progress <= .001 then return end
+    nvgSave(painter.vg)
+    nvgTranslate(painter.vg, -PROFILE.signatureOffset * (1 - progress), 0)
+    image(painter, handle, 0, 0, 1870, 841, progress)
+    nvgRestore(painter.vg)
+end
+
+local function drawProfileBack(painter, handle, state)
+    local progress = profileLayerProgress(state, "back")
+    if progress <= .001 then return end
+    local hover = smoothStep(state.profileBackHoverProgress or 0)
+    local scale = state.profileBackPressed and .97 or 1 + .03 * hover
+    beginVisualTransform(painter.vg, PROFILE.backPivot.x, PROFILE.backPivot.y, -4 * hover, 0, 0, scale)
+    image(painter, handle, 0, 0, 1870, 841, progress)
+    nvgRestore(painter.vg)
+end
+
+local function drawProfileScene(painter, art, state)
+    local profileArt = art.profiles and art.profiles[PROFILE.characterId]
+    if not profileArt then return end
+    local node = characterById(PROFILE.characterId)
+    local elapsed = state.profileElapsed or 0
+    if state.profileMode == PROFILE_MODE.ENTERING and elapsed < PROFILE.enter.sketchFlipEnd then
+        local flip = 1 - rangeProgress(elapsed, PROFILE.enter.sketchFlipStart, PROFILE.enter.sketchFlipEnd)
+        drawSketchCharacterFlip(painter, art, node, state.profileSketchElapsed or 0, flip)
+    end
+
+    local offsetX, offsetY, scale, flipScaleX = profileRootTransform(state)
+    drawProfileCharacterLayer(painter, profileArt.body, offsetX, offsetY, scale, flipScaleX)
+    drawProfileFrames(painter, state)
+    drawProfileCharacterLayer(painter, profileArt.head, offsetX, offsetY, scale, flipScaleX)
+    drawProfileDoodle(painter, profileArt.doodle, state)
+    drawProfileSignature(painter, profileArt.signature, state)
+    drawProfileBack(painter, profileArt.back, state)
+
+    if state.profileMode == PROFILE_MODE.EXITING and elapsed >= PROFILE.exit.sketchFlipStart then
+        local flip = rangeProgress(elapsed, PROFILE.exit.sketchFlipStart, PROFILE.exit.sketchFlipEnd)
+        drawSketchCharacterFlip(painter, art, node, state.profileSketchElapsed or 0, flip)
+    end
 end
 
 local function drawFourPointStar(vg, x, y, radius, progress)
@@ -322,6 +579,39 @@ local function menuIndexAt(x, y)
     return nil
 end
 
+local function drawTitleMenu(painter, state)
+    local vg = painter.vg
+    local top = menuTop()
+    for index, label in ipairs(MENU_ITEMS) do
+        local centerY = top + ((index - 1) * MENU.rowStep + MENU.rowHeight * .5) * MENU.scale
+        local pressed = state.pressedIndex == index
+        local progress = smoothStep(state.selectionProgress[index] or 0)
+        local visualProgress = pressed and 1 or progress
+        local drawScale = pressed and .98 or 1 + .022 * visualProgress
+        local textColor = mixColor(MENU_MUTED, MENU_INK, visualProgress)
+        nvgSave(vg)
+        nvgTranslate(vg, MENU.x, centerY)
+        nvgScale(vg, drawScale * MENU.scale, drawScale * MENU.scale)
+        drawFourPointStar(vg, 10, 0, 8.2, visualProgress)
+        painter:Text(36 + 4 * visualProgress, 0, label, MENU.textSize, textColor,
+            NVG_ALIGN_LEFT + NVG_ALIGN_MIDDLE, "maker-body")
+        drawArrow(vg, MENU.width - 47, 0, MENU_ACCENT, visualProgress)
+        nvgRestore(vg)
+    end
+    painter:Text(MENU.x, top + (#MENU_ITEMS * MENU.rowStep + 27) * MENU.scale,
+        "（戳左边四个有角色介绍）", 16 * MENU.scale, TIP_COLOR, nil, "maker-body")
+end
+
+local function drawTitleContent(painter, art, state, excludedCharacterId)
+    for _, node in ipairs(TITLE_NODES) do
+        drawTitleNode(painter, art.title[node.key], node, state.animationElapsed or 0)
+    end
+    for _, node in ipairs(CHARACTER_NODES) do
+        if node.id ~= excludedCharacterId then drawCharacterNode(painter, art, node, state) end
+    end
+    drawTitleMenu(painter, state)
+end
+
 local function updateSettingSlider(state, context, pointerX)
     local drag = state.settingsDrag
     local rect = drag == "music" and SETTINGS.music or SETTINGS.sound
@@ -372,6 +662,13 @@ function M.Install(context)
         state.settingsDrag = nil
         state.academyIdCardCharacter = nil
         state.academyIdCardElapsed = 0
+        state.profileMode = PROFILE_MODE.TITLE_IDLE
+        state.profileElapsed = 0
+        state.profileCharacterId = nil
+        state.profileSketchElapsed = 0
+        state.profileBackHover = false
+        state.profileBackHoverProgress = 0
+        state.profileBackPressed = false
         state.musicVolume = state.musicVolume or .4
         state.soundVolume = state.soundVolume or .55
         state.muted = state.muted == true
@@ -381,9 +678,83 @@ function M.Install(context)
     end
 
     function openAcademyIdCard(characterId)
+        if state.profileMode ~= PROFILE_MODE.TITLE_IDLE then return false end
+        if characterId == PROFILE.characterId then
+            state.profileMode = PROFILE_MODE.ENTERING
+            state.profileElapsed = 0
+            state.profileCharacterId = characterId
+            state.profileSketchElapsed = state.animationElapsed or 0
+            state.profileBackHover = false
+            state.profileBackHoverProgress = 0
+            state.profileBackPressed = false
+            state.hoverCharacter = nil
+            state.academyIdCardCharacter = characterId
+            state.academyIdCardElapsed = 0
+            context.playUIClick()
+            print("[TitleScreen] entering character profile: " .. characterId)
+            return true
+        end
         state.academyIdCardCharacter = characterId
         state.academyIdCardElapsed = 0
-        print("[TitleScreen] academy id card requested: " .. tostring(characterId))
+        print("[TitleScreen] profile assets pending for: " .. tostring(characterId))
+        return false
+    end
+
+    local function startProfileExit()
+        if state.profileMode ~= PROFILE_MODE.IDLE then return false end
+        state.profileMode = PROFILE_MODE.EXITING
+        state.profileElapsed = 0
+        state.profileSketchElapsed = state.animationElapsed or 0
+        state.profileBackHover = false
+        state.profileBackPressed = false
+        context.playUIClick()
+        return true
+    end
+
+    local function finishProfileExit()
+        state.profileMode = PROFILE_MODE.TITLE_IDLE
+        state.profileElapsed = 0
+        state.profileCharacterId = nil
+        state.profileBackHover = false
+        state.profileBackHoverProgress = 0
+        state.profileBackPressed = false
+        state.academyIdCardCharacter = nil
+        state.academyIdCardElapsed = 0
+    end
+
+    local function updateProfile(frameDt, pointerFrame)
+        local mode = state.profileMode
+        state.profileElapsed = (state.profileElapsed or 0) + frameDt
+        if mode == PROFILE_MODE.ENTERING then
+            if state.profileElapsed >= PROFILE.enter.total then
+                state.profileMode = PROFILE_MODE.IDLE
+                state.profileElapsed = 0
+            end
+            return
+        elseif mode == PROFILE_MODE.EXITING then
+            state.profileBackHoverProgress = moveTowards(state.profileBackHoverProgress or 0, 0,
+                frameDt / CHARACTER_HOVER_SECONDS)
+            if state.profileElapsed >= PROFILE.exit.total then finishProfileExit() end
+            return
+        end
+
+        local hovered = pointIn(PROFILE.backHit, pointerFrame.x, pointerFrame.y)
+        state.profileBackHover = hovered
+        state.profileBackHoverProgress = moveTowards(state.profileBackHoverProgress or 0, hovered and 1 or 0,
+            frameDt / CHARACTER_HOVER_SECONDS)
+        if input:GetKeyPress(KEY_ESCAPE) then
+            startProfileExit()
+            return
+        end
+        if pointerFrame.pressed then
+            state.profileBackPressed = hovered
+        elseif pointerFrame.released then
+            local pressed = state.profileBackPressed
+            state.profileBackPressed = false
+            if pressed and hovered then startProfileExit() end
+        elseif not pointerFrame.down then
+            state.profileBackPressed = false
+        end
     end
 
     local function updateSettings(pointerFrame)
@@ -422,6 +793,10 @@ function M.Install(context)
     function UpdateTitleScreen(dt, pointerFrame)
         local frameDt = math.max(0, dt or 0)
         state.animationElapsed = (state.animationElapsed or 0) + frameDt
+        if state.profileMode ~= PROFILE_MODE.TITLE_IDLE then
+            updateProfile(frameDt, pointerFrame)
+            return
+        end
         if state.academyIdCardCharacter then
             state.academyIdCardElapsed = state.academyIdCardElapsed + frameDt
             if state.academyIdCardElapsed > .28 then state.academyIdCardCharacter = nil end
@@ -495,32 +870,16 @@ function M.Install(context)
         if not art then return end
         local offsetX = SOURCE_OFFSET_X
         image(painter_, art.background, offsetX, 0, 1870, 841)
-        for _, node in ipairs(TITLE_NODES) do
-            drawTitleNode(painter_, art.title[node.key], node, state.animationElapsed or 0)
+        if state.profileMode == PROFILE_MODE.TITLE_IDLE then
+            drawTitleContent(painter_, art, state, nil)
+            if state.settingsOpen then drawSettings(painter_) end
+            return
         end
-        for _, node in ipairs(CHARACTER_NODES) do drawCharacterNode(painter_, art, node, state) end
 
-        local vg = painter_.vg
-        local top = menuTop()
-        for index, label in ipairs(MENU_ITEMS) do
-            local centerY = top + ((index - 1) * MENU.rowStep + MENU.rowHeight * .5) * MENU.scale
-            local pressed = state.pressedIndex == index
-            local progress = smoothStep(state.selectionProgress[index] or 0)
-            local visualProgress = pressed and 1 or progress
-            local drawScale = pressed and .98 or 1 + .022 * visualProgress
-            local textColor = mixColor(MENU_MUTED, MENU_INK, visualProgress)
-            nvgSave(vg)
-            nvgTranslate(vg, MENU.x, centerY)
-            nvgScale(vg, drawScale * MENU.scale, drawScale * MENU.scale)
-            drawFourPointStar(vg, 10, 0, 8.2, visualProgress)
-            painter_:Text(36 + 4 * visualProgress, 0, label, MENU.textSize, textColor,
-                NVG_ALIGN_LEFT + NVG_ALIGN_MIDDLE, "maker-body")
-            drawArrow(vg, MENU.width - 47, 0, MENU_ACCENT, visualProgress)
-            nvgRestore(vg)
-        end
-        painter_:Text(MENU.x, top + (#MENU_ITEMS * MENU.rowStep + 27) * MENU.scale,
-            "（戳左边四个有角色介绍）", 16 * MENU.scale, TIP_COLOR, nil, "maker-body")
-        if state.settingsOpen then drawSettings(painter_) end
+        local plateProgress = profilePlateProgress(state)
+        if plateProgress < .999 then drawTitleContent(painter_, art, state, PROFILE.characterId) end
+        painter_:FillRect(0, 0, 1870, 841, PROFILE.plateColor, math.floor(255 * plateProgress + .5))
+        drawProfileScene(painter_, art, state)
     end
 end
 
