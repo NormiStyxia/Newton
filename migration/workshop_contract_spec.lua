@@ -13,10 +13,12 @@ local DraftStore = require("game.workshop.DraftStore")
 local Export = require("game.workshop.Export")
 local Layout = require("game.workshop.Layout")
 local Interaction = require("game.workshop.Interaction")
+local Selection = require("game.workshop.Selection")
 local TextTransfer = require("game.workshop.TextTransfer")
 local TextEditor = require("game.workshop.TextEditor")
 local TouchScroller = require("game.workshop.TouchScroller")
 local Inspector = require("game.workshop.Inspector")
+local DocumentActions = require("game.workshop.DocumentActions")
 local View = require("game.workshop.View")
 local ExperimentCatalog = require("ui.ExperimentCatalog")
 local WorldPrimitives = require("game.render.WorldPrimitives")
@@ -373,6 +375,10 @@ local function checkMobileLandscape(width, height)
         view = {}, document = nil, inspectorFields = {},
     }
     local controls = View.BuildControls(controlState, layout, Interaction)
+    expect(controls.byId.canvasTool
+        and controls.byId.snap.x + controls.byId.snap.w < controls.byId.canvasTool.x
+        and controls.byId.canvasTool.x + controls.byId.canvasTool.w < controls.byId.deleteObject.x,
+        string.format("%dx%d canvas tool overlaps adjacent controls", width, height))
     local paletteRowsInside = #controls.paletteRows == #controlState.supportedTypes
     for _, row in ipairs(controls.paletteRows) do
         paletteRowsInside = paletteRowsInside
@@ -523,6 +529,36 @@ local rotated = LevelDocument.NewObject("wall", "rotated", 500, 300)
 rotated.transform.width, rotated.transform.height, rotated.transform.rotation = 200, 20, 45
 expect(Interaction.HitObject(rotated, 500, 300), "rotated object center was not selectable")
 expect(not Interaction.HitObject(rotated, 700, 500), "rotated object hit test accepted a remote point")
+local rotatedCorners = Interaction.ObjectScreenCorners(rotated, transform)
+local cornerRect = { x = rotatedCorners[1].x - 3, y = rotatedCorners[1].y - 3, w = 6, h = 6 }
+expect(Interaction.ObjectIntersectsScreenRect(rotated, transform, cornerRect),
+    "marquee intersection missed a rotated object corner")
+local forwardRect = Selection.MarqueeRect(120, 130, 300, 280, { x = 100, y = 100, w = 300, h = 220 })
+local reverseRect = Selection.MarqueeRect(300, 280, 120, 130, { x = 100, y = 100, w = 300, h = 220 })
+expect(forwardRect.x == reverseRect.x and forwardRect.y == reverseRect.y
+    and forwardRect.w == reverseRect.w and forwardRect.h == reverseRect.h,
+    "reverse-direction marquee did not normalize to the same rectangle")
+local leftGroupWall = LevelDocument.NewObject("wall", "group_left", 100, 300)
+local rightGroupWall = LevelDocument.NewObject("wall", "group_right", 100, 300)
+rightGroupWall.transform.x = mappingDocument.playfield.width - rightGroupWall.transform.width * 0.5
+local groupDeltaX, groupDeltaY = Interaction.ClampGroupDelta(mappingDocument, {
+    { object = leftGroupWall, x = leftGroupWall.transform.x, y = leftGroupWall.transform.y },
+    { object = rightGroupWall, x = rightGroupWall.transform.x, y = rightGroupWall.transform.y },
+}, 20, 15)
+expect(groupDeltaX == 0 and groupDeltaY == 15,
+    "group boundary clamp did not preserve one shared movement delta")
+local copyDocument = validLevel("copy_names", "Copy names")
+local legacyCopy = LevelDocument.NewObject("wall", "wall_legacy", 400, 260)
+legacyCopy.name = "墙体 副本 副本"
+local numberedCopy = LevelDocument.NewObject("wall", "wall_numbered", 600, 260)
+numberedCopy.name = "墙体 副本3"
+copyDocument.objects[#copyDocument.objects + 1] = legacyCopy
+copyDocument.objects[#copyDocument.objects + 1] = numberedCopy
+local copied = DocumentActions.DuplicateObjects({ document = copyDocument }, {
+    NextObjectId = function() return "wall_generated" end,
+}, LevelDocument, Interaction, { legacyCopy })
+expect(copied[1] and copied[1].name == "墙体 副本4",
+    "legacy repeated copy suffix was not normalized before allocating the next number")
 expect(Interaction.Snap(24, 10) == 20 and Interaction.Snap(26, 10) == 30,
     "grid snapping is unstable")
 

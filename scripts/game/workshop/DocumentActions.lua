@@ -84,19 +84,83 @@ function DocumentActions.DeleteObject(document, objectId)
     return nil
 end
 
-function DocumentActions.DuplicateObject(current, repository, levelDocument, interaction)
-    local selected = current.selectedObject
-    if not selected then return nil, "未选择对象" end
-    if selected.type == "launcher" or selected.type == "goal_sensor" then
-        return nil, "发射器和观察皿不可重复"
+function DocumentActions.DeleteObjects(document, objectIds)
+    local selected = {}
+    for _, objectId in ipairs(objectIds or {}) do selected[objectId] = true end
+    local removed = {}
+    for index = #(document.objects or {}), 1, -1 do
+        local object = document.objects[index]
+        if selected[object.id] then
+            table.remove(document.objects, index)
+            table.insert(removed, 1, object)
+        end
     end
-    local object = levelDocument.Clone(selected)
-    object.id = repository:NextObjectId(current.document, object.type)
-    object.name = object.name .. " 副本"
-    object.transform.x, object.transform.y = interaction.ClampPosition(current.document, object,
-        object.transform.x + 20, object.transform.y + 20)
-    current.document.objects[#current.document.objects + 1] = object
-    return object, nil
+    return removed
+end
+
+local function copyBaseName(name)
+    local base = tostring(name or "对象"):gsub("%s+$", "")
+    while true do
+        local stripped, count = base:gsub("%s+副本%d*$", "")
+        if count == 0 then break end
+        base = stripped:gsub("%s+$", "")
+    end
+    return base ~= "" and base or "对象"
+end
+
+local function copyIndices(document)
+    local maximums = {}
+    for _, object in ipairs(document.objects or {}) do
+        local number = tonumber(tostring(object.name or ""):match("副本(%d+)%s*$"))
+        if number then
+            local base = copyBaseName(object.name)
+            maximums[base] = math.max(maximums[base] or 0, number)
+        end
+    end
+    return maximums
+end
+
+function DocumentActions.DuplicateObjects(current, repository, levelDocument, interaction, selectedObjects)
+    if type(selectedObjects) ~= "table" or #selectedObjects == 0 then
+        return {}, 0, "未选择对象"
+    end
+    local duplicates, skipped = {}, 0
+    local maximums = copyIndices(current.document)
+    for _, selected in ipairs(selectedObjects) do
+        if selected.type == "launcher" or selected.type == "goal_sensor" then
+            skipped = skipped + 1
+        else
+            local object = levelDocument.Clone(selected)
+            object.id = repository:NextObjectId(current.document, object.type)
+            local base = copyBaseName(object.name)
+            maximums[base] = (maximums[base] or 0) + 1
+            object.name = base .. " 副本" .. tostring(maximums[base])
+            duplicates[#duplicates + 1] = object
+            current.document.objects[#current.document.objects + 1] = object
+        end
+    end
+    if #duplicates == 0 then return duplicates, skipped, "发射器和观察皿不可重复" end
+
+    local positions = {}
+    for _, object in ipairs(duplicates) do
+        positions[#positions + 1] = {
+            object = object,
+            x = object.transform.x,
+            y = object.transform.y,
+        }
+    end
+    local deltaX, deltaY = interaction.ClampGroupDelta(current.document, positions, 20, 20)
+    for _, position in ipairs(positions) do
+        position.object.transform.x = position.x + deltaX
+        position.object.transform.y = position.y + deltaY
+    end
+    return duplicates, skipped, nil
+end
+
+function DocumentActions.DuplicateObject(current, repository, levelDocument, interaction)
+    local duplicates, _, errorMessage = DocumentActions.DuplicateObjects(current, repository,
+        levelDocument, interaction, current.selectedObject and { current.selectedObject } or {})
+    return duplicates[1], errorMessage
 end
 
 return DocumentActions

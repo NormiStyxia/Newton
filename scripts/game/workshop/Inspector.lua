@@ -165,10 +165,34 @@ local function levelFields(fields, current, LevelDocument, Rules)
     end
 end
 
+local function multipleObjectFields(fields, current, typeLabels)
+    local counts, order = {}, {}
+    for _, object in ipairs(current.selectedObjects or {}) do
+        if not counts[object.type] then order[#order + 1] = object.type; counts[object.type] = 0 end
+        counts[object.type] = counts[object.type] + 1
+    end
+    local types = {}
+    for _, objectType in ipairs(order) do
+        types[#types + 1] = string.format("%s × %d", typeLabels[objectType] or objectType, counts[objectType])
+    end
+    section(fields, "selection", "多选摘要")
+    addField(fields, "selection.count", "已选对象", "readonly",
+        tostring(current.selectionCount or 0) .. " 个", nil, { editable = false })
+    addField(fields, "selection.types", "类型统计", "readonly",
+        table.concat(types, "、"), nil, { editable = false })
+    addField(fields, "selection.ids", "对象 ID", "readonly",
+        table.concat(current.selectedObjectIds or {}, "、"), nil, { editable = false })
+    section(fields, "selectionHint", "批量操作")
+    addField(fields, "selection.hint", "可用操作", "readonly",
+        "移动、复制、删除", nil, { editable = false })
+end
+
 function Inspector.Build(current, LevelDocument, Rules, typeLabels)
     local fields = {}
     if not current.document then return fields end
-    if current.selectedObject then
+    if (current.selectionCount or 0) > 1 then
+        multipleObjectFields(fields, current, typeLabels)
+    elseif current.selectedObject then
         objectFields(fields, current, LevelDocument, typeLabels)
     else
         levelFields(fields, current, LevelDocument, Rules)

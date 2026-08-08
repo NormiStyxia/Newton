@@ -101,9 +101,16 @@ local LevelData = {
     end,
 }
 local designStub = { New = function() return {} end }
+local catalogTransitionStub = { NewEntrance = function() return { active = false } end }
+local emptyServiceStub = { New = function() return {} end }
+function playUIClick() end
 local function newTestContext(frame)
     local result = State.New({
         DesignSpace = designStub,
+        CatalogTransition = catalogTransitionStub,
+        ExperimentProgress = emptyServiceStub,
+        GlobalBGM = emptyServiceStub,
+        SynthAudio = emptyServiceStub,
         Rules = Rules,
         ReplayMode = { NONE = 0 },
         LevelData = LevelData,
@@ -115,6 +122,10 @@ local function newTestContext(frame)
 end
 local context = State.New({
     DesignSpace = designStub,
+    CatalogTransition = catalogTransitionStub,
+    ExperimentProgress = emptyServiceStub,
+    GlobalBGM = emptyServiceStub,
+    SynthAudio = emptyServiceStub,
     Rules = Rules,
     ReplayMode = { NONE = 0 },
     LevelData = LevelData,
@@ -226,6 +237,22 @@ local function dragWorkspace(targetContext, current, fromX, fromY, toX, toY)
     })
 end
 
+local function clickWorkspace(targetContext, current, x, y, isTouch)
+    local rawX, rawY = rawPoint(current, x, y)
+    updateWorkshop(targetContext, {
+        x = rawX, y = rawY, down = true, pressed = true, released = false, isTouch = isTouch == true,
+    })
+    updateWorkshop(targetContext, {
+        x = rawX, y = rawY, down = false, pressed = false, released = true, isTouch = isTouch == true,
+    })
+end
+
+local function ctrlDragWorkspace(targetContext, current, fromX, fromY, toX, toY)
+    input.downKeys = { [KEY_CTRL] = true }
+    dragWorkspace(targetContext, current, fromX, fromY, toX, toY)
+    input.downKeys = nil
+end
+
 local function touchSwipeWorkspace(targetContext, current, fromX, fromY, toX, toY)
     local rawFromX, rawFromY = rawPoint(current, fromX, fromY)
     local rawToX, rawToY = rawPoint(current, toX, toY)
@@ -269,6 +296,10 @@ expect(#copiedBaselines == 1 and copiedBaselines[1].document.levelId == "custom_
 
 local restartedContext = State.New({
     DesignSpace = designStub,
+    CatalogTransition = catalogTransitionStub,
+    ExperimentProgress = emptyServiceStub,
+    GlobalBGM = emptyServiceStub,
+    SynthAudio = emptyServiceStub,
     Rules = Rules,
     ReplayMode = { NONE = 0 },
     LevelData = LevelData,
@@ -293,6 +324,8 @@ expect(#workshop.document.objects == countBefore + 1 and workshop.selectedObject
 context.WorkshopDuplicateSelected()
 expect(#workshop.document.objects == countBefore + 2 and workshop.selectedObjectId == "wall_003",
     "object duplication or ID allocation failed")
+expect(workshop.selectedObject.name:match(" 副本1$") ~= nil,
+    "first object copy did not use the numbered copy name")
 context.WorkshopUndo()
 expect(#workshop.document.objects == countBefore + 1, "undo did not restore document snapshot")
 context.WorkshopRedo()
@@ -308,11 +341,16 @@ workshop.selectedObjectId = workshop.document.objects[#workshop.document.objects
 updateWorkshop(context)
 pressShortcut(context, KEY_C)
 expect(#workshop.document.objects == countBefore + 3, "Ctrl+C did not copy the selected object")
+expect(workshop.selectedObject.name:match(" 副本2$") ~= nil
+    and not workshop.selectedObject.name:find("副本1 副本", 1, true),
+    "copying a numbered copy appended another copy suffix")
 context.WorkshopUndo()
 workshop.selectedObjectId = workshop.document.objects[#workshop.document.objects].id
 updateWorkshop(context)
 clickControl(context, workshop, "copyObject")
 expect(#workshop.document.objects == countBefore + 3, "toolbar copy did not duplicate the selected object")
+expect(workshop.selectedObject.name:match(" 副本2$") ~= nil,
+    "toolbar copy did not allocate the next copy number from the base name")
 context.WorkshopUndo()
 
 context.HandleWorkshopScreenMode()
@@ -475,10 +513,28 @@ expect(Interaction.FindTopObject(workshop.document, emptyLevelX, emptyLevelY,
 local selectedXBefore, selectedYBefore = spring.transform.x, spring.transform.y
 local selectedPanXBefore, selectedPanYBefore = workshop.view.panX, workshop.view.panY
 dragWorkspace(context, workshop, emptyX, emptyY, emptyX + 24, emptyY + 16)
-expect(spring.transform.x ~= selectedXBefore or spring.transform.y ~= selectedYBefore,
-    "dragging with an editable selection did not move the selected object")
-expect(workshop.view.panX == selectedPanXBefore and workshop.view.panY == selectedPanYBefore,
-    "dragging with an editable selection unexpectedly panned the canvas")
+expect(spring.transform.x == selectedXBefore and spring.transform.y == selectedYBefore,
+    "dragging an empty area moved the selected object")
+expect(workshop.view.panX == selectedPanXBefore + 24 and workshop.view.panY == selectedPanYBefore + 16,
+    "dragging an empty area did not pan while a selection existed")
+
+updateWorkshop(context)
+canvasViewport = workshop.layout.canvasViewport
+emptyX, emptyY = canvasViewport.x + 18, canvasViewport.y + 18
+local emptyAfterPanX, emptyAfterPanY = Interaction.ScreenToLevel(workshop.controls.canvasTransform, emptyX, emptyY)
+expect(Interaction.FindTopObject(workshop.document, emptyAfterPanX, emptyAfterPanY,
+    5 / workshop.controls.canvasTransform.scale) == nil, "deselect test point unexpectedly overlaps an object")
+clickWorkspace(context, workshop, emptyX, emptyY)
+expect(workshop.selectionCount == 0 and workshop.selectedObjectId == nil
+    and inspectorRow(context, workshop, "level.id") ~= nil,
+    "clicking empty canvas did not clear selection and restore the level Inspector")
+
+updateWorkshop(context)
+springTransform = workshop.controls.canvasTransform
+springX, springY = Interaction.LevelToScreen(springTransform, spring.transform.x, spring.transform.y)
+clickWorkspace(context, workshop, springX, springY)
+expect(workshop.selectionCount == 1 and workshop.selectedObjectId == spring.id,
+    "clicking an object after deselection did not restore single selection")
 
 updateWorkshop(context)
 local beforeWidth, beforeHeight = spring.transform.width, spring.transform.height
@@ -495,10 +551,106 @@ local centerX, centerY = Interaction.LevelToScreen(workshop.controls.canvasTrans
 dragWorkspace(context, workshop, rotateHandle.x, rotateHandle.y, centerX + 100, centerY)
 expect(spring.transform.rotation ~= beforeRotation, "rotation handle gesture did not update angle")
 
+clickControl(context, workshop, "canvasTool")
+expect(workshop.canvasTool == "marquee", "canvas tool button did not switch to marquee mode")
+clickControl(context, workshop, "canvasTool")
+expect(workshop.canvasTool == "pan", "canvas tool button did not switch back to pan mode")
+
+local function marqueeAround(objects)
+    updateWorkshop(context)
+    local bounds = Interaction.GroupScreenBounds(objects, workshop.controls.canvasTransform)
+    local viewport = workshop.layout.canvasViewport
+    local startX = math.max(viewport.x + 2, bounds.x - 16)
+    local startY = math.max(viewport.y + 2, bounds.y - 16)
+    local endX = math.min(viewport.x + viewport.w - 2, bounds.x + bounds.w + 16)
+    local endY = math.min(viewport.y + viewport.h - 2, bounds.y + bounds.h + 16)
+    ctrlDragWorkspace(context, workshop, startX, startY, endX, endY)
+end
+
+marqueeAround({ editedWall, spring })
+expect(workshop.selectionCount == 2 and workshop.selectedObjectId == spring.id
+    and inspectorRow(context, workshop, "selection.count").field.value == "2 个",
+    "Ctrl-drag marquee did not select both objects or build the multi-select Inspector")
+expect(workshop.controls.handles == nil and workshop.controls.selectionBounds ~= nil,
+    "multi-selection exposed single-object handles or omitted the group bounds")
+
+updateWorkshop(context)
+springX, springY = Interaction.LevelToScreen(workshop.controls.canvasTransform,
+    spring.transform.x, spring.transform.y)
+clickWorkspace(context, workshop, springX, springY)
+expect(workshop.selectionCount == 1 and workshop.selectedObjectId == spring.id,
+    "clicking one object inside a group did not collapse to single selection")
+marqueeAround({ editedWall, spring })
+
+local wallStartX, wallStartY = editedWall.transform.x, editedWall.transform.y
+local springStartX, springStartY = spring.transform.x, spring.transform.y
+local historyBeforeGroupMove = workshop.history.cursor
+updateWorkshop(context)
+springX, springY = Interaction.LevelToScreen(workshop.controls.canvasTransform,
+    spring.transform.x, spring.transform.y)
+dragWorkspace(context, workshop, springX, springY, springX + 40, springY + 20)
+local wallDeltaX, wallDeltaY = editedWall.transform.x - wallStartX, editedWall.transform.y - wallStartY
+local springDeltaX, springDeltaY = spring.transform.x - springStartX, spring.transform.y - springStartY
+expect((math.abs(wallDeltaX) > 0.0001 or math.abs(wallDeltaY) > 0.0001)
+    and math.abs(wallDeltaX - springDeltaX) < 0.0001
+    and math.abs(wallDeltaY - springDeltaY) < 0.0001,
+    "group drag did not preserve relative object positions")
+expect(workshop.history.cursor == historyBeforeGroupMove + 1,
+    "group drag did not create exactly one history entry")
+
+local countBeforeBatchCopy = #workshop.document.objects
+pressShortcut(context, KEY_C)
+expect(#workshop.document.objects == countBeforeBatchCopy + 2 and workshop.selectionCount == 2,
+    "Ctrl+C did not duplicate the whole selection")
+for _, object in ipairs(workshop.selectedObjects) do
+    expect(object.name:match(" 副本1$") ~= nil, "first batch copy did not use 副本1")
+end
+pressShortcut(context, KEY_C)
+expect(#workshop.document.objects == countBeforeBatchCopy + 4 and workshop.selectionCount == 2,
+    "copying a copied group did not duplicate the whole group")
+for _, object in ipairs(workshop.selectedObjects) do
+    expect(object.name:match(" 副本2$") ~= nil and not object.name:find("副本1 副本", 1, true),
+        "copied group accumulated copy suffixes instead of incrementing its number")
+end
+context.WorkshopUndo()
+
+workshop.selectedObjectIds = { editedWall.id, spring.id }
+workshop.selectedObjectId = spring.id
+updateWorkshop(context)
 local countBeforeDelete = #workshop.document.objects
+local historyBeforeDelete = workshop.history.cursor
 clickControl(context, workshop, "deleteObject")
-expect(#workshop.document.objects == countBeforeDelete - 1 and workshop.selectedObjectId == nil,
-    "delete-object control did not remove the selected object")
+expect(#workshop.document.objects == countBeforeDelete - 2 and workshop.selectionCount == 0,
+    "delete-object control did not remove the whole selection")
+expect(workshop.history.cursor == historyBeforeDelete + 1,
+    "batch delete did not create exactly one history entry")
+context.WorkshopUndo()
+expect(#workshop.document.objects == countBeforeDelete,
+    "one undo did not restore the complete batch deletion")
+
+local protectedLauncher, eligibleWall
+for _, object in ipairs(workshop.document.objects) do
+    if object.type == "launcher" then protectedLauncher = object end
+    if object.type == "wall" and not eligibleWall then eligibleWall = object end
+end
+expect(protectedLauncher and eligibleWall, "mixed-copy fixture is missing launcher or wall")
+workshop.selectedObjectIds = { eligibleWall.id, protectedLauncher.id }
+workshop.selectedObjectId = protectedLauncher.id
+updateWorkshop(context)
+local countBeforeMixedCopy = #workshop.document.objects
+context.WorkshopDuplicateSelected()
+expect(#workshop.document.objects == countBeforeMixedCopy + 1
+    and workshop.status:find("跳过 1 个", 1, true),
+    "mixed batch copy did not copy eligible objects and report the protected object")
+context.WorkshopUndo()
+workshop.selectedObjectIds = { protectedLauncher.id }
+workshop.selectedObjectId = protectedLauncher.id
+updateWorkshop(context)
+local historyBeforeProtectedCopy = workshop.history.cursor
+context.WorkshopDuplicateSelected()
+expect(#workshop.document.objects == countBeforeMixedCopy
+    and workshop.history.cursor == historyBeforeProtectedCopy,
+    "copying an all-protected selection changed the document or history")
 
 clickControl(context, workshop, "export")
 expect(workshop.modal and workshop.modal.kind == "export", "export control did not open JSON panel")
@@ -563,6 +715,10 @@ expect(continueContext.workshopState_.modal == nil and continueContext.workshopS
 
 local recoveryContext = State.New({
     DesignSpace = designStub,
+    CatalogTransition = catalogTransitionStub,
+    ExperimentProgress = emptyServiceStub,
+    GlobalBGM = emptyServiceStub,
+    SynthAudio = emptyServiceStub,
     Rules = Rules,
     ReplayMode = { NONE = 0 },
     LevelData = LevelData,
@@ -689,8 +845,25 @@ expect(workshop.view.inspectorScroll > 20 and workshop.textEdit == nil and works
     "touch Inspector swipe did not scroll cleanly or accidentally edited a field")
 
 workshop.view.drawerMode = nil
+workshop.selectedObjectIds, workshop.selectedObjects = {}, {}
 workshop.selectedObjectId, workshop.selectedObject = nil, nil
 updateWorkshop(context)
+local toolRect = workshop.controls.byId.canvasTool
+clickWorkspace(context, workshop, toolRect.x + toolRect.w * .5, toolRect.y + toolRect.h * .5, true)
+expect(workshop.canvasTool == "marquee", "phone touch could not switch to marquee mode")
+updateWorkshop(context)
+local phoneBounds = Interaction.GroupScreenBounds(workshop.document.objects, workshop.controls.canvasTransform)
+local phoneViewport = workshop.layout.canvasViewport
+touchSwipeWorkspace(context, workshop,
+    math.max(phoneViewport.x + 2, phoneBounds.x - 12), math.max(phoneViewport.y + 2, phoneBounds.y - 12),
+    math.min(phoneViewport.x + phoneViewport.w - 2, phoneBounds.x + phoneBounds.w + 12),
+    math.min(phoneViewport.y + phoneViewport.h - 2, phoneBounds.y + phoneBounds.h + 12))
+expect(workshop.selectionCount >= 2,
+    "phone marquee mode did not select multiple objects with a touch swipe")
+toolRect = workshop.controls.byId.canvasTool
+clickWorkspace(context, workshop, toolRect.x + toolRect.w * .5, toolRect.y + toolRect.h * .5, true)
+expect(workshop.canvasTool == "pan", "phone touch could not switch back to pan mode")
+
 local canvasViewport = workshop.layout.canvasViewport
 local transformBeforePan = workshop.controls.canvasTransform
 local emptyX, emptyY = canvasViewport.x + 18, canvasViewport.y + 18
@@ -698,9 +871,9 @@ local emptyLevelX, emptyLevelY = Interaction.ScreenToLevel(transformBeforePan, e
 expect(Interaction.FindTopObject(workshop.document, emptyLevelX, emptyLevelY,
     5 / transformBeforePan.scale) == nil, "canvas pan test point unexpectedly overlaps an object")
 local panXBefore, panYBefore = workshop.view.panX, workshop.view.panY
-dragWorkspace(context, workshop, emptyX, emptyY, emptyX + 40, emptyY + 25)
+touchSwipeWorkspace(context, workshop, emptyX, emptyY, emptyX + 40, emptyY + 25)
 expect(workshop.view.panX == panXBefore + 40 and workshop.view.panY == panYBefore + 25,
-    "dragging an empty canvas area did not pan the canvas")
+    "phone pan mode did not move the canvas with a touch swipe")
 
 clickControl(context, workshop, "export")
 workshop.modal.payload.text = string.rep("scroll line\n", 100)

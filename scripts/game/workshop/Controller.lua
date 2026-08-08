@@ -4,6 +4,7 @@ local DraftStore = require("game.workshop.DraftStore")
 local Export = require("game.workshop.Export")
 local Layout = require("game.workshop.Layout")
 local Interaction = require("game.workshop.Interaction")
+local Selection = require("game.workshop.Selection")
 local View = require("game.workshop.View")
 local Inspector = require("game.workshop.Inspector")
 local DocumentActions = require("game.workshop.DocumentActions")
@@ -38,8 +39,7 @@ function M.Install(context)
     local function refreshEntries() state().entries = state().repository:List() end
     local function refreshSelection()
         local current = state()
-        current.selectedObject = DocumentActions.FindObject(current.document, current.selectedObjectId)
-        if current.selectedObjectId and not current.selectedObject then current.selectedObjectId = nil end
+        Selection.Normalize(current, current.document)
     end
     local function refreshValidation()
         local current = state()
@@ -104,7 +104,7 @@ function M.Install(context)
         current.readOnly = metadata.readOnly == true
         if not current.readOnly then Inspector.EnsureCustomFields(document) end
         current.document = document
-        current.selectedObjectId, current.selectedObject = nil, nil
+        Selection.Clear(current)
         current.view = options.viewState and clone(LevelDocument, options.viewState) or DocumentActions.NewViewState()
         if current.layout and current.layout.folded then current.view.drawerMode = "files" end
         current.dirty = options.dirty == true
@@ -144,6 +144,12 @@ function M.Install(context)
     end
     function InitializeLevelWorkshop()
         local current = state()
+        current.selectedObjectIds = current.selectedObjectIds or {}
+        current.selectedObjects = current.selectedObjects or {}
+        current.selectionCount = current.selectionCount or 0
+        current.canDuplicateSelection = current.canDuplicateSelection == true
+        current.canvasTool = current.canvasTool == "marquee" and "marquee" or "pan"
+        current.marqueeRect = nil
         if current.initialized then return true end
         local adapter = DraftStore.CreateLocalAdapter()
         current.repository = Repository.New({ LevelDocument = LevelDocument })
@@ -169,6 +175,7 @@ function M.Install(context)
         if scene_ or level_ then ReleaseLevelRuntime() end
         renderer:SetNumViewports(0)
         screen_ = "workshop"
+        state().canvasTool = "pan"
         local entryId = selectedLevelId and ("official:" .. selectedLevelId) or nil
         if not entryId or not state().repository:GetEntry(entryId) then
             entryId = state().entries[1] and state().entries[1].entryId or nil
@@ -264,27 +271,31 @@ function M.Install(context)
         local object, errorMessage = DocumentActions.AddObject(current, objectType,
             current.repository, LevelDocument, View.TYPE_LABELS)
         if not object then toast(errorMessage); return end
-        current.selectedObjectId = object.id
+        Selection.SetSingle(current, object)
         markChanged("新增" .. (View.TYPE_LABELS[objectType] or objectType))
         if current.layout.folded then current.view.drawerMode = "inspector" end
         rebuildUI()
     end
     local function deleteSelected()
         local current = state()
-        if not editable() or not current.selectedObjectId then return end
-        if not DocumentActions.DeleteObject(current.document, current.selectedObjectId) then return end
-        current.selectedObjectId, current.selectedObject = nil, nil
-        markChanged("删除对象")
+        if not editable() or (current.selectionCount or 0) == 0 then return end
+        local removed = DocumentActions.DeleteObjects(current.document, current.selectedObjectIds)
+        if #removed == 0 then return end
+        Selection.Clear(current)
+        markChanged(#removed > 1 and ("删除 " .. tostring(#removed) .. " 个对象") or "删除对象")
         rebuildUI()
     end
     local function duplicateSelected()
         local current = state()
-        if not editable() or not current.selectedObject then return end
-        local object, errorMessage = DocumentActions.DuplicateObject(current, current.repository,
-            LevelDocument, Interaction)
-        if not object then toast(errorMessage); return end
-        current.selectedObjectId = object.id
-        markChanged("复制对象")
+        if not editable() or (current.selectionCount or 0) == 0 then return end
+        local objects, skipped, errorMessage = DocumentActions.DuplicateObjects(current, current.repository,
+            LevelDocument, Interaction, current.selectedObjects)
+        if #objects == 0 then toast(errorMessage or "没有可复制的对象"); return end
+        local objectIds = {}
+        for _, object in ipairs(objects) do objectIds[#objectIds + 1] = object.id end
+        Selection.SetMany(current, objectIds, objectIds[#objectIds])
+        markChanged(#objects > 1 and ("复制 " .. tostring(#objects) .. " 个对象") or "复制对象")
+        if skipped > 0 then toast("已复制 " .. tostring(#objects) .. " 个对象，跳过 " .. tostring(skipped) .. " 个不可复制对象") end
         rebuildUI()
     end
 
@@ -427,6 +438,7 @@ function M.Install(context)
         current.validation = report
         if not report.valid then toast("无法预览：" .. report.errors[1].message, 5); return false end
         saveDraft("预览前草稿已保存")
+        Selection.Clear(current)
         local started, errorMessage = PreviewSession.Begin(context, LevelDocument, current)
         if not started then
             refreshSelection(); refreshValidation(); rebuildUI()
@@ -453,6 +465,8 @@ function M.Install(context)
         end
         screen_ = "catalog"
         renderer:SetNumViewports(0)
+        Selection.Clear(current)
+        current.canvasTool = "pan"
         current.modal, current.textEdit, current.transaction = nil, nil, nil
         return true
     end
@@ -472,6 +486,8 @@ function M.Install(context)
         local target, targetExit = modal.targetEntryId, modal.targetExit
         current.modal = nil
         if targetExit then
+            Selection.Clear(current)
+            current.canvasTool = "pan"
             screen_ = "catalog"; renderer:SetNumViewports(0)
         elseif target then
             openEntryNow(target, { skipRecovery = action == "discard" })
@@ -534,13 +550,14 @@ function M.Install(context)
         if id == "save" or id == "draft" then return not current.readOnly and current.document ~= nil end
         if id == "undo" then return current.canUndo == true end
         if id == "redo" then return current.canRedo == true end
-        if id == "copyObject" then return current.selectedObject ~= nil and not current.readOnly end
+        if id == "copyObject" then return current.canDuplicateSelection == true and not current.readOnly end
         if id == "preview" or id == "export" then return current.document ~= nil end
         if id == "file_rename" or id == "file_delete" then
             return current.document ~= nil and not current.readOnly
         end
-        if id == "file_copy" or id == "deleteObject" then
-            return current.document ~= nil and current.selectedObject ~= nil and not current.readOnly
+        if id == "file_copy" then return current.document ~= nil end
+        if id == "deleteObject" then
+            return current.document ~= nil and (current.selectionCount or 0) > 0 and not current.readOnly
         end
         return true
     end
@@ -570,6 +587,12 @@ function M.Install(context)
                 message = "将删除该关卡及其草稿槽位。官方关卡不受影响。" }; rebuildUI() end
         elseif id == "grid" then current.view.showGrid = not current.view.showGrid; rebuildUI()
         elseif id == "snap" then current.view.snap = not current.view.snap; rebuildUI()
+        elseif id == "canvasTool" then
+            current.canvasTool = current.canvasTool == "marquee" and "pan" or "marquee"
+            current.marqueeRect = nil
+            current.status = current.canvasTool == "marquee" and "框选模式 · 拖动空白区域选择多个对象"
+                or "画布拖动模式"
+            rebuildUI()
         elseif id == "zoomOut" then current.view.zoom = math.max(.35, current.view.zoom / 1.2); rebuildUI()
         elseif id == "zoomIn" then current.view.zoom = math.min(4, current.view.zoom * 1.2); rebuildUI()
         elseif id == "deleteObject" then deleteSelected()
@@ -594,80 +617,23 @@ function M.Install(context)
 
     local function beginCanvasGesture(pointerFrame)
         local current = state()
-        local controls = current.controls
-        local transform = controls.canvasTransform
-        if not transform then return end
-        local x, y = pointerFrame.x, pointerFrame.y
-        local panTransaction = { kind = "pan", startX = x, startY = y,
-            panX = current.view.panX, panY = current.view.panY, changed = false }
-        if current.selectedObject and not current.readOnly then
-            ---@type string|nil
-            local handle = Interaction.HitHandle(controls.handles, x, y)
-            if handle then
-                current.transaction = { kind = handle, objectId = current.selectedObject.id, changed = false }
-                return
-            end
-        end
-        if input:GetKeyDown(KEY_SHIFT) and not current.selectedObject then current.transaction = panTransaction; return end
-        local levelX, levelY = Interaction.ScreenToLevel(transform, x, y)
-        local object = Interaction.FindTopObject(current.document, levelX, levelY,
-            5 / transform.objectScale, transform)
-        if not object and current.selectedObject and not current.readOnly then object = current.selectedObject end
-        if object then
-            current.selectedObjectId, current.selectedObject = object.id, object
-            if current.layout.folded then current.view.drawerMode = "inspector" end
-            if not current.readOnly then
-                current.transaction = {
-                    kind = "move", objectId = object.id,
-                    offsetX = object.transform.x - levelX, offsetY = object.transform.y - levelY,
-                    changed = false,
-                }
-            else current.transaction = panTransaction end
-            rebuildUI()
-        else
-            current.selectedObjectId, current.selectedObject = nil, nil
-            current.transaction = panTransaction
-            buildInspectorFields(); rebuildUI()
-        end
+        Selection.BeginCanvasGesture(current, pointerFrame, Interaction, input:GetKeyDown(KEY_CTRL))
+        rebuildUI()
     end
 
     local function updateCanvasGesture(pointerFrame)
         local current = state()
-        local transaction = current.transaction
-        if not transaction or not pointerFrame.down then return end
-        if transaction.kind == "pan" then
-            current.view.panX = transaction.panX + pointerFrame.x - transaction.startX
-            current.view.panY = transaction.panY + pointerFrame.y - transaction.startY
-            transaction.changed = true; rebuildUI(); return
-        end
-        local object = DocumentActions.FindObject(current.document, transaction.objectId)
-        local transform = current.controls.canvasTransform
-        if not object or not transform then return end
-        local levelX, levelY = Interaction.ScreenToLevel(transform, pointerFrame.x, pointerFrame.y)
-        if transaction.kind == "move" then
-            local x, y = levelX + transaction.offsetX, levelY + transaction.offsetY
-            if current.view.snap then x, y = Interaction.Snap(x, current.view.gridSize), Interaction.Snap(y, current.view.gridSize) end
-            object.transform.x, object.transform.y = Interaction.ClampPosition(current.document, object, x, y)
-        elseif transaction.kind == "resize" then
-            object.transform.width, object.transform.height = Interaction.ResizeFromPointer(current.document, object,
-                levelX, levelY, 4, current.view.snap and current.view.gridSize or nil, transform)
-            object.transform.x, object.transform.y = Interaction.ClampPosition(current.document, object,
-                object.transform.x, object.transform.y)
-        elseif transaction.kind == "rotate" then
-            object.transform.rotation = Interaction.RotationFromPointer(object, levelX, levelY,
-                current.view.snap and current.view.angleSnap or nil, transform)
-            object.transform.x, object.transform.y = Interaction.ClampPosition(current.document, object,
-                object.transform.x, object.transform.y)
-        end
-        transaction.changed = true
-        refreshSelection(); refreshValidation(); rebuildUI()
+        local changeKind = Selection.UpdateCanvasGesture(current, pointerFrame, Interaction)
+        if not changeKind then return end
+        if changeKind == "document" then refreshValidation() end
+        refreshSelection()
+        rebuildUI()
     end
 
     local function endCanvasGesture()
         local current = state()
-        local transaction = current.transaction
-        current.transaction = nil
-        if transaction and transaction.changed and transaction.kind ~= "pan" then markChanged("画布变换") end
+        local historyLabel = Selection.EndCanvasGesture(current)
+        if historyLabel then markChanged(historyLabel) else refreshSelection() end
         rebuildUI()
     end
 
@@ -792,6 +758,8 @@ function M.Install(context)
 
     function ShutdownLevelWorkshop()
         if state().initialized then saveDraft("退出前草稿已保存") end
+        Selection.Clear(state())
+        state().canvasTool = "pan"
         if input then input:SetScreenKeyboardVisible(false) end
     end
     function HandleWorkshopScreenMode()

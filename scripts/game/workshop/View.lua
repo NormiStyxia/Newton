@@ -124,6 +124,8 @@ function View.BuildControls(state, layout, interaction)
 
     controls.byId.grid = { x = layout.canvas.x + 12, y = layout.canvas.y + 8, w = 64, h = 36 }
     controls.byId.snap = { x = layout.canvas.x + 82, y = layout.canvas.y + 8, w = 64, h = 36 }
+    controls.byId.canvasTool = { x = layout.canvas.x + 152, y = layout.canvas.y + 8,
+        w = layout.ultraCompact and 58 or (layout.mobileCompact and 72 or 104), h = 36 }
     controls.byId.zoomOut = { x = layout.canvas.x + layout.canvas.w - 92, y = layout.canvas.y + 8, w = 36, h = 36 }
     controls.byId.zoomIn = { x = layout.canvas.x + layout.canvas.w - 50, y = layout.canvas.y + 8, w = 36, h = 36 }
     controls.byId.deleteObject = { x = layout.canvas.x + layout.canvas.w - 202, y = layout.canvas.y + 8, w = 98, h = 36 }
@@ -179,7 +181,11 @@ function View.BuildControls(state, layout, interaction)
     if state.document and layout.canvasViewport then
         controls.canvasTransform = interaction.CanvasTransform(state.document, layout.canvasViewport, state.view)
         local selected = state.selectedObject
-        if selected then controls.handles = interaction.HandlePositions(selected, controls.canvasTransform) end
+        if selected and (state.selectionCount or 0) == 1 then
+            controls.handles = interaction.HandlePositions(selected, controls.canvasTransform)
+        elseif (state.selectionCount or 0) > 1 then
+            controls.selectionBounds = interaction.GroupScreenBounds(state.selectedObjects, controls.canvasTransform)
+        end
     end
 
     local modal = state.modal
@@ -286,7 +292,7 @@ local function drawTop(painter, state, layout, controls)
         if id == "save" or id == "draft" then enabled = not state.readOnly and state.document ~= nil end
         if id == "undo" then enabled = state.canUndo end
         if id == "redo" then enabled = state.canRedo end
-        if id == "copyObject" then enabled = state.selectedObject ~= nil and not state.readOnly end
+        if id == "copyObject" then enabled = state.canDuplicateSelection == true and not state.readOnly end
         if id == "preview" or id == "export" then enabled = state.document ~= nil end
         drawButton(painter, rect, labels[id], { enabled = enabled, primary = id == "preview",
             fontSize = layout.ultraCompact and 16 or (layout.mobileCompact and 19 or 20) })
@@ -429,13 +435,21 @@ end
 local function drawCanvas(painter, state, layout, controls)
     painter:FillRect(layout.canvas.x, layout.canvas.y, layout.canvas.w, layout.canvas.h, COLORS.canvas)
     painter:StrokeRect(layout.canvas.x, layout.canvas.y, layout.canvas.w, layout.canvas.h, COLORS.line, 1)
-    if not layout.ultraCompact then
-        painter:Text(layout.canvas.x + 154, layout.canvas.y + 17, "灰盒画布", 18,
-            COLORS.lightText, nil, "maker-display")
-    end
     drawButton(painter, controls.byId.grid, "网格", { active = state.view.showGrid })
     drawButton(painter, controls.byId.snap, "吸附", { active = state.view.snap })
-    drawButton(painter, controls.byId.deleteObject, "删除对象", { enabled = state.selectedObject ~= nil and not state.readOnly, danger = true })
+    local toolLabel = state.canvasTool == "marquee" and "框选物件" or "拖动画布"
+    if layout.mobileCompact or layout.ultraCompact then
+        toolLabel = state.canvasTool == "marquee" and "框选" or "拖动"
+    end
+    drawButton(painter, controls.byId.canvasTool, toolLabel,
+        { active = state.canvasTool == "marquee", fontSize = layout.ultraCompact and 15 or 17 })
+    local titleX = controls.byId.canvasTool.x + controls.byId.canvasTool.w + 10
+    if not layout.ultraCompact and controls.byId.deleteObject.x - titleX >= 90 then
+        painter:Text(titleX, layout.canvas.y + 17, "灰盒画布", 18,
+            COLORS.lightText, nil, "maker-display")
+    end
+    drawButton(painter, controls.byId.deleteObject, "删除对象",
+        { enabled = (state.selectionCount or 0) > 0 and not state.readOnly, danger = true })
     drawButton(painter, controls.byId.zoomOut, "−", { fontSize = 20 })
     drawButton(painter, controls.byId.zoomIn, "+", { fontSize = 18 })
     local viewport = layout.canvasViewport
@@ -451,8 +465,20 @@ local function drawCanvas(painter, state, layout, controls)
     local groundY = transform.originY + 580 * transform.positionScaleY
     painter:FillRect(transform.originX, groundY, transform.drawWidth,
         math.max(0, transform.originY + transform.drawHeight - groundY), COLORS.top, 170)
+    local selectedSet = {}
+    for _, objectId in ipairs(state.selectedObjectIds or {}) do selectedSet[objectId] = true end
     for _, object in ipairs(state.document.objects or {}) do
-        drawObject(painter, object, transform, state.selectedObjectId == object.id)
+        drawObject(painter, object, transform, selectedSet[object.id] == true)
+    end
+    if controls.selectionBounds then
+        local bounds = controls.selectionBounds
+        painter:StrokeRect(bounds.x - 3, bounds.y - 3, bounds.w + 6, bounds.h + 6,
+            COLORS.selection, 2, 220)
+    end
+    if state.marqueeRect then
+        local marquee = state.marqueeRect
+        painter:FillRect(marquee.x, marquee.y, marquee.w, marquee.h, COLORS.selection, 42)
+        painter:StrokeRect(marquee.x, marquee.y, marquee.w, marquee.h, COLORS.selection, 2, 245)
     end
     if state.selectedObject and controls.handles then
         local handles = controls.handles
@@ -517,7 +543,9 @@ end
 
 local function drawInspector(painter, state, layout, controls)
     if not layout.right then return end
-    drawPanel(painter, layout.right, state.selectedObject and "对象 Inspector" or "关卡 Inspector")
+    local title = (state.selectionCount or 0) > 1 and "多选 Inspector"
+        or (state.selectedObject and "对象 Inspector" or "关卡 Inspector")
+    drawPanel(painter, layout.right, title)
     local viewport = layout.inspectorViewport
     if not viewport then return end
     nvgSave(painter.vg)
@@ -571,6 +599,7 @@ local function drawStatus(painter, state, layout)
         text = text .. string.format("   ·   %d 对象   ·   %d 错误 / %d 警告   ·   %s",
             #(state.document.objects or {}), errors, warnings, state.persistenceKind or "memory-only")
     end
+    if not layout.mobileCompact then text = text .. "   ·   Ctrl + 拖动空白：临时框选" end
     local statusText, statusSize = fitText(painter, text, "maker-body", 16, 11, layout.statusText.w)
     painter:Text(layout.statusText.x, layout.statusText.y, statusText, statusSize,
         errors > 0 and COLORS.warning or COLORS.lightText, nil, "maker-body")

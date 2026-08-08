@@ -100,6 +100,126 @@ function Interaction.ClampPosition(document, object, x, y)
         clamp(y, halfY, math.max(halfY, height - halfY))
 end
 
+local function rotatedHalfExtents(object)
+    local radians = math.rad(object.transform.rotation or 0)
+    local cosValue, sinValue = math.abs(math.cos(radians)), math.abs(math.sin(radians))
+    return cosValue * object.transform.width * 0.5 + sinValue * object.transform.height * 0.5,
+        sinValue * object.transform.width * 0.5 + cosValue * object.transform.height * 0.5
+end
+
+function Interaction.ClampGroupDelta(document, positions, deltaX, deltaY)
+    local width = document.playfield.width
+    local height = math.min(document.playfield.height, 580)
+    local minimumX, maximumX = -math.huge, math.huge
+    local minimumY, maximumY = -math.huge, math.huge
+    for _, position in ipairs(positions or {}) do
+        local halfX, halfY = rotatedHalfExtents(position.object)
+        minimumX = math.max(minimumX, halfX - position.x)
+        maximumX = math.min(maximumX, width - halfX - position.x)
+        minimumY = math.max(minimumY, halfY - position.y)
+        maximumY = math.min(maximumY, height - halfY - position.y)
+    end
+    if minimumX == -math.huge then return deltaX, deltaY end
+    return clamp(deltaX, minimumX, maximumX), clamp(deltaY, minimumY, maximumY)
+end
+
+function Interaction.ObjectScreenCorners(object, canvasTransform)
+    local centerX, centerY = Interaction.LevelToScreen(canvasTransform,
+        object.transform.x, object.transform.y)
+    local halfWidth = object.transform.width * canvasTransform.objectScale * 0.5
+    local halfHeight = object.transform.height * canvasTransform.objectScale * 0.5
+    local radians = math.rad(object.transform.rotation or 0)
+    local cosValue, sinValue = math.cos(radians), math.sin(radians)
+    local corners = {}
+    for _, point in ipairs({
+        { -halfWidth, -halfHeight }, { halfWidth, -halfHeight },
+        { halfWidth, halfHeight }, { -halfWidth, halfHeight },
+    }) do
+        corners[#corners + 1] = {
+            x = centerX + point[1] * cosValue - point[2] * sinValue,
+            y = centerY + point[1] * sinValue + point[2] * cosValue,
+        }
+    end
+    return corners
+end
+
+local function pointInRect(point, rect)
+    return point.x >= rect.x and point.x <= rect.x + rect.w
+        and point.y >= rect.y and point.y <= rect.y + rect.h
+end
+
+local function pointInPolygon(point, polygon)
+    local inside = false
+    local previous = polygon[#polygon]
+    for _, current in ipairs(polygon) do
+        if ((current.y > point.y) ~= (previous.y > point.y))
+            and point.x < (previous.x - current.x) * (point.y - current.y)
+                / (previous.y - current.y) + current.x then
+            inside = not inside
+        end
+        previous = current
+    end
+    return inside
+end
+
+local function orientation(a, b, c)
+    return (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x)
+end
+
+local function onSegment(a, b, point)
+    local epsilon = 0.0001
+    return math.abs(orientation(a, b, point)) <= epsilon
+        and point.x >= math.min(a.x, b.x) - epsilon
+        and point.x <= math.max(a.x, b.x) + epsilon
+        and point.y >= math.min(a.y, b.y) - epsilon
+        and point.y <= math.max(a.y, b.y) + epsilon
+end
+
+local function segmentsIntersect(a, b, c, d)
+    local abC, abD = orientation(a, b, c), orientation(a, b, d)
+    local cdA, cdB = orientation(c, d, a), orientation(c, d, b)
+    if ((abC > 0 and abD < 0) or (abC < 0 and abD > 0))
+        and ((cdA > 0 and cdB < 0) or (cdA < 0 and cdB > 0)) then return true end
+    return onSegment(a, b, c) or onSegment(a, b, d)
+        or onSegment(c, d, a) or onSegment(c, d, b)
+end
+
+function Interaction.ObjectIntersectsScreenRect(object, canvasTransform, rect)
+    if not object or not object.transform or not rect then return false end
+    local corners = Interaction.ObjectScreenCorners(object, canvasTransform)
+    for _, corner in ipairs(corners) do
+        if pointInRect(corner, rect) then return true end
+    end
+    local rectCorners = {
+        { x = rect.x, y = rect.y }, { x = rect.x + rect.w, y = rect.y },
+        { x = rect.x + rect.w, y = rect.y + rect.h }, { x = rect.x, y = rect.y + rect.h },
+    }
+    for _, corner in ipairs(rectCorners) do
+        if pointInPolygon(corner, corners) then return true end
+    end
+    for index = 1, 4 do
+        local objectNext = index % 4 + 1
+        for rectIndex = 1, 4 do
+            local rectNext = rectIndex % 4 + 1
+            if segmentsIntersect(corners[index], corners[objectNext],
+                rectCorners[rectIndex], rectCorners[rectNext]) then return true end
+        end
+    end
+    return false
+end
+
+function Interaction.GroupScreenBounds(objects, canvasTransform)
+    local left, top, right, bottom = math.huge, math.huge, -math.huge, -math.huge
+    for _, object in ipairs(objects or {}) do
+        for _, corner in ipairs(Interaction.ObjectScreenCorners(object, canvasTransform)) do
+            left, top = math.min(left, corner.x), math.min(top, corner.y)
+            right, bottom = math.max(right, corner.x), math.max(bottom, corner.y)
+        end
+    end
+    if left == math.huge then return nil end
+    return { x = left, y = top, w = right - left, h = bottom - top }
+end
+
 function Interaction.ResizeFromPointer(document, object, levelX, levelY, minimumSize, snapSize, canvasTransform)
     local localX, localY = localPoint(object, levelX, levelY, canvasTransform)
     local width = math.max(minimumSize or 4, math.abs(localX) * 2)

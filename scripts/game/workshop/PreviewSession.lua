@@ -12,7 +12,6 @@ local function capture(context, levelDocument, current)
         metadata = clone(levelDocument, current.metadata),
         readOnly = current.readOnly,
         dirty = current.dirty,
-        selectedObjectId = current.selectedObjectId,
         failureCountsByLevel = clone(levelDocument, context.failureCountsByLevel_),
         resultReportClearCounts = clone(levelDocument, context.resultReportClearCounts_),
         resultReportHistory = clone(levelDocument, context.resultReportHistory_),
@@ -28,7 +27,10 @@ local function restore(context, levelDocument, current, snapshot)
     current.entryId = snapshot.entryId
     current.metadata = clone(levelDocument, snapshot.metadata)
     current.readOnly, current.dirty = snapshot.readOnly, snapshot.dirty
-    current.selectedObjectId = snapshot.selectedObjectId
+    current.selectedObjectIds, current.selectedObjects = {}, {}
+    current.selectedObjectId, current.selectedObject = nil, nil
+    current.selectionCount, current.canDuplicateSelection = 0, false
+    current.marqueeRect = nil
     context.failureCountsByLevel_ = clone(levelDocument, snapshot.failureCountsByLevel)
     context.resultReportClearCounts_ = clone(levelDocument, snapshot.resultReportClearCounts)
     context.resultReportHistory_ = clone(levelDocument, snapshot.resultReportHistory)
