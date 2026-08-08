@@ -21,6 +21,14 @@ local MENU_MUTED = { 91, 111, 81, 225 }
 local MENU_ACCENT = { 164, 139, 76, 255 }
 local TIP_COLOR = { 77, 96, 72, 180 }
 local OVERLAY_FILL = { 250, 239, 216, 246 }
+local ACADEMY_NOTES = {
+    x = 1160,
+    y = 72,
+    width = 350,
+    fadeDelay = .18,
+    fadeDuration = .42,
+}
+local ACADEMY_INK = { 77, 96, 72, 255 }
 local MENU_TRANSITION_SECONDS = .14
 local CHARACTER_HOVER_SECONDS = .14
 local DEGREES_TO_RADIANS = math.pi / 180
@@ -184,6 +192,7 @@ local ARCHIVE = {
         contentLeft = 840,
         expressionColumnLeft = 1410,
         safeGap = 36,
+        verticalOffset = -32,
         academyTitleY = 226,
         sectionGap = 18,
         titleToBodyGap = 18,
@@ -199,7 +208,7 @@ local ARCHIVE = {
         bottomSafeGap = 24,
         labelColumnWidth = 135,
     },
-    header = { titleY = 68, latinY = 151, subY = 193, lineY = 218 },
+    header = { titleY = 72, latinY = 92, subY = 128, lineY = 182 },
     tags = {
         { label = "学院登记", w = 214,
             tagStart = .25, tagEnd = .39 },
@@ -470,7 +479,9 @@ end
 local function archiveTextWidth(painter, value, font, size)
     painter:UseFont(font)
     nvgFontSize(painter.vg, size)
-    local ok, measured = pcall(nvgTextBounds, painter.vg, 0, 0, value or "", nil)
+    local ok, measured = pcall(function()
+        return nvgTextBounds(painter.vg, 0, 0, value or "", nil)
+    end)
     if ok and type(measured) == "number" then return measured end
     return #archiveUtf8Characters(value) * size * .92
 end
@@ -515,6 +526,7 @@ local function buildArchiveLayout(painter)
     local valueX = contentLeft + metrics.labelColumnWidth
     local valueWidth = contentRight - valueX
     local bodyFont = "maker-body"
+    local verticalOffset = metrics.verticalOffset or 0
 
     local function compose(sectionGap, noteGap)
         local result = {
@@ -527,9 +539,10 @@ local function buildArchiveLayout(painter)
         local headerSide = math.min(158, (contentRight - contentLeft) * .5 - 20)
         result.headerLeftStarX = result.headerCenterX - headerSide
         result.headerRightStarX = result.headerCenterX + headerSide
-        result.tags[1] = { x = contentLeft, y = metrics.academyTitleY }
+        result.tags[1] = { x = contentLeft, y = metrics.academyTitleY + verticalOffset }
 
-        local academyY = metrics.academyTitleY + metrics.titleHeight + metrics.titleToBodyGap
+        local academyY = metrics.academyTitleY + verticalOffset
+            + metrics.titleHeight + metrics.titleToBodyGap
         local academyRows = {
             { label = "所属", value = "经典力学维护处", start = .32, finish = .49 },
             { label = "职务", value = "实验监督员", start = .34, finish = .51 },
@@ -702,13 +715,18 @@ local function drawArchiveHeader(painter, state, layout)
     local progress = archiveProgress(state, pair[1], pair[2])
     if progress <= .001 then return end
     local h = ARCHIVE.header
-    painter:Text(layout.headerCenterX, h.titleY, "牛顿", 70, ARCHIVE.warm,
-        NVG_ALIGN_CENTER + NVG_ALIGN_TOP, "report-summary", archiveTextAlpha(progress))
-    painter:Text(layout.headerCenterX, h.latinY, "NEWTON", 39, ARCHIVE.inkStrong,
+    local verticalOffset = ARCHIVE.layout.verticalOffset or 0
+    local titleY = h.titleY + verticalOffset
+    local latinY = h.latinY + verticalOffset
+    local subY = h.subY + verticalOffset
+    local lineY = h.lineY + verticalOffset
+    local nameGap = 18
+    painter:Text(layout.headerCenterX - nameGap, titleY, "牛顿", 70, ARCHIVE.warm,
+        NVG_ALIGN_RIGHT + NVG_ALIGN_TOP, "report-summary", archiveTextAlpha(progress))
+    painter:Text(layout.headerCenterX + nameGap, latinY, "NEWTON", 39, ARCHIVE.inkStrong,
+        NVG_ALIGN_LEFT + NVG_ALIGN_TOP, "maker-body", archiveTextAlpha(progress))
+    painter:Text(layout.headerCenterX, subY, "CLASSICAL MECHANICS / SUPERVISOR", 17, ARCHIVE.bodyMuted,
         NVG_ALIGN_CENTER + NVG_ALIGN_TOP, "maker-body", archiveTextAlpha(progress))
-    painter:Text(layout.headerCenterX, h.subY, "CLASSICAL MECHANICS / SUPERVISOR", 17, ARCHIVE.bodyMuted,
-        NVG_ALIGN_CENTER + NVG_ALIGN_TOP, "maker-body", archiveTextAlpha(progress))
-    local lineY = h.lineY
     drawArchiveLine(painter.vg, layout.contentLeft, lineY, layout.headerLeftStarX - 12, lineY, progress, 1.1)
     drawArchiveLine(painter.vg, layout.headerRightStarX + 12, lineY, layout.contentRight, lineY, progress, 1.1)
     drawArchiveStar(painter.vg, layout.headerLeftStarX, lineY, 5.2, ARCHIVE.inkStrong, true, progress)
@@ -949,6 +967,55 @@ local function drawArrow(vg, x, y, color, progress)
     nvgStroke(vg)
 end
 
+-- Background-only archive text. This intentionally has no hit area, focus state,
+-- pointer handling, or menu decoration so it cannot read as another command.
+local function drawAcademyNotes(painter, state)
+    local progress = smoothStep(rangeProgress(state.animationElapsed or 0,
+        ACADEMY_NOTES.fadeDelay, ACADEMY_NOTES.fadeDelay + ACADEMY_NOTES.fadeDuration))
+    if progress <= .001 then return end
+
+    local vg = painter.vg
+    local x, y = ACADEMY_NOTES.x, ACADEMY_NOTES.y
+    local function alpha(target)
+        return math.floor(255 * target * progress + .5)
+    end
+
+    nvgStrokeColor(vg, nvgRGBA(ACADEMY_INK[1], ACADEMY_INK[2], ACADEMY_INK[3], alpha(.20)))
+    nvgStrokeWidth(vg, 1)
+    nvgBeginPath(vg)
+    nvgMoveTo(vg, x, y + 53)
+    nvgLineTo(vg, x + ACADEMY_NOTES.width, y + 53)
+    nvgStroke(vg)
+
+    nvgTextLetterSpacing(vg, 1.6)
+    painter:Text(x, y, "ACADEMY NOTES", 14, ACADEMY_INK,
+        NVG_ALIGN_LEFT + NVG_ALIGN_TOP, "maker-display", alpha(.42))
+    nvgTextLetterSpacing(vg, 0)
+    painter:Text(x, y + 23, "学院今日记录", 22, ACADEMY_INK,
+        NVG_ALIGN_LEFT + NVG_ALIGN_TOP, "maker-body", alpha(.52))
+
+    local rows = {
+        { "实验室状态", "正常" },
+        { "异常重力", "3 次" },
+        { "苹果失踪", "1 枚" },
+    }
+    for index, row in ipairs(rows) do
+        local rowY = y + 69 + (index - 1) * 23
+        painter:Text(x, rowY, row[1], 15, ACADEMY_INK,
+            NVG_ALIGN_LEFT + NVG_ALIGN_TOP, "maker-body", alpha(.45))
+        painter:Text(x + 315, rowY, row[2], 15, ACADEMY_INK,
+            NVG_ALIGN_RIGHT + NVG_ALIGN_TOP, "maker-body", alpha(.45))
+    end
+
+    nvgStrokeColor(vg, nvgRGBA(ACADEMY_INK[1], ACADEMY_INK[2], ACADEMY_INK[3], alpha(.14)))
+    nvgBeginPath(vg)
+    nvgMoveTo(vg, x, y + 137)
+    nvgLineTo(vg, x + ACADEMY_NOTES.width * .72, y + 137)
+    nvgStroke(vg)
+    painter:Text(x, y + 148, "“请勿再次修改自然规律。”", 14, ACADEMY_INK,
+        NVG_ALIGN_LEFT + NVG_ALIGN_TOP, "maker-body", alpha(.38))
+end
+
 local function drawSlider(painter, rect, label, value)
     local vg = painter.vg
     painter:Text(rect.x, rect.y - 25, label, 19, MENU_INK, nil, "maker-body")
@@ -1065,8 +1132,9 @@ local function drawTitleMenu(painter, state)
         drawArrow(vg, MENU.width - 47, 0, MENU_ACCENT, visualProgress)
         nvgRestore(vg)
     end
-    painter:Text(MENU.x, top + (#MENU_ITEMS * MENU.rowStep + 27) * MENU.scale,
-        "（戳左边四个有角色介绍）", 16 * MENU.scale, TIP_COLOR, nil, "maker-body")
+    painter:Text(MENU.x - 220, top + (#MENU_ITEMS * MENU.rowStep - 12) * MENU.scale,
+        "（戳左边四个有角色介绍）", 16 * MENU.scale, TIP_COLOR,
+        NVG_ALIGN_LEFT + NVG_ALIGN_TOP, "maker-body")
 end
 
 local function drawTitleContent(painter, art, state, excludedCharacterId, entrance)
@@ -1082,6 +1150,7 @@ local function drawTitleContent(painter, art, state, excludedCharacterId, entran
     for _, node in ipairs(TITLE_NODES) do
         drawTitleNode(painter, art.title[node.key], node, state.animationElapsed or 0)
     end
+    drawAcademyNotes(painter, state)
     if titleExitPose then nvgRestore(painter.vg) end
     for index, node in ipairs(CHARACTER_NODES) do
         if node.id ~= excludedCharacterId then
