@@ -1,4 +1,5 @@
 local Repository = {}
+local Numeric = require("game.workshop.Numeric")
 Repository.__index = Repository
 
 local function clone(levelDocument, value)
@@ -21,8 +22,9 @@ local function copyMetadata(entry)
     }
 end
 
-local function validateDocument(levelDocument, document)
+local function validateDocument(levelDocument, document, normalizeTransform)
     local normalized = levelDocument.Normalize(document)
+    if normalizeTransform then Numeric.NormalizeDocument(normalized) end
     local valid, errors = levelDocument.Validate(normalized)
     if not valid then return nil, table.concat(errors, "；") end
     return normalized, nil
@@ -51,7 +53,7 @@ function Repository:InitializeOfficial(count, loader)
     for index = 1, count do
         local ok, documentOrError = pcall(loader, index)
         if ok and type(documentOrError) == "table" then
-            local normalized, errorMessage = validateDocument(self.LevelDocument, documentOrError)
+            local normalized, errorMessage = validateDocument(self.LevelDocument, documentOrError, false)
             if normalized then
                 local id = entryId("official", normalized.levelId)
                 local entry = {
@@ -110,8 +112,9 @@ local function trackCustomIndex(self, levelId)
     if suffix then self.nextCustomIndex = math.max(self.nextCustomIndex, tonumber(suffix) + 1) end
 end
 
-function Repository:RestoreCustom(document, updatedAt)
-    local normalized, errorMessage = validateDocument(self.LevelDocument, document)
+function Repository:RestoreCustom(document, updatedAt, options)
+    local normalizeTransform = not options or options.normalizeTransform ~= false
+    local normalized, errorMessage = validateDocument(self.LevelDocument, document, normalizeTransform)
     if not normalized then return nil, errorMessage end
     if self:FindByLevelId(normalized.levelId) then return nil, "levelId 已存在：" .. normalized.levelId end
     local id = entryId("custom", normalized.levelId)
@@ -149,7 +152,7 @@ function Repository:CopyAsCustom(sourceEntryId, name)
 end
 
 function Repository:ImportAsCustom(document, name)
-    local normalized, errorMessage = validateDocument(self.LevelDocument, document)
+    local normalized, errorMessage = validateDocument(self.LevelDocument, document, true)
     if not normalized then return nil, errorMessage end
     normalized.levelId = self:NextCustomLevelId()
     if name and name ~= "" then normalized.name = name end
@@ -164,7 +167,7 @@ function Repository:ReplaceCustom(id, document, updatedAt)
         if self.official[id] then return false, "官方关卡为只读" end
         return false, "自定义关卡不存在"
     end
-    local normalized, errorMessage = validateDocument(self.LevelDocument, document)
+    local normalized, errorMessage = validateDocument(self.LevelDocument, document, true)
     if not normalized then return false, errorMessage end
     if normalized.levelId ~= entry.levelId then return false, "不能修改自定义关卡的 levelId" end
     entry.document = clone(self.LevelDocument, normalized)

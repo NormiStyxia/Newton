@@ -1,4 +1,5 @@
 local DraftStore = {}
+local Numeric = require("game.workshop.Numeric")
 DraftStore.__index = DraftStore
 
 local ROOT = "level-workshop"
@@ -132,13 +133,14 @@ function DraftStore:SaveDraft(levelId, document, viewState, source)
     if not safeId(levelId) then return false, "levelId 格式无效" end
     local previous = self.memoryDrafts[levelId]
     if previous then self.memoryBackups[levelId] = self.clone(previous) end
+    local snapshot = Numeric.NormalizeDocument(self.clone(document))
     local envelope = {
         kind = "editor-draft",
         schemaVersion = document.schemaVersion,
         levelId = levelId,
         updatedAt = self.clock(),
         source = source or "custom",
-        document = self.clone(document),
+        document = snapshot,
         viewState = self.clone(viewState or {}),
     }
     self.memoryDrafts[levelId] = self.clone(envelope)
@@ -196,12 +198,13 @@ end
 function DraftStore:SaveCustom(document)
     local levelId = document and document.levelId
     if not safeId(levelId) then return false, "levelId 格式无效" end
+    local snapshot = Numeric.NormalizeDocument(self.clone(document))
     local envelope = {
         kind = "custom-level",
         schemaVersion = document.schemaVersion,
         levelId = levelId,
         updatedAt = self.clock(),
-        document = self.clone(document),
+        document = snapshot,
     }
     self.memoryLevels[levelId] = self.clone(envelope)
     local persisted, persistenceError = writeAtomic(self, levelPath(levelId), envelope)

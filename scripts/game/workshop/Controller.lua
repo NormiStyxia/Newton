@@ -10,6 +10,7 @@ local Inspector = require("game.workshop.Inspector")
 local DocumentActions = require("game.workshop.DocumentActions")
 local TextTransfer = require("game.workshop.TextTransfer")
 local TextEditor = require("game.workshop.TextEditor")
+local Numeric = require("game.workshop.Numeric")
 local TouchScroller = require("game.workshop.TouchScroller")
 local PreviewSession = require("game.workshop.PreviewSession")
 local M = {}
@@ -163,7 +164,8 @@ function M.Install(context)
             return document
         end)
         for _, envelope in ipairs(current.draftStore:LoadCustomLevels()) do
-            local metadata, errorMessage = current.repository:RestoreCustom(envelope.document, envelope.updatedAt)
+            local metadata, errorMessage = current.repository:RestoreCustom(envelope.document, envelope.updatedAt,
+                { normalizeTransform = false })
             if not metadata then current.initializationErrors[#current.initializationErrors + 1] = errorMessage end
         end
         current.initialized = true
@@ -304,7 +306,7 @@ function M.Install(context)
     local function beginTextEdit(field, value, mode)
         if field and field.editable == false then return end
         local current = state()
-        current.textEdit = TextEditor.Begin(field, value, mode, current.elapsed, 1000000)
+        current.textEdit = TextEditor.Begin(field, value, mode, current.elapsed, Export.MAX_JSON_BYTES)
         if input then input:SetScreenKeyboardVisible(true) end
     end
 
@@ -333,6 +335,7 @@ function M.Install(context)
         local value = edit.value
         if field.kind == "number" then
             value = tonumber(value)
+            value = Numeric.NormalizeInspectorValue(field.key, value)
             if value == nil then toast("请输入有效数值"); return false end
         end
         field.set(value)
@@ -349,7 +352,7 @@ function M.Install(context)
         if type(text) ~= "string" or text == "" then return end
         local edit = current.textEdit
         local accepted, errorMessage = TextTransfer.AppendInput(edit, text,
-            edit.maxLength or Export.MAX_IMPORT_BYTES)
+            edit.maxLength or Export.MAX_JSON_BYTES)
         if accepted then TextEditor.ResetBlink(edit, current.elapsed) else toast(errorMessage, 5) end
     end
 
@@ -357,7 +360,7 @@ function M.Install(context)
         local current = state()
         local edit = current.textEdit
         if not edit or edit.mode ~= "import" then return false end
-        local text, errorMessage = TextTransfer.ReadClipboard(ui, Export.MAX_IMPORT_BYTES)
+        local text, errorMessage = TextTransfer.ReadClipboard(ui, Export.MAX_JSON_BYTES)
         if not text then toast("无法粘贴：" .. tostring(errorMessage), 5); return false end
         edit.value, edit.clipboardEchoRemaining = text, text
         TextEditor.Initialize(edit, false, current.elapsed)
@@ -410,7 +413,7 @@ function M.Install(context)
     local function openImport()
         local current = state()
         current.modal = { kind = "import", title = "导入 JSON", text = "", scroll = 0,
-            maxBytes = Export.MAX_IMPORT_BYTES }
+            maxBytes = Export.MAX_JSON_BYTES }
         beginTextEdit(nil, "", "import")
         rebuildUI()
     end
@@ -612,7 +615,9 @@ function M.Install(context)
             field.set(not field.value); markChanged("修改" .. field.label); rebuildUI()
         elseif field.kind == "enum" then cycleEnum(field)
         else
-            beginTextEdit(field, field.value, "field")
+            local editValue = field.kind == "number"
+                and Numeric.FormatEditValue(field.key, field.value) or field.value
+            beginTextEdit(field, editValue, "field")
             View.PlaceTextCursor(context.painter_, state().textEdit, row.valueRect or row.rect,
                 pointerX, state().elapsed)
             rebuildUI()

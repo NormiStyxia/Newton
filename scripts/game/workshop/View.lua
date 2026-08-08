@@ -1,5 +1,6 @@
 local TextTransfer = require("game.workshop.TextTransfer")
 local TextEditor = require("game.workshop.TextEditor")
+local Numeric = require("game.workshop.Numeric")
 
 local View = {}
 
@@ -500,6 +501,9 @@ local function fieldValue(field)
     if field.kind == "enum" then
         return tostring(field.valueLabels and field.valueLabels[field.value] or field.value or "")
     end
+    if field.kind == "number" then
+        return Numeric.FormatInspectorValue(field.key, field.value)
+    end
     return tostring(field.value == nil and "" or field.value)
 end
 View.FieldValue = fieldValue
@@ -624,9 +628,9 @@ local function drawModal(painter, state, controls)
         painter:TextBox(body.x + 10, body.y + 10, body.w - 20, text, 14, COLORS.lightText,
             NVG_ALIGN_LEFT + NVG_ALIGN_TOP, "maker-body", 1.4)
         nvgRestore(painter.vg)
-        local stats = modal.payload and string.format("%d 字符 · %d 字节 · %d 对象 · schemaVersion %s",
-            modal.payload.characterCount, modal.payload.byteCount, modal.payload.objectCount,
-            tostring(modal.payload.schemaVersion)) or (modal.textMetrics and string.format(
+        local stats = modal.payload and string.format("%d 字符 · %d 字节 · 上限 %d 字节 · %d 对象 · schemaVersion %s",
+            modal.payload.characterCount, modal.payload.byteCount, modal.payload.maxBytes or 0,
+            modal.payload.objectCount, tostring(modal.payload.schemaVersion)) or (modal.textMetrics and string.format(
                 "%d 字符 · %d 字节 · 上限 %d 字节", modal.textMetrics.characterCount,
                 modal.textMetrics.byteCount, modal.maxBytes or 0) or "等待 JSON 文本")
         painter:Text(body.x, body.y + body.h + 8, stats, 13, COLORS.textMuted, nil, "maker-body")

@@ -11,6 +11,7 @@ local Rules = require("game.gameplay.Rules")
 local State = require("game.State")
 local Controller = require("game.workshop.Controller")
 local Interaction = require("game.workshop.Interaction")
+local Export = require("game.workshop.Export")
 
 local codecStore, codecIndex = {}, 0
 cjson = {}
@@ -480,8 +481,9 @@ replaceTextAndCommit(context, workshop, "主策测试墙")
 expect(workshop.selectedObject.name == "主策测试墙", "Inspector text edit did not update object name")
 
 clickRect(context, workshop, inspectorRow(context, workshop, "transform.width").rect)
-replaceTextAndCommit(context, workshop, "180")
-expect(workshop.selectedObject.transform.width == 180, "Inspector number edit did not update width")
+replaceTextAndCommit(context, workshop, "180.1234567")
+expect(math.abs(workshop.selectedObject.transform.width - 180.123) < 1e-9,
+    "Inspector number edit did not normalize width to three decimals")
 
 local collisionBefore = workshop.selectedObject.properties.collisionEnabled
 clickRect(context, workshop, inspectorRow(context, workshop, "properties.collisionEnabled").rect)
@@ -702,7 +704,7 @@ expect(workshop.modal and workshop.modal.kind == "import"
 clickModalButton(context, workshop, "cancel")
 
 context.WorkshopOpenImport()
-workshop.textEdit.value, workshop.textEdit.selectAll = string.rep("x", 1024 * 1024 + 1), false
+workshop.textEdit.value, workshop.textEdit.selectAll = string.rep("x", Export.MAX_JSON_BYTES + 1), false
 clickModalButton(context, workshop, "confirm")
 expect(workshop.modal and workshop.modal.kind == "import"
     and workshop.status:find("超过", 1, true),

@@ -16,6 +16,7 @@ local Interaction = require("game.workshop.Interaction")
 local Selection = require("game.workshop.Selection")
 local TextTransfer = require("game.workshop.TextTransfer")
 local TextEditor = require("game.workshop.TextEditor")
+local Numeric = require("game.workshop.Numeric")
 local TouchScroller = require("game.workshop.TouchScroller")
 local Inspector = require("game.workshop.Inspector")
 local DocumentActions = require("game.workshop.DocumentActions")
@@ -65,6 +66,21 @@ expect(custom.levelId == "custom_001" and customMetadata.sourceKind == "custom",
 custom.name = "主策草稿"
 expect(repository:ReplaceCustom(customMetadata.entryId, custom), "custom replacement failed")
 expect(repository:Open("official:level_01").name == "官方关卡 1", "custom edit polluted official document")
+
+local precisionRepository = Repository.New({ LevelDocument = LevelDocument })
+local precisionOfficial = validLevel("precision_official", "Precision official")
+precisionOfficial.objects[3].transform.x = 1219.8025366858
+precisionOfficial.objects[3].transform.rotation = -0.0004
+expect(#precisionRepository:InitializeOfficial(1, function() return precisionOfficial end) == 0,
+    "precision official fixture failed to initialize")
+local openedPrecisionOfficial = precisionRepository:Open("official:precision_official")
+expect(math.abs(openedPrecisionOfficial.objects[3].transform.x - 1219.8025366858) < 1e-10
+    and openedPrecisionOfficial.objects[3].transform.rotation == -0.0004,
+    "loading an old JSON changed transform precision")
+local copiedPrecision = precisionRepository:CopyAsCustom("official:precision_official")
+expect(copiedPrecision and math.abs(copiedPrecision.objects[3].transform.x - 1219.803) < 1e-9
+    and copiedPrecision.objects[3].transform.rotation == 0,
+    "new custom copy did not normalize transform precision")
 
 local secondCustom = repository:CreateCustom("第二份草稿")
 expect(secondCustom.levelId == "custom_002", "custom level IDs are not monotonic")
@@ -171,6 +187,52 @@ function fakeJson.decode(token)
     assert(codecStore[token], "unknown JSON token")
     return LevelDocument.Clone(codecStore[token])
 end
+
+local precisionDisplay = { key = "transform.x", kind = "number", value = 1219.8025366858 }
+expect(View.FieldValue(precisionDisplay) == "1219.80"
+    and View.FieldValue({ key = "transform.rotation", kind = "number", value = -0.0004 }) == "0.00",
+    "Inspector transform values were not formatted to two decimals without negative zero")
+expect(Numeric.FormatEditValue("transform.x", 1219.8025366858) == "1219.803"
+    and Numeric.Round(-1.2345, 3) == -1.235,
+    "numeric edit formatting or negative rounding is incorrect")
+local precisionDocument = validLevel("precision_document", "Precision document")
+precisionDocument.objects[3].transform.x = 1219.8025366858
+precisionDocument.objects[3].transform.y = -0.0004
+local precisionSnapshot = Numeric.NormalizeDocument(LevelDocument.Clone(precisionDocument))
+expect(math.abs(precisionSnapshot.objects[3].transform.x - 1219.803) < 1e-9
+    and precisionSnapshot.objects[3].transform.y == 0
+    and precisionDocument.objects[3].transform.x == 1219.8025366858,
+    "document normalization mutated the source or mishandled negative zero")
+
+local precisionDraftStore = DraftStore.New({ clone = LevelDocument.Clone, json = fakeJson })
+local precisionDraft = validLevel("precision_draft", "Precision draft")
+precisionDraft.objects[3].transform.x = 1219.8025366858
+precisionDraft.objects[3].transform.rotation = -0.0004
+expect(precisionDraftStore:SaveDraft(precisionDraft.levelId, precisionDraft, {}, "custom"),
+    "precision draft save failed")
+local savedPrecisionDraft = precisionDraftStore:LoadDraft(precisionDraft.levelId)
+expect(savedPrecisionDraft and math.abs(savedPrecisionDraft.document.objects[3].transform.x - 1219.803) < 1e-9
+    and savedPrecisionDraft.document.objects[3].transform.rotation == 0
+    and precisionDraft.objects[3].transform.x == 1219.8025366858,
+    "draft persistence did not normalize only its saved transform snapshot")
+
+local precisionCustom = validLevel("precision_custom", "Precision custom")
+precisionCustom.objects[3].transform.y = -42.98765
+expect(precisionDraftStore:SaveCustom(precisionCustom), "precision custom save failed")
+local savedPrecisionCustom = precisionDraftStore:LoadCustomLevels()[1]
+expect(savedPrecisionCustom and math.abs(savedPrecisionCustom.document.objects[3].transform.y - (-42.988)) < 1e-9
+    and precisionCustom.objects[3].transform.y == -42.98765,
+    "custom persistence did not normalize only its saved transform snapshot")
+
+local precisionExport = validLevel("precision_export", "Precision export")
+precisionExport.objects[3].transform.x = 1219.8025366858
+precisionExport.objects[3].transform.rotation = -0.0004
+local precisionExportPayload = Export.Prepare(precisionExport, LevelDocument, fakeJson)
+local decodedPrecisionExport = precisionExportPayload and fakeJson.decode(precisionExportPayload.text)
+expect(decodedPrecisionExport and math.abs(decodedPrecisionExport.objects[3].transform.x - 1219.803) < 1e-9
+    and decodedPrecisionExport.objects[3].transform.rotation == 0
+    and precisionExport.objects[3].transform.x == 1219.8025366858,
+    "export did not normalize serialized transform precision without mutating the source")
 
 local fakeFiles = {}
 local fakeAdapter = { kind = "contract-slot" }
@@ -311,8 +373,17 @@ expect(not customDeleted and customDeleteError:match("删除失败") and #delete
 local exportPayload, exportError = Export.Prepare(validLevel("custom_export", "导出"), LevelDocument, fakeJson)
 expect(exportPayload and not exportError, "export preparation failed")
 expect(exportPayload.objectCount == 3 and exportPayload.schemaVersion == 1, "export statistics mismatch")
+expect(Export.MAX_JSON_BYTES == Export.MAX_IMPORT_BYTES
+    and Export.MAX_JSON_BYTES == Export.MAX_EXPORT_BYTES
+    and exportPayload.maxBytes == Export.MAX_JSON_BYTES,
+    "import and export did not expose one shared JSON byte limit")
 local imported = fakeJson.decode(exportPayload.text)
 expect(imported._editor == nil and imported.levelId == "custom_export", "export polluted runtime document")
+local oversizedExport, oversizedExportError = Export.Prepare(validLevel("oversized_export", "超大导出"), LevelDocument, {
+    encode = function() return string.rep("x", Export.MAX_JSON_BYTES + 1) end,
+})
+expect(not oversizedExport and oversizedExportError:match("导出 JSON") and oversizedExportError:match("超过"),
+    "oversized JSON export remained available even though import rejects it")
 
 local fullLayout = Layout.Resolve({
     systemLogicalWidth = 1880, systemLogicalHeight = 840,
