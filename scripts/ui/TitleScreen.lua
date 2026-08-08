@@ -103,6 +103,8 @@ local PROFILE = {
         moveStart = .31,
         moveEnd = .71,
         plateEnd = .30,
+        backdropStart = .36,
+        backdropEnd = .74,
         frameStart = .55,
         frameDuration = .17,
         frameStagger = .09,
@@ -121,6 +123,8 @@ local PROFILE = {
         signatureEnd = .22,
         doodleStart = .12,
         doodleEnd = .30,
+        backdropStart = .28,
+        backdropEnd = .56,
         frameStart = .24,
         frameDuration = .13,
         frameStagger = .07,
@@ -134,31 +138,41 @@ local PROFILE = {
         plateFadeEnd = 1.27,
         total = 1.27,
     },
-    doodlePivot = { x = 358, y = 413 },
+    backdropPivot = { x = 470, y = 416 },
+    doodlePivot = { x = 441, y = 446 },
     signatureOffset = 16,
     backPivot = { x = 134, y = 79 },
     backHit = { x = 30, y = 20, w = 230, h = 125 },
 }
 
--- Stable tapered quadrilaterals form a counter-clockwise chain.  These are
--- intentionally broad graphic bands, not a conventional UI border.
-local PROFILE_FRAME_BANDS = {
-    -- Geometry is intentionally unchanged.  Each segment owns a compact
-    -- same-family gradient so color differences come from segment-to-segment
-    -- hierarchy instead of four repeated yellow-to-red ramps.
-    { x1 = 690, y1 = 310, x2 = 176, y2 = 378, t1 = 66, t2 = 52,
-        baseColor = { 204, 66, 31, 255 }, gradientStartColor = { 201, 63, 29, 255 },
-        gradientEndColor = { 207, 69, 33, 255 } },
-    { x1 = 184, y1 = 350, x2 = 106, y2 = 706, t1 = 54, t2 = 72,
-        baseColor = { 167, 53, 35, 255 }, gradientStartColor = { 163, 49, 33, 255 },
-        gradientEndColor = { 171, 57, 37, 255 } },
-    { x1 = 104, y1 = 706, x2 = 704, y2 = 654, t1 = 78, t2 = 62,
-        baseColor = { 211, 105, 27, 255 }, gradientStartColor = { 207, 101, 25, 255 },
-        gradientEndColor = { 215, 109, 29, 255 } },
-    { x1 = 692, y1 = 670, x2 = 708, y2 = 292, t1 = 58, t2 = 68,
-        baseColor = { 236, 97, 26, 255 }, gradientStartColor = { 232, 91, 24, 255 },
-        gradientEndColor = { 240, 103, 29, 255 } },
-}
+-- The bands share two perpendicular axes but keep independent centers and
+-- lengths. Their deliberate overhangs and gaps make a poster composition,
+-- rather than a closed square frame.
+local PROFILE_FRAME_BANDS = (function()
+    local function bandFromCenter(centerX, centerY, length, angleDegrees, t1, t2,
+            baseColor, startColor, endColor, reverse)
+        local angle = angleDegrees * DEGREES_TO_RADIANS
+        local halfLength = length * .5
+        local dx, dy = math.cos(angle) * halfLength, math.sin(angle) * halfLength
+        local startX, startY = centerX - dx, centerY - dy
+        local endX, endY = centerX + dx, centerY + dy
+        if reverse then startX, startY, endX, endY = endX, endY, startX, startY end
+        return {
+            x1 = startX, y1 = startY, x2 = endX, y2 = endY, t1 = t1, t2 = t2,
+            baseColor = baseColor, gradientStartColor = startColor, gradientEndColor = endColor,
+        }
+    end
+    return {
+        bandFromCenter(456, 85, 758, -13, 116, 112,
+            { 236, 64, 0, 255 }, { 232, 61, 0, 255 }, { 240, 67, 2, 255 }, true),
+        bandFromCenter(126, 399, 836, 77, 114, 118,
+            { 146, 42, 26, 255 }, { 142, 39, 24, 255 }, { 150, 45, 28, 255 }),
+        bandFromCenter(481, 778, 732, -13, 122, 118,
+            { 249, 131, 0, 255 }, { 246, 127, 0, 255 }, { 252, 135, 3, 255 }),
+        bandFromCenter(830, 456, 816, 77, 108, 104,
+            { 255, 108, 0, 255 }, { 252, 104, 0, 255 }, { 255, 112, 2, 255 }, true),
+    }
+end)()
 
 local SETTINGS = {
     x = 1138, y = 206, w = 560, h = 384,
@@ -423,6 +437,16 @@ local function drawProfileFrames(painter, state)
     end
 end
 
+local function drawProfileBackdrop(painter, handle, state)
+    local progress = profileLayerProgress(state, "backdrop")
+    if progress <= .001 then return end
+    local amount = smoothStep(progress)
+    local scale = lerp(.72, 1, amount)
+    beginVisualTransform(painter.vg, PROFILE.backdropPivot.x, PROFILE.backdropPivot.y, 0, 0, 0, scale)
+    image(painter, handle, 0, 0, 1870, 841, amount)
+    nvgRestore(painter.vg)
+end
+
 local function drawProfileDoodle(painter, handle, state)
     local progress = profileLayerProgress(state, "doodle")
     if progress <= .001 then return end
@@ -467,11 +491,12 @@ local function drawProfileScene(painter, art, state)
     local head = settled and profileArt.headSettled or profileArt.head
     if not body or body < 0 then body = profileArt.body end
     if not head or head < 0 then head = profileArt.head end
+    drawProfileBackdrop(painter, profileArt.backdrop, state)
     drawProfileCharacterLayer(painter, body, offsetX, offsetY, scale, flipScaleX)
     drawProfileFrames(painter, state)
     drawProfileCharacterLayer(painter, head, offsetX, offsetY, scale, flipScaleX)
-    drawProfileDoodle(painter, profileArt.doodle, state)
     drawProfileSignature(painter, profileArt.signature, state)
+    drawProfileDoodle(painter, profileArt.doodle, state)
     drawProfileBack(painter, profileArt.back, state)
 
     if state.profileMode == PROFILE_MODE.EXITING and elapsed >= PROFILE.exit.sketchFlipStart then
