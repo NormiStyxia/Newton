@@ -55,8 +55,13 @@ local function clamp(value, minimum, maximum)
 end
 
 local function pointIn(rect, x, y)
-    return rect and x >= rect.x and x <= rect.x + rect.w
+    return rect and rect.x and rect.y and rect.w and rect.h
+        and x >= rect.x and x <= rect.x + rect.w
         and y >= rect.y and y <= rect.y + rect.h
+end
+
+local function pointInSlider(rect, x, y)
+    return pointIn({ x = rect.x - 12, y = rect.y - 24, w = rect.w + 24, h = 48 }, x, y)
 end
 
 local function characterAt(x, y)
@@ -234,11 +239,11 @@ function M.Install(context)
             return
         end
         if pointerFrame.pressed then
-            if pointIn(SETTINGS.music, pointerFrame.x, pointerFrame.y) then
+            if pointInSlider(SETTINGS.music, pointerFrame.x, pointerFrame.y) then
                 state.settingsDrag = "music"
                 updateSettingSlider(state, context, pointerFrame.x)
                 return
-            elseif pointIn(SETTINGS.sound, pointerFrame.x, pointerFrame.y) then
+            elseif pointInSlider(SETTINGS.sound, pointerFrame.x, pointerFrame.y) then
                 state.settingsDrag = "sound"
                 updateSettingSlider(state, context, pointerFrame.x)
                 return
@@ -334,7 +339,6 @@ function M.Install(context)
             image(painter_, art.title[layer.key], offsetX + layer.x, layer.y, layer.w, layer.h)
         end
         for _, layer in ipairs(CHARACTER_LAYERS) do
-            image(painter_, art.characters[layer.key], offsetX + layer.x, layer.y, layer.w, layer.h)
             if state.hoverCharacter == layer.id or state.academyIdCardCharacter == layer.id then
                 local hover = layer.id == "left1" and { x = 275, y = 275, w = 273, h = 517 }
                     or layer.id == "left2" and { x = 522, y = 320, w = 236, h = 467 }
@@ -342,6 +346,7 @@ function M.Install(context)
                     or { x = 967, y = 303, w = 293, h = 491 }
                 image(painter_, art.characterHover[layer.hoverKey], offsetX + hover.x, hover.y, hover.w, hover.h)
             end
+            image(painter_, art.characters[layer.key], offsetX + layer.x, layer.y, layer.w, layer.h)
         end
 
         local vg = painter_.vg
