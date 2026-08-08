@@ -171,7 +171,9 @@ function Renderer:Init()
                 profiles = {
                     newton = {
                         body = nvgCreateImage(self.vg, "image/title_screen/profile_newton/body.png", 0),
+                        bodySettled = nvgCreateImage(self.vg, "image/title_screen/profile_newton/body_settled.png", 0),
                         head = nvgCreateImage(self.vg, "image/title_screen/profile_newton/head.png", 0),
+                        headSettled = nvgCreateImage(self.vg, "image/title_screen/profile_newton/head_settled.png", 0),
                         doodle = nvgCreateImage(self.vg, "image/title_screen/profile_newton/doodle.png", 0),
                         signature = nvgCreateImage(self.vg, "image/title_screen/profile_newton/signature.png", 0),
                         back = nvgCreateImage(self.vg, "image/title_screen/profile_newton/back.png", 0),

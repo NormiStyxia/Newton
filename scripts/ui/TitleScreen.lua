@@ -438,9 +438,14 @@ local function drawProfileScene(painter, art, state)
     end
 
     local offsetX, offsetY, scale, flipScaleX = profileRootTransform(state)
-    drawProfileCharacterLayer(painter, profileArt.body, offsetX, offsetY, scale, flipScaleX)
+    local settled = state.profileMode == PROFILE_MODE.IDLE
+    local body = settled and profileArt.bodySettled or profileArt.body
+    local head = settled and profileArt.headSettled or profileArt.head
+    if not body or body < 0 then body = profileArt.body end
+    if not head or head < 0 then head = profileArt.head end
+    drawProfileCharacterLayer(painter, body, offsetX, offsetY, scale, flipScaleX)
     drawProfileFrames(painter, state)
-    drawProfileCharacterLayer(painter, profileArt.head, offsetX, offsetY, scale, flipScaleX)
+    drawProfileCharacterLayer(painter, head, offsetX, offsetY, scale, flipScaleX)
     drawProfileDoodle(painter, profileArt.doodle, state)
     drawProfileSignature(painter, profileArt.signature, state)
     drawProfileBack(painter, profileArt.back, state)
