@@ -6,6 +6,7 @@ local WallImpactShake = require("game.render.WallImpactShake")
 local BGM_PATH = "audio/music_1786095252543.ogg"
 local BGM_OPTIONS = { volume = 0.4, fadeIn = 0.45 }
 local TITLE_BACKGROUND_FILL = { 248, 231, 206, 255 }
+local CATALOG_BACKGROUND_FILL = { 247, 239, 211, 255 }
 
 ---@param context GameContext
 function M.Install(context)
@@ -21,6 +22,7 @@ function M.Install(context)
     local CARD_RENDER_HEIGHT = context.CARD_RENDER_HEIGHT
     local navigationTransition_ = context.navigationTransition_
     local lastValidPhysicsTimeStep = 1 / 60
+    local frameScreen_ = nil
     local _ENV = context
 
     local function usesMainStage()
@@ -32,7 +34,13 @@ function M.Install(context)
         local frame = screen_ == "title"
             and context.design_:Frame(true, 1870, 841)
             or context.design_:Frame(usesMainStage())
-        if screen_ == "title" then frame.backgroundFill = TITLE_BACKGROUND_FILL end
+        if screen_ == "title"
+            or screen_ == "title_catalog_transition" and navigationTransition_:IsBackward() then
+            frame.backgroundFill = TITLE_BACKGROUND_FILL
+        elseif screen_ == "catalog" or screen_ == "title_catalog_transition" then
+            frame.backgroundFill = CATALOG_BACKGROUND_FILL
+        end
+        frameScreen_ = screen_
         return frame
     end
 
@@ -145,7 +153,13 @@ function M.Install(context)
         RefreshWorkspaceLayout()
         local pointerFrame = PointerState()
         if screen_ == "title_catalog_transition" then
-            if navigationTransition_:Update(dt) then screen_ = "catalog" end
+            local destination = navigationTransition_:Update(dt)
+            if destination then
+                screen_ = destination
+                if destination == "title" and FinalizeCatalogToTitleTransition then
+                    FinalizeCatalogToTitleTransition()
+                end
+            end
             return
         end
         if screen_ == "title" then
@@ -515,7 +529,7 @@ function M.Install(context)
     function HandleRender()
         if not painter_ or not frame_ then return end
         local mainStageActive = usesMainStage()
-        if frame_.mainStageActive ~= mainStageActive then
+        if frame_.mainStageActive ~= mainStageActive or frameScreen_ ~= screen_ then
             frame_ = FrameForCurrentScreen()
             RefreshWorkspaceLayout()
         end
