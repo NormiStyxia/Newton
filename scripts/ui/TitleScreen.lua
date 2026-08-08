@@ -179,16 +179,16 @@ end)()
 -- photos as one static composition; they intentionally have no separate
 -- expression state or interaction.
 local ARCHIVE = {
-    panel = { x = 764, y = 51, w = 976, h = 739 },
+    contentOffsetX = 105,
     contentX = 840,
     contentW = 700,
-    header = { centerX = 1248, titleY = 83, latinY = 145, subY = 184 },
+    header = { centerX = 1248, titleY = 68, latinY = 151, subY = 193 },
     tags = {
-        { label = "学院登记", x = 820, y = 228, w = 192, bodyStart = .32, bodyEnd = .49,
+        { label = "学院登记", x = 820, y = 250, w = 214, bodyStart = .32, bodyEnd = .49,
             tagStart = .25, tagEnd = .39 },
-        { label = "个人简介", x = 820, y = 398, w = 192, bodyStart = .41, bodyEnd = .58,
+        { label = "个人简介", x = 820, y = 437, w = 214, bodyStart = .41, bodyEnd = .58,
             tagStart = .35, tagEnd = .49 },
-        { label = "本人批注", x = 820, y = 558, w = 192, bodyStart = .51, bodyEnd = .68,
+        { label = "本人批注", x = 820, y = 625, w = 214, bodyStart = .51, bodyEnd = .68,
             tagStart = .45, tagEnd = .59 },
     },
     emotionBar = { x = 1749, y = 67, w = 115, h = 728, revealStart = .27, revealEnd = .56,
@@ -199,12 +199,8 @@ local ARCHIVE = {
     bodyMuted = { 103, 77, 58, 215 },
     paper = { 250, 237, 215, 255 },
     warm = { 173, 86, 38, 245 },
-    enter = { baseStart = .00, baseEnd = .23, borderTop = { .02, .34 },
-        borderBottom = { .06, .38 }, borderVertical = { .15, .47 },
-        header = { .18, .39 } },
-    exit = { baseStart = .88, baseEnd = 1.16, borderTop = { .82, 1.04 },
-        borderBottom = { .78, 1.00 }, borderVertical = { .72, .96 },
-        header = { .67, .90 } },
+    enter = { baseStart = .00, baseEnd = .23, header = { .18, .39 } },
+    exit = { baseStart = .88, baseEnd = 1.16, emotion = { .72, .96 }, header = { .67, .90 } },
 }
 
 local SETTINGS = {
@@ -403,12 +399,6 @@ local function archiveProgress(state, startTime, endTime)
     return 0
 end
 
-local function archivePairProgress(state, pair)
-    local timing = state.profileMode == PROFILE_MODE.EXITING and ARCHIVE.exit[pair]
-        or ARCHIVE.enter[pair]
-    return archiveProgress(state, timing[1], timing[2])
-end
-
 local function archiveColor(colorValue, alpha)
     return nvgRGBA(colorValue[1], colorValue[2], colorValue[3],
         math.floor((colorValue[4] or 255) * clamp(alpha, 0, 1) + .5))
@@ -450,30 +440,6 @@ local function drawArchiveLine(vg, x1, y1, x2, y2, amount, width)
     nvgStroke(vg)
 end
 
-local function drawArchiveBorder(painter, state)
-    local vg = painter.vg
-    local panel = ARCHIVE.panel
-    local top = archivePairProgress(state, "borderTop")
-    local bottom = archivePairProgress(state, "borderBottom")
-    local vertical = archivePairProgress(state, "borderVertical")
-    local centerX = panel.x + panel.w * .5
-    drawArchiveLine(vg, centerX, panel.y, panel.x, panel.y, top)
-    drawArchiveLine(vg, centerX, panel.y, panel.x + panel.w, panel.y, top)
-    drawArchiveLine(vg, centerX, panel.y + panel.h, panel.x, panel.y + panel.h, bottom)
-    drawArchiveLine(vg, centerX, panel.y + panel.h, panel.x + panel.w, panel.y + panel.h, bottom)
-    drawArchiveLine(vg, panel.x, panel.y, panel.x, panel.y + panel.h, vertical)
-    drawArchiveLine(vg, panel.x + panel.w, panel.y, panel.x + panel.w, panel.y + panel.h, vertical)
-    local detail = math.min(top, vertical)
-    drawArchiveLine(vg, panel.x + 14, panel.y + 20, panel.x + 72, panel.y + 20, detail, 1.1)
-    drawArchiveLine(vg, panel.x + panel.w - 72, panel.y + panel.h - 20,
-        panel.x + panel.w - 14, panel.y + panel.h - 20, math.min(bottom, vertical), 1.1)
-    if detail > .55 then
-        drawArchiveStar(vg, panel.x + 205, panel.y + 69, 6.5, ARCHIVE.inkStrong, true, detail)
-        drawArchiveStar(vg, panel.x + panel.w - 226, panel.y + panel.h - 76, 5.5,
-            ARCHIVE.inkStrong, false, detail)
-    end
-end
-
 local function drawArchiveBase(painter, handle, state)
     local progress = archiveProgress(state, ARCHIVE.enter.baseStart, ARCHIVE.enter.baseEnd)
     if state.profileMode == PROFILE_MODE.EXITING then
@@ -491,25 +457,28 @@ local function drawArchiveTag(painter, tag, state, index)
     if tagProgress <= .001 then return end
     local vg = painter.vg
     local width = tag.w * tagProgress
-    painter:FillRect(tag.x, tag.y, width, 34, ARCHIVE.inkStrong, 235)
+    painter:FillRect(tag.x, tag.y, width, 41, ARCHIVE.inkStrong, 235)
     local textProgress = clamp((tagProgress - .55) / .45, 0, 1)
     if textProgress > .001 then
-        painter:Text(tag.x + 15, tag.y + 7, tag.label, 20, ARCHIVE.paper,
-            NVG_ALIGN_LEFT + NVG_ALIGN_TOP, "maker-body", archiveTextAlpha(textProgress))
-        drawArchiveStar(vg, tag.x + width - 20, tag.y + 17, 5.4, ARCHIVE.paper, true, textProgress)
+        painter:Text(tag.x + 17, tag.y + 8, tag.label, 24, ARCHIVE.paper,
+            NVG_ALIGN_LEFT + NVG_ALIGN_TOP, "report-summary", archiveTextAlpha(textProgress))
+        drawArchiveStar(vg, tag.x + width - 19, tag.y + 20.5, 5.2, ARCHIVE.paper, true, textProgress)
     end
 end
 
 local function drawArchiveBody(painter, state)
     local mode = state.profileMode
     local entries = {
-        { x = 840, y = 281, text = "所属：经典力学维护处", size = 21, start = .32, finish = .49 },
-        { x = 840, y = 314, text = "职务：实验监督员", size = 21, start = .34, finish = .51 },
-        { x = 840, y = 347, text = "负责事项：苹果、重力，以及阻止实验人员", size = 20, start = .36, finish = .53 },
-        { x = 930, y = 379, text = "擅自修改自然规律", size = 20, start = .38, finish = .55 },
-        { x = 840, y = 452, text = "对实验秩序、测量精度与因果关系有严格要求。", size = 20, start = .42, finish = .59 },
-        { x = 840, y = 484, text = "通常保持克制，直到有人开始把重力方向、弹性响应", size = 20, start = .44, finish = .61 },
-        { x = 840, y = 516, text = "和运动轨迹当作可编辑参数。", size = 20, start = .46, finish = .63 },
+        { x = 840, y = 308, text = "所属", size = 24, start = .32, finish = .49 },
+        { x = 975, y = 308, text = "经典力学维护处", size = 24, start = .32, finish = .49 },
+        { x = 840, y = 344, text = "职务", size = 24, start = .34, finish = .51 },
+        { x = 975, y = 344, text = "实验监督员", size = 24, start = .34, finish = .51 },
+        { x = 840, y = 380, text = "负责事项", size = 24, start = .36, finish = .53 },
+        { x = 975, y = 380, text = "苹果、重力，以及阻止实验人员", size = 24, start = .36, finish = .53 },
+        { x = 975, y = 416, text = "擅自修改自然规律", size = 24, start = .38, finish = .55 },
+        { x = 840, y = 497, text = "对实验秩序、测量精度与因果关系有严格要求。", size = 24, start = .42, finish = .59 },
+        { x = 840, y = 533, text = "通常保持克制，直到有人开始把重力方向、弹性响应", size = 24, start = .44, finish = .61 },
+        { x = 840, y = 569, text = "和运动轨迹当作可编辑参数。", size = 24, start = .46, finish = .63 },
     }
     for _, entry in ipairs(entries) do
         local startTime, endTime = entry.start, entry.finish
@@ -518,7 +487,7 @@ local function drawArchiveBody(painter, state)
         end
         local progress = archiveProgress(state, startTime, endTime)
         if progress > .001 then
-            painter:Text(entry.x + 16 * (1 - progress), entry.y, entry.text, entry.size, ARCHIVE.body,
+            painter:Text(entry.x + 18 * (1 - progress), entry.y, entry.text, entry.size, ARCHIVE.body,
                 NVG_ALIGN_LEFT + NVG_ALIGN_TOP, "maker-body", archiveTextAlpha(progress))
         end
     end
@@ -527,9 +496,9 @@ local function drawArchiveBody(painter, state)
     if mode == PROFILE_MODE.EXITING then quoteStart, quoteEnd = .88, 1.08 end
     local quoteProgress = archiveProgress(state, quoteStart, quoteEnd)
     if quoteProgress > .001 then
-        painter:Text(868 + 18 * (1 - quoteProgress), 614, "“请先解释为什么它在往右掉。”", 34,
+        painter:Text(868 + 18 * (1 - quoteProgress), 681, "“请先解释为什么它在往右掉。”", 44,
             ARCHIVE.inkStrong, NVG_ALIGN_LEFT + NVG_ALIGN_TOP, "report-newton", archiveTextAlpha(quoteProgress))
-        painter:Text(879 + 14 * (1 - quoteProgress), 694, "学院备注：该问题尚未得到实验人员充分重视。", 18,
+        painter:Text(879 + 14 * (1 - quoteProgress), 752, "学院备注：该问题尚未得到实验人员充分重视。", 21,
             ARCHIVE.bodyMuted, NVG_ALIGN_LEFT + NVG_ALIGN_TOP, "maker-body", archiveTextAlpha(quoteProgress))
     end
 end
@@ -539,23 +508,23 @@ local function drawArchiveHeader(painter, state)
     local progress = archiveProgress(state, pair[1], pair[2])
     if progress <= .001 then return end
     local h = ARCHIVE.header
-    painter:Text(h.centerX, h.titleY, "牛顿", 59, ARCHIVE.warm,
+    painter:Text(h.centerX, h.titleY, "牛顿", 70, ARCHIVE.warm,
+        NVG_ALIGN_CENTER + NVG_ALIGN_TOP, "report-summary", archiveTextAlpha(progress))
+    painter:Text(h.centerX, h.latinY, "NEWTON", 39, ARCHIVE.inkStrong,
         NVG_ALIGN_CENTER + NVG_ALIGN_TOP, "maker-body", archiveTextAlpha(progress))
-    painter:Text(h.centerX, h.latinY, "NEWTON", 35, ARCHIVE.inkStrong,
+    painter:Text(h.centerX, h.subY, "CLASSICAL MECHANICS / SUPERVISOR", 17, ARCHIVE.bodyMuted,
         NVG_ALIGN_CENTER + NVG_ALIGN_TOP, "maker-body", archiveTextAlpha(progress))
-    painter:Text(h.centerX, h.subY, "CLASSICAL MECHANICS / SUPERVISOR", 16, ARCHIVE.bodyMuted,
-        NVG_ALIGN_CENTER + NVG_ALIGN_TOP, "maker-body", archiveTextAlpha(progress))
-    drawArchiveLine(painter.vg, 838, 199, 1078, 199, progress, 1.1)
-    drawArchiveLine(painter.vg, 1418, 199, 1660, 199, progress, 1.1)
-    drawArchiveStar(painter.vg, 1090, 199, 5.2, ARCHIVE.inkStrong, true, progress)
-    drawArchiveStar(painter.vg, 1406, 199, 5.2, ARCHIVE.inkStrong, true, progress)
+    drawArchiveLine(painter.vg, 838, 218, 1078, 218, progress, 1.1)
+    drawArchiveLine(painter.vg, 1418, 218, 1628, 218, progress, 1.1)
+    drawArchiveStar(painter.vg, 1090, 218, 5.2, ARCHIVE.inkStrong, true, progress)
+    drawArchiveStar(painter.vg, 1406, 218, 5.2, ARCHIVE.inkStrong, true, progress)
 end
 
 local function drawArchiveEmotionBar(painter, handle, state)
     local bar = ARCHIVE.emotionBar
     local progress = archiveProgress(state, bar.revealStart, bar.revealEnd)
     if state.profileMode == PROFILE_MODE.EXITING then
-        progress = archiveProgress(state, ARCHIVE.exit.borderVertical[1], ARCHIVE.exit.borderVertical[2])
+        progress = archiveProgress(state, ARCHIVE.exit.emotion[1], ARCHIVE.exit.emotion[2])
     end
     if progress <= .001 then return end
     local vg = painter.vg
@@ -571,18 +540,20 @@ local function drawArchiveEmotionBar(painter, handle, state)
     if textProgress <= .001 then return end
     local labels = { "情", "绪", "观", "测", "样", "本" }
     for index, label in ipairs(labels) do
-        painter:Text(bar.x + bar.w * .5, 214 + (index - 1) * 54, label, 32, ARCHIVE.paper,
-            NVG_ALIGN_CENTER + NVG_ALIGN_TOP, "maker-body", archiveTextAlpha(textProgress))
+        painter:Text(bar.x + bar.w * .5, 205 + (index - 1) * 55, label, 38, ARCHIVE.paper,
+            NVG_ALIGN_CENTER + NVG_ALIGN_TOP, "report-summary", archiveTextAlpha(textProgress))
     end
     drawArchiveStar(vg, bar.x + bar.w * .5, 119, 6, ARCHIVE.paper, true, textProgress)
     drawArchiveStar(vg, bar.x + bar.w * .5, 654, 6, ARCHIVE.paper, true, textProgress)
 end
 
 local function drawProfileInfoOverlay(painter, profileArt, state)
-    drawArchiveBorder(painter, state)
+    nvgSave(painter.vg)
+    nvgTranslate(painter.vg, ARCHIVE.contentOffsetX, 0)
     drawArchiveHeader(painter, state)
     for index, tag in ipairs(ARCHIVE.tags) do drawArchiveTag(painter, tag, state, index) end
     drawArchiveBody(painter, state)
+    nvgRestore(painter.vg)
     drawArchiveEmotionBar(painter, profileArt.infoFrame, state)
 end
 
