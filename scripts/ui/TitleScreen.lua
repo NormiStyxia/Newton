@@ -143,10 +143,21 @@ local PROFILE = {
 -- Stable tapered quadrilaterals form a counter-clockwise chain.  These are
 -- intentionally broad graphic bands, not a conventional UI border.
 local PROFILE_FRAME_BANDS = {
-    { x1 = 690, y1 = 310, x2 = 176, y2 = 378, t1 = 66, t2 = 52, color = { 218, 70, 26, 255 } },
-    { x1 = 184, y1 = 350, x2 = 106, y2 = 706, t1 = 54, t2 = 72, color = { 177, 47, 28, 255 } },
-    { x1 = 104, y1 = 706, x2 = 704, y2 = 654, t1 = 78, t2 = 62, color = { 239, 145, 25, 255 } },
-    { x1 = 692, y1 = 670, x2 = 708, y2 = 292, t1 = 58, t2 = 68, color = { 230, 85, 24, 255 } },
+    -- Geometry is intentionally unchanged.  Each segment owns a compact
+    -- same-family gradient so color differences come from segment-to-segment
+    -- hierarchy instead of four repeated yellow-to-red ramps.
+    { x1 = 690, y1 = 310, x2 = 176, y2 = 378, t1 = 66, t2 = 52,
+        baseColor = { 204, 66, 31, 255 }, gradientStartColor = { 201, 63, 29, 255 },
+        gradientEndColor = { 207, 69, 33, 255 } },
+    { x1 = 184, y1 = 350, x2 = 106, y2 = 706, t1 = 54, t2 = 72,
+        baseColor = { 167, 53, 35, 255 }, gradientStartColor = { 163, 49, 33, 255 },
+        gradientEndColor = { 171, 57, 37, 255 } },
+    { x1 = 104, y1 = 706, x2 = 704, y2 = 654, t1 = 78, t2 = 62,
+        baseColor = { 211, 105, 27, 255 }, gradientStartColor = { 207, 101, 25, 255 },
+        gradientEndColor = { 215, 109, 29, 255 } },
+    { x1 = 692, y1 = 670, x2 = 708, y2 = 292, t1 = 58, t2 = 68,
+        baseColor = { 236, 97, 26, 255 }, gradientStartColor = { 232, 91, 24, 255 },
+        gradientEndColor = { 240, 103, 29, 255 } },
 }
 
 local SETTINGS = {
@@ -392,7 +403,17 @@ local function drawGrowingBand(vg, band, progress)
     nvgLineTo(vg, endX - nx * endHalf, endY - ny * endHalf)
     nvgLineTo(vg, band.x1 - nx * startHalf, band.y1 - ny * startHalf)
     nvgClosePath(vg)
-    nvgFillColor(vg, nvgRGBA(band.color[1], band.color[2], band.color[3], band.color[4]))
+    local startColor = band.gradientStartColor or band.baseColor
+    local endColor = band.gradientEndColor or band.baseColor
+    if startColor and endColor then
+        -- The endpoints follow this segment's own long axis; the delta stays
+        -- deliberately narrow so this reads as flat ink, not a luminous bar.
+        nvgFillPaint(vg, nvgLinearGradient(vg, band.x1, band.y1, band.x2, band.y2,
+            nvgRGBA(startColor[1], startColor[2], startColor[3], startColor[4]),
+            nvgRGBA(endColor[1], endColor[2], endColor[3], endColor[4])))
+    else
+        nvgFillColor(vg, nvgRGBA(band.baseColor[1], band.baseColor[2], band.baseColor[3], band.baseColor[4]))
+    end
     nvgFill(vg)
 end
 
