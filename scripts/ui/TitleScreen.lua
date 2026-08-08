@@ -12,6 +12,7 @@ local MENU = {
     rowHeight = 64,
     rowStep = 64,
     textSize = 29,
+    scale = 1.35,
 }
 
 local MENU_ITEMS = { "实验目录", "实验工坊", "设置", "退出游戏" }
@@ -300,9 +301,18 @@ local function updateCharacterHover(state, dt)
     end
 end
 
+local function menuTop()
+    return MENU.y - #MENU_ITEMS * MENU.rowStep * (MENU.scale - 1) * .5
+end
+
 local function menuHit(index, x, y)
-    local top = MENU.y + (index - 1) * MENU.rowStep
-    return pointIn({ x = MENU.x - 24, y = top, w = MENU.width, h = MENU.rowHeight }, x, y)
+    local top = menuTop() + (index - 1) * MENU.rowStep * MENU.scale
+    return pointIn({
+        x = MENU.x - 24,
+        y = top,
+        w = MENU.width * MENU.scale + 24,
+        h = MENU.rowHeight * MENU.scale,
+    }, x, y)
 end
 
 local function menuIndexAt(x, y)
@@ -491,8 +501,9 @@ function M.Install(context)
         for _, node in ipairs(CHARACTER_NODES) do drawCharacterNode(painter_, art, node, state) end
 
         local vg = painter_.vg
+        local top = menuTop()
         for index, label in ipairs(MENU_ITEMS) do
-            local centerY = MENU.y + (index - 1) * MENU.rowStep + MENU.rowHeight * .5
+            local centerY = top + ((index - 1) * MENU.rowStep + MENU.rowHeight * .5) * MENU.scale
             local pressed = state.pressedIndex == index
             local progress = smoothStep(state.selectionProgress[index] or 0)
             local visualProgress = pressed and 1 or progress
@@ -500,15 +511,15 @@ function M.Install(context)
             local textColor = mixColor(MENU_MUTED, MENU_INK, visualProgress)
             nvgSave(vg)
             nvgTranslate(vg, MENU.x, centerY)
-            nvgScale(vg, drawScale, drawScale)
+            nvgScale(vg, drawScale * MENU.scale, drawScale * MENU.scale)
             drawFourPointStar(vg, 10, 0, 8.2, visualProgress)
             painter_:Text(36 + 4 * visualProgress, 0, label, MENU.textSize, textColor,
                 NVG_ALIGN_LEFT + NVG_ALIGN_MIDDLE, "maker-body")
             drawArrow(vg, MENU.width - 47, 0, MENU_ACCENT, visualProgress)
             nvgRestore(vg)
         end
-        painter_:Text(MENU.x, MENU.y + #MENU_ITEMS * MENU.rowStep + 27,
-            "（戳左边四个有角色介绍）", 16, TIP_COLOR, nil, "maker-body")
+        painter_:Text(MENU.x, top + (#MENU_ITEMS * MENU.rowStep + 27) * MENU.scale,
+            "（戳左边四个有角色介绍）", 16 * MENU.scale, TIP_COLOR, nil, "maker-body")
         if state.settingsOpen then drawSettings(painter_) end
     end
 end
