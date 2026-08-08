@@ -3,10 +3,9 @@ local M = {}
 local EinsteinObserver = require("game.render.EinsteinObserver")
 local WallImpactShake = require("game.render.WallImpactShake")
 
-local BGM_PATH = "audio/music_1786095252543.ogg"
-local BGM_OPTIONS = { volume = 0.4, fadeIn = 0.45 }
 local TITLE_BACKGROUND_FILL = { 248, 231, 206, 255 }
 local CATALOG_BACKGROUND_FILL = { 247, 239, 211, 255 }
+local NOW_PLAYING_COLOR = { 164, 139, 76, 255 }
 
 ---@param context GameContext
 function M.Install(context)
@@ -23,6 +22,7 @@ function M.Install(context)
     local navigationTransition_ = context.navigationTransition_
     local lastValidPhysicsTimeStep = 1 / 60
     local frameScreen_ = nil
+    local lastMusicScreen_ = nil
     local _ENV = context
 
     local function currentNavigationTransition()
@@ -66,8 +66,25 @@ function M.Install(context)
         end
         return lastValidPhysicsTimeStep
     end
+    local function musicContextForScreen(screen)
+        if screen == "title" or screen == "title_catalog_transition" or screen == "catalog" then
+            return "academy"
+        end
+        if screen == "workshop" or screen == "game" then return "gameplay" end
+        -- workshop_preview intentionally inherits the editor's context.
+        return nil
+    end
+
+    local function SyncMusicContext()
+        local desired = musicContextForScreen(screen_)
+        if desired and desired ~= lastMusicScreen_ then
+            context.setMusicContext(desired, { showNowPlaying = lastMusicScreen_ ~= nil })
+            lastMusicScreen_ = desired
+        end
+    end
+
     local function StartGlobalBGM()
-        return context.globalBGM_:playBGM(BGM_PATH, BGM_OPTIONS)
+        return context.setMusicContext("academy", { showNowPlaying = false, fadeIn = 0.45 })
     end
 
     local function DrawGreenAssistantTopLayer(draw)
@@ -92,11 +109,88 @@ function M.Install(context)
     end
 
     function setBGMVolume(volume)
-        context.globalBGM_:setBGMVolume(volume)
+        if context.audioManager_ then context.audioManager_:setBgmVolume(volume)
+        else context.globalBGM_:setBGMVolume(volume) end
+    end
+
+    function setSFXVolume(volume)
+        if context.audioManager_ then context.audioManager_:setSfxVolume(volume)
+        elseif context.uiAudio_ then context.uiAudio_:setVolume(volume) end
+    end
+
+    function setBGMMuted(muted)
+        if context.audioManager_ then context.audioManager_:setBgmMuted(muted)
+        else context.globalBGM_:setBgmMuted(muted) end
+    end
+
+    function setSFXMuted(muted)
+        if context.audioManager_ then context.audioManager_:setSfxMuted(muted)
+        elseif context.uiAudio_ then context.uiAudio_:setMuted(muted) end
+    end
+
+    function setMusicContext(musicContext, options)
+        if context.audioManager_ then return context.audioManager_:setMusicContext(musicContext, options) end
+        return context.globalBGM_:setMusicContext(musicContext, options)
+    end
+
+    function enterPreview()
+        return context.audioManager_ and context.audioManager_:enterPreview() or true
+    end
+
+    function nextTrack()
+        if context.audioManager_ then return context.audioManager_:nextTrack() end
+        return context.globalBGM_:nextTrack()
+    end
+
+    function previousTrack()
+        if context.audioManager_ then return context.audioManager_:previousTrack() end
+        return context.globalBGM_:previousTrack()
+    end
+
+    function selectTrack(trackId)
+        if context.audioManager_ then return context.audioManager_:selectTrack(trackId) end
+        return context.globalBGM_:selectTrack(trackId)
+    end
+
+    function getCurrentTrack()
+        return context.audioManager_ and context.audioManager_:getCurrentTrack()
+            or context.globalBGM_:getCurrentTrack()
+    end
+
+    function getCurrentTrackTitle()
+        return context.audioManager_ and context.audioManager_:getCurrentTrackTitle()
+            or context.globalBGM_:getCurrentTrackTitle()
+    end
+
+    function showNowPlaying(title)
+        return context.audioManager_ and context.audioManager_:showNowPlaying(title)
+            or context.globalBGM_:showNowPlaying(title)
+    end
+
+    function saveAudioSettings()
+        return context.audioManager_ and context.audioManager_:saveAudioSettings() or false
+    end
+
+    function loadAudioSettings()
+        return context.audioManager_ and context.audioManager_:loadAudioSettings() or false
+    end
+
+    function DrawNowPlaying(painter)
+        if not painter or not painter.Text then return end
+        local state = context.globalBGM_:getNowPlayingState()
+        if not state then return end
+        local frame = context.frame_ or {}
+        local x = (frame.logicalWidth or 1870) * .5
+        local y = 94 + (state.yOffset or 0)
+        local color = { NOW_PLAYING_COLOR[1], NOW_PLAYING_COLOR[2], NOW_PLAYING_COLOR[3],
+            math.floor(230 * state.alpha + .5) }
+        painter:Text(x, y, "♫ " .. state.title, 17, color,
+            NVG_ALIGN_CENTER + NVG_ALIGN_MIDDLE, "maker-body")
     end
 
     function playUIClick()
-        if context.uiAudio_ then context.uiAudio_:PlayUIClick() end
+        if context.audioManager_ then context.audioManager_:playUIClick()
+        elseif context.uiAudio_ then context.uiAudio_:PlayUIClick() end
     end
 
     function HandleFirstAudioGesture()
@@ -119,6 +213,7 @@ function M.Install(context)
         -- The catalog uses the same fixed 1880 x 840 stage as gameplay, so its
         -- authored artwork is centered on taller viewports from the first frame.
         screen_ = "title"
+        lastMusicScreen_ = nil
         frame_ = FrameForCurrentScreen()
         context.InitializeDialogue()
         context.InitializeAssistDemo()
@@ -159,7 +254,9 @@ function M.Install(context)
     ---@param eventData UpdateEventData
     function HandleUpdate(_eventType, eventData)
         local dt = eventData:GetFloat("TimeStep")
-        context.globalBGM_:Update(dt)
+        SyncMusicContext()
+        if context.audioManager_ then context.audioManager_:Update(dt)
+        else context.globalBGM_:Update(dt) end
         frame_ = FrameForCurrentScreen()
         RefreshWorkspaceLayout()
         local pointerFrame = PointerState()
@@ -548,6 +645,7 @@ function M.Install(context)
             local ok, err = pcall(function()
                 painter_:Begin(frame_)
                 DrawLevelWorkshop()
+                DrawNowPlaying(painter_)
                 painter_:Finish()
             end)
             if not ok then error(err) end
@@ -561,6 +659,7 @@ function M.Install(context)
                 local titleOffset, catalogOffset = transition:GetRootOffsets(designWidth)
                 DrawExperimentCatalog({ rootOffsetX = catalogOffset, transition = transition })
                 DrawTitleScreen({ rootOffsetX = titleOffset, transition = transition })
+                DrawNowPlaying(painter_)
                 painter_:Finish()
             end)
             if not ok then error(err) end
@@ -571,15 +670,18 @@ function M.Install(context)
             painter_:Begin(frame_)
             if screen_ == "catalog" then
                 DrawExperimentCatalog()
+                DrawNowPlaying(painter_)
                 painter_:Finish()
                 return
             end
             if screen_ == "title" then
                 DrawTitleScreen()
+                DrawNowPlaying(painter_)
                 painter_:Finish()
                 return
             end
             if not level_ then
+                DrawNowPlaying(painter_)
                 painter_:Finish()
                 return
             end
@@ -619,6 +721,7 @@ function M.Install(context)
             DrawResultOverlay()
             DrawGreenAssistantTopLayer(DrawGreenAssistant)
             DrawGreenAssistantTopLayer(context.DrawGreenAssistantOverlay)
+            DrawNowPlaying(painter_)
             painter_:Finish()
         end)
         State.EndGameSnapshot(context)

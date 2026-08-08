@@ -14,6 +14,7 @@ local RuntimeFactory = require("game.level.RuntimeFactory")
 local Renderer2D = require("game.render.Canvas")
 local SynthAudio = require("game.audio.Audio")
 local GlobalBGM = require("game.audio.GlobalBGM")
+local AudioManager = require("game.audio.AudioManager")
 local TrajectoryPrediction = require("game.physics.Trajectory")
 local ReplayTimeline = require("game.replay.Timeline")
 local ReplayFeed = require("game.replay.Feed")
@@ -44,6 +45,7 @@ function App.New()
         MatterCalibration = MatterCalibration, PhysicsProfiles = PhysicsProfiles, PhysicsProbe = PhysicsProbe,
         Rules = Rules, RuntimeFactory = RuntimeFactory, Renderer2D = Renderer2D, SynthAudio = SynthAudio,
         GlobalBGM = GlobalBGM,
+        AudioManager = AudioManager,
         TrajectoryPrediction = TrajectoryPrediction, ReplayTimeline = ReplayTimeline, ReplayFeed = ReplayFeed,
         ReplayMode = ReplayMode, PhaseWallEffects = PhaseWallEffects, ExperimentProgress = ExperimentProgress,
         CatalogTransition = CatalogTransition,

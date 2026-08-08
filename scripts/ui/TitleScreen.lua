@@ -204,11 +204,45 @@ local ARCHIVE = {
 }
 
 local SETTINGS = {
-    x = 1138, y = 206, w = 560, h = 384,
-    music = { x = 1210, y = 332, w = 380 },
-    sound = { x = 1210, y = 408, w = 380 },
-    mute = { x = 1188, y = 485, w = 420, h = 52 },
+    x = 1088, y = 86, w = 656, h = 672,
+    paddingX = 42,
+    contentTop = 112,
+    rowHeight = 52,
+    rowGap = 12,
+    sliderWidth = 380,
 }
+
+-- Rows are data, not fixed y constants. Future settings can append a row and
+-- inherit the same spacing without moving the existing controls by hand.
+local SETTINGS_ROW_DEFINITIONS = {
+    { id = "bgmVolume", kind = "slider", label = "音乐音量" },
+    { id = "bgmMute", kind = "toggle", label = "音乐静音" },
+    { id = "sfxVolume", kind = "slider", label = "音效音量" },
+    { id = "sfxMute", kind = "toggle", label = "音效静音" },
+    { id = "trackSelector", kind = "track", label = "当前音乐" },
+}
+
+local function settingsRows()
+    local rows = {}
+    local currentY = SETTINGS.y + SETTINGS.contentTop
+    for _, definition in ipairs(SETTINGS_ROW_DEFINITIONS) do
+        local row = {
+            id = definition.id,
+            kind = definition.kind,
+            label = definition.label,
+            x = SETTINGS.x + SETTINGS.paddingX,
+            y = currentY,
+            w = SETTINGS.w - SETTINGS.paddingX * 2,
+            h = SETTINGS.rowHeight,
+        }
+        if definition.kind == "slider" then
+            row.slider = { x = row.x + 72, y = currentY + 28, w = SETTINGS.sliderWidth, h = 48 }
+        end
+        rows[definition.id] = row
+        currentY = currentY + SETTINGS.rowHeight + SETTINGS.rowGap
+    end
+    return rows
+end
 
 local function clamp(value, minimum, maximum)
     return math.max(minimum, math.min(maximum, value))
@@ -770,22 +804,35 @@ local function drawSlider(painter, rect, label, value)
 end
 
 local function setMusicVolume(state, context, value)
-    state.musicVolume = clamp(value, 0, 1)
-    if not state.muted then context.setBGMVolume(state.musicVolume) end
+    state.bgmVolume = clamp(value, 0, 1)
+    state.musicVolume = state.bgmVolume
+    if context.setBGMVolume then context.setBGMVolume(state.bgmVolume) end
 end
 
 local function setSoundVolume(state, context, value)
-    state.soundVolume = clamp(value, 0, 1)
-    local audio = context.uiAudio_
-    if audio and audio.setVolume then audio:setVolume(state.muted and 0 or state.soundVolume) end
+    state.sfxVolume = clamp(value, 0, 1)
+    state.soundVolume = state.sfxVolume
+    if context.setSFXVolume then context.setSFXVolume(state.sfxVolume)
+    else
+        local audio = context.uiAudio_
+        if audio and audio.setVolume then audio:setVolume(state.sfxVolume) end
+    end
 end
 
-local function setMuted(state, context, muted)
-    state.muted = muted == true
-    context.setBGMVolume(state.muted and 0 or state.musicVolume)
-    local audio = context.uiAudio_
-    if audio and audio.setMuted then audio:setMuted(state.muted) end
-    if audio and audio.setVolume then audio:setVolume(state.muted and 0 or state.soundVolume) end
+local function setBgmMuted(state, context, muted)
+    state.bgmMuted = muted == true
+    state.muted = state.bgmMuted and state.sfxMuted
+    if context.setBGMMuted then context.setBGMMuted(state.bgmMuted) end
+end
+
+local function setSfxMuted(state, context, muted)
+    state.sfxMuted = muted == true
+    state.muted = state.bgmMuted and state.sfxMuted
+    if context.setSFXMuted then context.setSFXMuted(state.sfxMuted)
+    else
+        local audio = context.uiAudio_
+        if audio and audio.setMuted then audio:setMuted(state.sfxMuted) end
+    end
 end
 
 local function moveTowards(current, target, delta)
@@ -883,7 +930,9 @@ end
 
 local function updateSettingSlider(state, context, pointerX)
     local drag = state.settingsDrag
-    local rect = drag == "music" and SETTINGS.music or SETTINGS.sound
+    local rows = settingsRows()
+    local row = drag == "music" and rows.bgmVolume or rows.sfxVolume
+    local rect = row and row.slider
     if not rect then return end
     local value = clamp((pointerX - rect.x) / rect.w, 0, 1)
     if drag == "music" then setMusicVolume(state, context, value) else setSoundVolume(state, context, value) end
@@ -938,12 +987,16 @@ function M.Install(context)
         state.profileBackHover = false
         state.profileBackHoverProgress = 0
         state.profileBackPressed = false
-        state.musicVolume = state.musicVolume or .4
-        state.soundVolume = state.soundVolume or .55
-        state.muted = state.muted == true
-        setMusicVolume(state, context, state.musicVolume)
-        setSoundVolume(state, context, state.soundVolume)
-        setMuted(state, context, state.muted)
+        state.bgmVolume = state.bgmVolume or state.musicVolume or .4
+        state.sfxVolume = state.sfxVolume or state.soundVolume or .55
+        state.musicVolume, state.soundVolume = state.bgmVolume, state.sfxVolume
+        state.bgmMuted = state.bgmMuted == true
+        state.sfxMuted = state.sfxMuted == true
+        state.muted = state.bgmMuted and state.sfxMuted
+        setMusicVolume(state, context, state.bgmVolume)
+        setSoundVolume(state, context, state.sfxVolume)
+        setBgmMuted(state, context, state.bgmMuted)
+        setSfxMuted(state, context, state.sfxMuted)
     end
 
     function BeginTitleCatalogExit()
@@ -1042,6 +1095,7 @@ function M.Install(context)
     end
 
     local function updateSettings(pointerFrame)
+        local rows = settingsRows()
         if input:GetKeyPress(KEY_ESCAPE) then
             state.settingsOpen = false
             state.settingsDrag = nil
@@ -1049,16 +1103,29 @@ function M.Install(context)
             return
         end
         if pointerFrame.pressed then
-            if pointInSlider(SETTINGS.music, pointerFrame.x, pointerFrame.y) then
+            if pointInSlider(rows.bgmVolume.slider, pointerFrame.x, pointerFrame.y) then
                 state.settingsDrag = "music"
                 updateSettingSlider(state, context, pointerFrame.x)
                 return
-            elseif pointInSlider(SETTINGS.sound, pointerFrame.x, pointerFrame.y) then
+            elseif pointInSlider(rows.sfxVolume.slider, pointerFrame.x, pointerFrame.y) then
                 state.settingsDrag = "sound"
                 updateSettingSlider(state, context, pointerFrame.x)
                 return
-            elseif pointIn(SETTINGS.mute, pointerFrame.x, pointerFrame.y) then
-                setMuted(state, context, not state.muted)
+            elseif pointIn(rows.bgmMute, pointerFrame.x, pointerFrame.y) then
+                setBgmMuted(state, context, not state.bgmMuted)
+                context.playUIClick()
+                return
+            elseif pointIn(rows.sfxMute, pointerFrame.x, pointerFrame.y) then
+                setSfxMuted(state, context, not state.sfxMuted)
+                context.playUIClick()
+                return
+            elseif pointIn(rows.trackSelector, pointerFrame.x, pointerFrame.y) then
+                local center = rows.trackSelector.x + rows.trackSelector.w * .5
+                if pointerFrame.x < center - 90 then
+                    if context.previousTrack then context.previousTrack() end
+                elseif pointerFrame.x > center + 90 then
+                    if context.nextTrack then context.nextTrack() end
+                end
                 context.playUIClick()
                 return
             elseif not pointIn(SETTINGS, pointerFrame.x, pointerFrame.y) then
@@ -1128,24 +1195,45 @@ function M.Install(context)
 
     local function drawSettings(painter)
         local vg = painter.vg
+        local rows = settingsRows()
         painter:FillRect(0, 0, 1870, 841, { 38, 50, 36, 255 }, 54)
         painter:FillRect(SETTINGS.x, SETTINGS.y, SETTINGS.w, SETTINGS.h, OVERLAY_FILL)
         painter:StrokeRect(SETTINGS.x, SETTINGS.y, SETTINGS.w, SETTINGS.h, MENU_ACCENT, 1.4, 225)
         painter:Text(SETTINGS.x + 42, SETTINGS.y + 30, "设置", 30, MENU_INK, nil, "maker-body")
         painter:Text(SETTINGS.x + SETTINGS.w - 42, SETTINGS.y + 39, "ESC 关闭", 15, TIP_COLOR,
             NVG_ALIGN_RIGHT + NVG_ALIGN_MIDDLE, "maker-body")
-        drawSlider(painter, SETTINGS.music, "音乐音量", state.musicVolume)
-        drawSlider(painter, SETTINGS.sound, "音效音量", state.soundVolume)
-        local checkX, checkY = SETTINGS.mute.x + 18, SETTINGS.mute.y + SETTINGS.mute.h * .5
-        nvgBeginPath(vg)
-        nvgRect(vg, checkX - 10, checkY - 10, 20, 20)
-        if state.muted then
-            nvgFillColor(vg, nvgRGBA(MENU_ACCENT[1], MENU_ACCENT[2], MENU_ACCENT[3], 255)); nvgFill(vg)
-        else
-            nvgStrokeColor(vg, nvgRGBA(MENU_MUTED[1], MENU_MUTED[2], MENU_MUTED[3], 190)); nvgStrokeWidth(vg, 1.4); nvgStroke(vg)
+        painter:Text(rows.bgmVolume.x, rows.bgmVolume.y - 16, "音乐", 16, TIP_COLOR, nil, "maker-body")
+        drawSlider(painter, rows.bgmVolume.slider, "音乐音量", state.bgmVolume)
+        local function drawToggle(row, enabled)
+            local checkX, checkY = row.x + 18, row.y + row.h * .5
+            nvgBeginPath(vg)
+            nvgRect(vg, checkX - 10, checkY - 10, 20, 20)
+            if enabled then
+                nvgFillColor(vg, nvgRGBA(MENU_ACCENT[1], MENU_ACCENT[2], MENU_ACCENT[3], 255))
+                nvgFill(vg)
+            else
+                nvgStrokeColor(vg, nvgRGBA(MENU_MUTED[1], MENU_MUTED[2], MENU_MUTED[3], 190))
+                nvgStrokeWidth(vg, 1.4)
+                nvgStroke(vg)
+            end
+            painter:Text(checkX + 30, checkY, row.label, 19, MENU_INK,
+                NVG_ALIGN_LEFT + NVG_ALIGN_MIDDLE, "maker-body")
         end
-        painter:Text(checkX + 30, checkY, "禁用声音 / 静音", 20, MENU_INK,
-            NVG_ALIGN_LEFT + NVG_ALIGN_MIDDLE, "maker-body")
+        drawToggle(rows.bgmMute, state.bgmMuted)
+        painter:Text(rows.sfxVolume.x, rows.sfxVolume.y - 16, "音效", 16, TIP_COLOR, nil, "maker-body")
+        drawSlider(painter, rows.sfxVolume.slider, "音效音量", state.sfxVolume)
+        drawToggle(rows.sfxMute, state.sfxMuted)
+
+        local trackRow = rows.trackSelector
+        painter:Text(trackRow.x, trackRow.y + 5, trackRow.label, 18, TIP_COLOR, nil, "maker-body")
+        local title = context.getCurrentTrackTitle and context.getCurrentTrackTitle() or "未播放音乐"
+        local centerX = trackRow.x + trackRow.w * .5
+        painter:Text(centerX - 150, trackRow.y + 34, "‹", 30, MENU_ACCENT,
+            NVG_ALIGN_CENTER + NVG_ALIGN_MIDDLE, "maker-body")
+        painter:Text(centerX, trackRow.y + 34, title, 18, MENU_INK,
+            NVG_ALIGN_CENTER + NVG_ALIGN_MIDDLE, "maker-body")
+        painter:Text(centerX + 150, trackRow.y + 34, "›", 30, MENU_ACCENT,
+            NVG_ALIGN_CENTER + NVG_ALIGN_MIDDLE, "maker-body")
     end
 
     function DrawTitleScreen(visual)

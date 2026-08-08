@@ -72,7 +72,10 @@ function M.Install(context)
         WallImpactShake.ResetRuntime(runtime_)
         if scene_ then scene_:SetUpdateEnabled(false) end
         renderer:SetNumViewports(0)
-        if audio_ then audio_.scene = nil end
+        if audio_ then
+            if context.audioManager_ then context.audioManager_:DetachSfx(audio_) end
+            audio_.scene = nil
+        end
         if scene_ then scene_:Dispose() end
         if runtimeSession_ then runtimeSession_.disposed = true end
         scene_, camera_, viewport_, physicsWorld_ = nil, nil, nil, nil
@@ -155,6 +158,7 @@ function M.Install(context)
         })
         CreateScene()
         audio_ = SynthAudio.New(scene_)
+        if context.audioManager_ then context.audioManager_:AttachSfx(audio_) end
         SetupViewport()
         laboratoryBoundaries_ = RuntimeFactory.CreateLaboratoryBoundaries(
             scene_, mapper_, LevelData.PLAYFIELD_GROUND_Y, physicsProfile_.boundaries

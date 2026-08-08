@@ -15,6 +15,7 @@
 ---@field Renderer2D any
 ---@field SynthAudio any
 ---@field GlobalBGM any
+---@field AudioManager any
 ---@field TrajectoryPrediction any
 ---@field ReplayTimeline any
 ---@field ReplayFeed any
@@ -71,10 +72,24 @@
 ---@field experimentProgress_ table
 ---@field globalBGM_ GlobalBGM
 ---@field uiAudio_ SynthAudio
+---@field audioManager_ AudioManager
 ---@field playUIClick fun()
 ---@field playBGM fun(path: string, options?: BGMOptions): boolean
 ---@field stopBGM fun()
 ---@field setBGMVolume fun(volume: number)
+---@field setSFXVolume fun(volume: number)
+---@field setBGMMuted fun(muted: boolean)
+---@field setSFXMuted fun(muted: boolean)
+---@field setMusicContext fun(context: string, options?: table): boolean
+---@field enterPreview fun(): boolean
+---@field nextTrack fun(): boolean
+---@field previousTrack fun(): boolean
+---@field selectTrack fun(trackId: string): boolean
+---@field getCurrentTrack fun(): table|nil
+---@field getCurrentTrackTitle fun(): string
+---@field showNowPlaying fun(title: string): boolean
+---@field saveAudioSettings fun(): boolean
+---@field loadAudioSettings fun(): boolean
 ---@field RecordOfficialExperimentProgress fun(assisted: boolean|nil, reportState: table|nil): table|nil, string|nil
 ---@field workshopState_ table
 ---@field hudRuleSummary_ string
@@ -136,7 +151,7 @@ own("navigation", {
     "hudExpectedScore_", "hudInterventionCount_", "hudDropdown_", "hudEscapeConsumed_",
 })
 own("progress", { "experimentProgress_" })
-own("appAudio", { "globalBGM_", "uiAudio_" })
+own("appAudio", { "audioManager_", "globalBGM_", "uiAudio_" })
 own("workshop", { "workshopState_" })
 
 local function refreshModes(domains)
@@ -271,8 +286,14 @@ function State.New(dependencies, constants)
         selectionProgress = { 1, 0, 0, 0 },
         settingsOpen = false,
         settingsDrag = nil,
+        -- Legacy aliases remain for old UI callers; AudioManager owns the
+        -- canonical BGM/SFX values and the two independent mute flags.
         musicVolume = .4,
         soundVolume = .55,
+        bgmVolume = .4,
+        sfxVolume = .55,
+        bgmMuted = false,
+        sfxMuted = false,
         muted = false,
         academyIdCardCharacter = nil,
         academyIdCardElapsed = 0,
@@ -285,8 +306,28 @@ function State.New(dependencies, constants)
         profileBackPressed = false,
     }
     context.experimentProgress_ = dependencies.ExperimentProgress.New({ json = cjson })
-    context.globalBGM_ = dependencies.GlobalBGM.New()
-    context.uiAudio_ = dependencies.SynthAudio.New()
+    if dependencies.AudioManager then
+        context.audioManager_ = dependencies.AudioManager.New({
+            bgm = dependencies.GlobalBGM and dependencies.GlobalBGM.New() or nil,
+            uiAudio = dependencies.SynthAudio and dependencies.SynthAudio.New() or nil,
+            json = dependencies.json or _G.cjson,
+        })
+        context.globalBGM_ = context.audioManager_.bgm
+        context.uiAudio_ = context.audioManager_.uiAudio
+    else
+        context.audioManager_ = nil
+        context.globalBGM_ = dependencies.GlobalBGM and dependencies.GlobalBGM.New() or nil
+        context.uiAudio_ = dependencies.SynthAudio and dependencies.SynthAudio.New() or nil
+    end
+    if context.audioManager_ then
+        context.titleState_.bgmVolume = context.audioManager_.bgmVolume
+        context.titleState_.sfxVolume = context.audioManager_.sfxVolume
+        context.titleState_.musicVolume = context.titleState_.bgmVolume
+        context.titleState_.soundVolume = context.titleState_.sfxVolume
+        context.titleState_.bgmMuted = context.audioManager_.bgmMuted
+        context.titleState_.sfxMuted = context.audioManager_.sfxMuted
+        context.titleState_.muted = context.titleState_.bgmMuted and context.titleState_.sfxMuted
+    end
     context.catalogState_ = {
         selectedIndex = 1,
         levels = {},

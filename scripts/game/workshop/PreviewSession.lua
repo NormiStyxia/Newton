@@ -40,6 +40,7 @@ end
 
 function PreviewSession.End(context, levelDocument, current)
     local snapshot = current.previewSnapshot
+    if context.audioManager_ then context.audioManager_:leavePreview() end
     if context.scene_ or context.level_ then context.ReleaseLevelRuntime() end
     context.screen_ = "workshop"
     if renderer then renderer:SetNumViewports(0) end
@@ -50,6 +51,7 @@ end
 
 function PreviewSession.Begin(context, levelDocument, current)
     current.previewSnapshot = capture(context, levelDocument, current)
+    if context.audioManager_ then context.audioManager_:enterPreview() end
     current.modal, current.textEdit, current.transaction = nil, nil, nil
     local ok, session, errorMessage = pcall(context.StartRuntimeSessionFromDocument, current.document, {
         sourceKind = "workshop-preview",
