@@ -30,19 +30,19 @@ local DEGREES_TO_RADIANS = math.pi / 180
 local TITLE_NODES = {
     { key = "bu", baseX = 148, baseY = 94, w = 216, h = 189, baseRotation = 0, baseScale = 1,
         pivotX = .50, pivotY = .58,
-        idle = { from = -.8, to = .6, duration = 1.8, delay = 0, phase = .03 } },
+        idle = { poseA = -4, poseB = 2, holdA = .26, holdB = .21, transition = .055, initialOffset = 0 } },
     { key = "jing", baseX = 357, baseY = 87, w = 187, h = 197, baseRotation = 0, baseScale = 1,
         pivotX = .51, pivotY = .57,
-        idle = { from = .4, to = -1.0, duration = 2.1, delay = .17, phase = .41 } },
+        idle = { poseA = 3, poseB = -3, holdA = .19, holdB = .28, transition = .05, initialOffset = .11 } },
     { key = "dian", baseX = 530, baseY = 76, w = 207, h = 206, baseRotation = 0, baseScale = 1,
         pivotX = .49, pivotY = .59,
-        idle = { from = -.5, to = .8, duration = 1.6, delay = .31, phase = .78 } },
+        idle = { poseA = -2, poseB = 4, holdA = .30, holdB = .22, transition = .06, initialOffset = .23 } },
     { key = "li", baseX = 683, baseY = 93, w = 188, h = 232, baseRotation = 0, baseScale = 1,
         pivotX = .50, pivotY = .60,
-        idle = { from = .7, to = -.6, duration = 2.3, delay = .08, phase = .26 } },
+        idle = { poseA = 4, poseB = -2, holdA = .24, holdB = .32, transition = .045, initialOffset = .07 } },
     { key = "xue", baseX = 858, baseY = 76, w = 197, h = 216, baseRotation = 0, baseScale = 1,
         pivotX = .51, pivotY = .58,
-        idle = { from = -.4, to = 1.0, duration = 1.9, delay = .43, phase = .92 } },
+        idle = { poseA = -3, poseB = 3, holdA = .21, holdB = .26, transition = .055, initialOffset = .29 } },
 }
 
 local CHARACTER_NODES = {
@@ -104,6 +104,19 @@ local function yoyoAmount(elapsed, animation)
     return easeInOutSine(directed)
 end
 
+local function titlePoseRotation(elapsed, animation)
+    local transition = math.max(.001, animation.transition)
+    local cycleDuration = animation.holdA + transition + animation.holdB + transition
+    local time = (math.max(0, elapsed) + (animation.initialOffset or 0)) % cycleDuration
+    if time < animation.holdA then return animation.poseA end
+    time = time - animation.holdA
+    if time < transition then return lerp(animation.poseA, animation.poseB, time / transition) end
+    time = time - transition
+    if time < animation.holdB then return animation.poseB end
+    time = time - animation.holdB
+    return lerp(animation.poseB, animation.poseA, time / transition)
+end
+
 local function mixColor(from, to, amount)
     local t = clamp(amount, 0, 1)
     return {
@@ -145,8 +158,7 @@ local function beginVisualTransform(vg, pivotX, pivotY, offsetX, offsetY, rotati
 end
 
 local function drawTitleNode(painter, handle, node, elapsed)
-    local amount = yoyoAmount(elapsed, node.idle)
-    local rotation = (node.baseRotation or 0) + lerp(node.idle.from, node.idle.to, amount)
+    local rotation = (node.baseRotation or 0) + titlePoseRotation(elapsed, node.idle)
     local pivotX = node.baseX + node.w * node.pivotX
     local pivotY = node.baseY + node.h * node.pivotY
     beginVisualTransform(painter.vg, pivotX, pivotY, 0, 0, rotation, node.baseScale or 1)
