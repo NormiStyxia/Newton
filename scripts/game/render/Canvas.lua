@@ -175,6 +175,8 @@ function Renderer:Init()
                         head = nvgCreateImage(self.vg, "image/title_screen/profile_newton/head.png", 0),
                         headSettled = nvgCreateImage(self.vg, "image/title_screen/profile_newton/head_settled.png", 0),
                         backdrop = nvgCreateImage(self.vg, "image/title_screen/profile_newton/backdrop.png", 0),
+                        infoBase = nvgCreateImage(self.vg, "image/title_screen/profile_newton/info_base.png", 0),
+                        infoFrame = nvgCreateImage(self.vg, "image/title_screen/profile_newton/info_frame.png", 0),
                         doodle = nvgCreateImage(self.vg, "image/title_screen/profile_newton/doodle.png", 0),
                         signature = nvgCreateImage(self.vg, "image/title_screen/profile_newton/signature.png", 0),
                         back = nvgCreateImage(self.vg, "image/title_screen/profile_newton/back.png", 0),

@@ -174,6 +174,39 @@ local PROFILE_FRAME_BANDS = (function()
     }
 end)()
 
+-- The right-hand profile is a paper archive laid out in the same fixed title
+-- stage.  The supplied info_base already contains the three observation
+-- photos as one static composition; they intentionally have no separate
+-- expression state or interaction.
+local ARCHIVE = {
+    panel = { x = 764, y = 51, w = 976, h = 739 },
+    contentX = 840,
+    contentW = 700,
+    header = { centerX = 1248, titleY = 83, latinY = 145, subY = 184 },
+    tags = {
+        { label = "学院登记", x = 820, y = 228, w = 192, bodyStart = .32, bodyEnd = .49,
+            tagStart = .25, tagEnd = .39 },
+        { label = "个人简介", x = 820, y = 398, w = 192, bodyStart = .41, bodyEnd = .58,
+            tagStart = .35, tagEnd = .49 },
+        { label = "本人批注", x = 820, y = 558, w = 192, bodyStart = .51, bodyEnd = .68,
+            tagStart = .45, tagEnd = .59 },
+    },
+    emotionBar = { x = 1749, y = 67, w = 115, h = 728, revealStart = .27, revealEnd = .56,
+        textStart = .47, textEnd = .66 },
+    ink = { 112, 47, 35, 232 },
+    inkStrong = { 104, 43, 31, 255 },
+    body = { 75, 55, 43, 245 },
+    bodyMuted = { 103, 77, 58, 215 },
+    paper = { 250, 237, 215, 255 },
+    warm = { 173, 86, 38, 245 },
+    enter = { baseStart = .00, baseEnd = .23, borderTop = { .02, .34 },
+        borderBottom = { .06, .38 }, borderVertical = { .15, .47 },
+        header = { .18, .39 } },
+    exit = { baseStart = .88, baseEnd = 1.16, borderTop = { .82, 1.04 },
+        borderBottom = { .78, 1.00 }, borderVertical = { .72, .96 },
+        header = { .67, .90 } },
+}
+
 local SETTINGS = {
     x = 1138, y = 206, w = 560, h = 384,
     music = { x = 1210, y = 332, w = 380 },
@@ -357,6 +390,202 @@ local function profileLayerProgress(state, layer)
     return 0
 end
 
+local function archiveProgress(state, startTime, endTime)
+    local mode = state.profileMode
+    local elapsed = state.profileElapsed or 0
+    if mode == PROFILE_MODE.IDLE then return 1 end
+    if mode == PROFILE_MODE.ENTERING then
+        return easeOutCubic(rangeProgress(elapsed, startTime, endTime))
+    end
+    if mode == PROFILE_MODE.EXITING then
+        return 1 - easeInCubic(rangeProgress(elapsed, startTime, endTime))
+    end
+    return 0
+end
+
+local function archivePairProgress(state, pair)
+    local timing = state.profileMode == PROFILE_MODE.EXITING and ARCHIVE.exit[pair]
+        or ARCHIVE.enter[pair]
+    return archiveProgress(state, timing[1], timing[2])
+end
+
+local function archiveColor(colorValue, alpha)
+    return nvgRGBA(colorValue[1], colorValue[2], colorValue[3],
+        math.floor((colorValue[4] or 255) * clamp(alpha, 0, 1) + .5))
+end
+
+local function archiveTextAlpha(progress)
+    return math.floor(255 * clamp(progress, 0, 1) + .5)
+end
+
+local function drawArchiveStar(vg, x, y, radius, colorValue, filled, alpha)
+    local inner = radius * .22
+    nvgBeginPath(vg)
+    nvgMoveTo(vg, x, y - radius)
+    nvgLineTo(vg, x + inner, y - inner)
+    nvgLineTo(vg, x + radius, y)
+    nvgLineTo(vg, x + inner, y + inner)
+    nvgLineTo(vg, x, y + radius)
+    nvgLineTo(vg, x - inner, y + inner)
+    nvgLineTo(vg, x - radius, y)
+    nvgLineTo(vg, x - inner, y - inner)
+    nvgClosePath(vg)
+    if filled then
+        nvgFillColor(vg, archiveColor(colorValue, alpha))
+        nvgFill(vg)
+    else
+        nvgStrokeColor(vg, archiveColor(colorValue, alpha))
+        nvgStrokeWidth(vg, 1.2)
+        nvgStroke(vg)
+    end
+end
+
+local function drawArchiveLine(vg, x1, y1, x2, y2, amount, width)
+    if amount <= .001 then return end
+    nvgStrokeColor(vg, archiveColor(ARCHIVE.ink, amount))
+    nvgStrokeWidth(vg, width or 1.6)
+    nvgBeginPath(vg)
+    nvgMoveTo(vg, x1, y1)
+    nvgLineTo(vg, lerp(x1, x2, amount), lerp(y1, y2, amount))
+    nvgStroke(vg)
+end
+
+local function drawArchiveBorder(painter, state)
+    local vg = painter.vg
+    local panel = ARCHIVE.panel
+    local top = archivePairProgress(state, "borderTop")
+    local bottom = archivePairProgress(state, "borderBottom")
+    local vertical = archivePairProgress(state, "borderVertical")
+    local centerX = panel.x + panel.w * .5
+    drawArchiveLine(vg, centerX, panel.y, panel.x, panel.y, top)
+    drawArchiveLine(vg, centerX, panel.y, panel.x + panel.w, panel.y, top)
+    drawArchiveLine(vg, centerX, panel.y + panel.h, panel.x, panel.y + panel.h, bottom)
+    drawArchiveLine(vg, centerX, panel.y + panel.h, panel.x + panel.w, panel.y + panel.h, bottom)
+    drawArchiveLine(vg, panel.x, panel.y, panel.x, panel.y + panel.h, vertical)
+    drawArchiveLine(vg, panel.x + panel.w, panel.y, panel.x + panel.w, panel.y + panel.h, vertical)
+    local detail = math.min(top, vertical)
+    drawArchiveLine(vg, panel.x + 14, panel.y + 20, panel.x + 72, panel.y + 20, detail, 1.1)
+    drawArchiveLine(vg, panel.x + panel.w - 72, panel.y + panel.h - 20,
+        panel.x + panel.w - 14, panel.y + panel.h - 20, math.min(bottom, vertical), 1.1)
+    if detail > .55 then
+        drawArchiveStar(vg, panel.x + 205, panel.y + 69, 6.5, ARCHIVE.inkStrong, true, detail)
+        drawArchiveStar(vg, panel.x + panel.w - 226, panel.y + panel.h - 76, 5.5,
+            ARCHIVE.inkStrong, false, detail)
+    end
+end
+
+local function drawArchiveBase(painter, handle, state)
+    local progress = archiveProgress(state, ARCHIVE.enter.baseStart, ARCHIVE.enter.baseEnd)
+    if state.profileMode == PROFILE_MODE.EXITING then
+        progress = archiveProgress(state, ARCHIVE.exit.baseStart, ARCHIVE.exit.baseEnd)
+    end
+    if progress > .001 then image(painter, handle, 0, 0, 1870, 841, progress) end
+end
+
+local function drawArchiveTag(painter, tag, state, index)
+    local tagProgress = archiveProgress(state, tag.tagStart, tag.tagEnd)
+    if state.profileMode == PROFILE_MODE.EXITING then
+        local startTime = .72 + (index - 1) * .08
+        tagProgress = archiveProgress(state, startTime, startTime + (tag.tagEnd - tag.tagStart))
+    end
+    if tagProgress <= .001 then return end
+    local vg = painter.vg
+    local width = tag.w * tagProgress
+    painter:FillRect(tag.x, tag.y, width, 34, ARCHIVE.inkStrong, 235)
+    local textProgress = clamp((tagProgress - .55) / .45, 0, 1)
+    if textProgress > .001 then
+        painter:Text(tag.x + 15, tag.y + 7, tag.label, 20, ARCHIVE.paper,
+            NVG_ALIGN_LEFT + NVG_ALIGN_TOP, "maker-body", archiveTextAlpha(textProgress))
+        drawArchiveStar(vg, tag.x + width - 20, tag.y + 17, 5.4, ARCHIVE.paper, true, textProgress)
+    end
+end
+
+local function drawArchiveBody(painter, state)
+    local mode = state.profileMode
+    local entries = {
+        { x = 840, y = 281, text = "所属：经典力学维护处", size = 21, start = .32, finish = .49 },
+        { x = 840, y = 314, text = "职务：实验监督员", size = 21, start = .34, finish = .51 },
+        { x = 840, y = 347, text = "负责事项：苹果、重力，以及阻止实验人员", size = 20, start = .36, finish = .53 },
+        { x = 930, y = 379, text = "擅自修改自然规律", size = 20, start = .38, finish = .55 },
+        { x = 840, y = 452, text = "对实验秩序、测量精度与因果关系有严格要求。", size = 20, start = .42, finish = .59 },
+        { x = 840, y = 484, text = "通常保持克制，直到有人开始把重力方向、弹性响应", size = 20, start = .44, finish = .61 },
+        { x = 840, y = 516, text = "和运动轨迹当作可编辑参数。", size = 20, start = .46, finish = .63 },
+    }
+    for _, entry in ipairs(entries) do
+        local startTime, endTime = entry.start, entry.finish
+        if mode == PROFILE_MODE.EXITING then
+            startTime, endTime = startTime + .36, endTime + .36
+        end
+        local progress = archiveProgress(state, startTime, endTime)
+        if progress > .001 then
+            painter:Text(entry.x + 16 * (1 - progress), entry.y, entry.text, entry.size, ARCHIVE.body,
+                NVG_ALIGN_LEFT + NVG_ALIGN_TOP, "maker-body", archiveTextAlpha(progress))
+        end
+    end
+
+    local quoteStart, quoteEnd = .52, .69
+    if mode == PROFILE_MODE.EXITING then quoteStart, quoteEnd = .88, 1.08 end
+    local quoteProgress = archiveProgress(state, quoteStart, quoteEnd)
+    if quoteProgress > .001 then
+        painter:Text(868 + 18 * (1 - quoteProgress), 614, "“请先解释为什么它在往右掉。”", 34,
+            ARCHIVE.inkStrong, NVG_ALIGN_LEFT + NVG_ALIGN_TOP, "report-newton", archiveTextAlpha(quoteProgress))
+        painter:Text(879 + 14 * (1 - quoteProgress), 694, "学院备注：该问题尚未得到实验人员充分重视。", 18,
+            ARCHIVE.bodyMuted, NVG_ALIGN_LEFT + NVG_ALIGN_TOP, "maker-body", archiveTextAlpha(quoteProgress))
+    end
+end
+
+local function drawArchiveHeader(painter, state)
+    local pair = state.profileMode == PROFILE_MODE.EXITING and ARCHIVE.exit.header or ARCHIVE.enter.header
+    local progress = archiveProgress(state, pair[1], pair[2])
+    if progress <= .001 then return end
+    local h = ARCHIVE.header
+    painter:Text(h.centerX, h.titleY, "牛顿", 59, ARCHIVE.warm,
+        NVG_ALIGN_CENTER + NVG_ALIGN_TOP, "maker-body", archiveTextAlpha(progress))
+    painter:Text(h.centerX, h.latinY, "NEWTON", 35, ARCHIVE.inkStrong,
+        NVG_ALIGN_CENTER + NVG_ALIGN_TOP, "maker-body", archiveTextAlpha(progress))
+    painter:Text(h.centerX, h.subY, "CLASSICAL MECHANICS / SUPERVISOR", 16, ARCHIVE.bodyMuted,
+        NVG_ALIGN_CENTER + NVG_ALIGN_TOP, "maker-body", archiveTextAlpha(progress))
+    drawArchiveLine(painter.vg, 838, 199, 1078, 199, progress, 1.1)
+    drawArchiveLine(painter.vg, 1418, 199, 1660, 199, progress, 1.1)
+    drawArchiveStar(painter.vg, 1090, 199, 5.2, ARCHIVE.inkStrong, true, progress)
+    drawArchiveStar(painter.vg, 1406, 199, 5.2, ARCHIVE.inkStrong, true, progress)
+end
+
+local function drawArchiveEmotionBar(painter, handle, state)
+    local bar = ARCHIVE.emotionBar
+    local progress = archiveProgress(state, bar.revealStart, bar.revealEnd)
+    if state.profileMode == PROFILE_MODE.EXITING then
+        progress = archiveProgress(state, ARCHIVE.exit.borderVertical[1], ARCHIVE.exit.borderVertical[2])
+    end
+    if progress <= .001 then return end
+    local vg = painter.vg
+    nvgSave(vg)
+    nvgIntersectScissor(vg, bar.x, bar.y, bar.w, bar.h * progress)
+    image(painter, handle, 0, 0, 1870, 841, 1)
+    nvgRestore(vg)
+
+    local textProgress = archiveProgress(state, bar.textStart, bar.textEnd)
+    if state.profileMode == PROFILE_MODE.EXITING then
+        textProgress = archiveProgress(state, ARCHIVE.exit.header[1], ARCHIVE.exit.header[2])
+    end
+    if textProgress <= .001 then return end
+    local labels = { "情", "绪", "观", "测", "样", "本" }
+    for index, label in ipairs(labels) do
+        painter:Text(bar.x + bar.w * .5, 214 + (index - 1) * 54, label, 32, ARCHIVE.paper,
+            NVG_ALIGN_CENTER + NVG_ALIGN_TOP, "maker-body", archiveTextAlpha(textProgress))
+    end
+    drawArchiveStar(vg, bar.x + bar.w * .5, 119, 6, ARCHIVE.paper, true, textProgress)
+    drawArchiveStar(vg, bar.x + bar.w * .5, 654, 6, ARCHIVE.paper, true, textProgress)
+end
+
+local function drawProfileInfoOverlay(painter, profileArt, state)
+    drawArchiveBorder(painter, state)
+    drawArchiveHeader(painter, state)
+    for index, tag in ipairs(ARCHIVE.tags) do drawArchiveTag(painter, tag, state, index) end
+    drawArchiveBody(painter, state)
+    drawArchiveEmotionBar(painter, profileArt.infoFrame, state)
+end
+
 local function profileRootTransform(state)
     local root = PROFILE.root
     local mode = state.profileMode
@@ -492,9 +721,11 @@ local function drawProfileScene(painter, art, state)
     if not body or body < 0 then body = profileArt.body end
     if not head or head < 0 then head = profileArt.head end
     drawProfileBackdrop(painter, profileArt.backdrop, state)
+    drawArchiveBase(painter, profileArt.infoBase, state)
     drawProfileCharacterLayer(painter, body, offsetX, offsetY, scale, flipScaleX)
     drawProfileFrames(painter, state)
     drawProfileCharacterLayer(painter, head, offsetX, offsetY, scale, flipScaleX)
+    drawProfileInfoOverlay(painter, profileArt, state)
     drawProfileSignature(painter, profileArt.signature, state)
     drawProfileDoodle(painter, profileArt.doodle, state)
     drawProfileBack(painter, profileArt.back, state)
