@@ -22,6 +22,82 @@ local function FrameTexture(frame)
     return frame and (frame.texture or frame.path) or nil
 end
 
+local BUBBLE_FONT = "maker-body"
+local BUBBLE_FONT_SIZE = 15
+local BUBBLE_LINE_HEIGHT = 20
+local BUBBLE_PADDING_X = 14
+local BUBBLE_PADDING_TOP = 13
+local BUBBLE_PADDING_BOTTOM = 13
+local BUBBLE_MARGIN = 12
+local BUBBLE_DEFAULT_WIDTH = 176
+local BUBBLE_CHOICE_DEFAULT_WIDTH = 270
+local BUBBLE_MAX_WIDTH = 320
+local BUBBLE_CHOICE_MAX_WIDTH = 360
+local BUBBLE_BUTTON_GAP = 10
+local BUBBLE_BUTTON_HEIGHT = 30
+local BUBBLE_CHOICE_MIN_HEIGHT = 112
+
+local function Utf8Characters(value)
+    local result = {}
+    value = tostring(value or "")
+    for _, codepoint in utf8.codes(value) do
+        result[#result + 1] = utf8.char(codepoint)
+    end
+    return result
+end
+
+local function MeasureText(renderer, value, size, font)
+    local vg = renderer and renderer.vg
+    if vg and type(nvgTextBounds) == "function" then
+        local ok, measured = pcall(function()
+            renderer:UseFont(font)
+            nvgFontSize(vg, size)
+            return nvgTextBounds(vg, 0, 0, value or "", nil)
+        end)
+        if ok and type(measured) == "number"
+            and (measured > 0 or tostring(value or "") == "") then
+            return measured
+        end
+    end
+    -- CJK glyphs are close to one em wide.  A conservative fallback keeps
+    -- hit-test/layout calls safe even when NanoVG text metrics are unavailable.
+    return #Utf8Characters(value) * size
+end
+
+local function WrapText(renderer, value, maxWidth, size, font)
+    local lines = {}
+    local current = ""
+    local characters = Utf8Characters(value)
+    for index = 1, #characters do
+        local character = characters[index]
+        if character == "\n" then
+            lines[#lines + 1] = current
+            current = ""
+        else
+            local candidate = current .. character
+            if current ~= "" and MeasureText(renderer, candidate, size, font) > maxWidth then
+                lines[#lines + 1] = current
+                current = character
+            else
+                current = candidate
+            end
+        end
+    end
+    if current ~= "" or #lines == 0 then lines[#lines + 1] = current end
+    return lines
+end
+
+local function FitEllipsis(renderer, line, maxWidth, size, font)
+    if MeasureText(renderer, line, size, font) <= maxWidth then return line end
+    local characters = Utf8Characters(line)
+    while #characters > 0 do
+        local candidate = table.concat(characters) .. "..."
+        if MeasureText(renderer, candidate, size, font) <= maxWidth then return candidate end
+        characters[#characters] = nil
+    end
+    return "..."
+end
+
 function View.New(options)
     local self = setmetatable({}, View)
     self.renderer = assert(options and options.renderer, "GreenAssistView renderer is required")
@@ -43,6 +119,7 @@ function View.New(options)
     self.bubbleRect = nil
     self.choiceRects = {}
     self.message = nil
+    self.messageLines = nil
     self.choices = nil
     self.relocationEffect = nil
     return self
@@ -123,18 +200,23 @@ end
 
 function View:showMessage(text)
     self.message = tostring(text or "")
+    self.messageLines = nil
+    self.bubbleRect = nil
     self.choices = nil
     self.choiceRects = {}
 end
 
 function View:showChoice(text, choices)
     self.message = tostring(text or "")
+    self.messageLines = nil
+    self.bubbleRect = nil
     self.choices = choices or {}
     self.choiceRects = {}
 end
 
 function View:hideMessage()
     self.message = nil
+    self.messageLines = nil
     self.choices = nil
     self.bubbleRect = nil
     self.choiceRects = {}
@@ -229,22 +311,62 @@ end
 function View:_updateBubbleLayout()
     self.choiceRects = {}
     if not self.message then self.bubbleRect = nil; return end
-    local width = self.choices and 270 or 176
-    local height = self.choices and 112 or 58
+    local hasChoices = self.choices ~= nil
+    local defaultWidth = hasChoices and BUBBLE_CHOICE_DEFAULT_WIDTH or BUBBLE_DEFAULT_WIDTH
+    local maximumWidth = hasChoices and BUBBLE_CHOICE_MAX_WIDTH or BUBBLE_MAX_WIDTH
+    local availableWidth = math.max(48, self.logicalWidth - BUBBLE_MARGIN * 2)
+    maximumWidth = math.min(maximumWidth, availableWidth)
+    local contentMaxWidth = math.max(20, maximumWidth - BUBBLE_PADDING_X * 2)
+    local lines = WrapText(self.renderer, self.message, contentMaxWidth, BUBBLE_FONT_SIZE, BUBBLE_FONT)
+    local longestLineWidth = 0
+    for _, line in ipairs(lines) do
+        longestLineWidth = math.max(longestLineWidth,
+            MeasureText(self.renderer, line, BUBBLE_FONT_SIZE, BUBBLE_FONT))
+    end
+    local width = math.max(math.min(defaultWidth, maximumWidth),
+        longestLineWidth + BUBBLE_PADDING_X * 2)
+    width = math.min(maximumWidth, width)
+
+    local fixedHeight = BUBBLE_PADDING_TOP + BUBBLE_PADDING_BOTTOM
+    if hasChoices then fixedHeight = fixedHeight + BUBBLE_BUTTON_GAP + BUBBLE_BUTTON_HEIGHT end
+    local minHeight = hasChoices and BUBBLE_CHOICE_MIN_HEIGHT or 58
+    local maxHeight = math.max(48, self.logicalHeight - BUBBLE_MARGIN * 2)
+    local height = math.max(minHeight, fixedHeight + #lines * BUBBLE_LINE_HEIGHT)
+
+    -- A message can originate from a level or adapter and is not assumed to
+    -- fit on one line.  Keep the bubble inside the viewport even for an
+    -- unexpectedly long message; only the final line is abbreviated when the
+    -- viewport cannot contain the full text.
+    if height > maxHeight then
+        local availableTextHeight = maxHeight - fixedHeight
+        local maxLines = math.max(1, math.floor(availableTextHeight / BUBBLE_LINE_HEIGHT))
+        if #lines > maxLines then
+            local visibleLines = {}
+            for index = 1, maxLines do visibleLines[index] = lines[index] end
+            visibleLines[maxLines] = FitEllipsis(self.renderer, visibleLines[maxLines],
+                math.max(20, width - BUBBLE_PADDING_X * 2), BUBBLE_FONT_SIZE, BUBBLE_FONT)
+            lines = visibleLines
+        end
+        height = math.min(maxHeight, math.max(math.min(minHeight, maxHeight),
+            fixedHeight + #lines * BUBBLE_LINE_HEIGHT))
+    end
+    self.messageLines = lines
+    self.messageFontSize = BUBBLE_FONT_SIZE
+    self.messageLineHeight = BUBBLE_LINE_HEIGHT
     local preferredX = self.position.x + 62
     local preferredY = self.position.y - self.config.ui.spriteHeight * self.config.ui.scale - height + 38
-    local x = math.max(12, math.min(self.logicalWidth - width - 12, preferredX))
-    local y = math.max(12, math.min(self.logicalHeight - height - 12, preferredY))
+    local x = math.max(BUBBLE_MARGIN, math.min(self.logicalWidth - width - BUBBLE_MARGIN, preferredX))
+    local y = math.max(BUBBLE_MARGIN, math.min(self.logicalHeight - height - BUBBLE_MARGIN, preferredY))
     self.bubbleRect = { x = x, y = y, width = width, height = height }
     if self.choices then
-        local gap = 10
-        local buttonWidth = (width - 28 - gap) / math.max(1, #self.choices)
+        local buttonWidth = (width - BUBBLE_PADDING_X * 2 - BUBBLE_BUTTON_GAP)
+            / math.max(1, #self.choices)
         for index = 1, #self.choices do
             self.choiceRects[index] = {
-                x = x + 14 + (index - 1) * (buttonWidth + gap),
-                y = y + height - 42,
+                x = x + BUBBLE_PADDING_X + (index - 1) * (buttonWidth + BUBBLE_BUTTON_GAP),
+                y = y + height - BUBBLE_BUTTON_HEIGHT - BUBBLE_PADDING_BOTTOM,
                 width = buttonWidth,
-                height = 30,
+                height = BUBBLE_BUTTON_HEIGHT,
             }
         end
     end
@@ -402,7 +524,12 @@ function View:render(frameData, debugInfo)
     if self.bubbleRect then
         local bubble = self.bubbleRect
         self.renderer:RoundedRect(bubble.x, bubble.y, bubble.width, bubble.height, 8, COLORS.panel, COLORS.border, 2, 248)
-        self.renderer:Text(bubble.x + 14, bubble.y + 13, self.message, 15, COLORS.text)
+        for index, line in ipairs(self.messageLines or { self.message }) do
+            self.renderer:Text(bubble.x + BUBBLE_PADDING_X,
+                bubble.y + BUBBLE_PADDING_TOP + (index - 1) * (self.messageLineHeight or BUBBLE_LINE_HEIGHT),
+                line, self.messageFontSize or BUBBLE_FONT_SIZE, COLORS.text,
+                NVG_ALIGN_LEFT + NVG_ALIGN_TOP, BUBBLE_FONT)
+        end
         if self.choices then
             for index, choice in ipairs(self.choices) do
                 local button = self.choiceRects[index]
