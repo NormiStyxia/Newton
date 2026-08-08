@@ -180,15 +180,32 @@ end)()
 -- expression state or interaction.
 local ARCHIVE = {
     contentOffsetX = 105,
-    contentX = 840,
-    contentW = 700,
-    header = { centerX = 1248, titleY = 68, latinY = 151, subY = 193 },
+    layout = {
+        contentLeft = 840,
+        expressionColumnLeft = 1410,
+        safeGap = 36,
+        academyTitleY = 226,
+        sectionGap = 18,
+        titleToBodyGap = 18,
+        titleHeight = 41,
+        bodyFontSize = 24,
+        bodyLineHeight = 31,
+        quoteFontSize = 44,
+        quoteLineHeight = 44,
+        noteFontSize = 21,
+        noteLineHeight = 27,
+        noteGap = 18,
+        contentBottomLimit = 812,
+        bottomSafeGap = 24,
+        labelColumnWidth = 135,
+    },
+    header = { titleY = 68, latinY = 151, subY = 193, lineY = 218 },
     tags = {
-        { label = "学院登记", x = 820, y = 250, w = 214, bodyStart = .32, bodyEnd = .49,
+        { label = "学院登记", w = 214,
             tagStart = .25, tagEnd = .39 },
-        { label = "个人简介", x = 820, y = 437, w = 214, bodyStart = .41, bodyEnd = .58,
+        { label = "个人简介", w = 214,
             tagStart = .35, tagEnd = .49 },
-        { label = "本人批注", x = 820, y = 625, w = 214, bodyStart = .51, bodyEnd = .68,
+        { label = "本人批注", w = 214,
             tagStart = .45, tagEnd = .59 },
     },
     emotionBar = { x = 1749, y = 67, w = 115, h = 728, revealStart = .27, revealEnd = .56,
@@ -442,6 +459,142 @@ local function archiveTextAlpha(progress)
     return math.floor(255 * clamp(progress, 0, 1) + .5)
 end
 
+local function archiveUtf8Characters(value)
+    local characters = {}
+    for _, codepoint in utf8.codes(value or "") do
+        characters[#characters + 1] = utf8.char(codepoint)
+    end
+    return characters
+end
+
+local function archiveTextWidth(painter, value, font, size)
+    painter:UseFont(font)
+    nvgFontSize(painter.vg, size)
+    local ok, measured = pcall(nvgTextBounds, painter.vg, 0, 0, value or "", nil)
+    if ok and type(measured) == "number" then return measured end
+    return #archiveUtf8Characters(value) * size * .92
+end
+
+local function archiveWrapLines(painter, value, maxWidth, font, size)
+    local lines = {}
+    local start = 1
+    while true do
+        local newline = string.find(value or "", "\n", start, true)
+        local paragraph
+        if newline then
+            paragraph = string.sub(value, start, newline - 1)
+            start = newline + 1
+        else
+            paragraph = string.sub(value or "", start)
+        end
+
+        local current = ""
+        for _, character in ipairs(archiveUtf8Characters(paragraph)) do
+            local candidate = current .. character
+            if current ~= "" and archiveTextWidth(painter, candidate, font, size) > maxWidth then
+                lines[#lines + 1] = current
+                current = character
+            else
+                current = candidate
+            end
+        end
+        if current ~= "" or paragraph == "" then lines[#lines + 1] = current end
+        if not newline then break end
+    end
+    return lines
+end
+
+local function archiveTextBlockHeight(lines, lineHeight)
+    return math.max(1, #lines) * lineHeight
+end
+
+local function buildArchiveLayout(painter)
+    local metrics = ARCHIVE.layout
+    local contentLeft = metrics.contentLeft
+    local contentRight = metrics.expressionColumnLeft - metrics.safeGap
+    local valueX = contentLeft + metrics.labelColumnWidth
+    local valueWidth = contentRight - valueX
+    local bodyFont = "maker-body"
+
+    local function compose(sectionGap, noteGap)
+        local result = {
+            contentLeft = contentLeft,
+            contentRight = contentRight,
+            headerCenterX = (contentLeft + contentRight) * .5,
+            tags = {},
+            academyRows = {},
+        }
+        local headerSide = math.min(158, (contentRight - contentLeft) * .5 - 20)
+        result.headerLeftStarX = result.headerCenterX - headerSide
+        result.headerRightStarX = result.headerCenterX + headerSide
+        result.tags[1] = { x = contentLeft, y = metrics.academyTitleY }
+
+        local academyY = metrics.academyTitleY + metrics.titleHeight + metrics.titleToBodyGap
+        local academyRows = {
+            { label = "所属", value = "经典力学维护处", start = .32, finish = .49 },
+            { label = "职务", value = "实验监督员", start = .34, finish = .51 },
+            { label = "负责事项", value = "苹果、重力，以及阻止实验人员\n擅自修改自然规律", start = .36, finish = .55 },
+        }
+        for _, row in ipairs(academyRows) do
+            local lines = archiveWrapLines(painter, row.value, valueWidth, bodyFont, metrics.bodyFontSize)
+            result.academyRows[#result.academyRows + 1] = {
+                label = row.label,
+                valueLines = lines,
+                y = academyY,
+                start = row.start,
+                finish = row.finish,
+            }
+            academyY = academyY + archiveTextBlockHeight(lines, metrics.bodyLineHeight)
+        end
+        result.academyBodyBottom = academyY
+
+        result.tags[2] = { x = contentLeft, y = result.academyBodyBottom + sectionGap }
+        local personalY = result.tags[2].y + metrics.titleHeight + metrics.titleToBodyGap
+        result.personal = {
+            x = contentLeft,
+            y = personalY,
+            lines = archiveWrapLines(painter,
+                "对实验秩序、测量精度与因果关系有严格要求。通常保持克制，直到有人开始把重力方向、弹性响应和运动轨迹当作可编辑参数。",
+                contentRight - contentLeft, bodyFont, metrics.bodyFontSize),
+            start = .42,
+            finish = .63,
+        }
+        result.personalBottom = personalY + archiveTextBlockHeight(result.personal.lines, metrics.bodyLineHeight)
+
+        result.tags[3] = { x = contentLeft, y = result.personalBottom + sectionGap }
+        local quoteY = result.tags[3].y + metrics.titleHeight + metrics.titleToBodyGap
+        result.quote = {
+            x = contentLeft + 28,
+            y = quoteY,
+            lines = archiveWrapLines(painter, "“请先解释为什么它在往右掉。”",
+                contentRight - contentLeft - 28, "report-newton", metrics.quoteFontSize),
+            start = .52,
+            finish = .69,
+        }
+        result.quoteBottom = quoteY + archiveTextBlockHeight(result.quote.lines, metrics.quoteLineHeight)
+        result.note = {
+            x = contentLeft + 39,
+            y = result.quoteBottom + noteGap,
+            lines = archiveWrapLines(painter, "学院备注：该问题尚未得到实验人员充分重视。",
+                contentRight - contentLeft - 39, "report-green", metrics.noteFontSize),
+            start = .52,
+            finish = .69,
+        }
+        result.noteBottom = result.note.y + archiveTextBlockHeight(result.note.lines, metrics.noteLineHeight)
+        return result
+    end
+
+    local result = compose(metrics.sectionGap, metrics.noteGap)
+    local maxBottom = metrics.contentBottomLimit - metrics.bottomSafeGap
+    if result.noteBottom > maxBottom then
+        local overflow = result.noteBottom - maxBottom
+        local sectionGap = math.max(8, metrics.sectionGap - overflow * .6 / 2)
+        local noteGap = math.max(8, metrics.noteGap - overflow * .4)
+        result = compose(sectionGap, noteGap)
+    end
+    return result
+end
+
 local function drawArchiveStar(vg, x, y, radius, colorValue, filled, alpha)
     local inner = radius * .22
     nvgBeginPath(vg)
@@ -482,7 +635,7 @@ local function drawArchiveBase(painter, handle, state)
     if progress > .001 then image(painter, handle, 0, 0, 1870, 841, progress) end
 end
 
-local function drawArchiveTag(painter, tag, state, index)
+local function drawArchiveTag(painter, tag, tagPosition, state, index)
     local tagProgress = archiveProgress(state, tag.tagStart, tag.tagEnd)
     if state.profileMode == PROFILE_MODE.EXITING then
         local startTime = .72 + (index - 1) * .08
@@ -491,67 +644,75 @@ local function drawArchiveTag(painter, tag, state, index)
     if tagProgress <= .001 then return end
     local vg = painter.vg
     local width = tag.w * tagProgress
-    painter:FillRect(tag.x, tag.y, width, 41, ARCHIVE.inkStrong, 235)
+    painter:FillRect(tagPosition.x, tagPosition.y, width, ARCHIVE.layout.titleHeight, ARCHIVE.inkStrong, 235)
     local textProgress = clamp((tagProgress - .55) / .45, 0, 1)
     if textProgress > .001 then
-        painter:Text(tag.x + 17, tag.y + 8, tag.label, 24, ARCHIVE.paper,
+        painter:Text(tagPosition.x + 17, tagPosition.y + 8, tag.label, 24, ARCHIVE.paper,
             NVG_ALIGN_LEFT + NVG_ALIGN_TOP, "report-summary", archiveTextAlpha(textProgress))
-        drawArchiveStar(vg, tag.x + width - 19, tag.y + 20.5, 5.2, ARCHIVE.paper, true, textProgress)
+        drawArchiveStar(vg, tagPosition.x + width - 19, tagPosition.y + ARCHIVE.layout.titleHeight * .5,
+            5.2, ARCHIVE.paper, true, textProgress)
     end
 end
 
-local function drawArchiveBody(painter, state)
+local function drawArchiveBlock(painter, block, progress, colorValue, font, size, lineHeight, offset)
+    if progress <= .001 then return end
+    local xOffset = offset or 18
+    for index, line in ipairs(block.lines or {}) do
+        painter:Text(block.x + xOffset * (1 - progress), block.y + (index - 1) * lineHeight,
+            line, size, colorValue, NVG_ALIGN_LEFT + NVG_ALIGN_TOP, font, archiveTextAlpha(progress))
+    end
+end
+
+local function drawArchiveBody(painter, state, layout)
     local mode = state.profileMode
-    local entries = {
-        { x = 840, y = 308, text = "所属", size = 24, start = .32, finish = .49 },
-        { x = 975, y = 308, text = "经典力学维护处", size = 24, start = .32, finish = .49 },
-        { x = 840, y = 344, text = "职务", size = 24, start = .34, finish = .51 },
-        { x = 975, y = 344, text = "实验监督员", size = 24, start = .34, finish = .51 },
-        { x = 840, y = 380, text = "负责事项", size = 24, start = .36, finish = .53 },
-        { x = 975, y = 380, text = "苹果、重力，以及阻止实验人员", size = 24, start = .36, finish = .53 },
-        { x = 975, y = 416, text = "擅自修改自然规律", size = 24, start = .38, finish = .55 },
-        { x = 840, y = 497, text = "对实验秩序、测量精度与因果关系有严格要求。", size = 24, start = .42, finish = .59 },
-        { x = 840, y = 533, text = "通常保持克制，直到有人开始把重力方向、弹性响应", size = 24, start = .44, finish = .61 },
-        { x = 840, y = 569, text = "和运动轨迹当作可编辑参数。", size = 24, start = .46, finish = .63 },
-    }
-    for _, entry in ipairs(entries) do
-        local startTime, endTime = entry.start, entry.finish
+    local metrics = ARCHIVE.layout
+    for _, row in ipairs(layout.academyRows) do
+        local startTime, endTime = row.start, row.finish
         if mode == PROFILE_MODE.EXITING then
             startTime, endTime = startTime + .36, endTime + .36
         end
         local progress = archiveProgress(state, startTime, endTime)
-        if progress > .001 then
-            painter:Text(entry.x + 18 * (1 - progress), entry.y, entry.text, entry.size, ARCHIVE.body,
-                NVG_ALIGN_LEFT + NVG_ALIGN_TOP, "maker-body", archiveTextAlpha(progress))
-        end
+        drawArchiveBlock(painter, { x = layout.contentLeft, y = row.y, lines = { row.label } },
+            progress, ARCHIVE.body, "maker-body", metrics.bodyFontSize, metrics.bodyLineHeight)
+        drawArchiveBlock(painter, { x = layout.contentLeft + metrics.labelColumnWidth, y = row.y,
+            lines = row.valueLines }, progress, ARCHIVE.body, "maker-body", metrics.bodyFontSize,
+            metrics.bodyLineHeight)
     end
 
-    local quoteStart, quoteEnd = .52, .69
+    local quoteStart, quoteEnd = layout.personal.start, layout.personal.finish
+    local personalProgress = archiveProgress(state, quoteStart, quoteEnd)
+    if mode == PROFILE_MODE.EXITING then
+        quoteStart, quoteEnd = quoteStart + .36, quoteEnd + .36
+        personalProgress = archiveProgress(state, quoteStart, quoteEnd)
+    end
+    drawArchiveBlock(painter, layout.personal, personalProgress, ARCHIVE.body, "maker-body",
+        metrics.bodyFontSize, metrics.bodyLineHeight)
+
+    quoteStart, quoteEnd = layout.quote.start, layout.quote.finish
     if mode == PROFILE_MODE.EXITING then quoteStart, quoteEnd = .88, 1.08 end
     local quoteProgress = archiveProgress(state, quoteStart, quoteEnd)
-    if quoteProgress > .001 then
-        painter:Text(868 + 18 * (1 - quoteProgress), 681, "“请先解释为什么它在往右掉。”", 44,
-            ARCHIVE.inkStrong, NVG_ALIGN_LEFT + NVG_ALIGN_TOP, "report-newton", archiveTextAlpha(quoteProgress))
-        painter:Text(879 + 14 * (1 - quoteProgress), 752, "学院备注：该问题尚未得到实验人员充分重视。", 21,
-            ARCHIVE.bodyMuted, NVG_ALIGN_LEFT + NVG_ALIGN_TOP, "maker-body", archiveTextAlpha(quoteProgress))
-    end
+    drawArchiveBlock(painter, layout.quote, quoteProgress, ARCHIVE.inkStrong, "report-newton",
+        metrics.quoteFontSize, metrics.quoteLineHeight)
+    drawArchiveBlock(painter, layout.note, quoteProgress, ARCHIVE.bodyMuted, "report-green",
+        metrics.noteFontSize, metrics.noteLineHeight, 14)
 end
 
-local function drawArchiveHeader(painter, state)
+local function drawArchiveHeader(painter, state, layout)
     local pair = state.profileMode == PROFILE_MODE.EXITING and ARCHIVE.exit.header or ARCHIVE.enter.header
     local progress = archiveProgress(state, pair[1], pair[2])
     if progress <= .001 then return end
     local h = ARCHIVE.header
-    painter:Text(h.centerX, h.titleY, "牛顿", 70, ARCHIVE.warm,
+    painter:Text(layout.headerCenterX, h.titleY, "牛顿", 70, ARCHIVE.warm,
         NVG_ALIGN_CENTER + NVG_ALIGN_TOP, "report-summary", archiveTextAlpha(progress))
-    painter:Text(h.centerX, h.latinY, "NEWTON", 39, ARCHIVE.inkStrong,
+    painter:Text(layout.headerCenterX, h.latinY, "NEWTON", 39, ARCHIVE.inkStrong,
         NVG_ALIGN_CENTER + NVG_ALIGN_TOP, "maker-body", archiveTextAlpha(progress))
-    painter:Text(h.centerX, h.subY, "CLASSICAL MECHANICS / SUPERVISOR", 17, ARCHIVE.bodyMuted,
+    painter:Text(layout.headerCenterX, h.subY, "CLASSICAL MECHANICS / SUPERVISOR", 17, ARCHIVE.bodyMuted,
         NVG_ALIGN_CENTER + NVG_ALIGN_TOP, "maker-body", archiveTextAlpha(progress))
-    drawArchiveLine(painter.vg, 838, 218, 1078, 218, progress, 1.1)
-    drawArchiveLine(painter.vg, 1418, 218, 1628, 218, progress, 1.1)
-    drawArchiveStar(painter.vg, 1090, 218, 5.2, ARCHIVE.inkStrong, true, progress)
-    drawArchiveStar(painter.vg, 1406, 218, 5.2, ARCHIVE.inkStrong, true, progress)
+    local lineY = h.lineY
+    drawArchiveLine(painter.vg, layout.contentLeft, lineY, layout.headerLeftStarX - 12, lineY, progress, 1.1)
+    drawArchiveLine(painter.vg, layout.headerRightStarX + 12, lineY, layout.contentRight, lineY, progress, 1.1)
+    drawArchiveStar(painter.vg, layout.headerLeftStarX, lineY, 5.2, ARCHIVE.inkStrong, true, progress)
+    drawArchiveStar(painter.vg, layout.headerRightStarX, lineY, 5.2, ARCHIVE.inkStrong, true, progress)
 end
 
 local function drawArchiveEmotionBar(painter, handle, state)
@@ -582,11 +743,14 @@ local function drawArchiveEmotionBar(painter, handle, state)
 end
 
 local function drawProfileInfoOverlay(painter, profileArt, state)
+    local layout = buildArchiveLayout(painter)
     nvgSave(painter.vg)
     nvgTranslate(painter.vg, ARCHIVE.contentOffsetX, 0)
-    drawArchiveHeader(painter, state)
-    for index, tag in ipairs(ARCHIVE.tags) do drawArchiveTag(painter, tag, state, index) end
-    drawArchiveBody(painter, state)
+    drawArchiveHeader(painter, state, layout)
+    for index, tag in ipairs(ARCHIVE.tags) do
+        drawArchiveTag(painter, tag, layout.tags[index], state, index)
+    end
+    drawArchiveBody(painter, state, layout)
     nvgRestore(painter.vg)
     drawArchiveEmotionBar(painter, profileArt.infoFrame, state)
 end
