@@ -288,6 +288,7 @@ function State.New(dependencies, constants)
         reportSnapshot = nil,
         reportSnapshotAnimation = 0,
         reportSnapshotClosing = false,
+        headerBackPressed = false,
     }
     context.workshopState_ = {
         initialized = false,

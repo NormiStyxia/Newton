@@ -12,6 +12,13 @@ local CATALOG_BODY_FONT = "maker-body"
 local CATALOG_MONO_FONT = "report-green"
 local sketchDrawing_ = SketchDrawing.New()
 
+local CATALOG_HEADER = {
+    backButton = { x = 108, y = 31, w = 82, h = 82 },
+    titleX = 218,
+    titleY = 18,
+    subtitleY = 70,
+}
+
 -- Catalog-only illustrations are aligned by their main circular silhouette.
 -- Stems, leaves and direction marks intentionally extend beyond object bounds.
 local PREVIEW_IMAGE_LAYOUT = {
@@ -59,6 +66,22 @@ local COLORS = {
 
 local function pointIn(rect, x, y)
     return rect and x >= rect.x and x <= rect.x + rect.w and y >= rect.y and y <= rect.y + rect.h
+end
+
+local function resolveCatalogHeader(frame)
+    local artOffsetX = math.max(0, (frame.logicalWidth - 1880) * .5)
+    local source = CATALOG_HEADER.backButton
+    return {
+        backButton = {
+            x = artOffsetX + source.x,
+            y = source.y,
+            w = source.w,
+            h = source.h,
+        },
+        titleX = artOffsetX + CATALOG_HEADER.titleX,
+        titleY = CATALOG_HEADER.titleY,
+        subtitleY = CATALOG_HEADER.subtitleY,
+    }
 end
 
 local function clamp(value, minimum, maximum)
@@ -203,7 +226,61 @@ local function drawDottedDivider(painter, x, y, w)
     painter:Circle(x + w, y, 2, COLORS.brassSoft, nil, nil, 180)
 end
 
-local function drawCatalogDecor(painter, frame)
+local function drawCatalogBackButton(painter, rect, hovered, pressed)
+    local vg = painter.vg
+    local scale = pressed and .96 or hovered and 1.025 or 1
+    local halfWidth, halfHeight = rect.w * .5, rect.h * .5
+    local borderAlpha = hovered and 255 or 218
+    local fillAlpha = pressed and 150 or hovered and 112 or 82
+
+    nvgSave(vg)
+    nvgTranslate(vg, rect.x + halfWidth, rect.y + halfHeight)
+    nvgScale(vg, scale, scale)
+
+    nvgBeginPath(vg)
+    nvgRoundedRect(vg, -halfWidth, -halfHeight, rect.w, rect.h, 9)
+    nvgFillColor(vg, nvgRGBA(COLORS.overlay[1], COLORS.overlay[2], COLORS.overlay[3], fillAlpha))
+    nvgFill(vg)
+    nvgStrokeColor(vg, nvgRGBA(COLORS.brassLight[1], COLORS.brassLight[2], COLORS.brassLight[3], borderAlpha))
+    nvgStrokeWidth(vg, hovered and 2.5 or 2)
+    nvgStroke(vg)
+
+    nvgBeginPath(vg)
+    nvgRoundedRect(vg, -halfWidth + 5, -halfHeight + 5, rect.w - 10, rect.h - 10, 6)
+    nvgStrokeColor(vg, nvgRGBA(COLORS.brassSoft[1], COLORS.brassSoft[2], COLORS.brassSoft[3], hovered and 185 or 125))
+    nvgStrokeWidth(vg, 1)
+    nvgStroke(vg)
+
+    for _, corner in ipairs({ { -1, -1 }, { 1, -1 }, { -1, 1 }, { 1, 1 } }) do
+        nvgBeginPath(vg)
+        nvgCircle(vg, corner[1] * (halfWidth - 11), corner[2] * (halfHeight - 11), 2.2)
+        nvgFillColor(vg, nvgRGBA(COLORS.brassLight[1], COLORS.brassLight[2], COLORS.brassLight[3], 205))
+        nvgFill(vg)
+    end
+
+    local function arrowPath()
+        nvgBeginPath(vg)
+        nvgMoveTo(vg, 13, 0)
+        nvgLineTo(vg, -12, 0)
+        nvgMoveTo(vg, -12, 0)
+        nvgLineTo(vg, -2, -10)
+        nvgMoveTo(vg, -12, 0)
+        nvgLineTo(vg, -2, 10)
+    end
+    nvgLineCap(vg, NVG_ROUND)
+    nvgLineJoin(vg, NVG_ROUND)
+    arrowPath()
+    nvgStrokeColor(vg, nvgRGBA(COLORS.ink[1], COLORS.ink[2], COLORS.ink[3], 205))
+    nvgStrokeWidth(vg, 6)
+    nvgStroke(vg)
+    arrowPath()
+    nvgStrokeColor(vg, nvgRGBA(COLORS.paperLight[1], COLORS.paperLight[2], COLORS.paperLight[3], 255))
+    nvgStrokeWidth(vg, 3.2)
+    nvgStroke(vg)
+    nvgRestore(vg)
+end
+
+local function drawCatalogDecor(painter, frame, header, backHovered, backPressed)
     painter:FillRect(0, 0, frame.logicalWidth, frame.logicalHeight, COLORS.paper)
     local background = painter.images and painter.images.ui and painter.images.ui.catalogBackground
     local artOffsetX = math.max(0, (frame.logicalWidth - 1880) * .5)
@@ -215,8 +292,10 @@ local function drawCatalogDecor(painter, frame)
 
     -- The supplied background already contains the plaque, ruler and botanical
     -- ornaments. Only live catalog copy is painted on top of that artwork.
-    painter:Text(artOffsetX + 126, 18, "实验目录", 44, COLORS.paperLight, nil, CATALOG_TITLE_FONT)
-    painter:Text(artOffsetX + 118, 70, "EXPERIMENT CATALOG", 14, COLORS.brassLight, nil, CATALOG_TITLE_FONT)
+    drawCatalogBackButton(painter, header.backButton, backHovered, backPressed)
+    painter:Text(header.titleX, header.titleY, "实验目录", 44, COLORS.paperLight, nil, CATALOG_TITLE_FONT)
+    painter:Text(header.titleX, header.subtitleY, "EXPERIMENT CATALOG", 14,
+        COLORS.brassLight, nil, CATALOG_TITLE_FONT)
 end
 
 local function drawCatalogForegroundDecor(painter, frame)
@@ -652,6 +731,7 @@ function M.Install(context)
         state.progressFeedback, state.progressFeedbackElapsed = nil, 0
         state.reportSnapshot, state.reportSnapshotAnimation = nil, 0
         state.reportSnapshotClosing = false
+        state.headerBackPressed = false
     end
 
     local function closeReportSnapshot()
@@ -714,6 +794,21 @@ function M.Install(context)
         return true
     end
 
+    function RequestReturnToTitleScreen(suppressUIClick)
+        if scene_ or level_ then ReleaseLevelRuntime() end
+        screen_ = "title"
+        catalogState_.dragStartY, catalogState_.dragStartScroll = nil, 0
+        catalogState_.toast, catalogState_.toastTime = nil, 0
+        catalogState_.reportSnapshot, catalogState_.reportSnapshotAnimation = nil, 0
+        catalogState_.reportSnapshotClosing = false
+        catalogState_.progressFeedback, catalogState_.progressFeedbackElapsed = nil, 0
+        catalogState_.headerBackPressed = false
+        hudDropdown_ = nil
+        sketchDrawing_:Clear()
+        if not suppressUIClick then playUIClick() end
+        return true
+    end
+
     function RequestEnterWorkshop(selectedLevelId)
         if catalogState_.transition and not catalogState_.transition:IsSettled() then return false end
         local opened = OpenLevelWorkshop(selectedLevelId)
@@ -768,10 +863,24 @@ function M.Install(context)
                 return
             end
         end
+        local x, y = pointerFrame.x, pointerFrame.y
+        local header = resolveCatalogHeader(frame_)
+        local headerHovered = pointIn(header.backButton, x, y)
+        if input:GetKeyPress(KEY_ESCAPE) then RequestReturnToTitleScreen(); return end
+        if pointerFrame.pressed and headerHovered then
+            state.headerBackPressed = true
+            state.dragStartY = nil
+            return
+        end
+        if pointerFrame.released and state.headerBackPressed then
+            state.headerBackPressed = false
+            if headerHovered then RequestReturnToTitleScreen() end
+            return
+        end
+        if state.headerBackPressed and not pointerFrame.down then state.headerBackPressed = false end
         if frame_.physicalWidth < frame_.physicalHeight then return end
 
         local layout = M.ResolveLayout(frame_)
-        local x, y = pointerFrame.x, pointerFrame.y
         if input:GetKeyPress(KEY_UP) then selectLevel(state.selectedIndex - 1) end
         if input:GetKeyPress(KEY_DOWN) then selectLevel(state.selectedIndex + 1) end
         local actionsEnabled = not state.transition or state.transition:IsSettled()
@@ -816,7 +925,11 @@ function M.Install(context)
 
     function DrawExperimentCatalog()
         local painter, state = painter_, catalogState_
-        drawCatalogDecor(painter, frame_)
+        local pointerX, pointerY = DesignPointer()
+        local pointer = { x = pointerX, y = pointerY }
+        local header = resolveCatalogHeader(frame_)
+        local backHovered = pointIn(header.backButton, pointer.x, pointer.y)
+        drawCatalogDecor(painter, frame_, header, backHovered, state.headerBackPressed == true)
         if frame_.physicalWidth < frame_.physicalHeight then
             painter:Text(frame_.logicalWidth * .5, frame_.logicalHeight * .5 - 10, "请使用横屏进入实验目录", 32,
                 COLORS.ink, NVG_ALIGN_CENTER + NVG_ALIGN_MIDDLE, CATALOG_BODY_FONT)
@@ -833,8 +946,6 @@ function M.Install(context)
         drawSectionTitle(painter, layout.left.x + 20, layout.left.y + 20, "实验清单")
         drawSectionTitle(painter, layout.right.x + 20, layout.right.y + 20, "预习报告")
 
-        local pointerX, pointerY = DesignPointer()
-        local pointer = { x = pointerX, y = pointerY }
         for index = 1, CONFIG.levelCount do
             local level = state.levels[index]
             local item = { x = layout.left.x + 12, y = layout.listTop + (index - 1) * layout.listItemHeight,
