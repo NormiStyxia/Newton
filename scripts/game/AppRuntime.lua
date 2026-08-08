@@ -25,6 +25,17 @@ function M.Install(context)
     local frameScreen_ = nil
     local _ENV = context
 
+    local function currentNavigationTransition()
+        return context.navigationTransition_ or navigationTransition_
+    end
+
+    local function navigationIsBackward()
+        local transition = currentNavigationTransition()
+        if not transition then return false end
+        if type(transition.IsBackward) == "function" then return transition:IsBackward() end
+        return transition.state == "CATALOG_TO_TITLE" or transition.state == "TITLE_ENTERING"
+    end
+
     local function usesMainStage()
         return screen_ == "title" or screen_ == "title_catalog_transition" or screen_ == "catalog"
             or screen_ == "game" or screen_ == "workshop_preview"
@@ -35,7 +46,7 @@ function M.Install(context)
             and context.design_:Frame(true, 1870, 841)
             or context.design_:Frame(usesMainStage())
         if screen_ == "title"
-            or screen_ == "title_catalog_transition" and navigationTransition_:IsBackward() then
+            or screen_ == "title_catalog_transition" and navigationIsBackward() then
             frame.backgroundFill = TITLE_BACKGROUND_FILL
         elseif screen_ == "catalog" or screen_ == "title_catalog_transition" then
             frame.backgroundFill = CATALOG_BACKGROUND_FILL
@@ -153,7 +164,7 @@ function M.Install(context)
         RefreshWorkspaceLayout()
         local pointerFrame = PointerState()
         if screen_ == "title_catalog_transition" then
-            local destination = navigationTransition_:Update(dt)
+            local destination = currentNavigationTransition():Update(dt)
             if destination then
                 screen_ = destination
                 if destination == "title" and FinalizeCatalogToTitleTransition then
@@ -546,9 +557,10 @@ function M.Install(context)
             local ok, err = pcall(function()
                 painter_:Begin(frame_)
                 local designWidth = frame_.stageWidth or frame_.logicalWidth
-                local titleOffset, catalogOffset = navigationTransition_:GetRootOffsets(designWidth)
-                DrawExperimentCatalog({ rootOffsetX = catalogOffset, transition = navigationTransition_ })
-                DrawTitleScreen({ rootOffsetX = titleOffset, transition = navigationTransition_ })
+                local transition = currentNavigationTransition()
+                local titleOffset, catalogOffset = transition:GetRootOffsets(designWidth)
+                DrawExperimentCatalog({ rootOffsetX = catalogOffset, transition = transition })
+                DrawTitleScreen({ rootOffsetX = titleOffset, transition = transition })
                 painter_:Finish()
             end)
             if not ok then error(err) end

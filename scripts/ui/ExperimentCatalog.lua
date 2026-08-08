@@ -491,14 +491,17 @@ local function drawPreview(painter, rect, state, entrance)
     local preview = { x = rect.x + 24, y = rect.y + 62, w = rect.w - 48, h = rect.h - 126 }
     local sheetOuterClip = { x = rect.x + 3, y = rect.y + 3, w = rect.w - 6, h = rect.h - 6 }
     local transition = state.transition
+    local paperVisible = not entrance or entrance:IsPaperVisible()
     -- Preserve the established withdrawal distance while decoupling it from
     -- the old graph-paper-sized clip rectangle.
     local papers
-    if entrance then
+    if entrance and paperVisible then
         papers = { {
             index = state.selectedIndex,
             pose = CatalogTransition.GetEntrancePaperPose(entrance:GetPaperProgress(), rect.w - 36),
         } }
+    elseif entrance then
+        papers = {}
     else
         papers = transition and transition:GetPreviewPapers(rect.w - 36)
             or { { index = state.selectedIndex, pose = { offsetX = 0, offsetY = 0, rotation = 0, alpha = 1, scale = 1 } } }
@@ -508,11 +511,9 @@ local function drawPreview(painter, rect, state, entrance)
     drawSheetMotionLayer(painter, sheetOuterClip, preview, state.levels, papers, paperAnchor)
     sketchDrawing_:EndFrame()
 
-    -- The panel nine-slice was painted before the sheets, so lifted graph
-    -- paper correctly passes over its four inner corner ornaments. Only the
-    -- title and legend remain fixed above the moving paper.
-    drawSectionTitle(painter, rect.x + 22, rect.y + 20, "实验装置概览")
-    drawPreviewLegend(painter, preview)
+    -- The panel shell title is drawn by the caller with the same local panel
+    -- pose. The legend belongs to the paper content and waits for the sheet.
+    if paperVisible then drawPreviewLegend(painter, preview) end
 end
 
 local function enabledCardNames(level, rules)
@@ -548,6 +549,16 @@ local function beginContentMotion(vg, pose)
     nvgSave(vg)
     if pose then nvgTranslate(vg, pose.offsetX or 0, pose.offsetY or 0) end
     nvgGlobalAlpha(vg, pose and pose.alpha or 1)
+end
+
+local function beginPanelMotion(vg, rect, pose, applyAlpha)
+    pose = pose or { offsetX = 0, offsetY = 0, scale = 1, alpha = 1 }
+    local centerX, centerY = rect.x + rect.w * .5, rect.y + rect.h * .5
+    nvgSave(vg)
+    nvgTranslate(vg, centerX + (pose.offsetX or 0), centerY + (pose.offsetY or 0))
+    nvgScale(vg, pose.scale or 1, pose.scale or 1)
+    nvgTranslate(vg, -centerX, -centerY)
+    if applyAlpha then nvgGlobalAlpha(vg, pose.alpha or 1) end
 end
 
 local function drawBrief(painter, layout, level, state, rules, entrance)
@@ -723,6 +734,38 @@ function M.Install(context)
     local navigationTransition_ = context.navigationTransition_
     local _ENV = context
 
+    local function upgradeNavigationTransition(candidate)
+        local complete = candidate
+            and type(candidate.StartReturn) == "function"
+            and type(candidate.IsBackward) == "function"
+            and type(candidate.GetPanelPose) == "function"
+            and type(candidate.IsPaperVisible) == "function"
+        if complete then return candidate end
+
+        local replacement = CatalogTransition.NewEntrance()
+        local previousState = candidate and candidate.state or nil
+        local previousElapsed = math.max(0, tonumber(candidate and candidate.elapsed) or 0)
+        if screen_ == "catalog" or previousState == "CATALOG_IDLE" then
+            replacement:SetCatalogIdle()
+        elseif previousState == "TITLE_TO_CATALOG"
+            or previousState == "CATALOG_ENTER" or previousState == "CATALOG_ENTERING" then
+            replacement.state = previousState == "TITLE_TO_CATALOG"
+                and CatalogTransition.EntranceState.TITLE_TO_CATALOG
+                or CatalogTransition.EntranceState.CATALOG_ENTERING
+            replacement.elapsed = math.min(CatalogTransition.EntranceTimeline.total, previousElapsed)
+        elseif previousState == "CATALOG_TO_TITLE" or previousState == "TITLE_ENTERING" then
+            replacement.state = previousState
+            replacement.elapsed = math.min(CatalogTransition.EntranceTimeline.returnTotal, previousElapsed)
+        else
+            replacement:SetTitleIdle()
+        end
+        context.navigationTransition_ = replacement
+        print("[CatalogTransition] upgraded legacy navigation transition")
+        return replacement
+    end
+
+    navigationTransition_ = upgradeNavigationTransition(navigationTransition_)
+
     function InitializeExperimentCatalog()
         local state = catalogState_
         sketchDrawing_:Clear()
@@ -766,6 +809,7 @@ function M.Install(context)
     end
 
     function RequestOpenCatalogReportSnapshot()
+        if navigationTransition_:IsInputLocked() then return false end
         local state = catalogState_
         local level = state.levels[state.selectedIndex]
         local snapshot = level and experimentProgress_
@@ -783,6 +827,7 @@ function M.Install(context)
     end
 
     function RequestStartLevel(index, suppressUIClick)
+        if navigationTransition_:IsInputLocked() then return false end
         if catalogState_.transition and not catalogState_.transition:IsSettled() then return false end
         index = clamp(tonumber(index) or catalogState_.selectedIndex or 1, 1, CONFIG.levelCount)
         if not catalogState_.levels[index] then
@@ -801,6 +846,7 @@ function M.Install(context)
     end
 
     function RequestReturnToCatalog(preselectIndex, suppressUIClick)
+        if navigationTransition_:IsInputLocked() then return false end
         if screen_ == "workshop_preview" then return ExitWorkshopPreview("navigation") end
         local selected = tonumber(preselectIndex) or levelIndex_ or catalogState_.selectedIndex or 1
         if screen_ == "title" then
@@ -820,9 +866,17 @@ function M.Install(context)
     end
 
     function RequestReturnToTitleScreen(suppressUIClick)
+        if screen_ ~= "catalog" or not navigationTransition_:StartReturn() then return false end
+        screen_ = "title_catalog_transition"
+        catalogState_.dragStartY, catalogState_.dragStartScroll = nil, 0
+        catalogState_.headerBackPressed = false
+        if BeginTitleCatalogEnter then BeginTitleCatalogEnter() end
+        if not suppressUIClick then playUIClick() end
+        return true
+    end
+
+    function FinalizeCatalogToTitleTransition()
         if scene_ or level_ then ReleaseLevelRuntime() end
-        screen_ = "title"
-        navigationTransition_:SetTitleIdle()
         catalogState_.dragStartY, catalogState_.dragStartScroll = nil, 0
         catalogState_.toast, catalogState_.toastTime = nil, 0
         catalogState_.reportSnapshot, catalogState_.reportSnapshotAnimation = nil, 0
@@ -831,11 +885,10 @@ function M.Install(context)
         catalogState_.headerBackPressed = false
         hudDropdown_ = nil
         sketchDrawing_:Clear()
-        if not suppressUIClick then playUIClick() end
-        return true
     end
 
     function RequestEnterWorkshop(selectedLevelId)
+        if navigationTransition_:IsInputLocked() then return false end
         if catalogState_.transition and not catalogState_.transition:IsSettled() then return false end
         local opened = OpenLevelWorkshop(selectedLevelId)
         if opened then sketchDrawing_:Clear() end
@@ -844,6 +897,7 @@ function M.Install(context)
     end
 
     local function selectLevel(index)
+        if navigationTransition_:IsInputLocked() then return end
         index = clamp(index, 1, CONFIG.levelCount)
         if catalogState_.selectedIndex == index then return end
         catalogState_.selectedIndex = index
@@ -969,13 +1023,29 @@ function M.Install(context)
         end
 
         local layout = M.ResolveLayout(frame_)
+        local panelPoses = {
+            left = entrance and entrance:GetPanelPose("left") or nil,
+            center = entrance and entrance:GetPanelPose("center") or nil,
+            right = entrance and entrance:GetPanelPose("right") or nil,
+        }
+        beginPanelMotion(painter.vg, layout.left, panelPoses.left, true)
         drawPaperPanel(painter, layout.left)
+        nvgRestore(painter.vg)
+        beginPanelMotion(painter.vg, layout.center, panelPoses.center, true)
         drawPaperPanel(painter, layout.center)
+        nvgRestore(painter.vg)
+        beginPanelMotion(painter.vg, layout.right, panelPoses.right, true)
         drawPaperPanel(painter, layout.right)
+        nvgRestore(painter.vg)
         drawCatalogForegroundDecor(painter, frame_)
+        beginPanelMotion(painter.vg, layout.left, panelPoses.left, true)
         drawSectionTitle(painter, layout.left.x + 20, layout.left.y + 20, "实验清单")
+        nvgRestore(painter.vg)
+        beginPanelMotion(painter.vg, layout.right, panelPoses.right, true)
         drawSectionTitle(painter, layout.right.x + 20, layout.right.y + 20, "预习报告")
+        nvgRestore(painter.vg)
 
+        beginPanelMotion(painter.vg, layout.left, panelPoses.left, false)
         local listHeight = math.max(0, layout.left.y + layout.left.h - layout.listTop - 8)
         local listReveal = entrance and entrance:GetListReveal() or 1
         nvgSave(painter.vg)
@@ -1015,25 +1085,37 @@ function M.Install(context)
             nvgRestore(painter.vg)
         end
         nvgRestore(painter.vg)
+        nvgRestore(painter.vg)
 
         local level = state.levels[state.selectedIndex]
         local reportAvailable = level and experimentProgress_
             and experimentProgress_:HasReportSnapshot(level.levelId) or false
         if reportAvailable then
+            beginPanelMotion(painter.vg, layout.right, panelPoses.right, false)
             beginContentMotion(painter.vg, entrance and entrance:GetReportBlockPose(1) or nil)
             drawReportSnapshotButton(painter, layout.reportButton,
                 pointIn(layout.reportButton, pointer.x, pointer.y))
             nvgRestore(painter.vg)
+            nvgRestore(painter.vg)
         end
+        beginPanelMotion(painter.vg, layout.center, panelPoses.center, false)
         drawPreview(painter, layout.center, state, entrance)
+        nvgRestore(painter.vg)
+        beginPanelMotion(painter.vg, layout.center, panelPoses.center, true)
+        drawSectionTitle(painter, layout.center.x + 22, layout.center.y + 20, "实验装置概览")
+        nvgRestore(painter.vg)
+        beginPanelMotion(painter.vg, layout.right, panelPoses.right, false)
         drawBrief(painter, layout, level, state, Rules, entrance)
+        nvgRestore(painter.vg)
         local actionsEnabled = not state.transition or state.transition:IsSettled()
         local startEnabled = level ~= nil and actionsEnabled
+        beginPanelMotion(painter.vg, layout.right, panelPoses.right, false)
         beginContentMotion(painter.vg, entrance and entrance:GetButtonPose(1) or nil)
         drawButton(painter, layout.startButton, "开始实验", true, pointIn(layout.startButton, pointer.x, pointer.y), startEnabled)
         nvgRestore(painter.vg)
         beginContentMotion(painter.vg, entrance and entrance:GetButtonPose(2) or nil)
         drawButton(painter, layout.workshopButton, "实验工坊", false, pointIn(layout.workshopButton, pointer.x, pointer.y), actionsEnabled)
+        nvgRestore(painter.vg)
         nvgRestore(painter.vg)
 
         if state.toast then

@@ -727,6 +727,13 @@ function M.Install(context)
         return true
     end
 
+    function BeginTitleCatalogEnter()
+        state.hoverIndex = nil
+        state.hoverCharacter = nil
+        state.pressedIndex = nil
+        state.settingsDrag = nil
+    end
+
     function openAcademyIdCard(characterId)
         if state.profileMode ~= PROFILE_MODE.TITLE_IDLE then return false end
         if characterId == PROFILE.characterId then

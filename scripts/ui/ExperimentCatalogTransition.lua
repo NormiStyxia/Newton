@@ -30,31 +30,53 @@ local ENTRANCE_SETTLE_ANGLE = math.rad(-0.75)
 Transition.EntranceState = {
     TITLE_IDLE = "TITLE_IDLE",
     TITLE_TO_CATALOG = "TITLE_TO_CATALOG",
-    CATALOG_ENTER = "CATALOG_ENTER",
+    CATALOG_ENTERING = "CATALOG_ENTERING",
     CATALOG_IDLE = "CATALOG_IDLE",
+    CATALOG_TO_TITLE = "CATALOG_TO_TITLE",
+    TITLE_ENTERING = "TITLE_ENTERING",
 }
 
 Transition.EntranceTimeline = {
     titleRootEnd = 0.58,
-    catalogRootEnd = 0.60,
+    catalogRootEnd = 0.63,
     titleEnd = 0.38,
-    characterDuration = 0.32,
-    characterStagger = 0.03,
-    listStart = 0.66,
-    listDuration = 0.40,
+    characterDuration = 0.30,
+    characterStagger = 0.025,
+    leftPanelStart = 0.44,
+    leftPanelDuration = 0.24,
+    centerPanelStart = 0.49,
+    centerPanelDuration = 0.26,
+    rightPanelStart = 0.54,
+    rightPanelDuration = 0.24,
+    listStart = 0.71,
+    listDuration = 0.41,
     listItemDuration = 0.15,
-    listItemStagger = 0.032,
-    paperStart = 0.68,
-    paperDuration = 0.43,
-    reportStart = 0.70,
-    reportDuration = 0.19,
+    listItemStagger = 0.035,
+    paperStart = 0.73,
+    paperDuration = 0.40,
+    reportStart = 0.79,
+    reportDuration = 0.18,
     reportStagger = 0.05,
-    highlightStart = 1.03,
-    highlightDuration = 0.11,
-    buttonStart = 1.00,
-    buttonDuration = 0.16,
+    highlightStart = 1.00,
+    highlightDuration = 0.12,
+    buttonStart = 1.01,
+    buttonDuration = 0.15,
     buttonStagger = 0.04,
     total = 1.20,
+    returnCatalogEnd = 0.54,
+    returnTitleEnd = 0.58,
+    returnStateSwitch = 0.22,
+    titleEnterStart = 0.22,
+    titleEnterDuration = 0.32,
+    characterEnterStart = 0.20,
+    characterEnterDuration = 0.30,
+    returnTotal = 0.60,
+}
+
+local PANEL_ENTRANCE = {
+    left = { offsetX = -70, offsetY = -35, start = "leftPanelStart", duration = "leftPanelDuration" },
+    center = { offsetX = 0, offsetY = -55, start = "centerPanelStart", duration = "centerPanelDuration" },
+    right = { offsetX = 70, offsetY = 35, start = "rightPanelStart", duration = "rightPanelDuration" },
 }
 
 local function clamp(value, minimum, maximum)
@@ -98,6 +120,13 @@ function Entrance:Start()
     return true
 end
 
+function Entrance:StartReturn()
+    if self.state ~= Transition.EntranceState.CATALOG_IDLE then return false end
+    self.state = Transition.EntranceState.CATALOG_TO_TITLE
+    self.elapsed = 0.0
+    return true
+end
+
 function Entrance:SetTitleIdle()
     self.state = Transition.EntranceState.TITLE_IDLE
     self.elapsed = 0.0
@@ -109,34 +138,77 @@ function Entrance:SetCatalogIdle()
 end
 
 function Entrance:Update(dt)
-    if self.state ~= Transition.EntranceState.TITLE_TO_CATALOG
-        and self.state ~= Transition.EntranceState.CATALOG_ENTER then return false end
-    self.elapsed = math.min(Transition.EntranceTimeline.total,
-        self.elapsed + math.max(0, tonumber(dt) or 0))
-    if self.elapsed >= Transition.EntranceTimeline.total then
-        self:SetCatalogIdle()
-        return true
+    local timeline = Transition.EntranceTimeline
+    local frameTime = math.max(0, tonumber(dt) or 0)
+    if self:IsForward() then
+        self.elapsed = math.min(timeline.total, self.elapsed + frameTime)
+        if self.elapsed >= timeline.total then
+            self:SetCatalogIdle()
+            return "catalog"
+        end
+        if self.elapsed >= timeline.leftPanelStart then
+            self.state = Transition.EntranceState.CATALOG_ENTERING
+        end
+        return nil
     end
-    if self.elapsed >= Transition.EntranceTimeline.catalogRootEnd then
-        self.state = Transition.EntranceState.CATALOG_ENTER
+    if self:IsBackward() then
+        self.elapsed = math.min(timeline.returnTotal, self.elapsed + frameTime)
+        if self.elapsed >= timeline.returnTotal then
+            self:SetTitleIdle()
+            return "title"
+        end
+        if self.elapsed >= timeline.returnStateSwitch then
+            self.state = Transition.EntranceState.TITLE_ENTERING
+        end
     end
-    return false
+    return nil
 end
 
 function Entrance:IsInputLocked()
     return self.state == Transition.EntranceState.TITLE_TO_CATALOG
-        or self.state == Transition.EntranceState.CATALOG_ENTER
+        or self.state == Transition.EntranceState.CATALOG_ENTERING
+        or self.state == Transition.EntranceState.CATALOG_TO_TITLE
+        or self.state == Transition.EntranceState.TITLE_ENTERING
+end
+
+function Entrance:IsForward()
+    return self.state == Transition.EntranceState.TITLE_TO_CATALOG
+        or self.state == Transition.EntranceState.CATALOG_ENTERING
+end
+
+function Entrance:IsBackward()
+    return self.state == Transition.EntranceState.CATALOG_TO_TITLE
+        or self.state == Transition.EntranceState.TITLE_ENTERING
+end
+
+function Entrance:IsCatalogAssembled()
+    return self.state == Transition.EntranceState.CATALOG_IDLE or self:IsBackward()
 end
 
 function Entrance:GetRootOffsets(designWidth)
     local width = math.max(1, tonumber(designWidth) or 1)
-    local titleProgress = easeInOutCubic(progress(self.elapsed, 0, Transition.EntranceTimeline.titleRootEnd))
-    local catalogProgress = easeInOutCubic(progress(self.elapsed, 0, Transition.EntranceTimeline.catalogRootEnd))
+    local timeline = Transition.EntranceTimeline
+    if self:IsBackward() then
+        local titleProgress = easeInOutCubic(progress(self.elapsed, 0, timeline.returnTitleEnd))
+        local catalogProgress = easeInOutCubic(progress(self.elapsed, 0, timeline.returnCatalogEnd))
+        return -width * (1 - titleProgress), width * catalogProgress
+    end
+    if self.state == Transition.EntranceState.CATALOG_IDLE then return -width, 0 end
+    local titleProgress = easeInOutCubic(progress(self.elapsed, 0, timeline.titleRootEnd))
+    local catalogProgress = easeInOutCubic(progress(self.elapsed, 0, timeline.catalogRootEnd))
     return -width * titleProgress, width * (1 - catalogProgress)
 end
 
 function Entrance:GetTitlePose()
     local timeline = Transition.EntranceTimeline
+    if self:IsBackward() then
+        local amount = easeOutCubic(progress(self.elapsed, timeline.titleEnterStart, timeline.titleEnterDuration))
+        local scale = amount < 0.55
+            and lerp(0, 0.7, easeOutCubic(amount / 0.55))
+            or lerp(0.7, 1, easeOutCubic((amount - 0.55) / 0.45))
+        return { scale = scale, alpha = amount }
+    end
+    if not self:IsForward() then return { scale = 1, alpha = 1 } end
     local scale
     if self.elapsed < 0.27 then
         scale = lerp(1, 0.65, easeInOutCubic(progress(self.elapsed, 0, 0.27)))
@@ -150,21 +222,53 @@ end
 function Entrance:GetCharacterPose(index)
     local timeline = Transition.EntranceTimeline
     local delay = math.max(0, (tonumber(index) or 1) - 1) * timeline.characterStagger
+    if self:IsBackward() then
+        local amount = easeOutCubic(progress(self.elapsed,
+            timeline.characterEnterStart + delay, timeline.characterEnterDuration))
+        return {
+            offsetX = 32 * (1 - amount),
+            rotation = 90 * (1 - amount),
+            scale = 1,
+            alpha = amount,
+        }
+    end
+    if not self:IsForward() then
+        return { offsetX = 0, rotation = 0, scale = 1, alpha = 1 }
+    end
     local amount = easeInOutCubic(progress(self.elapsed, delay, timeline.characterDuration))
     return {
-        offsetX = -48 * amount,
-        rotation = -90 * amount,
-        scale = 1 - 0.05 * amount,
+        offsetX = 32 * amount,
+        rotation = 90 * amount,
+        scale = 1,
         alpha = 1 - easeOutCubic(amount),
     }
 end
 
+function Entrance:GetPanelPose(panelName)
+    local config = PANEL_ENTRANCE[panelName]
+    if not config then return { offsetX = 0, offsetY = 0, scale = 1, alpha = 1 } end
+    if self:IsCatalogAssembled() then
+        return { offsetX = 0, offsetY = 0, scale = 1, alpha = 1 }
+    end
+    local timeline = Transition.EntranceTimeline
+    local amount = self:IsForward()
+        and easeOutCubic(progress(self.elapsed, timeline[config.start], timeline[config.duration])) or 0
+    return {
+        offsetX = config.offsetX * (1 - amount),
+        offsetY = config.offsetY * (1 - amount),
+        scale = lerp(0.985, 1, amount),
+        alpha = lerp(0.65, 1, amount),
+    }
+end
+
 function Entrance:GetListReveal()
+    if self:IsCatalogAssembled() then return 1 end
     local timeline = Transition.EntranceTimeline
     return easeOutCubic(progress(self.elapsed, timeline.listStart, timeline.listDuration))
 end
 
 function Entrance:GetListItemPose(index)
+    if self:IsCatalogAssembled() then return { offsetY = 0, alpha = 1 } end
     local timeline = Transition.EntranceTimeline
     local startTime = timeline.listStart + math.max(0, (tonumber(index) or 1) - 1) * timeline.listItemStagger
     local amount = easeOutCubic(progress(self.elapsed, startTime, timeline.listItemDuration))
@@ -172,17 +276,25 @@ function Entrance:GetListItemPose(index)
 end
 
 function Entrance:GetHighlightPose()
+    if self:IsCatalogAssembled() then return { scaleX = 1, alpha = 1 } end
     local timeline = Transition.EntranceTimeline
     local amount = easeOutCubic(progress(self.elapsed, timeline.highlightStart, timeline.highlightDuration))
     return { scaleX = lerp(0.96, 1, amount), alpha = amount }
 end
 
 function Entrance:GetPaperProgress()
+    if self:IsCatalogAssembled() then return 1 end
     local timeline = Transition.EntranceTimeline
     return progress(self.elapsed, timeline.paperStart, timeline.paperDuration)
 end
 
+function Entrance:IsPaperVisible()
+    return self:IsCatalogAssembled()
+        or self:IsForward() and self.elapsed >= Transition.EntranceTimeline.paperStart
+end
+
 function Entrance:GetReportBlockPose(index)
+    if self:IsCatalogAssembled() then return { offsetX = 0, alpha = 1 } end
     local timeline = Transition.EntranceTimeline
     local startTime = timeline.reportStart + math.max(0, (tonumber(index) or 1) - 1) * timeline.reportStagger
     local amount = easeOutCubic(progress(self.elapsed, startTime, timeline.reportDuration))
@@ -190,6 +302,7 @@ function Entrance:GetReportBlockPose(index)
 end
 
 function Entrance:GetButtonPose(index)
+    if self:IsCatalogAssembled() then return { offsetY = 0, alpha = 1 } end
     local timeline = Transition.EntranceTimeline
     local startTime = timeline.buttonStart + math.max(0, (tonumber(index) or 1) - 1) * timeline.buttonStagger
     local amount = easeOutCubic(progress(self.elapsed, startTime, timeline.buttonDuration))
