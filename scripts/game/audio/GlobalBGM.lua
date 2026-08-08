@@ -41,12 +41,10 @@ local BGM_TRACKS = {
         title = "《经典力学，很神奇吧》",
         asset = "audio/music_1786095252543.ogg",
     },
-    -- The project currently has no second audio file checked into assets/audio.
-    -- Keep the requested registry entry ready for the supplied asset path.
     academy_02 = {
         id = "academy_02",
         title = "《实验开始之前》",
-        asset = "audio/academy_02.ogg",
+        asset = "audio/music_1786162255680.ogg",
     },
     gameplay_01 = {
         id = "gameplay_01",
