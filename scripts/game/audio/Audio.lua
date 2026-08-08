@@ -6,6 +6,8 @@ local Effects = require("urhox-libs.Effects.Effects")
 ---@field elapsedMs number
 ---@field lastImpactMs number
 ---@field lastUIClickIndex integer|nil
+---@field volume number
+---@field muted boolean
 local SynthAudio = {}
 SynthAudio.__index = SynthAudio
 
@@ -36,7 +38,19 @@ function SynthAudio.New(scene)
     self.elapsedMs = 0
     self.lastImpactMs = -math.huge
     self.lastUIClickIndex = nil
+    self.volume = 1
+    self.muted = false
     return self
+end
+
+---@param volume number
+function SynthAudio:setVolume(volume)
+    self.volume = math.max(0, math.min(1, tonumber(volume) or 1))
+end
+
+---@param muted boolean
+function SynthAudio:setMuted(muted)
+    self.muted = muted == true
 end
 
 ---@param dt number
@@ -47,22 +61,22 @@ end
 ---@param kind "launch"|"card"|"cardBurn"|"impact"|"punch"|"success"|"reset"|"spring"
 function SynthAudio:Play(kind)
     local path = PATHS[kind]
-    if not path or not self.scene then return end
+    if not path or not self.scene or self.muted or self.volume <= 0 then return end
     if kind == "impact" then
         if self.elapsedMs - self.lastImpactMs < 80 then return end
         self.lastImpactMs = self.elapsedMs
     end
-    Effects.PlaySound(self.scene, path, { gain = 1 })
+    Effects.PlaySound(self.scene, path, { gain = self.volume })
 end
 
 function SynthAudio:PlayUIClick()
-    if not self.scene then return end
+    if not self.scene or self.muted or self.volume <= 0 then return end
     local index = math.random(1, #UI_CLICK_PATHS)
     if #UI_CLICK_PATHS > 1 and index == self.lastUIClickIndex then
         index = index % #UI_CLICK_PATHS + 1
     end
     self.lastUIClickIndex = index
-    Effects.PlaySound(self.scene, UI_CLICK_PATHS[index], { gain = 0.55 })
+    Effects.PlaySound(self.scene, UI_CLICK_PATHS[index], { gain = 0.55 * self.volume })
 end
 
 function SynthAudio:Dispose()

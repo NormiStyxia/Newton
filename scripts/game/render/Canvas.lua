@@ -147,6 +147,28 @@ function Renderer:Init()
             catalogDecorRight = nvgCreateImage(self.vg, "image/catalog/catalog_decor_right.png", 0),
             catalogPreviewApple = nvgCreateImage(self.vg, "image/catalog/objects/apple.png", 0),
             catalogPreviewSensor = nvgCreateImage(self.vg, "image/catalog/objects/sensor.png", 0),
+            titleScreen = {
+                background = nvgCreateImage(self.vg, "image/title_screen/background.png", 0),
+                title = {
+                    bu = nvgCreateImage(self.vg, "image/title_screen/title_bu.png", 0),
+                    jing = nvgCreateImage(self.vg, "image/title_screen/title_jing.png", 0),
+                    dian = nvgCreateImage(self.vg, "image/title_screen/title_dian.png", 0),
+                    li = nvgCreateImage(self.vg, "image/title_screen/title_li.png", 0),
+                    xue = nvgCreateImage(self.vg, "image/title_screen/title_xue.png", 0),
+                },
+                characters = {
+                    left1 = nvgCreateImage(self.vg, "image/title_screen/character_left_1.png", 0),
+                    left2 = nvgCreateImage(self.vg, "image/title_screen/character_left_2.png", 0),
+                    right1 = nvgCreateImage(self.vg, "image/title_screen/character_right_1.png", 0),
+                    right2 = nvgCreateImage(self.vg, "image/title_screen/character_right_2.png", 0),
+                },
+                characterHover = {
+                    left1 = nvgCreateImage(self.vg, "image/title_screen/character_left_1_hover.png", 0),
+                    left2 = nvgCreateImage(self.vg, "image/title_screen/character_left_2_hover.png", 0),
+                    right1 = nvgCreateImage(self.vg, "image/title_screen/character_right_1_hover.png", 0),
+                    right2 = nvgCreateImage(self.vg, "image/title_screen/character_right_2_hover.png", 0),
+                },
+            },
             hudFrame = nvgCreateImage(self.vg, "image/ui_svg/runtime/hud_frame@2x.png", 0),
             gameplayFrame = nvgCreateImage(self.vg, "image/ui_svg/runtime/gameplay_frame@2x.png", 0),
             gameplayDecorOverlay = nvgCreateImage(self.vg, "image/ui/gameplay_decor_overlay.png", 0),
@@ -326,7 +348,8 @@ function Renderer:Begin(frame)
         -- The fixed 1880 x 840 main stage can leave letterbox padding on
         -- taller screens. Paint that viewport padding with the established
         -- cream background before applying the stage transform and scissor.
-        self:FillRect(0, 0, frame.systemLogicalWidth, frame.systemLogicalHeight, COLORS.background)
+        self:FillRect(0, 0, frame.systemLogicalWidth, frame.systemLogicalHeight,
+            frame.backgroundFill or COLORS.background)
     end
     nvgSave(self.vg)
     self.frameTransformSaved = true

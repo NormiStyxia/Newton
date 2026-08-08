@@ -28,7 +28,7 @@ local INSTALLERS = {
     "game.cards.Controller", "game.input.InteractionRouter", "game.render.WorldView",
     "game.render.ReplayView", "game.render.OverlayView", "game.render.CardView",
     "game.assist_demo.Controller", "game.green_assistant.Controller", "game.dialogue.DialogueController", "ui.result_report",
-    "ui.result_report_layout", "game.workshop.Controller", "ui.ExperimentCatalog", "game.AppRuntime",
+    "ui.result_report_layout", "game.workshop.Controller", "ui.ExperimentCatalog", "ui.TitleScreen", "game.AppRuntime",
 }
 
 local App = {}

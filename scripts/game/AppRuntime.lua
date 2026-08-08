@@ -5,6 +5,7 @@ local WallImpactShake = require("game.render.WallImpactShake")
 
 local BGM_PATH = "audio/music_1786095252543.ogg"
 local BGM_OPTIONS = { volume = 0.4, fadeIn = 0.45 }
+local TITLE_BACKGROUND_FILL = { 248, 231, 206, 255 }
 
 ---@param context GameContext
 function M.Install(context)
@@ -22,7 +23,15 @@ function M.Install(context)
     local _ENV = context
 
     local function usesMainStage()
-        return screen_ == "catalog" or screen_ == "game" or screen_ == "workshop_preview"
+        return screen_ == "title" or screen_ == "catalog" or screen_ == "game" or screen_ == "workshop_preview"
+    end
+
+    local function FrameForCurrentScreen()
+        local frame = screen_ == "title"
+            and context.design_:Frame(true, 1870, 841)
+            or context.design_:Frame(usesMainStage())
+        if screen_ == "title" then frame.backgroundFill = TITLE_BACKGROUND_FILL end
+        return frame
     end
 
     local function ResolvePhysicsTimeStep(eventData)
@@ -88,10 +97,11 @@ function M.Install(context)
         painter_ = Renderer2D.New()
         -- The catalog uses the same fixed 1880 x 840 stage as gameplay, so its
         -- authored artwork is centered on taller viewports from the first frame.
-        screen_ = "catalog"
-        frame_ = context.design_:Frame(usesMainStage())
+        screen_ = "title"
+        frame_ = FrameForCurrentScreen()
         context.InitializeDialogue()
         context.InitializeAssistDemo()
+        InitializeTitleScreen()
         InitializeGreenAssistant()
         InitializeExperimentCatalog()
         renderer:SetNumViewports(0)
@@ -129,9 +139,13 @@ function M.Install(context)
     function HandleUpdate(_eventType, eventData)
         local dt = eventData:GetFloat("TimeStep")
         context.globalBGM_:Update(dt)
-        frame_ = context.design_:Frame(usesMainStage())
+        frame_ = FrameForCurrentScreen()
         RefreshWorkspaceLayout()
         local pointerFrame = PointerState()
+        if screen_ == "title" then
+            UpdateTitleScreen(dt, pointerFrame)
+            return
+        end
         if screen_ == "catalog" then
             UpdateExperimentCatalog(dt, pointerFrame)
             return
@@ -337,7 +351,7 @@ function M.Install(context)
         physicsStepTimeScale_ = nil
     end
     function HandleScreenMode()
-        frame_ = context.design_:Frame(usesMainStage())
+        frame_ = FrameForCurrentScreen()
         RefreshWorkspaceLayout()
         if screen_ == "workshop" then HandleWorkshopScreenMode() end
     end
@@ -496,7 +510,7 @@ function M.Install(context)
         if not painter_ or not frame_ then return end
         local mainStageActive = usesMainStage()
         if frame_.mainStageActive ~= mainStageActive then
-            frame_ = context.design_:Frame(mainStageActive)
+            frame_ = FrameForCurrentScreen()
             RefreshWorkspaceLayout()
         end
         if screen_ == "workshop" then
@@ -513,6 +527,11 @@ function M.Install(context)
             painter_:Begin(frame_)
             if screen_ == "catalog" then
                 DrawExperimentCatalog()
+                painter_:Finish()
+                return
+            end
+            if screen_ == "title" then
+                DrawTitleScreen()
                 painter_:Finish()
                 return
             end

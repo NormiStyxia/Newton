@@ -62,7 +62,8 @@
 ---@field DrawGreenAssistantOverlay fun()
 ---@field ExecuteCardPlay fun(id: string, candidate: string|nil, x: number, y: number): boolean
 ---@field resultReportState_ table|nil
----@field screen_ "catalog"|"game"|"workshop"|"workshop_preview"
+---@field screen_ "title"|"catalog"|"game"|"workshop"|"workshop_preview"
+---@field titleState_ table
 ---@field runtimeSession_ table|nil
 ---@field catalogState_ table
 ---@field experimentProgress_ table
@@ -255,7 +256,22 @@ function State.New(dependencies, constants)
     context.cardHomeMotions_, context.cardHandReordering_ = {}, false
     context.cardBurns_, context.cardBurnParticles_, context.burningCardIds_ = {}, {}, {}
     context.rulePulse_, context.ruleFlash_, context.ruleDeployCount_ = nil, nil, 0
-    context.screen_ = "catalog"
+    context.screen_ = "title"
+    context.titleState_ = {
+        selectedIndex = 1,
+        focusIndex = 1,
+        hoverIndex = nil,
+        pressedIndex = nil,
+        hoverCharacter = nil,
+        selectionProgress = { 1, 0, 0, 0 },
+        settingsOpen = false,
+        settingsDrag = nil,
+        musicVolume = .4,
+        soundVolume = .55,
+        muted = false,
+        academyIdCardCharacter = nil,
+        academyIdCardElapsed = 0,
+    }
     context.experimentProgress_ = dependencies.ExperimentProgress.New({ json = cjson })
     context.globalBGM_ = dependencies.GlobalBGM.New()
     context.uiAudio_ = dependencies.SynthAudio.New()

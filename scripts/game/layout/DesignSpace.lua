@@ -58,17 +58,19 @@ function DesignSpace:Init(pixelsPerMeter)
     self.cardHandY = resolveCardHandY(DesignSpace.BASE_HEIGHT)
 end
 
-function DesignSpace:UpdateFromGraphics()
+function DesignSpace:UpdateFromGraphics(referenceWidth, referenceHeight)
     local physicalWidth = math.max(1, graphics:GetWidth())
     local physicalHeight = math.max(1, graphics:GetHeight())
     local dpr = graphics.GetDPR and graphics:GetDPR() or 1
     dpr = math.max(1, dpr or 1)
     local systemWidth = physicalWidth / dpr
     local systemHeight = physicalHeight / dpr
+    referenceWidth = tonumber(referenceWidth) or DesignSpace.BASE_WIDTH
+    referenceHeight = tonumber(referenceHeight) or DesignSpace.BASE_HEIGHT
 
-    -- Mode A: preserve the original 1880 x 840 proportions, while allowing
-    -- the source layout to expand on whichever axis the viewport exposes.
-    local scale = math.min(systemWidth / DesignSpace.BASE_WIDTH, systemHeight / DesignSpace.BASE_HEIGHT)
+    -- Mode A: preserve the requested authored proportions and expose any
+    -- remaining viewport area as centered stage padding.
+    local scale = math.min(systemWidth / referenceWidth, systemHeight / referenceHeight)
     scale = math.max(scale, 0.001)
     self.systemLogicalWidth = systemWidth
     self.systemLogicalHeight = systemHeight
@@ -87,13 +89,17 @@ function DesignSpace:UpdateFromGraphics()
 end
 
 ---@param mainStageActive boolean|nil
-function DesignSpace:Frame(mainStageActive)
-    self:UpdateFromGraphics()
+function DesignSpace:Frame(mainStageActive, fixedStageWidth, fixedStageHeight)
+    local requestedWidth = tonumber(fixedStageWidth) or DesignSpace.BASE_WIDTH
+    local requestedHeight = tonumber(fixedStageHeight) or DesignSpace.BASE_HEIGHT
+    self:UpdateFromGraphics(requestedWidth, requestedHeight)
     -- The viewport keeps the full window dimensions. Gameplay uses a fixed
     -- local stage height and one shared translation for rendering and input.
     self.mainStageActive = mainStageActive == true
-    self.stageWidth = self.logicalWidth
-    self.stageHeight = self.mainStageActive and DesignSpace.BASE_HEIGHT or self.logicalHeight
+    self.stageWidth = self.mainStageActive and requestedWidth or self.logicalWidth
+    self.stageHeight = self.mainStageActive and requestedHeight or self.logicalHeight
+    self.stageOffsetX = self.mainStageActive
+        and math.max(0, (self.logicalWidth - self.stageWidth) * 0.5) or 0
     self.stageOffsetY = self.mainStageActive
         and math.max(0, (self.logicalHeight - self.stageHeight) * 0.5) or 0
     local contentHeight = self.stageHeight
@@ -113,7 +119,7 @@ function DesignSpace:Frame(mainStageActive)
         stageY = 0,
         stageWidth = self.stageWidth,
         stageHeight = self.stageHeight,
-        stageOffsetX = 0,
+        stageOffsetX = self.stageOffsetX,
         stageOffsetY = self.stageOffsetY,
         workspaceX = self.workspaceX,
         playfieldX = self.playfieldX,
@@ -130,7 +136,7 @@ function DesignSpace:Frame(mainStageActive)
 end
 
 function DesignSpace:ScreenToLogical(screenX, screenY)
-    return screenX / self.dpr / self.renderScale,
+    return screenX / self.dpr / self.renderScale - self.stageOffsetX,
         screenY / self.dpr / self.renderScale - self.stageOffsetY
 end
 
