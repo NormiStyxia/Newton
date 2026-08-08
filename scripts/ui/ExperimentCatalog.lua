@@ -15,8 +15,8 @@ local sketchDrawing_ = SketchDrawing.New()
 local CATALOG_HEADER = {
     backButton = { x = 108, y = 31, w = 82, h = 82 },
     titleX = 218,
-    titleY = 18,
-    subtitleY = 70,
+    titleCenterY = 60,
+    subtitleCenterY = 97,
 }
 
 -- Catalog-only illustrations are aligned by their main circular silhouette.
@@ -79,8 +79,8 @@ local function resolveCatalogHeader(frame)
             h = source.h,
         },
         titleX = artOffsetX + CATALOG_HEADER.titleX,
-        titleY = CATALOG_HEADER.titleY,
-        subtitleY = CATALOG_HEADER.subtitleY,
+        titleCenterY = CATALOG_HEADER.titleCenterY,
+        subtitleCenterY = CATALOG_HEADER.subtitleCenterY,
     }
 end
 
@@ -226,56 +226,27 @@ local function drawDottedDivider(painter, x, y, w)
     painter:Circle(x + w, y, 2, COLORS.brassSoft, nil, nil, 180)
 end
 
-local function drawCatalogBackButton(painter, rect, hovered, pressed)
+local function drawCatalogBackArrow(painter, rect, hovered, pressed)
     local vg = painter.vg
-    local scale = pressed and .96 or hovered and 1.025 or 1
-    local halfWidth, halfHeight = rect.w * .5, rect.h * .5
-    local borderAlpha = hovered and 255 or 218
-    local fillAlpha = pressed and 150 or hovered and 112 or 82
+    local scale = pressed and .94 or hovered and 1.045 or 1
+    local centerX = rect.x + rect.w * .5
+    local centerY = rect.y + rect.h * .5 + (pressed and 1.5 or 0)
 
     nvgSave(vg)
-    nvgTranslate(vg, rect.x + halfWidth, rect.y + halfHeight)
+    nvgTranslate(vg, centerX, centerY)
     nvgScale(vg, scale, scale)
-
-    nvgBeginPath(vg)
-    nvgRoundedRect(vg, -halfWidth, -halfHeight, rect.w, rect.h, 9)
-    nvgFillColor(vg, nvgRGBA(COLORS.overlay[1], COLORS.overlay[2], COLORS.overlay[3], fillAlpha))
-    nvgFill(vg)
-    nvgStrokeColor(vg, nvgRGBA(COLORS.brassLight[1], COLORS.brassLight[2], COLORS.brassLight[3], borderAlpha))
-    nvgStrokeWidth(vg, hovered and 2.5 or 2)
-    nvgStroke(vg)
-
-    nvgBeginPath(vg)
-    nvgRoundedRect(vg, -halfWidth + 5, -halfHeight + 5, rect.w - 10, rect.h - 10, 6)
-    nvgStrokeColor(vg, nvgRGBA(COLORS.brassSoft[1], COLORS.brassSoft[2], COLORS.brassSoft[3], hovered and 185 or 125))
-    nvgStrokeWidth(vg, 1)
-    nvgStroke(vg)
-
-    for _, corner in ipairs({ { -1, -1 }, { 1, -1 }, { -1, 1 }, { 1, 1 } }) do
-        nvgBeginPath(vg)
-        nvgCircle(vg, corner[1] * (halfWidth - 11), corner[2] * (halfHeight - 11), 2.2)
-        nvgFillColor(vg, nvgRGBA(COLORS.brassLight[1], COLORS.brassLight[2], COLORS.brassLight[3], 205))
-        nvgFill(vg)
-    end
-
-    local function arrowPath()
-        nvgBeginPath(vg)
-        nvgMoveTo(vg, 13, 0)
-        nvgLineTo(vg, -12, 0)
-        nvgMoveTo(vg, -12, 0)
-        nvgLineTo(vg, -2, -10)
-        nvgMoveTo(vg, -12, 0)
-        nvgLineTo(vg, -2, 10)
-    end
     nvgLineCap(vg, NVG_ROUND)
     nvgLineJoin(vg, NVG_ROUND)
-    arrowPath()
-    nvgStrokeColor(vg, nvgRGBA(COLORS.ink[1], COLORS.ink[2], COLORS.ink[3], 205))
-    nvgStrokeWidth(vg, 6)
-    nvgStroke(vg)
-    arrowPath()
-    nvgStrokeColor(vg, nvgRGBA(COLORS.paperLight[1], COLORS.paperLight[2], COLORS.paperLight[3], 255))
-    nvgStrokeWidth(vg, 3.2)
+    nvgBeginPath(vg)
+    nvgMoveTo(vg, 20, 0)
+    nvgLineTo(vg, -18, 0)
+    nvgMoveTo(vg, -18, 0)
+    nvgLineTo(vg, -3, -14)
+    nvgMoveTo(vg, -18, 0)
+    nvgLineTo(vg, -3, 14)
+    local arrowColor = hovered and COLORS.brassLight or COLORS.paperLight
+    nvgStrokeColor(vg, nvgRGBA(arrowColor[1], arrowColor[2], arrowColor[3], pressed and 225 or 255))
+    nvgStrokeWidth(vg, 4.2)
     nvgStroke(vg)
     nvgRestore(vg)
 end
@@ -292,10 +263,12 @@ local function drawCatalogDecor(painter, frame, header, backHovered, backPressed
 
     -- The supplied background already contains the plaque, ruler and botanical
     -- ornaments. Only live catalog copy is painted on top of that artwork.
-    drawCatalogBackButton(painter, header.backButton, backHovered, backPressed)
-    painter:Text(header.titleX, header.titleY, "实验目录", 44, COLORS.paperLight, nil, CATALOG_TITLE_FONT)
-    painter:Text(header.titleX, header.subtitleY, "EXPERIMENT CATALOG", 14,
-        COLORS.brassLight, nil, CATALOG_TITLE_FONT)
+    drawCatalogBackArrow(painter, header.backButton, backHovered, backPressed)
+    local leftMiddle = NVG_ALIGN_LEFT + NVG_ALIGN_MIDDLE
+    painter:Text(header.titleX, header.titleCenterY, "实验目录", 44,
+        COLORS.paperLight, leftMiddle, CATALOG_TITLE_FONT)
+    painter:Text(header.titleX, header.subtitleCenterY, "EXPERIMENT CATALOG", 14,
+        COLORS.brassLight, leftMiddle, CATALOG_TITLE_FONT)
 end
 
 local function drawCatalogForegroundDecor(painter, frame)
