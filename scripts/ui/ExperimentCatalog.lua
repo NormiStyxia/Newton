@@ -487,14 +487,22 @@ local function drawSheetMotionLayer(painter, outerClip, preview, levels, papers,
     nvgRestore(vg)
 end
 
-local function drawPreview(painter, rect, state)
+local function drawPreview(painter, rect, state, entrance)
     local preview = { x = rect.x + 24, y = rect.y + 62, w = rect.w - 48, h = rect.h - 126 }
     local sheetOuterClip = { x = rect.x + 3, y = rect.y + 3, w = rect.w - 6, h = rect.h - 6 }
     local transition = state.transition
     -- Preserve the established withdrawal distance while decoupling it from
     -- the old graph-paper-sized clip rectangle.
-    local papers = transition and transition:GetPreviewPapers(rect.w - 36)
-        or { { index = state.selectedIndex, pose = { offsetX = 0, offsetY = 0, rotation = 0, alpha = 1, scale = 1 } } }
+    local papers
+    if entrance then
+        papers = { {
+            index = state.selectedIndex,
+            pose = CatalogTransition.GetEntrancePaperPose(entrance:GetPaperProgress(), rect.w - 36),
+        } }
+    else
+        papers = transition and transition:GetPreviewPapers(rect.w - 36)
+            or { { index = state.selectedIndex, pose = { offsetX = 0, offsetY = 0, rotation = 0, alpha = 1, scale = 1 } } }
+    end
     local paperAnchor = { x = preview.x + preview.w * .5, y = preview.y - 12 }
     sketchDrawing_:BeginFrame()
     drawSheetMotionLayer(painter, sheetOuterClip, preview, state.levels, papers, paperAnchor)
@@ -536,30 +544,54 @@ local function drawScoreBadge(painter, x, y, score)
     nvgClosePath(painter.vg); nvgStroke(painter.vg)
 end
 
-local function drawBrief(painter, layout, level, state, rules)
+local function beginContentMotion(vg, pose)
+    nvgSave(vg)
+    if pose then nvgTranslate(vg, pose.offsetX or 0, pose.offsetY or 0) end
+    nvgGlobalAlpha(vg, pose and pose.alpha or 1)
+end
+
+local function drawBrief(painter, layout, level, state, rules, entrance)
     local viewport = layout.briefViewport
     local y = viewport.y - state.scroll
     local left, width = viewport.x, viewport.w - 10
     nvgSave(painter.vg)
     nvgScissor(painter.vg, viewport.x, viewport.y, viewport.w, viewport.h)
     if level then
+        local blockPose = function(index)
+            return entrance and entrance:GetReportBlockPose(index) or nil
+        end
         local titleX, titleSize = left, 32
+        beginContentMotion(painter.vg, blockPose(1))
         painter:Text(titleX, y,
             ellipsize(painter, level.name or "未命名实验", width, CATALOG_HEADING_FONT, titleSize),
             titleSize, COLORS.ink, nil, CATALOG_HEADING_FONT)
         y = y + 50
         drawDivider(painter, left, y - 7, width, 100)
         painter:Text(left, y, "实验目的", 17, COLORS.brass, nil, CATALOG_HEADING_FONT)
-        y = y + 26 + drawWrapped(painter, left, y + 25, width, level.objective or "", 21, COLORS.ink, 29, CATALOG_BODY_FONT)
+        local objectiveHeight = drawWrapped(painter, left, y + 25, width, level.objective or "", 21,
+            COLORS.ink, 29, CATALOG_BODY_FONT)
+        nvgRestore(painter.vg)
+        y = y + 26 + objectiveHeight
         y = y + 12
+
+        beginContentMotion(painter.vg, blockPose(2))
         painter:Text(left, y, "实验说明", 17, COLORS.brass, nil, CATALOG_HEADING_FONT)
-        y = y + 26 + drawWrapped(painter, left, y + 25, width, level.description or "暂无说明", 18, COLORS.inkMuted, 26)
+        local descriptionHeight = drawWrapped(painter, left, y + 25, width,
+            level.description or "暂无说明", 18, COLORS.inkMuted, 26)
+        nvgRestore(painter.vg)
+        y = y + 26 + descriptionHeight
         y = y + 12
+
+        beginContentMotion(painter.vg, blockPose(3))
         painter:Text(left, y, "可用规则", 17, COLORS.brass, nil, CATALOG_HEADING_FONT)
         local cards = enabledCardNames(level, rules)
         local cardText = #cards > 0 and table.concat(cards, " · ") or "无需规则干预"
-        y = y + 26 + drawWrapped(painter, left, y + 25, width, cardText, 18, COLORS.ink, 26)
+        local cardHeight = drawWrapped(painter, left, y + 25, width, cardText, 18, COLORS.ink, 26)
+        nvgRestore(painter.vg)
+        y = y + 26 + cardHeight
         y = y + 14
+
+        beginContentMotion(painter.vg, blockPose(4))
         painter:Text(left, y, "评定标准", 17, COLORS.brass, nil, CATALOG_HEADING_FONT)
         y = y + 30
         for _, tier in ipairs(level.scoring and level.scoring.tiers or {}) do
@@ -575,8 +607,11 @@ local function drawBrief(painter, layout, level, state, rules)
             y = y + 14
             drawDivider(painter, left + 46, y - 5, width - 46, 72)
         end
+        nvgRestore(painter.vg)
     else
+        beginContentMotion(painter.vg, entrance and entrance:GetReportBlockPose(1) or nil)
         painter:Text(left, y, "实验数据读取失败", 22, COLORS.button, nil, CATALOG_BODY_FONT)
+        nvgRestore(painter.vg)
         y = y + 40
     end
     nvgRestore(painter.vg)
@@ -585,12 +620,15 @@ local function drawBrief(painter, layout, level, state, rules)
     state.scrollMax = math.max(0, contentHeight - viewport.h + 8)
     state.scroll = clamp(state.scroll, 0, state.scrollMax)
     if state.scrollMax > 0 then
+        local scrollbarPose = entrance and entrance:GetReportBlockPose(4) or nil
+        beginContentMotion(painter.vg, scrollbarPose)
         local track = { x = viewport.x + viewport.w + 4, y = viewport.y, w = 3, h = viewport.h }
         painter:FillRect(track.x, track.y, track.w, track.h, COLORS.borderSoft, 110)
         local thumbHeight = math.max(38, track.h * viewport.h / contentHeight)
         local travel = track.h - thumbHeight
         local thumbY = track.y + travel * state.scroll / state.scrollMax
         painter:FillRect(track.x - 1, thumbY, track.w + 2, thumbHeight, COLORS.border, 220)
+        nvgRestore(painter.vg)
     end
 end
 
@@ -682,6 +720,7 @@ function M.Install(context)
     local Rules = context.Rules
     local catalogState_ = context.catalogState_
     local experimentProgress_ = context.experimentProgress_
+    local navigationTransition_ = context.navigationTransition_
     local _ENV = context
 
     function InitializeExperimentCatalog()
@@ -705,6 +744,18 @@ function M.Install(context)
         state.reportSnapshot, state.reportSnapshotAnimation = nil, 0
         state.reportSnapshotClosing = false
         state.headerBackPressed = false
+    end
+
+    local function resetCatalogForNavigation(selected)
+        catalogState_.selectedIndex = clamp(selected, 1, CONFIG.levelCount)
+        catalogState_.scroll, catalogState_.scrollMax = 0, 0
+        catalogState_.dragStartY, catalogState_.toast = nil, nil
+        catalogState_.reportSnapshot, catalogState_.reportSnapshotAnimation = nil, 0
+        catalogState_.reportSnapshotClosing = false
+        if catalogState_.transition then catalogState_.transition:Reset(catalogState_.selectedIndex) end
+        catalogState_.progressFeedback = experimentProgress_ and experimentProgress_:ConsumeFeedback() or nil
+        catalogState_.progressFeedbackElapsed = 0
+        hudDropdown_ = nil
     end
 
     local function closeReportSnapshot()
@@ -752,17 +803,18 @@ function M.Install(context)
     function RequestReturnToCatalog(preselectIndex, suppressUIClick)
         if screen_ == "workshop_preview" then return ExitWorkshopPreview("navigation") end
         local selected = tonumber(preselectIndex) or levelIndex_ or catalogState_.selectedIndex or 1
+        if screen_ == "title" then
+            if not BeginTitleCatalogExit() then return false end
+            if not navigationTransition_:Start() then return false end
+            resetCatalogForNavigation(selected)
+            screen_ = "title_catalog_transition"
+            if not suppressUIClick then playUIClick() end
+            return true
+        end
         if scene_ or level_ then ReleaseLevelRuntime() end
         screen_ = "catalog"
-        catalogState_.selectedIndex = clamp(selected, 1, CONFIG.levelCount)
-        catalogState_.scroll, catalogState_.scrollMax = 0, 0
-        catalogState_.dragStartY, catalogState_.toast = nil, nil
-        catalogState_.reportSnapshot, catalogState_.reportSnapshotAnimation = nil, 0
-        catalogState_.reportSnapshotClosing = false
-        if catalogState_.transition then catalogState_.transition:Reset(catalogState_.selectedIndex) end
-        catalogState_.progressFeedback = experimentProgress_ and experimentProgress_:ConsumeFeedback() or nil
-        catalogState_.progressFeedbackElapsed = 0
-        hudDropdown_ = nil
+        navigationTransition_:SetCatalogIdle()
+        resetCatalogForNavigation(selected)
         if not suppressUIClick then playUIClick() end
         return true
     end
@@ -770,6 +822,7 @@ function M.Install(context)
     function RequestReturnToTitleScreen(suppressUIClick)
         if scene_ or level_ then ReleaseLevelRuntime() end
         screen_ = "title"
+        navigationTransition_:SetTitleIdle()
         catalogState_.dragStartY, catalogState_.dragStartScroll = nil, 0
         catalogState_.toast, catalogState_.toastTime = nil, 0
         catalogState_.reportSnapshot, catalogState_.reportSnapshotAnimation = nil, 0
@@ -896,10 +949,13 @@ function M.Install(context)
         end
     end
 
-    function DrawExperimentCatalog()
+    function DrawExperimentCatalog(visual)
         local painter, state = painter_, catalogState_
+        local entrance = visual and visual.transition or nil
+        nvgSave(painter.vg)
+        nvgTranslate(painter.vg, visual and visual.rootOffsetX or 0, 0)
         local pointerX, pointerY = DesignPointer()
-        local pointer = { x = pointerX, y = pointerY }
+        local pointer = entrance and { x = -10000, y = -10000 } or { x = pointerX, y = pointerY }
         local header = resolveCatalogHeader(frame_)
         local backHovered = pointIn(header.backButton, pointer.x, pointer.y)
         drawCatalogDecor(painter, frame_, header, backHovered, state.headerBackPressed == true)
@@ -908,6 +964,7 @@ function M.Install(context)
                 COLORS.ink, NVG_ALIGN_CENTER + NVG_ALIGN_MIDDLE, CATALOG_BODY_FONT)
             painter:Text(frame_.logicalWidth * .5, frame_.logicalHeight * .5 + 38, "LANDSCAPE ORIENTATION REQUIRED", 14,
                 COLORS.inkMuted, NVG_ALIGN_CENTER + NVG_ALIGN_MIDDLE, CATALOG_MONO_FONT)
+            nvgRestore(painter.vg)
             return
         end
 
@@ -919,6 +976,11 @@ function M.Install(context)
         drawSectionTitle(painter, layout.left.x + 20, layout.left.y + 20, "实验清单")
         drawSectionTitle(painter, layout.right.x + 20, layout.right.y + 20, "预习报告")
 
+        local listHeight = math.max(0, layout.left.y + layout.left.h - layout.listTop - 8)
+        local listReveal = entrance and entrance:GetListReveal() or 1
+        nvgSave(painter.vg)
+        nvgScissor(painter.vg, layout.left.x + 3, layout.listTop, layout.left.w - 6,
+            math.max(0.01, listHeight * listReveal))
         for index = 1, CONFIG.levelCount do
             local level = state.levels[index]
             local item = { x = layout.left.x + 12, y = layout.listTop + (index - 1) * layout.listItemHeight,
@@ -926,10 +988,19 @@ function M.Install(context)
             local selected = state.selectedIndex == index
             local hovered = pointIn(item, pointer.x, pointer.y)
             if selected then
+                local highlight = entrance and entrance:GetHighlightPose() or { alpha = 1, scaleX = 1 }
+                nvgSave(painter.vg)
+                nvgTranslate(painter.vg, item.x + item.w * .5, 0)
+                nvgScale(painter.vg, highlight.scaleX, 1)
+                nvgTranslate(painter.vg, -(item.x + item.w * .5), 0)
+                nvgGlobalAlpha(painter.vg, highlight.alpha)
                 painter:RoundedRect(item.x + 2, item.y + 2, item.w - 4, item.h - 4, 3, COLORS.selected, COLORS.border, 2)
+                nvgRestore(painter.vg)
             elseif hovered then
                 painter:FillRect(item.x + 3, item.y + 3, item.w - 6, item.h - 6, COLORS.selected, 84)
             end
+            local itemPose = entrance and entrance:GetListItemPose(index) or nil
+            beginContentMotion(painter.vg, itemPose)
             painter:Text(item.x + 13, item.y + item.h * .5, string.format("实验 %02d", index), 18,
                 selected and COLORS.ink or COLORS.inkMuted, NVG_ALIGN_LEFT + NVG_ALIGN_MIDDLE, CATALOG_MONO_FONT)
             local name = level and level.name or "数据不可用"
@@ -941,21 +1012,29 @@ function M.Install(context)
                 ellipsize(painter, name, statusLeft - nameX - 10, CATALOG_HEADING_FONT, 21), 21,
                 level and COLORS.ink or COLORS.button, NVG_ALIGN_LEFT + NVG_ALIGN_MIDDLE, CATALOG_HEADING_FONT)
             drawDottedDivider(painter, item.x + 12, item.y + item.h - 3, item.w - 24)
+            nvgRestore(painter.vg)
         end
+        nvgRestore(painter.vg)
 
         local level = state.levels[state.selectedIndex]
         local reportAvailable = level and experimentProgress_
             and experimentProgress_:HasReportSnapshot(level.levelId) or false
         if reportAvailable then
+            beginContentMotion(painter.vg, entrance and entrance:GetReportBlockPose(1) or nil)
             drawReportSnapshotButton(painter, layout.reportButton,
                 pointIn(layout.reportButton, pointer.x, pointer.y))
+            nvgRestore(painter.vg)
         end
-        drawPreview(painter, layout.center, state)
-        drawBrief(painter, layout, level, state, Rules)
+        drawPreview(painter, layout.center, state, entrance)
+        drawBrief(painter, layout, level, state, Rules, entrance)
         local actionsEnabled = not state.transition or state.transition:IsSettled()
         local startEnabled = level ~= nil and actionsEnabled
+        beginContentMotion(painter.vg, entrance and entrance:GetButtonPose(1) or nil)
         drawButton(painter, layout.startButton, "开始实验", true, pointIn(layout.startButton, pointer.x, pointer.y), startEnabled)
+        nvgRestore(painter.vg)
+        beginContentMotion(painter.vg, entrance and entrance:GetButtonPose(2) or nil)
         drawButton(painter, layout.workshopButton, "实验工坊", false, pointIn(layout.workshopButton, pointer.x, pointer.y), actionsEnabled)
+        nvgRestore(painter.vg)
 
         if state.toast then
             local width = math.max(250, textWidth(painter, state.toast, CATALOG_BODY_FONT, 18) + 50)
@@ -968,6 +1047,7 @@ function M.Install(context)
         if state.reportSnapshot and DrawCatalogReportSnapshot then
             DrawCatalogReportSnapshot(state.reportSnapshot, state.reportSnapshotAnimation)
         end
+        nvgRestore(painter.vg)
     end
 end
 

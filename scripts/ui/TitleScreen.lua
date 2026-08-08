@@ -24,6 +24,7 @@ local OVERLAY_FILL = { 250, 239, 216, 246 }
 local MENU_TRANSITION_SECONDS = .14
 local CHARACTER_HOVER_SECONDS = .14
 local DEGREES_TO_RADIANS = math.pi / 180
+local TITLE_EXIT_PIVOT = { x = 602, y = 201 }
 
 -- Cropped source layers keep these original 1870 x 841 canvas positions.  The
 -- small padding in the files is intentional: it preserves antialiased edges
@@ -274,21 +275,23 @@ local function characterIdleTransform(node, elapsed)
     return 0, 0, 1
 end
 
-local function drawCharacterNode(painter, art, node, state)
+local function drawCharacterNode(painter, art, node, state, exitPose)
     local elapsed = state.animationElapsed or 0
     local idleOffsetY, idleRotation, idleScale = characterIdleTransform(node, elapsed)
-    local hoverAmount = smoothStep((state.characterHoverProgress or {})[node.id] or 0)
+    local hoverAmount = exitPose and 0 or smoothStep((state.characterHoverProgress or {})[node.id] or 0)
     local interactionScale = 1 + .025 * hoverAmount
     local finalScale = (node.baseScale or 1) * idleScale * interactionScale
+        * (exitPose and exitPose.scale or 1)
     local pivotX = node.base.x + node.base.w * node.pivotX
     local pivotY = node.base.y + node.base.h * node.pivotY
-    beginVisualTransform(painter.vg, pivotX, pivotY, 0, idleOffsetY,
-        (node.baseRotation or 0) + idleRotation, finalScale)
+    beginVisualTransform(painter.vg, pivotX, pivotY, exitPose and exitPose.offsetX or 0, idleOffsetY,
+        (node.baseRotation or 0) + idleRotation + (exitPose and exitPose.rotation or 0), finalScale)
     if hoverAmount > .001 then
         image(painter, art.characterHover[node.hoverKey], node.outline.x, node.outline.y,
             node.outline.w, node.outline.h, hoverAmount)
     end
-    image(painter, art.characters[node.key], node.base.x, node.base.y, node.base.w, node.base.h)
+    local alpha = math.floor(255 * (exitPose and exitPose.alpha or 1) + .5)
+    image(painter, art.characters[node.key], node.base.x, node.base.y, node.base.w, node.base.h, alpha)
     nvgRestore(painter.vg)
 end
 
@@ -607,12 +610,25 @@ local function drawTitleMenu(painter, state)
         "（戳左边四个有角色介绍）", 16 * MENU.scale, TIP_COLOR, nil, "maker-body")
 end
 
-local function drawTitleContent(painter, art, state, excludedCharacterId)
+local function drawTitleContent(painter, art, state, excludedCharacterId, entrance)
+    local titleExitPose = entrance and entrance:GetTitlePose() or nil
+    if titleExitPose then
+        nvgSave(painter.vg)
+        nvgTranslate(painter.vg, TITLE_EXIT_PIVOT.x, TITLE_EXIT_PIVOT.y)
+        local titleScale = math.max(0.001, titleExitPose.scale)
+        nvgScale(painter.vg, titleScale, titleScale)
+        nvgTranslate(painter.vg, -TITLE_EXIT_PIVOT.x, -TITLE_EXIT_PIVOT.y)
+        nvgGlobalAlpha(painter.vg, titleExitPose.alpha)
+    end
     for _, node in ipairs(TITLE_NODES) do
         drawTitleNode(painter, art.title[node.key], node, state.animationElapsed or 0)
     end
-    for _, node in ipairs(CHARACTER_NODES) do
-        if node.id ~= excludedCharacterId then drawCharacterNode(painter, art, node, state) end
+    if titleExitPose then nvgRestore(painter.vg) end
+    for index, node in ipairs(CHARACTER_NODES) do
+        if node.id ~= excludedCharacterId then
+            local characterExitPose = entrance and entrance:GetCharacterPose(index) or nil
+            drawCharacterNode(painter, art, node, state, characterExitPose)
+        end
     end
     drawTitleMenu(painter, state)
 end
@@ -628,13 +644,13 @@ end
 local function activateMenu(state, context, index)
     if index == 1 then
         context.playUIClick()
-        return context.RequestReturnToCatalog(1)
+        return context.RequestReturnToCatalog(1, true)
     elseif index == 2 then
         context.playUIClick()
         local catalogState = context.catalogState_
         local level = catalogState and catalogState.levels and catalogState.levels[1]
         if level and context.RequestEnterWorkshop then return context.RequestEnterWorkshop(level.levelId) end
-        return context.RequestReturnToCatalog(1)
+        return context.RequestReturnToCatalog(1, true)
     elseif index == 3 then
         context.playUIClick()
         state.settingsOpen = true
@@ -680,6 +696,14 @@ function M.Install(context)
         setMusicVolume(state, context, state.musicVolume)
         setSoundVolume(state, context, state.soundVolume)
         setMuted(state, context, state.muted)
+    end
+
+    function BeginTitleCatalogExit()
+        if state.profileMode ~= PROFILE_MODE.TITLE_IDLE or state.settingsOpen then return false end
+        state.hoverIndex = nil
+        state.hoverCharacter = nil
+        state.pressedIndex = nil
+        return true
     end
 
     function openAcademyIdCard(characterId)
@@ -869,22 +893,26 @@ function M.Install(context)
             NVG_ALIGN_LEFT + NVG_ALIGN_MIDDLE, "maker-body")
     end
 
-    function DrawTitleScreen()
+    function DrawTitleScreen(visual)
         if not painter_ or not frame_ then return end
         local art = painter_.images and painter_.images.ui and painter_.images.ui.titleScreen
         if not art then return end
+        nvgSave(painter_.vg)
+        nvgTranslate(painter_.vg, visual and visual.rootOffsetX or 0, 0)
         local offsetX = SOURCE_OFFSET_X
         image(painter_, art.background, offsetX, 0, 1870, 841)
         if state.profileMode == PROFILE_MODE.TITLE_IDLE then
-            drawTitleContent(painter_, art, state, nil)
+            drawTitleContent(painter_, art, state, nil, visual and visual.transition or nil)
             if state.settingsOpen then drawSettings(painter_) end
+            nvgRestore(painter_.vg)
             return
         end
 
         local plateProgress = profilePlateProgress(state)
-        if plateProgress < .999 then drawTitleContent(painter_, art, state, PROFILE.characterId) end
+        if plateProgress < .999 then drawTitleContent(painter_, art, state, PROFILE.characterId, nil) end
         painter_:FillRect(0, 0, 1870, 841, PROFILE.plateColor, math.floor(255 * plateProgress + .5))
         drawProfileScene(painter_, art, state)
+        nvgRestore(painter_.vg)
     end
 end
 

@@ -21,6 +21,7 @@
 ---@field ReplayMode any
 ---@field PhaseWallEffects any
 ---@field ExperimentProgress any
+---@field CatalogTransition any
 ---@field CONFIG table
 ---@field CARD_DESIGN_WIDTH number
 ---@field CARD_DESIGN_HEIGHT number
@@ -62,8 +63,9 @@
 ---@field DrawGreenAssistantOverlay fun()
 ---@field ExecuteCardPlay fun(id: string, candidate: string|nil, x: number, y: number): boolean
 ---@field resultReportState_ table|nil
----@field screen_ "title"|"catalog"|"game"|"workshop"|"workshop_preview"
+---@field screen_ "title"|"title_catalog_transition"|"catalog"|"game"|"workshop"|"workshop_preview"
 ---@field titleState_ table
+---@field navigationTransition_ table
 ---@field runtimeSession_ table|nil
 ---@field catalogState_ table
 ---@field experimentProgress_ table
@@ -130,7 +132,7 @@ own("report", {
     "resultReportAnimation_", "resultReportClosing_",
 })
 own("navigation", {
-    "screen_", "catalogState_", "hudRuleSummary_", "hudRuleList_", "hudObjectiveText_",
+    "screen_", "navigationTransition_", "catalogState_", "hudRuleSummary_", "hudRuleList_", "hudObjectiveText_",
     "hudExpectedScore_", "hudInterventionCount_", "hudDropdown_", "hudEscapeConsumed_",
 })
 own("progress", { "experimentProgress_" })
@@ -257,6 +259,9 @@ function State.New(dependencies, constants)
     context.cardBurns_, context.cardBurnParticles_, context.burningCardIds_ = {}, {}, {}
     context.rulePulse_, context.ruleFlash_, context.ruleDeployCount_ = nil, nil, 0
     context.screen_ = "title"
+    local catalogTransition = dependencies.CatalogTransition
+        or require("ui.ExperimentCatalogTransition")
+    context.navigationTransition_ = catalogTransition.NewEntrance()
     context.titleState_ = {
         selectedIndex = 1,
         focusIndex = 1,

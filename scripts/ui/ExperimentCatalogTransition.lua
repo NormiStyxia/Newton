@@ -1,6 +1,12 @@
 local Transition = {}
 Transition.__index = Transition
 
+---@class CatalogEntranceTransition
+---@field state string
+---@field elapsed number
+local Entrance = {}
+Entrance.__index = Entrance
+
 Transition.State = {
     IDLE = "IDLE",
     PREPARING = "PREPARING",
@@ -19,6 +25,37 @@ local LIFT_OFFSET_Y = -7
 local LIFT_SCALE = 1.022
 local MAX_PIVOT_ANGLE = math.rad(3.2)
 local EXTRA_WITHDRAW_ANGLE = math.rad(3.0)
+local ENTRANCE_SETTLE_ANGLE = math.rad(-0.75)
+
+Transition.EntranceState = {
+    TITLE_IDLE = "TITLE_IDLE",
+    TITLE_TO_CATALOG = "TITLE_TO_CATALOG",
+    CATALOG_ENTER = "CATALOG_ENTER",
+    CATALOG_IDLE = "CATALOG_IDLE",
+}
+
+Transition.EntranceTimeline = {
+    titleRootEnd = 0.58,
+    catalogRootEnd = 0.60,
+    titleEnd = 0.38,
+    characterDuration = 0.32,
+    characterStagger = 0.03,
+    listStart = 0.66,
+    listDuration = 0.40,
+    listItemDuration = 0.15,
+    listItemStagger = 0.032,
+    paperStart = 0.68,
+    paperDuration = 0.43,
+    reportStart = 0.70,
+    reportDuration = 0.19,
+    reportStagger = 0.05,
+    highlightStart = 1.03,
+    highlightDuration = 0.11,
+    buttonStart = 1.00,
+    buttonDuration = 0.16,
+    buttonStagger = 0.04,
+    total = 1.20,
+}
 
 local function clamp(value, minimum, maximum)
     return math.max(minimum, math.min(maximum, value))
@@ -27,6 +64,162 @@ end
 local function easeOutCubic(value)
     value = clamp(value or 0, 0, 1)
     return 1 - (1 - value) ^ 3
+end
+
+local function easeInOutCubic(value)
+    value = clamp(value or 0, 0, 1)
+    if value < 0.5 then return 4 * value * value * value end
+    return 1 - ((-2 * value + 2) ^ 3) * 0.5
+end
+
+local function progress(elapsed, startTime, duration)
+    return clamp(((elapsed or 0) - startTime) / math.max(0.001, duration), 0, 1)
+end
+
+local function lerp(from, to, amount)
+    return from + (to - from) * clamp(amount or 0, 0, 1)
+end
+
+function Entrance.New()
+    local self = setmetatable({}, Entrance)
+    self:Init()
+    return self
+end
+
+function Entrance:Init()
+    self.state = Transition.EntranceState.TITLE_IDLE
+    self.elapsed = 0.0
+end
+
+function Entrance:Start()
+    if self.state ~= Transition.EntranceState.TITLE_IDLE then return false end
+    self.state = Transition.EntranceState.TITLE_TO_CATALOG
+    self.elapsed = 0.0
+    return true
+end
+
+function Entrance:SetTitleIdle()
+    self.state = Transition.EntranceState.TITLE_IDLE
+    self.elapsed = 0.0
+end
+
+function Entrance:SetCatalogIdle()
+    self.state = Transition.EntranceState.CATALOG_IDLE
+    self.elapsed = Transition.EntranceTimeline.total
+end
+
+function Entrance:Update(dt)
+    if self.state ~= Transition.EntranceState.TITLE_TO_CATALOG
+        and self.state ~= Transition.EntranceState.CATALOG_ENTER then return false end
+    self.elapsed = math.min(Transition.EntranceTimeline.total,
+        self.elapsed + math.max(0, tonumber(dt) or 0))
+    if self.elapsed >= Transition.EntranceTimeline.total then
+        self:SetCatalogIdle()
+        return true
+    end
+    if self.elapsed >= Transition.EntranceTimeline.catalogRootEnd then
+        self.state = Transition.EntranceState.CATALOG_ENTER
+    end
+    return false
+end
+
+function Entrance:IsInputLocked()
+    return self.state == Transition.EntranceState.TITLE_TO_CATALOG
+        or self.state == Transition.EntranceState.CATALOG_ENTER
+end
+
+function Entrance:GetRootOffsets(designWidth)
+    local width = math.max(1, tonumber(designWidth) or 1)
+    local titleProgress = easeInOutCubic(progress(self.elapsed, 0, Transition.EntranceTimeline.titleRootEnd))
+    local catalogProgress = easeInOutCubic(progress(self.elapsed, 0, Transition.EntranceTimeline.catalogRootEnd))
+    return -width * titleProgress, width * (1 - catalogProgress)
+end
+
+function Entrance:GetTitlePose()
+    local timeline = Transition.EntranceTimeline
+    local scale
+    if self.elapsed < 0.27 then
+        scale = lerp(1, 0.65, easeInOutCubic(progress(self.elapsed, 0, 0.27)))
+    else
+        scale = lerp(0.65, 0, easeInOutCubic(progress(self.elapsed, 0.27, timeline.titleEnd - 0.27)))
+    end
+    local alpha = 1 - easeOutCubic(progress(self.elapsed, 0.28, timeline.titleEnd - 0.28))
+    return { scale = scale, alpha = alpha }
+end
+
+function Entrance:GetCharacterPose(index)
+    local timeline = Transition.EntranceTimeline
+    local delay = math.max(0, (tonumber(index) or 1) - 1) * timeline.characterStagger
+    local amount = easeInOutCubic(progress(self.elapsed, delay, timeline.characterDuration))
+    return {
+        offsetX = -48 * amount,
+        rotation = -90 * amount,
+        scale = 1 - 0.05 * amount,
+        alpha = 1 - easeOutCubic(amount),
+    }
+end
+
+function Entrance:GetListReveal()
+    local timeline = Transition.EntranceTimeline
+    return easeOutCubic(progress(self.elapsed, timeline.listStart, timeline.listDuration))
+end
+
+function Entrance:GetListItemPose(index)
+    local timeline = Transition.EntranceTimeline
+    local startTime = timeline.listStart + math.max(0, (tonumber(index) or 1) - 1) * timeline.listItemStagger
+    local amount = easeOutCubic(progress(self.elapsed, startTime, timeline.listItemDuration))
+    return { offsetY = -8 * (1 - amount), alpha = amount }
+end
+
+function Entrance:GetHighlightPose()
+    local timeline = Transition.EntranceTimeline
+    local amount = easeOutCubic(progress(self.elapsed, timeline.highlightStart, timeline.highlightDuration))
+    return { scaleX = lerp(0.96, 1, amount), alpha = amount }
+end
+
+function Entrance:GetPaperProgress()
+    local timeline = Transition.EntranceTimeline
+    return progress(self.elapsed, timeline.paperStart, timeline.paperDuration)
+end
+
+function Entrance:GetReportBlockPose(index)
+    local timeline = Transition.EntranceTimeline
+    local startTime = timeline.reportStart + math.max(0, (tonumber(index) or 1) - 1) * timeline.reportStagger
+    local amount = easeOutCubic(progress(self.elapsed, startTime, timeline.reportDuration))
+    return { offsetX = 22 * (1 - amount), alpha = amount }
+end
+
+function Entrance:GetButtonPose(index)
+    local timeline = Transition.EntranceTimeline
+    local startTime = timeline.buttonStart + math.max(0, (tonumber(index) or 1) - 1) * timeline.buttonStagger
+    local amount = easeOutCubic(progress(self.elapsed, startTime, timeline.buttonDuration))
+    return { offsetY = 10 * (1 - amount), alpha = amount }
+end
+
+function Transition.NewEntrance()
+    return Entrance.New()
+end
+
+-- The catalog entrance samples the same top-hinge pose used by page changes.
+-- Only the travel span is shortened so the incoming sheet reads as a placed
+-- archive page rather than a second level-selection transition.
+function Transition.GetEntrancePaperPose(amount, viewportWidth)
+    local t = clamp(amount or 0, 0, 1)
+    local mainEnd = 0.84
+    local motion = 1 - easeOutCubic(t / mainEnd)
+    local correction = easeOutCubic((t - mainEnd) / (1 - mainEnd))
+    local angle = t < mainEnd
+        and lerp(MAX_PIVOT_ANGLE, ENTRANCE_SETTLE_ANGLE, easeOutCubic(t / mainEnd))
+        or lerp(ENTRANCE_SETTLE_ANGLE, 0, correction)
+    local span = clamp((tonumber(viewportWidth) or 1) * 0.15, 80, 130)
+    return {
+        offsetX = span * motion,
+        offsetY = (LIFT_OFFSET_Y - 50) * motion,
+        rotation = angle,
+        scale = 1 + (LIFT_SCALE - 1) * motion,
+        alpha = 1,
+        shadow = motion,
+    }
 end
 
 local function easeWithdraw(value)

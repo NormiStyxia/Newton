@@ -19,11 +19,13 @@ function M.Install(context)
     local CONFIG = context.CONFIG
     local CARD_RENDER_WIDTH = context.CARD_RENDER_WIDTH
     local CARD_RENDER_HEIGHT = context.CARD_RENDER_HEIGHT
+    local navigationTransition_ = context.navigationTransition_
     local lastValidPhysicsTimeStep = 1 / 60
     local _ENV = context
 
     local function usesMainStage()
-        return screen_ == "title" or screen_ == "catalog" or screen_ == "game" or screen_ == "workshop_preview"
+        return screen_ == "title" or screen_ == "title_catalog_transition" or screen_ == "catalog"
+            or screen_ == "game" or screen_ == "workshop_preview"
     end
 
     local function FrameForCurrentScreen()
@@ -142,6 +144,10 @@ function M.Install(context)
         frame_ = FrameForCurrentScreen()
         RefreshWorkspaceLayout()
         local pointerFrame = PointerState()
+        if screen_ == "title_catalog_transition" then
+            if navigationTransition_:Update(dt) then screen_ = "catalog" end
+            return
+        end
         if screen_ == "title" then
             UpdateTitleScreen(dt, pointerFrame)
             return
@@ -517,6 +523,18 @@ function M.Install(context)
             local ok, err = pcall(function()
                 painter_:Begin(frame_)
                 DrawLevelWorkshop()
+                painter_:Finish()
+            end)
+            if not ok then error(err) end
+            return
+        end
+        if screen_ == "title_catalog_transition" then
+            local ok, err = pcall(function()
+                painter_:Begin(frame_)
+                local designWidth = frame_.stageWidth or frame_.logicalWidth
+                local titleOffset, catalogOffset = navigationTransition_:GetRootOffsets(designWidth)
+                DrawExperimentCatalog({ rootOffsetX = catalogOffset, transition = navigationTransition_ })
+                DrawTitleScreen({ rootOffsetX = titleOffset, transition = navigationTransition_ })
                 painter_:Finish()
             end)
             if not ok then error(err) end
