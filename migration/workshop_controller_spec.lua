@@ -152,6 +152,7 @@ context.StartRuntimeSessionFromDocument = function(document, options)
     return { sourceKind = options.sourceKind, screen = options.screen }
 end
 
+context.screen_ = "catalog"
 expect(context.OpenLevelWorkshop("level_01"), "catalog entry did not open workshop")
 local workshop = context.workshopState_
 
@@ -286,6 +287,29 @@ end
 expect(context.screen_ == "workshop" and workshop.entryId == "official:level_01",
     "official entry selection mismatch")
 expect(workshop.readOnly and #workshop.entries == 2, "official repository was not read-only or complete")
+
+local titleRouteContext = newTestContext(context.frame_)
+expect(titleRouteContext.OpenLevelWorkshop("level_01")
+    and titleRouteContext.workshopState_.returnScreen == "title",
+    "title entry did not remember the title return route")
+input.pressedKey = KEY_ESCAPE
+updateWorkshop(titleRouteContext)
+expect(titleRouteContext.screen_ == "title",
+    "clean workshop exit did not return to the title source")
+
+local dirtyTitleRouteContext = newTestContext(context.frame_)
+expect(dirtyTitleRouteContext.OpenLevelWorkshop("level_01"),
+    "dirty title-route workshop setup failed")
+dirtyTitleRouteContext.workshopState_.dirty = true
+input.pressedKey = KEY_ESCAPE
+updateWorkshop(dirtyTitleRouteContext)
+expect(dirtyTitleRouteContext.screen_ == "workshop"
+    and dirtyTitleRouteContext.workshopState_.modal
+    and dirtyTitleRouteContext.workshopState_.modal.targetExit,
+    "dirty title-route exit did not wait for a decision")
+dirtyTitleRouteContext.WorkshopResolveModal("discard")
+expect(dirtyTitleRouteContext.screen_ == "title",
+    "dirty workshop exit did not return to the title source")
 
 expect(context.WorkshopCopyCurrent(), "official level copy failed")
 expect(not workshop.readOnly and workshop.document.levelId == "custom_001" and workshop.dirty,

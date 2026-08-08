@@ -304,6 +304,7 @@ function State.New(dependencies, constants)
     }
     context.workshopState_ = {
         initialized = false,
+        returnScreen = "catalog",
         elapsed = 0,
         autoSaveDelay = 1.0,
         autoSaveDue = nil,

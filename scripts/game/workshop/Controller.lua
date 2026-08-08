@@ -174,16 +174,18 @@ function M.Install(context)
         InitializeLevelWorkshop()
         if scene_ or level_ then ReleaseLevelRuntime() end
         renderer:SetNumViewports(0)
+        local current = state()
+        current.returnScreen = screen_ == "title" and "title" or "catalog"
         screen_ = "workshop"
-        state().canvasTool = "pan"
+        current.canvasTool = "pan"
         local entryId = selectedLevelId and ("official:" .. selectedLevelId) or nil
-        if not entryId or not state().repository:GetEntry(entryId) then
-            entryId = state().entries[1] and state().entries[1].entryId or nil
+        if not entryId or not current.repository:GetEntry(entryId) then
+            entryId = current.entries[1] and current.entries[1].entryId or nil
         end
         if not entryId then toast("没有可用关卡"); return false end
         openEntryNow(entryId)
-        if #state().initializationErrors > 0 then
-            toast("部分关卡未载入：" .. state().initializationErrors[1], 5)
+        if #current.initializationErrors > 0 then
+            toast("部分关卡未载入：" .. current.initializationErrors[1], 5)
         end
         return true
     end
@@ -455,6 +457,15 @@ function M.Install(context)
         current.status = reason == "complete" and "预览已完成 · 编辑数据未被运行状态污染" or "已退出预览并恢复编辑快照"
         return true
     end
+    local function finishWorkshopExit()
+        local current = state()
+        screen_ = current.returnScreen == "title" and "title" or "catalog"
+        renderer:SetNumViewports(0)
+        Selection.Clear(current)
+        current.canvasTool = "pan"
+        current.modal, current.textEdit, current.transaction = nil, nil, nil
+        return true
+    end
     local function leaveWorkshop()
         local current = state()
         if current.dirty then
@@ -463,12 +474,7 @@ function M.Install(context)
             rebuildUI()
             return false
         end
-        screen_ = "catalog"
-        renderer:SetNumViewports(0)
-        Selection.Clear(current)
-        current.canvasTool = "pan"
-        current.modal, current.textEdit, current.transaction = nil, nil, nil
-        return true
+        return finishWorkshopExit()
     end
     local function finishDirtyAction(action)
         local current = state()
@@ -486,9 +492,7 @@ function M.Install(context)
         local target, targetExit = modal.targetEntryId, modal.targetExit
         current.modal = nil
         if targetExit then
-            Selection.Clear(current)
-            current.canvasTool = "pan"
-            screen_ = "catalog"; renderer:SetNumViewports(0)
+            finishWorkshopExit()
         elseif target then
             openEntryNow(target, { skipRecovery = action == "discard" })
         end
