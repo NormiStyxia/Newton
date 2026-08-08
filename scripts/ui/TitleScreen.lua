@@ -30,19 +30,19 @@ local DEGREES_TO_RADIANS = math.pi / 180
 local TITLE_NODES = {
     { key = "bu", baseX = 148, baseY = 94, w = 216, h = 189, baseRotation = 0, baseScale = 1,
         pivotX = .50, pivotY = .58,
-        idle = { poseA = -4, poseB = 2, holdA = .86, holdB = .72, transition = .08, initialOffset = 0 } },
+        idle = { poseA = -2, poseB = 1.2, holdA = .46, holdB = .38, transition = .07, initialOffset = 0 } },
     { key = "jing", baseX = 357, baseY = 87, w = 187, h = 197, baseRotation = 0, baseScale = 1,
         pivotX = .51, pivotY = .57,
-        idle = { poseA = 3, poseB = -3, holdA = .68, holdB = .94, transition = .075, initialOffset = .31 } },
+        idle = { poseA = 1.6, poseB = -1.8, holdA = .36, holdB = .52, transition = .065, initialOffset = .21 } },
     { key = "dian", baseX = 530, baseY = 76, w = 207, h = 206, baseRotation = 0, baseScale = 1,
         pivotX = .49, pivotY = .59,
-        idle = { poseA = -2, poseB = 4, holdA = 1.02, holdB = .78, transition = .09, initialOffset = .67 } },
+        idle = { poseA = -1.2, poseB = 2, holdA = .56, holdB = .42, transition = .075, initialOffset = .47 } },
     { key = "li", baseX = 683, baseY = 93, w = 188, h = 232, baseRotation = 0, baseScale = 1,
         pivotX = .50, pivotY = .60,
-        idle = { poseA = 4, poseB = -2, holdA = .81, holdB = 1.06, transition = .07, initialOffset = .18 } },
+        idle = { poseA = 2, poseB = -1, holdA = .44, holdB = .62, transition = .06, initialOffset = .13 } },
     { key = "xue", baseX = 858, baseY = 76, w = 197, h = 216, baseRotation = 0, baseScale = 1,
         pivotX = .51, pivotY = .58,
-        idle = { poseA = -3, poseB = 3, holdA = .73, holdB = .91, transition = .08, initialOffset = .83 } },
+        idle = { poseA = -1.6, poseB = 1.6, holdA = .40, holdB = .50, transition = .07, initialOffset = .61 } },
 }
 
 local CHARACTER_NODES = {
