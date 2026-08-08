@@ -123,6 +123,8 @@ function M.Install(context)
         RestoreAppleContactMaterial()
         if InitializeMechanisms then InitializeMechanisms() end
         SetGravity()
+        -- SetGravity reevaluates buttons, so snap doors only after final targets settle.
+        if SnapDoorsToTargets then SnapDoorsToTargets() end
         SyncPhysicsUpdateEnabled()
         SetStatus("READY · 等待发射")
     end

@@ -13,6 +13,13 @@ function M.Install(context)
         if object.openDirection == "LEFT" then return -distance, 0 end
         return distance, 0
     end
+    local function ApplyDoorPose(object)
+        local ox, oy = DoorOpenVector(object)
+        object.node:SetPosition2D(
+            object.worldX + ox * object.openness,
+            object.worldY + oy * object.openness
+        )
+    end
     function DoorBlockedByApple(object)
         if not apple_ then return false end
         local openX, openY = DoorOpenVector(object)
@@ -96,6 +103,17 @@ function M.Install(context)
             if object.type == "button" then EmitChannelSignal(object.channelId, object.active, object.id) end
         end
     end
+    function SnapDoorsToTargets()
+        if not runtime_ then return end
+        for _, object in ipairs(runtime_.ordered) do
+            if object.type == "door" then
+                object.openness = object.targetOpen and 1 or 0
+                object.state = object.targetOpen and "OPEN" or "CLOSED"
+                object.closeAt = 0
+                ApplyDoorPose(object)
+            end
+        end
+    end
     function UpdateDoors(dt)
         if not runtime_ then return end
         for _, object in ipairs(runtime_.ordered) do
@@ -113,8 +131,7 @@ function M.Install(context)
                         if object.openness == 0 then object.state = "CLOSED" end
                     end
                 end
-                local ox, oy = DoorOpenVector(object)
-                object.node:SetPosition2D(object.worldX + ox * object.openness, object.worldY + oy * object.openness)
+                ApplyDoorPose(object)
             end
         end
     end
