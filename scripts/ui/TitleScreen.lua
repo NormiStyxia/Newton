@@ -20,27 +20,56 @@ local MENU_MUTED = { 91, 111, 81, 225 }
 local MENU_ACCENT = { 164, 139, 76, 255 }
 local TIP_COLOR = { 77, 96, 72, 180 }
 local OVERLAY_FILL = { 250, 239, 216, 246 }
+local MENU_TRANSITION_SECONDS = .14
+local CHARACTER_HOVER_SECONDS = .14
+local DEGREES_TO_RADIANS = math.pi / 180
 
 -- Cropped source layers keep these original 1870 x 841 canvas positions.  The
 -- small padding in the files is intentional: it preserves antialiased edges
 -- without paying for the original transparent canvas around each layer.
-local TITLE_LAYERS = {
-    { key = "bu", x = 148, y = 94, w = 216, h = 189 },
-    { key = "jing", x = 357, y = 87, w = 187, h = 197 },
-    { key = "dian", x = 530, y = 76, w = 207, h = 206 },
-    { key = "li", x = 683, y = 93, w = 188, h = 232 },
-    { key = "xue", x = 858, y = 76, w = 197, h = 216 },
+local TITLE_NODES = {
+    { key = "bu", baseX = 148, baseY = 94, w = 216, h = 189, baseRotation = 0, baseScale = 1,
+        pivotX = .50, pivotY = .58,
+        idle = { from = -.8, to = .6, duration = 1.8, delay = 0, phase = .03 } },
+    { key = "jing", baseX = 357, baseY = 87, w = 187, h = 197, baseRotation = 0, baseScale = 1,
+        pivotX = .51, pivotY = .57,
+        idle = { from = .4, to = -1.0, duration = 2.1, delay = .17, phase = .41 } },
+    { key = "dian", baseX = 530, baseY = 76, w = 207, h = 206, baseRotation = 0, baseScale = 1,
+        pivotX = .49, pivotY = .59,
+        idle = { from = -.5, to = .8, duration = 1.6, delay = .31, phase = .78 } },
+    { key = "li", baseX = 683, baseY = 93, w = 188, h = 232, baseRotation = 0, baseScale = 1,
+        pivotX = .50, pivotY = .60,
+        idle = { from = .7, to = -.6, duration = 2.3, delay = .08, phase = .26 } },
+    { key = "xue", baseX = 858, baseY = 76, w = 197, h = 216, baseRotation = 0, baseScale = 1,
+        pivotX = .51, pivotY = .58,
+        idle = { from = -.4, to = 1.0, duration = 1.9, delay = .43, phase = .92 } },
 }
 
-local CHARACTER_LAYERS = {
-    { id = "left1", key = "left1", hoverKey = "left1", x = 248, y = 291, w = 304, h = 489,
-        hit = { x = 228, y = 268, w = 345, h = 535 } },
-    { id = "left2", key = "left2", hoverKey = "left2", x = 530, y = 336, w = 216, h = 438,
-        hit = { x = 510, y = 313, w = 256, h = 485 } },
-    { id = "right2", key = "right2", hoverKey = "right2", x = 760, y = 305, w = 219, h = 475,
-        hit = { x = 740, y = 282, w = 259, h = 520 } },
-    { id = "right1", key = "right1", hoverKey = "right1", x = 974, y = 315, w = 272, h = 465,
-        hit = { x = 954, y = 292, w = 312, h = 510 } },
+local CHARACTER_NODES = {
+    { id = "green_archive", key = "left1", hoverKey = "left1",
+        base = { x = 248, y = 291, w = 304, h = 489 },
+        outline = { x = 275, y = 275, w = 273, h = 517 },
+        baseRotation = 0, baseScale = 1, pivotX = .5, pivotY = .985,
+        hit = { x = 228, y = 268, w = 345, h = 535 },
+        idle = { kind = "rotation", from = -.8, to = .8, duration = 2.3, delay = .12, phase = .15 } },
+    { id = "nomi", key = "left2", hoverKey = "left2",
+        base = { x = 530, y = 336, w = 216, h = 438 },
+        outline = { x = 522, y = 320, w = 236, h = 467 },
+        baseRotation = 0, baseScale = 1, pivotX = .5, pivotY = .99,
+        hit = { x = 510, y = 313, w = 256, h = 485 },
+        idle = { kind = "offsetY", from = 0, to = -3, duration = 1.6, delay = .24, phase = .58 } },
+    { id = "newton", key = "right2", hoverKey = "right2",
+        base = { x = 760, y = 305, w = 219, h = 475 },
+        outline = { x = 745, y = 295, w = 246, h = 494 },
+        baseRotation = 0, baseScale = 1, pivotX = .5, pivotY = .99,
+        hit = { x = 740, y = 282, w = 259, h = 520 },
+        idle = { kind = "rotation", from = -.5, to = .5, duration = 2.6, delay = .08, phase = .73 } },
+    { id = "einstein", key = "right1", hoverKey = "right1",
+        base = { x = 974, y = 315, w = 272, h = 465 },
+        outline = { x = 967, y = 303, w = 293, h = 491 },
+        baseRotation = 0, baseScale = 1, pivotX = .5, pivotY = .99,
+        hit = { x = 954, y = 292, w = 312, h = 510 },
+        idle = { kind = "scale", from = 1, to = 1.015, duration = 2.15, delay = .41, phase = .34 } },
 }
 
 local SETTINGS = {
@@ -52,6 +81,37 @@ local SETTINGS = {
 
 local function clamp(value, minimum, maximum)
     return math.max(minimum, math.min(maximum, value))
+end
+
+local function smoothStep(value)
+    local t = clamp(value, 0, 1)
+    return t * t * (3 - 2 * t)
+end
+
+local function lerp(from, to, amount)
+    return from + (to - from) * clamp(amount, 0, 1)
+end
+
+local function easeInOutSine(value)
+    return .5 - .5 * math.cos(math.pi * clamp(value, 0, 1))
+end
+
+local function yoyoAmount(elapsed, animation)
+    local duration = math.max(.001, animation.duration or 1)
+    local localTime = math.max(0, elapsed - (animation.delay or 0))
+    local cycle = (localTime / duration + (animation.phase or 0)) % 2
+    local directed = cycle <= 1 and cycle or 2 - cycle
+    return easeInOutSine(directed)
+end
+
+local function mixColor(from, to, amount)
+    local t = clamp(amount, 0, 1)
+    return {
+        math.floor(from[1] + (to[1] - from[1]) * t + .5),
+        math.floor(from[2] + (to[2] - from[2]) * t + .5),
+        math.floor(from[3] + (to[3] - from[3]) * t + .5),
+        math.floor(from[4] + (to[4] - from[4]) * t + .5),
+    }
 end
 
 local function pointIn(rect, x, y)
@@ -66,7 +126,7 @@ end
 
 local function characterAt(x, y)
     local sourceX = x - SOURCE_OFFSET_X
-    for _, character in ipairs(CHARACTER_LAYERS) do
+    for _, character in ipairs(CHARACTER_NODES) do
         if pointIn(character.hit, sourceX, y) then return character end
     end
     return nil
@@ -76,7 +136,53 @@ local function image(painter, handle, x, y, w, h, alpha)
     if handle and handle >= 0 then painter:ImageRect(handle, x, y, w, h, alpha or 255) end
 end
 
-local function drawFourPointStar(vg, x, y, radius, active, color)
+local function beginVisualTransform(vg, pivotX, pivotY, offsetX, offsetY, rotation, scale)
+    nvgSave(vg)
+    nvgTranslate(vg, pivotX + (offsetX or 0), pivotY + (offsetY or 0))
+    if rotation and rotation ~= 0 then nvgRotate(vg, rotation * DEGREES_TO_RADIANS) end
+    if scale and scale ~= 1 then nvgScale(vg, scale, scale) end
+    nvgTranslate(vg, -pivotX, -pivotY)
+end
+
+local function drawTitleNode(painter, handle, node, elapsed)
+    local amount = yoyoAmount(elapsed, node.idle)
+    local rotation = (node.baseRotation or 0) + lerp(node.idle.from, node.idle.to, amount)
+    local pivotX = node.baseX + node.w * node.pivotX
+    local pivotY = node.baseY + node.h * node.pivotY
+    beginVisualTransform(painter.vg, pivotX, pivotY, 0, 0, rotation, node.baseScale or 1)
+    image(painter, handle, node.baseX, node.baseY, node.w, node.h)
+    nvgRestore(painter.vg)
+end
+
+local function characterIdleTransform(node, elapsed)
+    local amount = yoyoAmount(elapsed, node.idle)
+    local value = lerp(node.idle.from, node.idle.to, amount)
+    if node.idle.kind == "rotation" then return 0, value, 1 end
+    if node.idle.kind == "offsetY" then return value, 0, 1 end
+    if node.idle.kind == "scale" then return 0, 0, value end
+    return 0, 0, 1
+end
+
+local function drawCharacterNode(painter, art, node, state)
+    local elapsed = state.animationElapsed or 0
+    local idleOffsetY, idleRotation, idleScale = characterIdleTransform(node, elapsed)
+    local hoverAmount = smoothStep((state.characterHoverProgress or {})[node.id] or 0)
+    local interactionScale = 1 + .025 * hoverAmount
+    local finalScale = (node.baseScale or 1) * idleScale * interactionScale
+    local pivotX = node.base.x + node.base.w * node.pivotX
+    local pivotY = node.base.y + node.base.h * node.pivotY
+    beginVisualTransform(painter.vg, pivotX, pivotY, 0, idleOffsetY,
+        (node.baseRotation or 0) + idleRotation, finalScale)
+    if hoverAmount > .001 then
+        image(painter, art.characterHover[node.hoverKey], node.outline.x, node.outline.y,
+            node.outline.w, node.outline.h, hoverAmount)
+    end
+    image(painter, art.characters[node.key], node.base.x, node.base.y, node.base.w, node.base.h)
+    nvgRestore(painter.vg)
+end
+
+local function drawFourPointStar(vg, x, y, radius, progress)
+    local amount = clamp(progress, 0, 1)
     local inner = radius * 0.22
     nvgBeginPath(vg)
     nvgMoveTo(vg, x, y - radius)
@@ -88,27 +194,34 @@ local function drawFourPointStar(vg, x, y, radius, active, color)
     nvgLineTo(vg, x - radius, y)
     nvgLineTo(vg, x - inner, y - inner)
     nvgClosePath(vg)
-    if active then
-        nvgFillColor(vg, nvgRGBA(color[1], color[2], color[3], color[4]))
+    if amount > 0 then
+        nvgFillColor(vg, nvgRGBA(MENU_ACCENT[1], MENU_ACCENT[2], MENU_ACCENT[3],
+            math.floor(255 * amount + .5)))
         nvgFill(vg)
-    else
-        nvgStrokeColor(vg, nvgRGBA(color[1], color[2], color[3], color[4]))
-        nvgStrokeWidth(vg, 1.35)
-        nvgStroke(vg)
     end
+    local outline = mixColor(MENU_MUTED, MENU_ACCENT, amount)
+    nvgStrokeColor(vg, nvgRGBA(outline[1], outline[2], outline[3], outline[4]))
+    nvgStrokeWidth(vg, 1.35)
+    nvgStroke(vg)
 end
 
-local function drawArrow(vg, x, y, color, alpha)
-    local c = nvgRGBA(color[1], color[2], color[3], alpha or color[4] or 255)
+local function drawArrow(vg, x, y, color, progress)
+    local amount = clamp(progress, 0, 1)
+    if amount <= 0 then return end
+    local startX = x + 4 * (1 - amount)
+    local tipX = x + 14 + 8 * amount
+    local headWidth = 4 + 3 * amount
+    local headHeight = 2.5 + 2 * amount
+    local c = nvgRGBA(color[1], color[2], color[3], math.floor(245 * amount + .5))
     nvgStrokeColor(vg, c)
     nvgStrokeWidth(vg, 1.55)
     nvgBeginPath(vg)
-    nvgMoveTo(vg, x, y)
-    nvgLineTo(vg, x + 22, y)
-    nvgMoveTo(vg, x + 22, y)
-    nvgLineTo(vg, x + 15, y - 4.5)
-    nvgMoveTo(vg, x + 22, y)
-    nvgLineTo(vg, x + 15, y + 4.5)
+    nvgMoveTo(vg, startX, y)
+    nvgLineTo(vg, tipX, y)
+    nvgMoveTo(vg, tipX, y)
+    nvgLineTo(vg, tipX - headWidth, y - headHeight)
+    nvgMoveTo(vg, tipX, y)
+    nvgLineTo(vg, tipX - headWidth, y + headHeight)
     nvgStroke(vg)
 end
 
@@ -149,12 +262,29 @@ local function setMuted(state, context, muted)
     if audio and audio.setVolume then audio:setVolume(state.muted and 0 or state.soundVolume) end
 end
 
+local function moveTowards(current, target, delta)
+    if current < target then return math.min(target, current + delta) end
+    if current > target then return math.max(target, current - delta) end
+    return current
+end
+
 local function updateSelection(state, dt)
+    local delta = math.max(0, dt or 0) / MENU_TRANSITION_SECONDS
     for index = 1, #MENU_ITEMS do
         local target = state.selectedIndex == index and 1 or 0
         local current = state.selectionProgress[index] or 0
-        local step = clamp(math.max(0, dt or 0) / .14, 0, 1)
-        state.selectionProgress[index] = current + (target - current) * step
+        state.selectionProgress[index] = moveTowards(current, target, delta)
+    end
+end
+
+local function updateCharacterHover(state, dt)
+    local delta = math.max(0, dt or 0) / CHARACTER_HOVER_SECONDS
+    state.characterHoverProgress = state.characterHoverProgress or {}
+    for _, node in ipairs(CHARACTER_NODES) do
+        local active = state.hoverCharacter == node.id or state.academyIdCardCharacter == node.id
+        local target = active and 1 or 0
+        local current = state.characterHoverProgress[node.id] or 0
+        state.characterHoverProgress[node.id] = moveTowards(current, target, delta)
     end
 end
 
@@ -213,6 +343,9 @@ function M.Install(context)
         state.hoverIndex = nil
         state.pressedIndex = nil
         state.selectionProgress = { 1, 0, 0, 0 }
+        state.animationElapsed = 0
+        state.characterHoverProgress = {}
+        for _, node in ipairs(CHARACTER_NODES) do state.characterHoverProgress[node.id] = 0 end
         state.settingsOpen = false
         state.settingsDrag = nil
         state.academyIdCardCharacter = nil
@@ -265,11 +398,15 @@ function M.Install(context)
     end
 
     function UpdateTitleScreen(dt, pointerFrame)
+        local frameDt = math.max(0, dt or 0)
+        state.animationElapsed = (state.animationElapsed or 0) + frameDt
         if state.academyIdCardCharacter then
-            state.academyIdCardElapsed = state.academyIdCardElapsed + math.max(0, dt or 0)
+            state.academyIdCardElapsed = state.academyIdCardElapsed + frameDt
             if state.academyIdCardElapsed > .28 then state.academyIdCardCharacter = nil end
         end
         if state.settingsOpen then
+            state.hoverCharacter = nil
+            updateCharacterHover(state, frameDt)
             updateSettings(pointerFrame)
             return
         end
@@ -304,7 +441,8 @@ function M.Install(context)
                 return
             end
         end
-        updateSelection(state, dt)
+        updateSelection(state, frameDt)
+        updateCharacterHover(state, frameDt)
     end
 
     local function drawSettings(painter)
@@ -335,36 +473,26 @@ function M.Install(context)
         if not art then return end
         local offsetX = SOURCE_OFFSET_X
         image(painter_, art.background, offsetX, 0, 1870, 841)
-        for _, layer in ipairs(TITLE_LAYERS) do
-            image(painter_, art.title[layer.key], offsetX + layer.x, layer.y, layer.w, layer.h)
+        for _, node in ipairs(TITLE_NODES) do
+            drawTitleNode(painter_, art.title[node.key], node, state.animationElapsed or 0)
         end
-        for _, layer in ipairs(CHARACTER_LAYERS) do
-            if state.hoverCharacter == layer.id or state.academyIdCardCharacter == layer.id then
-                local hover = layer.id == "left1" and { x = 275, y = 275, w = 273, h = 517 }
-                    or layer.id == "left2" and { x = 522, y = 320, w = 236, h = 467 }
-                    or layer.id == "right2" and { x = 745, y = 295, w = 246, h = 494 }
-                    or { x = 967, y = 303, w = 293, h = 491 }
-                image(painter_, art.characterHover[layer.hoverKey], offsetX + hover.x, hover.y, hover.w, hover.h)
-            end
-            image(painter_, art.characters[layer.key], offsetX + layer.x, layer.y, layer.w, layer.h)
-        end
+        for _, node in ipairs(CHARACTER_NODES) do drawCharacterNode(painter_, art, node, state) end
 
         local vg = painter_.vg
         for index, label in ipairs(MENU_ITEMS) do
             local centerY = MENU.y + (index - 1) * MENU.rowStep + MENU.rowHeight * .5
-            local progress = state.selectionProgress[index] or 0
-            local active = state.selectedIndex == index
-            local scale = 1 + .022 * progress
-            local pressedScale = state.pressedIndex == index and .98 or 1
-            local drawScale = scale * pressedScale
+            local pressed = state.pressedIndex == index
+            local progress = smoothStep(state.selectionProgress[index] or 0)
+            local visualProgress = pressed and 1 or progress
+            local drawScale = pressed and .98 or 1 + .022 * visualProgress
+            local textColor = mixColor(MENU_MUTED, MENU_INK, visualProgress)
             nvgSave(vg)
             nvgTranslate(vg, MENU.x, centerY)
             nvgScale(vg, drawScale, drawScale)
-            drawFourPointStar(vg, 10, 0, 8.2, active, active and MENU_ACCENT or MENU_MUTED)
-            painter_:Text(36 + (active and 4 or 0), 0, label, MENU.textSize,
-                active and MENU_INK or MENU_MUTED,
+            drawFourPointStar(vg, 10, 0, 8.2, visualProgress)
+            painter_:Text(36 + 4 * visualProgress, 0, label, MENU.textSize, textColor,
                 NVG_ALIGN_LEFT + NVG_ALIGN_MIDDLE, "maker-body")
-            if active then drawArrow(vg, MENU.width - 47, 0, MENU_ACCENT, 245) end
+            drawArrow(vg, MENU.width - 47, 0, MENU_ACCENT, visualProgress)
             nvgRestore(vg)
         end
         painter_:Text(MENU.x, MENU.y + #MENU_ITEMS * MENU.rowStep + 27,
