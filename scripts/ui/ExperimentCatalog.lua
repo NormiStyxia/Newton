@@ -181,6 +181,12 @@ function M.ResolveLayout(frame)
     local categoryY = left.y + 58
     local categoryWidth = (left.w - 36 - categoryGap) * .5
     local listTop = left.y + 106
+    local listViewport = {
+        x = left.x + 6,
+        y = listTop,
+        w = left.w - 12,
+        h = math.max(80, left.y + left.h - listTop - 10),
+    }
     return {
         left = left,
         center = center,
@@ -190,17 +196,39 @@ function M.ResolveLayout(frame)
             custom = { x = categoryX + categoryWidth + categoryGap, y = categoryY, w = categoryWidth, h = 44 },
         },
         listTop = listTop,
-        listItemHeight = 52,
-        listViewport = {
-            x = left.x + 6,
-            y = listTop,
-            w = left.w - 12,
-            h = math.max(80, left.y + left.h - listTop - 10),
+        listItemHeight = listViewport.h / 8,
+        listViewport = listViewport,
+        listScrollbarTrack = {
+            x = listViewport.x + listViewport.w - 15,
+            y = listViewport.y + 5,
+            w = 12,
+            h = listViewport.h - 10,
         },
         briefViewport = briefViewport,
         startButton = { x = right.x + 21, y = actionY, w = actionWidth, h = 76 },
         workshopButton = { x = right.x + 21 + actionWidth + actionGap, y = actionY, w = actionWidth, h = 76 },
         reportButton = { x = right.x + right.w - 296, y = right.y + 15, w = 272, h = 40 },
+    }
+end
+
+local function resolveListScrollbar(layout, state, levelCount)
+    local contentHeight = levelCount * layout.listItemHeight
+    local scrollMax = math.max(0, contentHeight - layout.listViewport.h)
+    if scrollMax <= 0 then return nil end
+    local track = layout.listScrollbarTrack
+    local thumbHeight = math.max(48, track.h * layout.listViewport.h / contentHeight)
+    local travel = math.max(1, track.h - thumbHeight)
+    local scroll = clamp(state.listScroll or 0, 0, scrollMax)
+    return {
+        track = track,
+        thumb = {
+            x = track.x + 2,
+            y = track.y + travel * scroll / scrollMax,
+            w = track.w - 4,
+            h = thumbHeight,
+        },
+        travel = travel,
+        scrollMax = scrollMax,
     }
 end
 
@@ -888,6 +916,7 @@ function M.Install(context)
         state.scroll, state.scrollMax = 0, 0
         state.listScrollMax = 0
         state.dragStartY, state.listDragStartY, state.listPressIndex = nil, nil, nil
+        state.listScrollbarDragOffset = nil
         state.reportSnapshot, state.reportSnapshotAnimation = nil, 0
         state.reportSnapshotClosing = false
         if state.transition then state.transition:Reset(state.selectedIndex) end
@@ -943,6 +972,7 @@ function M.Install(context)
         end
         state.scroll, state.scrollMax, state.listScrollMax = 0, 0, 0
         state.dragStartY, state.listDragStartY, state.listPressIndex, state.toast = nil, nil, nil, nil
+        state.listScrollbarDragOffset = nil
         catalogState_.reportSnapshot, catalogState_.reportSnapshotAnimation = nil, 0
         catalogState_.reportSnapshotClosing = false
         if catalogState_.transition then catalogState_.transition:Reset(catalogState_.selectedIndex) end
@@ -1141,7 +1171,7 @@ function M.Install(context)
         if input:GetKeyPress(KEY_ESCAPE) then RequestReturnToTitleScreen(); return end
         if pointerFrame.pressed and headerHovered then
             state.headerBackPressed = true
-            state.dragStartY = nil
+            state.dragStartY, state.listDragStartY, state.listScrollbarDragOffset = nil, nil, nil
             return
         end
         if pointerFrame.released and state.headerBackPressed then
@@ -1153,12 +1183,31 @@ function M.Install(context)
         if frame_.physicalWidth < frame_.physicalHeight then return end
 
         local layout = M.ResolveLayout(frame_)
+        state.listScrollMax = math.max(0,
+            #state.levels * layout.listItemHeight - layout.listViewport.h)
+        state.listScroll = clamp(state.listScroll or 0, 0, state.listScrollMax)
+        local listScrollbar = resolveListScrollbar(layout, state, #state.levels)
         if input:GetKeyPress(KEY_UP) then selectLevel(state.selectedIndex - 1) end
         if input:GetKeyPress(KEY_DOWN) then selectLevel(state.selectedIndex + 1) end
         local actionsEnabled = not state.transition or state.transition:IsSettled()
         if input:GetKeyPress(KEY_RETURN) and actionsEnabled then RequestStartLevel(state.selectedIndex); return end
 
         if pointerFrame.pressed then
+            if actionsEnabled and listScrollbar and pointIn(listScrollbar.track, x, y) then
+                local thumb = listScrollbar.thumb
+                if pointIn(thumb, x, y) then
+                    state.listScrollbarDragOffset = y - thumb.y
+                else
+                    local thumbY = clamp(y - thumb.h * .5,
+                        listScrollbar.track.y, listScrollbar.track.y + listScrollbar.travel)
+                    state.listScroll = (thumbY - listScrollbar.track.y)
+                        / listScrollbar.travel * listScrollbar.scrollMax
+                    state.listScrollbarDragOffset = thumb.h * .5
+                    rememberActiveCategory(state)
+                end
+                state.listDragStartY, state.listPressIndex = nil, nil
+                return
+            end
             if actionsEnabled and pointIn(layout.categoryTabs.official, x, y) then
                 activateCategory(CATEGORY_OFFICIAL)
                 return
@@ -1173,8 +1222,13 @@ function M.Install(context)
                 state.listDragMoved = false
                 local listY = y - layout.listTop + state.listScroll
                 local index = math.floor(listY / layout.listItemHeight) + 1
-                local rowY = listY - (index - 1) * layout.listItemHeight
-                state.listPressIndex = rowY <= layout.listItemHeight - 4 and state.levels[index] and index or nil
+                local item = {
+                    x = layout.left.x + 12,
+                    y = layout.listTop + (index - 1) * layout.listItemHeight - state.listScroll,
+                    w = layout.left.w - 36,
+                    h = layout.listItemHeight - 4,
+                }
+                state.listPressIndex = state.levels[index] and pointIn(item, x, y) and index or nil
             end
             if actionsEnabled and pointIn(layout.startButton, x, y) then RequestStartLevel(state.selectedIndex); return end
             if actionsEnabled and pointIn(layout.workshopButton, x, y) then
@@ -1195,6 +1249,20 @@ function M.Install(context)
                 state.dragStartY, state.dragStartScroll = y, state.scroll
             end
         end
+        if state.listScrollbarDragOffset then
+            listScrollbar = resolveListScrollbar(layout, state, #state.levels)
+            if listScrollbar then
+                local thumbY = clamp(y - state.listScrollbarDragOffset,
+                    listScrollbar.track.y, listScrollbar.track.y + listScrollbar.travel)
+                state.listScroll = (thumbY - listScrollbar.track.y)
+                    / listScrollbar.travel * listScrollbar.scrollMax
+                rememberActiveCategory(state)
+            end
+            if pointerFrame.released or not pointerFrame.down then
+                state.listScrollbarDragOffset = nil
+            end
+            return
+        end
         if pointerFrame.down and state.listDragStartY then
             local delta = state.listDragStartY - y
             if math.abs(delta) >= 7 then state.listDragMoved = true end
@@ -1211,6 +1279,7 @@ function M.Install(context)
         end
         if not actionsEnabled then
             state.dragStartY, state.listDragStartY, state.listPressIndex = nil, nil, nil
+            state.listScrollbarDragOffset = nil
             return
         end
         if pointerFrame.down and state.dragStartY then
@@ -1220,7 +1289,8 @@ function M.Install(context)
         local wheel = input.mouseMoveWheel or 0
         if wheel ~= 0 then
             if pointIn(layout.listViewport, x, y) then
-                state.listScroll = clamp(state.listScroll - wheel * layout.listItemHeight,
+                local wheelDelta = clamp(wheel, -1, 1)
+                state.listScroll = clamp(state.listScroll - wheelDelta * layout.listItemHeight * .42,
                     0, state.listScrollMax or 0)
                 rememberActiveCategory(state)
             elseif pointIn(layout.briefViewport, x, y) then
@@ -1303,7 +1373,7 @@ function M.Install(context)
             local level = state.levels[index]
             local item = { x = layout.left.x + 12,
                 y = layout.listTop + (index - 1) * layout.listItemHeight - state.listScroll,
-                w = layout.left.w - 24, h = layout.listItemHeight - 4 }
+                w = layout.left.w - 36, h = layout.listItemHeight - 4 }
             local selected = state.selectedIndex == index
             local hovered = pointIn(layout.listViewport, pointer.x, pointer.y)
                 and pointIn(item, pointer.x, pointer.y)
@@ -1339,19 +1409,15 @@ function M.Install(context)
             nvgRestore(painter.vg)
         end
         nvgRestore(painter.vg)
-        if state.listScrollMax > 0 then
-            local track = {
-                x = layout.listViewport.x + layout.listViewport.w - 4,
-                y = layout.listViewport.y + 3,
-                w = 3,
-                h = layout.listViewport.h - 6,
-            }
-            painter:FillRect(track.x, track.y, track.w, track.h, COLORS.borderSoft, 105)
-            local contentHeight = levelCount * layout.listItemHeight
-            local thumbHeight = math.max(40, track.h * layout.listViewport.h / contentHeight)
-            local travel = track.h - thumbHeight
-            local thumbY = track.y + travel * state.listScroll / state.listScrollMax
-            painter:FillRect(track.x - 1, thumbY, track.w + 2, thumbHeight, COLORS.border, 220)
+        local listScrollbar = resolveListScrollbar(layout, state, levelCount)
+        if listScrollbar then
+            local track, thumb = listScrollbar.track, listScrollbar.thumb
+            painter:RoundedRect(track.x, track.y, track.w, track.h, 3,
+                COLORS.paperLight, COLORS.brassSoft, 1)
+            painter:RoundedRect(thumb.x, thumb.y, thumb.w, thumb.h, 2,
+                COLORS.selected, COLORS.border, 1.4)
+            painter:FillRect(thumb.x + 2, thumb.y + thumb.h * .5 - 1,
+                thumb.w - 4, 2, COLORS.brass, 175)
         end
         nvgRestore(painter.vg)
 

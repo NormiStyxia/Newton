@@ -88,6 +88,8 @@ local SOLUTIONS = {
             { type = "LAUNCH", pullX = -52.5, pullY = 32.3, cursorDuration = 0.65 },
             WaitX(350, "RIGHT", 5.0, CardTarget("side-gravity")),
             Side("RIGHT"),
+            WaitX(1220, "RIGHT", 8.0, { type = "NEWTON_PUNCH", duration = 0.14 }),
+            { type = "NEWTON_PUNCH", cursorDuration = 0.12 },
             { type = "WAIT_CONDITION", condition = "GOAL_REACHED", timeout = 12.0 }
         ),
     },

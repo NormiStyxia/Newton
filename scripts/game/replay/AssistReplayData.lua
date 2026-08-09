@@ -53,12 +53,21 @@ function AssistReplayData.ToRuntime(data, mapper)
             angle = sample.angle or 0,
         }
     end
+    local events = {}
+    for index, event in ipairs(data.events or {}) do
+        local converted = {}
+        for key, value in pairs(event) do converted[key] = value end
+        if data.coordinateSpace == "level" and type(event.x) == "number" and type(event.y) == "number" then
+            converted.x, converted.y = mapper:LevelToWorld(event.x, event.y)
+        end
+        events[index] = converted
+    end
     return {
         schemaVersion = data.schemaVersion,
         levelId = data.levelId,
         source = data.source or "assist-solution",
         samples = samples,
-        events = data.events or {},
+        events = events,
     }
 end
 

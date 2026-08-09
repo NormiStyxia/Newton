@@ -26,6 +26,12 @@ local custom = {
     { entryId = "custom:custom_001", document = level("custom_001", "自制实验一") },
     { entryId = "custom:custom_002", document = level("custom_002", "自制实验二") },
 }
+for index = 3, 9 do
+    custom[#custom + 1] = {
+        entryId = string.format("custom:custom_%03d", index),
+        document = level(string.format("custom_%03d", index), "自制实验" .. tostring(index)),
+    }
+end
 custom[1].document.author = ""
 custom[1].document.description = ""
 custom[2].document.author = "实验员乙"
@@ -123,9 +129,11 @@ ExperimentCatalog.Install(context)
 context.InitializeExperimentCatalog()
 expect(context.catalogState_.category == "official" and context.catalogState_.levels[1].levelId == "level_01",
     "catalog did not default to academy experiments")
-expect(#context.catalogState_.customLevels == 2, "catalog did not read saved custom experiments")
+expect(#context.catalogState_.customLevels == 9, "catalog did not read saved custom experiments")
 
 local layout = ExperimentCatalog.ResolveLayout(context.frame_)
+expect(math.abs(layout.listViewport.h / layout.listItemHeight - 8) < 1e-9,
+    "catalog list does not reserve exactly eight visible rows")
 context.UpdateExperimentCatalog(.016, {
     x = layout.categoryTabs.custom.x + layout.categoryTabs.custom.w * .5,
     y = layout.categoryTabs.custom.y + layout.categoryTabs.custom.h * .5,
@@ -133,6 +141,32 @@ context.UpdateExperimentCatalog(.016, {
 })
 expect(context.catalogState_.category == "custom" and context.catalogState_.levels[1].levelId == "custom_001",
     "custom category did not replace the active list")
+
+context.input.mouseMoveWheel = -1
+context.UpdateExperimentCatalog(.016, {
+    x = layout.listViewport.x + 60, y = layout.listViewport.y + 30,
+    down = false, pressed = false, released = false,
+})
+expect(math.abs(context.catalogState_.listScroll - layout.listItemHeight * .42) < 1e-9,
+    "catalog mouse wheel step is faster than the intended partial-row movement")
+context.input.mouseMoveWheel = 0
+local scrollbarTrack = layout.listScrollbarTrack
+context.UpdateExperimentCatalog(.016, {
+    x = scrollbarTrack.x + scrollbarTrack.w * .5,
+    y = scrollbarTrack.y + scrollbarTrack.h - 2,
+    down = true, pressed = true, released = false,
+})
+expect(context.catalogState_.listScroll > context.catalogState_.listScrollMax * .9
+    and context.catalogState_.listScrollbarDragOffset ~= nil,
+    "catalog scrollbar track did not move or capture the draggable thumb")
+context.UpdateExperimentCatalog(.016, {
+    x = scrollbarTrack.x + scrollbarTrack.w * .5,
+    y = scrollbarTrack.y + scrollbarTrack.h - 2,
+    down = false, pressed = false, released = true,
+})
+expect(context.catalogState_.listScrollbarDragOffset == nil,
+    "catalog scrollbar drag state was not released")
+context.catalogState_.listScroll, context.catalogState_.customListScroll = 0, 0
 
 local secondY = layout.listTop + layout.listItemHeight * 1.5
 context.UpdateExperimentCatalog(.016, {

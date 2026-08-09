@@ -375,6 +375,7 @@ function State.New(dependencies, constants)
         listDragStartScroll = 0,
         listPressIndex = nil,
         listDragMoved = false,
+        listScrollbarDragOffset = nil,
         dragStartY = nil,
         dragStartScroll = 0,
         toast = nil,
