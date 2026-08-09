@@ -188,6 +188,15 @@ end)()
 -- expression state or interaction.
 local ARCHIVE = {
     contentOffsetX = 105,
+    edgeFrame = {
+        x = 764,
+        y = 51,
+        w = 976,
+        h = 739,
+        thickWidth = 3.2,
+        thinWidth = 1.1,
+        thinOffset = 8,
+    },
     layout = {
         contentLeft = 840,
         expressionColumnLeft = 1410,
@@ -208,7 +217,15 @@ local ARCHIVE = {
         bottomSafeGap = 24,
         labelColumnWidth = 135,
     },
-    header = { titleY = 72, latinY = 92, subY = 128, lineY = 182 },
+    header = {
+        titleY = 72,
+        chineseSize = 70,
+        latinSize = 39,
+        nameGap = 16,
+        latinOffsetY = 20,
+        lineGap = 14,
+        subtitleGap = 8,
+    },
     tags = {
         { label = "学院登记", w = 214,
             tagStart = .25, tagEnd = .39 },
@@ -225,8 +242,9 @@ local ARCHIVE = {
     bodyMuted = { 103, 77, 58, 215 },
     paper = { 250, 237, 215, 255 },
     warm = { 173, 86, 38, 245 },
-    enter = { baseStart = .00, baseEnd = .23, header = { .18, .39 } },
-    exit = { baseStart = .88, baseEnd = 1.16, emotion = { .72, .96 }, header = { .67, .90 } },
+    enter = { baseStart = .00, baseEnd = .23, edges = { .04, .34 }, header = { .18, .39 } },
+    exit = { baseStart = .88, baseEnd = 1.16, edges = { .80, 1.04 },
+        emotion = { .72, .96 }, header = { .67, .90 } },
 }
 
 local SETTINGS = {
@@ -640,6 +658,39 @@ local function drawArchiveLine(vg, x1, y1, x2, y2, amount, width)
     nvgStroke(vg)
 end
 
+local function drawArchiveCenterOutLine(vg, centerX, y, leftX, rightX, amount, width, colorValue, alpha)
+    local progress = clamp(amount, 0, 1)
+    if progress <= .001 then return end
+    nvgStrokeColor(vg, archiveColor(colorValue or ARCHIVE.ink, (alpha or 1) * progress))
+    nvgStrokeWidth(vg, width)
+    nvgBeginPath(vg)
+    nvgMoveTo(vg, centerX, y)
+    nvgLineTo(vg, lerp(centerX, leftX, progress), y)
+    nvgMoveTo(vg, centerX, y)
+    nvgLineTo(vg, lerp(centerX, rightX, progress), y)
+    nvgStroke(vg)
+end
+
+local function drawArchiveHorizontalEdges(painter, state)
+    local timing = state.profileMode == PROFILE_MODE.EXITING and ARCHIVE.exit.edges or ARCHIVE.enter.edges
+    local progress = archiveProgress(state, timing[1], timing[2])
+    if progress <= .001 then return end
+
+    local frame = ARCHIVE.edgeFrame
+    local centerX = frame.x + frame.w * .5
+    local topY = frame.y
+    local bottomY = frame.y + frame.h
+    local vg = painter.vg
+    drawArchiveCenterOutLine(vg, centerX, topY, frame.x, frame.x + frame.w, progress,
+        frame.thickWidth, ARCHIVE.inkStrong, .94)
+    drawArchiveCenterOutLine(vg, centerX, topY + frame.thinOffset, frame.x, frame.x + frame.w, progress,
+        frame.thinWidth, ARCHIVE.ink, .74)
+    drawArchiveCenterOutLine(vg, centerX, bottomY, frame.x, frame.x + frame.w, progress,
+        frame.thickWidth, ARCHIVE.inkStrong, .94)
+    drawArchiveCenterOutLine(vg, centerX, bottomY - frame.thinOffset, frame.x, frame.x + frame.w, progress,
+        frame.thinWidth, ARCHIVE.ink, .74)
+end
+
 local function drawArchiveBase(painter, handle, state)
     local progress = archiveProgress(state, ARCHIVE.enter.baseStart, ARCHIVE.enter.baseEnd)
     if state.profileMode == PROFILE_MODE.EXITING then
@@ -716,14 +767,16 @@ local function drawArchiveHeader(painter, state, layout)
     if progress <= .001 then return end
     local h = ARCHIVE.header
     local verticalOffset = ARCHIVE.layout.verticalOffset or 0
+    local titleX = layout.contentLeft
     local titleY = h.titleY + verticalOffset
-    local latinY = h.latinY + verticalOffset
-    local subY = h.subY + verticalOffset
-    local lineY = h.lineY + verticalOffset
-    local nameGap = 18
-    painter:Text(layout.headerCenterX - nameGap, titleY, "牛顿", 70, ARCHIVE.warm,
-        NVG_ALIGN_RIGHT + NVG_ALIGN_TOP, "report-summary", archiveTextAlpha(progress))
-    painter:Text(layout.headerCenterX + nameGap, latinY, "NEWTON", 39, ARCHIVE.inkStrong,
+    local chineseWidth = archiveTextWidth(painter, "牛顿", "report-summary", h.chineseSize)
+    local latinX = titleX + chineseWidth + h.nameGap
+    local latinY = titleY + h.latinOffsetY
+    local lineY = titleY + h.chineseSize + h.lineGap
+    local subY = lineY + h.subtitleGap
+    painter:Text(titleX, titleY, "牛顿", h.chineseSize, ARCHIVE.warm,
+        NVG_ALIGN_LEFT + NVG_ALIGN_TOP, "report-summary", archiveTextAlpha(progress))
+    painter:Text(latinX, latinY, "NEWTON", h.latinSize, ARCHIVE.inkStrong,
         NVG_ALIGN_LEFT + NVG_ALIGN_TOP, "maker-body", archiveTextAlpha(progress))
     painter:Text(layout.headerCenterX, subY, "CLASSICAL MECHANICS / SUPERVISOR", 17, ARCHIVE.bodyMuted,
         NVG_ALIGN_CENTER + NVG_ALIGN_TOP, "maker-body", archiveTextAlpha(progress))
@@ -762,6 +815,7 @@ end
 
 local function drawProfileInfoOverlay(painter, profileArt, state)
     local layout = buildArchiveLayout(painter)
+    drawArchiveHorizontalEdges(painter, state)
     nvgSave(painter.vg)
     nvgTranslate(painter.vg, ARCHIVE.contentOffsetX, 0)
     drawArchiveHeader(painter, state, layout)
