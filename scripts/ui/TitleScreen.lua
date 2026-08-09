@@ -1435,7 +1435,7 @@ function M.Install(context)
         painter:StrokeRect(SETTINGS.x + 6, SETTINGS.y + 6, SETTINGS.w - 12, SETTINGS.h - 12,
             Renderer2D.COLORS.greenLight, 1, 190)
         painter:Text(SETTINGS.x + 42, SETTINGS.y + 30, "设置", 38, MENU_INK, nil, "maker-body")
-        painter:Text(SETTINGS.x + SETTINGS.w - 42, SETTINGS.y + 39, "ESC 关闭", 17, TIP_COLOR,
+        painter:Text(SETTINGS.x + SETTINGS.w - 42, SETTINGS.y + 39, "ESC/空白处关闭", 17, TIP_COLOR,
             NVG_ALIGN_RIGHT + NVG_ALIGN_MIDDLE, "maker-body")
         painter:Text(rows.bgmVolume.x, rows.bgmVolume.y - 20, "音乐", 20, TIP_COLOR, nil, "maker-body")
         drawSlider(painter, rows.bgmVolume.slider, "音乐音量", state.bgmVolume)
