@@ -213,6 +213,31 @@ expect(not assistant:poke(), "poke retriggered inside the 0.3 second cooldown")
 assistant:update(.06)
 expect(assistant:getBehavior() == GreenAssistant.Behavior.IDLE, "poke did not return to idle")
 
+assistant:onAttemptSucceeded()
+expect(assistant:getBehavior() == GreenAssistant.Behavior.IDLE,
+    "normal success must keep the companion in an interactive behavior")
+expect(assistant.animator:getCurrentAnimation() ~= "takeover_finish",
+    "normal success incorrectly played the takeover finish animation")
+expect(mockView.message == "好了。", "normal success message was not shown")
+assistant:update(1.81)
+expect(mockView.message == nil and assistant:getBehavior() == GreenAssistant.Behavior.IDLE,
+    "normal success message did not expire without locking the companion")
+assistant:onAttemptSucceeded()
+mockView.hitCharacter = true
+local reportDragX, reportDragY = mockView.x, mockView.y
+expect(assistant:handlePointer(reportDragX, reportDragY,
+    { down = true, pressed = true, released = false }),
+    "normal success character did not accept a drag candidate")
+assistant:update(.26)
+expect(assistant:getBehavior() == GreenAssistant.Behavior.DRAGGING and mockView.message == nil,
+    "normal success message locked report-page dragging")
+assistant:handlePointer(reportDragX + 6, reportDragY - 10,
+    { down = false, pressed = false, released = true })
+assistant:update(.06)
+expect(assistant:getBehavior() == GreenAssistant.Behavior.IDLE,
+    "normal success character did not settle after report-page dragging")
+mockView.hitCharacter = false
+
 assistant:onLevelChanged("level_01")
 assistant:onAttemptFailed({ reason = "A" })
 expect(assistant:getBehavior() == GreenAssistant.Behavior.OBSERVE, "first failure must observe")

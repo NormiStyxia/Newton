@@ -106,6 +106,7 @@ function GreenAssistant.New(options)
     self.moving = false
     self.behaviorTimer = nil
     self.timedBehavior = nil
+    self.passiveMessageTimer = nil
     self.blinkTimer = 0
     self.blinkActive = false
     self.blinkJustFinished = false
@@ -370,6 +371,7 @@ function GreenAssistant:_updateBlink(dt)
 end
 
 function GreenAssistant:_showTimedMessage(text, duration, behavior)
+    self.passiveMessageTimer = nil
     self.behaviorTimer = math.max(0, duration or 1.8)
     self.timedBehavior = behavior or BehaviorState.DIALOGUE
     self:setBehavior(self.timedBehavior, "message")
@@ -385,6 +387,15 @@ function GreenAssistant:_hideMessage()
     end
     self.behaviorTimer = nil
     self.timedBehavior = nil
+    self.passiveMessageTimer = nil
+end
+
+function GreenAssistant:_showPassiveMessage(text, duration)
+    self:_hideMessage()
+    if not self.config.features.dialogue then return end
+    self.passiveMessageTimer = math.max(0, duration or 1.8)
+    self.view:showMessage(text)
+    self:_emit("onDialogueOpened", text)
 end
 
 function GreenAssistant:update(dt, frame)
@@ -404,6 +415,11 @@ function GreenAssistant:update(dt, frame)
         self.takeover:update(dt)
         self.animator:update(dt)
         return
+    end
+
+    if self.passiveMessageTimer then
+        self.passiveMessageTimer = self.passiveMessageTimer - dt
+        if self.passiveMessageTimer <= 0 then self:_hideMessage() end
     end
 
     if self.behaviorTimer and self.timedBehavior == behavior then
@@ -530,7 +546,12 @@ end
 function GreenAssistant:onAttemptSucceeded()
     self.failureAssist:onAttemptSucceeded()
     if not self.enabled or self.takeover:isActive() then return end
-    self:_showTimedMessage(self.config.failureAssist.successText, 1.8, BehaviorState.SUCCESS)
+    local behavior = self.behaviorState:get()
+    if not COMPANION_BEHAVIORS[behavior] then
+        self:_hideMessage()
+        self:setBehavior(BehaviorState.IDLE, "attempt-succeeded")
+    end
+    self:_showPassiveMessage(self.config.failureAssist.successText, 1.8)
 end
 
 function GreenAssistant:onLevelChanged(levelId)
