@@ -145,9 +145,16 @@ function M.Install(context)
         replayPreviousSample_ = replaySamples_[#replaySamples_]
     end
     RecordReplayEvent = function(kind, cardId)
-        if not launched_ or replayActive_ then return end
+        local prelaunchRuleEvent = kind == "CARD_PLAYED" or kind == "RULE_REMOVED" or kind == "NEWTON_PUNCH"
+        if replayActive_ or (not launched_ and not prelaunchRuleEvent) then return end
         local p = apple_.node.position2D
-        replayEvents_[#replayEvents_ + 1] = { t = flightMs_, type = kind, cardId = cardId, x = p.x, y = p.y }
+        replayEvents_[#replayEvents_ + 1] = {
+            t = launched_ and flightMs_ or 0,
+            type = kind,
+            cardId = cardId,
+            x = p.x,
+            y = p.y,
+        }
     end
     function ReplayDuration()
         local last = replaySamples_[#replaySamples_]

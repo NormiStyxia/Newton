@@ -80,7 +80,8 @@ function M.Install(context)
                 angle = apple_.node.rotation2D,
             },
         }
-        replayEvents_ = {}
+        -- Field cards can be deployed while the apple is still mounted. Their
+        -- t=0 events already belong to this attempt and must survive launch.
         replayNextSampleMs_ = CONFIG.replaySampleMs
         replayPreviousSample_ = replaySamples_[1]
         SetGravity()
