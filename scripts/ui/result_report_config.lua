@@ -33,8 +33,9 @@ M.Layout = {
     reviewFontMinSize = 15,
     requireSelfReview = false,
     fallbackSelfReview = "反正绿毛同事会补",
-    selfReviewFontSize = 18,
-    selfReviewOptionFontSize = 18,
+    selfReviewFontSize = 20,
+    selfReviewFontMinSize = 18,
+    selfReviewOptionFontSize = 20,
     dropdownOptionGap = 5,
     padding = 24,
     innerBorder = 5,
@@ -70,7 +71,7 @@ M.Layout = {
 }
 
 M.ReviewAuthorStyles = {
-    nomi = { font = "nomi-font", fontSize = 19, color = M.ReportColors.ink, alignment = "left" },
+    nomi = { font = "nomi-font", fontSize = 23, color = M.ReportColors.ink, alignment = "left" },
     newton = { font = "report-newton", fontSize = 18, color = M.ReportColors.ink, alignment = "left" },
     einstein = { font = "report-einstein", fontSize = 18, color = M.ReportColors.ink, alignment = "left" },
     green = { font = "report-green", fontSize = 17, color = M.ReportColors.ink, alignment = "left", useMonospace = false },

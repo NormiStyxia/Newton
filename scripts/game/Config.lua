@@ -86,9 +86,9 @@ local LEVEL_META = {
         description = "为苹果准备多次相位充能，在关键位置穿过阻隔并完成观测。",
     },
     level_07 = {
-        objective = "反转水平速度，回到左侧观察皿",
+        objective = "测试一下新实验仪器——弹簧，按钮，门",
         observation = "镜像改变方向，却不抹去速度。",
-        description = "让苹果越过观察皿后镜像水平速度，从右侧折返回目标区域。",
+        description = "这个苹果可以不只有一种想法地落入观察皿",
     },
     level_08 = {
         objective = "在弹簧构成的通道里到达观察皿",
@@ -96,9 +96,9 @@ local LEVEL_META = {
         description = "利用弹簧积累高度和水平速度，并控制落点稳定在观察皿附近",
     },
     level_09 = {
-        objective = "穿墙或折返，寻找自己的解法",
+        objective = "怀疑是蓄意报复",
         observation = "同一个终点不要求同一条证明。",
-        description = "综合使用已解锁的规则牌，在穿墙与折返两种路线之间完成最终观测。",
+        description = "上次看到这么多门还是家具城",
     },
 }
 

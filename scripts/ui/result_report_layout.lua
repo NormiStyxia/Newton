@@ -99,6 +99,27 @@ local function drawWrappedText(painter, x, y, width, value, font, size, minSize,
     return currentSize, overflow
 end
 
+local function drawContainedWrappedText(painter, rect, value, font, size, minSize, maxLines, color, alpha)
+    local currentSize = size
+    local lines, overflow
+    repeat
+        lines, overflow = wrapText(painter, value or "", rect.w, font, currentSize, maxLines)
+        if overflow and currentSize > minSize then currentSize = currentSize - 1 end
+    until not overflow or currentSize <= minSize
+
+    local lineGap = currentSize + 1
+    local blockHeight = currentSize + (#lines - 1) * lineGap
+    local textY = rect.y + math.max(0, (rect.h - blockHeight) * 0.5)
+    nvgSave(painter.vg)
+    nvgIntersectScissor(painter.vg, rect.x, rect.y, rect.w, rect.h)
+    for index, line in ipairs(lines) do
+        painter:Text(rect.x, textY + (index - 1) * lineGap, line, currentSize, color,
+            NVG_ALIGN_LEFT + NVG_ALIGN_TOP, font, alpha)
+    end
+    nvgRestore(painter.vg)
+    return currentSize, overflow
+end
+
 local function drawDiamond(painter, x, y, radius, color, alpha)
     local vg = painter.vg
     nvgBeginPath(vg)
@@ -357,14 +378,19 @@ function M.Install(context)
                 NVG_ALIGN_CENTER + NVG_ALIGN_TOP, "maker-body", alpha)
         end
 
-        local selfAuthorX, selfY = artPoint(96, 654)
-        painter_:Text(selfAuthorX, selfY, "诺米", Config.ReviewAuthorStyles.nomi.fontSize, c.ink,
-            NVG_ALIGN_LEFT + NVG_ALIGN_TOP, Config.ReviewAuthorStyles.nomi.font, alpha)
-        local selfTextX, selfTextY = artPoint(272, 655)
-        drawWrappedText(painter_, selfTextX, selfTextY, artWidth(610),
-            state.selectedSelfReview or "请选择本次自我评价", Config.ReviewAuthorStyles.nomi.font,
-            Config.Layout.selfReviewFontSize, 12, 1, state.selectedSelfReview and c.ink or c.inkMuted,
-            NVG_ALIGN_LEFT + NVG_ALIGN_TOP, 18, alpha)
+        local selfAuthorX = artPoint(96, 0)
+        painter_:Text(selfAuthorX, drawZones.selfBox.y + drawZones.selfBox.h * 0.5,
+            "诺米", Config.ReviewAuthorStyles.nomi.fontSize, c.ink,
+            NVG_ALIGN_LEFT + NVG_ALIGN_MIDDLE, Config.ReviewAuthorStyles.nomi.font, alpha)
+        local selfTextX = drawZones.selfBox.x + artWidth(15)
+        drawContainedWrappedText(painter_, {
+            x = selfTextX,
+            y = drawZones.selfBox.y + artHeight(5),
+            w = artWidth(665),
+            h = drawZones.selfBox.h - artHeight(10),
+        }, state.selectedSelfReview or "请选择本次自我评价", Config.ReviewAuthorStyles.nomi.font,
+            Config.Layout.selfReviewFontSize, Config.Layout.selfReviewFontMinSize, 2,
+            state.selectedSelfReview and c.ink or c.inkMuted, alpha)
         local arrowX, arrowY = artPoint(943, 674)
         drawDropdownArrow(painter_, arrowX, arrowY, artHeight(16), state.dropdownProgress or 0,
             c.primary, alpha)
@@ -429,10 +455,16 @@ function M.Install(context)
                         math.floor(alpha * optionReveal))
                 end
                 if optionReveal > 0.28 then
-                    painter_:TextBox(drawZones.selfBox.x + 14, optionY + artHeight(27),
-                        drawZones.selfBox.w - 28, option, Config.Layout.selfReviewOptionFontSize,
-                        c.ink, NVG_ALIGN_LEFT + NVG_ALIGN_TOP, Config.ReviewAuthorStyles.nomi.font, 1.05,
-                        math.floor(alpha * optionReveal))
+                    local optionPaddingX = artWidth(18)
+                    local optionPaddingY = artHeight(7)
+                    drawContainedWrappedText(painter_, {
+                        x = drawZones.selfBox.x + optionPaddingX,
+                        y = optionY + optionPaddingY,
+                        w = drawZones.selfBox.w - optionPaddingX * 2,
+                        h = optionHeight - optionPaddingY * 2,
+                    }, option, Config.ReviewAuthorStyles.nomi.font,
+                        Config.Layout.selfReviewOptionFontSize, Config.Layout.selfReviewFontMinSize, 2,
+                        c.ink, math.floor(alpha * optionReveal))
                 end
             end
         end
@@ -492,15 +524,21 @@ function M.Install(context)
             string.format("实验 %02d · %s", state.experimentNumber or 1, state.experimentName or "未命名实验"),
             "maker-display", 17, 17, 1, c.ink, NVG_ALIGN_CENTER + NVG_ALIGN_TOP, 18, alpha)
 
-        local selfAuthorX, selfY = artPoint(96, 654)
-        painter_:Text(selfAuthorX, selfY, "诺米", Config.ReviewAuthorStyles.nomi.fontSize, c.ink,
-            NVG_ALIGN_LEFT + NVG_ALIGN_TOP, Config.ReviewAuthorStyles.nomi.font, alpha)
-        local selfTextX, selfTextY = artPoint(272, 655)
+        local snapshotZones = Config.ResolveZones({ x = x, y = y, w = w, h = rect.h }, false)
+        local selfAuthorX = artPoint(96, 0)
+        painter_:Text(selfAuthorX, snapshotZones.selfBox.y + snapshotZones.selfBox.h * 0.5,
+            "诺米", Config.ReviewAuthorStyles.nomi.fontSize, c.ink,
+            NVG_ALIGN_LEFT + NVG_ALIGN_MIDDLE, Config.ReviewAuthorStyles.nomi.font, alpha)
         local selfReview = state.selectedSelfReview or state.resultDescription
             or state.summaryText or "本次实验结果已归档"
-        drawWrappedText(painter_, selfTextX, selfTextY, artWidth(610), selfReview,
-            Config.ReviewAuthorStyles.nomi.font, Config.Layout.selfReviewFontSize, 12, 2,
-            c.ink, NVG_ALIGN_LEFT + NVG_ALIGN_TOP, 18, alpha)
+        drawContainedWrappedText(painter_, {
+            x = snapshotZones.selfBox.x + artWidth(15),
+            y = snapshotZones.selfBox.y + artHeight(5),
+            w = artWidth(665),
+            h = snapshotZones.selfBox.h - artHeight(10),
+        }, selfReview, Config.ReviewAuthorStyles.nomi.font,
+            Config.Layout.selfReviewFontSize, Config.Layout.selfReviewFontMinSize, 2,
+            c.ink, alpha)
 
         local reviewColumns = {
             nameX = artPoint(92, 0),

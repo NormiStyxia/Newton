@@ -1,6 +1,21 @@
 -- render/OverlayView: private runtime functions installed into the App context.
 local M = {}
 
+local function drawChevron(vg, x, y, expanded, color)
+    local direction = expanded and -1 or 1
+    nvgSave(vg)
+    nvgStrokeColor(vg, nvgRGBA(color[1], color[2], color[3], 220))
+    nvgStrokeWidth(vg, 2.2)
+    nvgLineCap(vg, NVG_ROUND)
+    nvgLineJoin(vg, NVG_ROUND)
+    nvgBeginPath(vg)
+    nvgMoveTo(vg, x - 6, y - 3 * direction)
+    nvgLineTo(vg, x, y + 3 * direction)
+    nvgLineTo(vg, x + 6, y - 3 * direction)
+    nvgStroke(vg)
+    nvgRestore(vg)
+end
+
 ---@param context GameContext
 function M.Install(context)
     local Rules = context.Rules
@@ -74,7 +89,7 @@ function M.Install(context)
         elseif #list == 1 then
             hudRuleSummary_ = list[1].label
         else
-            hudRuleSummary_ = string.format("已部署 %d 项规则 ▼", #list)
+            hudRuleSummary_ = string.format("已部署 %d 项规则", #list)
         end
     end
 
@@ -143,9 +158,15 @@ function M.Install(context)
             painter_:FillRect(layout.right.x + 5, 17, layout.right.w - 10, 58, Renderer2D.COLORS.greenSoft, 125)
         end
 
+        local hasRuleDropdown = #hudRuleList_ >= 2
+        local ruleTextWidth = layout.left.w - (hasRuleDropdown and 48 or 28)
         painter_:Text(layout.left.x + 14, 46,
-            ellipsize(hudRuleSummary_, layout.left.w - 28, 20, "maker-display"), 20,
+            ellipsize(hudRuleSummary_, ruleTextWidth, 20, "maker-display"), 20,
             Renderer2D.COLORS.text, NVG_ALIGN_LEFT + NVG_ALIGN_MIDDLE, "maker-display")
+        if hasRuleDropdown then
+            drawChevron(painter_.vg, layout.left.x + layout.left.w - 18, 46,
+                hudDropdown_ == "rules", Renderer2D.COLORS.text)
+        end
         painter_:Text(layout.center.x + layout.center.w * .5, 46,
             ellipsize(hudObjectiveText_, layout.center.w - 42, 28, "maker-display"), 28,
             Renderer2D.COLORS.text, NVG_ALIGN_CENTER + NVG_ALIGN_MIDDLE, "maker-display")
@@ -164,19 +185,8 @@ function M.Install(context)
             Renderer2D.COLORS.text, NVG_ALIGN_RIGHT + NVG_ALIGN_MIDDLE, "report-green")
         painter_:Text(right.x + 288, 46, "次", 18, Renderer2D.COLORS.secondary,
             NVG_ALIGN_LEFT + NVG_ALIGN_MIDDLE, "maker-display")
-        local chevronColor = Renderer2D.COLORS.secondary
-        nvgSave(painter_.vg)
-        nvgStrokeColor(painter_.vg, nvgRGBA(
-            chevronColor[1], chevronColor[2], chevronColor[3], 220))
-        nvgStrokeWidth(painter_.vg, 2.2)
-        nvgLineCap(painter_.vg, NVG_ROUND)
-        nvgLineJoin(painter_.vg, NVG_ROUND)
-        nvgBeginPath(painter_.vg)
-        nvgMoveTo(painter_.vg, right.x + 314, 43)
-        nvgLineTo(painter_.vg, right.x + 320, 49)
-        nvgLineTo(painter_.vg, right.x + 326, 43)
-        nvgStroke(painter_.vg)
-        nvgRestore(painter_.vg)
+        drawChevron(painter_.vg, right.x + 320, 46,
+            hudDropdown_ == "rating", Renderer2D.COLORS.secondary)
     end
 
     local function DrawHUDPaperFrame(rect)
