@@ -23,7 +23,7 @@
   "assets": {
     "icon": "./game_material/icon.png",
     "screenshots": [
-      "./game_material/SCREENSHOT_2026-08-09T13-36-46_01.png",
+      "./game_material/screenshot_1.png",
       "./game_material/SCREENSHOT_2026-08-09T13-36-46_02.png",
       "./game_material/SCREENSHOT_2026-08-09T13-36-46_03.png",
       "./game_material/character_system_chat_assist_1280x720.png"
@@ -32,7 +32,7 @@
     "promotional_image_url": "https://tapcode-sce.spark.xd.com/assets/game_material/p_ss8c/promotional.png",
     "icon_url": "https://tapcode-sce.spark.xd.com/assets/game_material/p_ss8c/icon.png",
     "screenshot_urls": [
-      "https://tapcode-sce.spark.xd.com/assets/game_material/牛顿看了想打人/SCREENSHOT_2026-08-09T13-36-46_01.png",
+      "https://tapcode-sce.spark.xd.com/assets/game_material/p_ss8c/screenshot_1.png",
       "https://tapcode-sce.spark.xd.com/assets/game_material/牛顿看了想打人/SCREENSHOT_2026-08-09T13-36-46_02.png",
       "https://tapcode-sce.spark.xd.com/assets/game_material/牛顿看了想打人/SCREENSHOT_2026-08-09T13-36-46_03.png",
       "https://tapcode-sce.spark.xd.com/assets/game_material/p_ss8c/character_system_chat_assist_1280x720.png"
@@ -47,6 +47,6 @@
     "generated_at": "2026-08-09T12:04:57.539Z"
   },
   "metadata": {
-    "updated_at": "2026-08-09T15:02:43.930Z"
+    "updated_at": "2026-08-09T15:06:43.655Z"
   }
 }
