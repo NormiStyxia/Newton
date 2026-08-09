@@ -139,6 +139,7 @@ context.frame_ = {
 Controller.Install(context)
 
 local releaseCount = 0
+local lastRuntimeOptions = nil
 context.ReleaseLevelRuntime = function()
     releaseCount = releaseCount + 1
     context.scene_, context.level_ = nil, nil
@@ -146,6 +147,7 @@ context.ReleaseLevelRuntime = function()
     return true
 end
 context.StartRuntimeSessionFromDocument = function(document, options)
+    lastRuntimeOptions = LevelDocument.Clone(options)
     context.scene_ = {}
     context.level_ = LevelDocument.Clone(document)
     context.screen_ = options.screen
@@ -385,7 +387,8 @@ expect(draft and #draft.document.objects == countBefore + 2, "dirty document was
 local snapshotName = workshop.document.name
 local snapshotCount = #workshop.document.objects
 expect(context.BeginWorkshopPreview(), "formal runtime preview did not start")
-expect(context.screen_ == "workshop_preview" and context.level_ ~= workshop.document,
+expect(context.screen_ == "workshop_preview" and context.level_ ~= workshop.document
+    and lastRuntimeOptions and lastRuntimeOptions.sourceKind == "custom",
     "preview did not isolate runtime document")
 context.level_.name = "runtime contamination"
 context.level_.objects[1].transform.x = -999

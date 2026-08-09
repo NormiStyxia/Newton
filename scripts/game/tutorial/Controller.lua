@@ -171,6 +171,10 @@ M.ACTION_CONFIGS = ACTION_CONFIGS
 function M.Install(context)
     local _ENV = context
 
+    local function officialRuntime()
+        return context.IsOfficialRuntimeSession and context.IsOfficialRuntimeSession() == true
+    end
+
     function InitializeTutorial()
         tutorialController_ = Controller.New(context)
     end
@@ -180,25 +184,25 @@ function M.Install(context)
     end
 
     function NotifyTutorialLevelReady(levelId)
-        if tutorialController_ then tutorialController_:ResetForLevel(levelId) end
+        if tutorialController_ then tutorialController_:ResetForLevel(officialRuntime() and levelId or nil) end
     end
 
     function ResetTutorialForLevel(levelId)
-        if tutorialController_ then tutorialController_:ResetForLevel(levelId) end
+        if tutorialController_ then tutorialController_:ResetForLevel(officialRuntime() and levelId or nil) end
     end
 
     function NotifyTutorialDialogueMarker(levelId, marker)
-        if tutorialController_ and tutorialController_.levelId == levelId then
+        if officialRuntime() and tutorialController_ and tutorialController_.levelId == levelId then
             tutorialController_:BeginAction(marker)
         end
     end
 
     function UpdateTutorial(dt)
-        if tutorialController_ then tutorialController_:Update(dt) end
+        if officialRuntime() and tutorialController_ then tutorialController_:Update(dt) end
     end
 
     function GetTutorialRenderModel()
-        return tutorialController_ and tutorialController_:GetRenderModel()
+        return officialRuntime() and tutorialController_ and tutorialController_:GetRenderModel()
             or { visible = false, state = STATE.INACTIVE }
     end
 

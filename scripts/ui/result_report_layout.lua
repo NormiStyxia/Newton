@@ -392,10 +392,16 @@ function M.Install(context)
             painter_:ImageRect(reportReplay, drawZones.replay.x, drawZones.replay.y,
                 drawZones.replay.w, drawZones.replay.h, alpha)
         end
-        if reportNext and reportNext >= 0 then
+        if state.sourceKind == "official" and reportNext and reportNext >= 0 then
             local nextAlpha = Config.Layout.requireSelfReview and not state.selectedSelfReview and math.floor(alpha * 0.48) or alpha
             painter_:ImageRect(reportNext, drawZones.next.x, drawZones.next.y,
                 drawZones.next.w, drawZones.next.h, nextAlpha)
+        elseif state.sourceKind ~= "official" then
+            painter_:RoundedRect(drawZones.next.x, drawZones.next.y, drawZones.next.w, drawZones.next.h,
+                4, c.primary, c.border, 1, alpha)
+            painter_:Text(drawZones.next.x + drawZones.next.w * 0.5,
+                drawZones.next.y + drawZones.next.h * 0.5, "返回关卡工坊", 16, c.primaryText,
+                NVG_ALIGN_CENTER + NVG_ALIGN_MIDDLE, "maker-display", alpha)
         end
         if state.validationMessage then
             painter_:Text(x + w * 0.5, drawZones.next.y - 17, state.validationMessage, 11, c.danger, NVG_ALIGN_CENTER + NVG_ALIGN_TOP, "maker-body", alpha)

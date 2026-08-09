@@ -428,6 +428,10 @@ end
 function M.Install(context)
     local _ENV = context
 
+    local function officialRuntime()
+        return context.IsOfficialRuntimeSession and context.IsOfficialRuntimeSession() == true
+    end
+
     function InitializeDialogue()
         dialogueController_ = Controller.New(context)
     end
@@ -438,27 +442,31 @@ function M.Install(context)
     end
 
     function NotifyDialogueLevelReady(levelId)
-        if dialogueController_ then dialogueController_:OnLevelReady(levelId, anger_) end
+        if dialogueController_ then
+            dialogueController_:OnLevelReady(officialRuntime() and levelId or nil, anger_)
+        end
     end
 
     function AppendDialogueMessages(levelId, messages)
-        if dialogueController_ then return dialogueController_:AppendMessages(levelId, messages) end
+        if officialRuntime() and dialogueController_ then
+            return dialogueController_:AppendMessages(levelId, messages)
+        end
         return false
     end
 
     function UpdateDialogue(dt, pointerFrame)
-        if not dialogueController_ then return false end
+        if not officialRuntime() or not dialogueController_ then return false end
         return dialogueController_:Update(dt, pointerFrame, anger_)
     end
 
     function DrawDialogueHistoryButton()
-        if dialogueController_ then
+        if officialRuntime() and dialogueController_ then
             DialogueOverlayView.DrawHistoryButton(painter_, frame_, dialogueController_)
         end
     end
 
     function DrawDialogueOverlay()
-        if dialogueController_ and dialogueController_:IsActive() then
+        if officialRuntime() and dialogueController_ and dialogueController_:IsActive() then
             DialogueOverlayView.Draw(painter_, frame_, dialogueController_)
         end
     end

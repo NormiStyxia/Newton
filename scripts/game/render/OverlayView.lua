@@ -251,20 +251,22 @@ function M.Install(context)
             end
             if success_ then
                 if assistedClear_ then
-                    local panelWidth = math.min(560, math.max(240, frame_.logicalWidth - 48))
-                    local panelHeight = 108
+                    local panelWidth = math.min(820, math.max(480, frame_.logicalWidth - 48))
+                    local panelHeight = 210
+                    local panelCenterX = frame_.logicalWidth * .5
+                    local panelCenterY = frame_.logicalHeight * .5
                     local panel = {
-                        x = frame_.logicalWidth * .5 - panelWidth * .5,
-                        y = frame_.logicalHeight * .5 - panelHeight * .5,
+                        x = panelCenterX - panelWidth * .5,
+                        y = panelCenterY - panelHeight * .5,
                         w = panelWidth,
                         h = panelHeight,
                     }
                     DrawHUDPaperFrame(panel)
-                    painter_:Text(frame_.logicalWidth * .5, panel.y + panel.h * .5,
-                        "辅助观测成功", 30, Renderer2D.COLORS.text,
-                        NVG_ALIGN_CENTER + NVG_ALIGN_MIDDLE, "report-green")
-                    overlayButton(cx - 80, cy + 65, "返回目录", false)
-                    overlayButton(cx + 80, cy + 65, "再次尝试", true)
+                    painter_:Text(panelCenterX, panel.y + 38,
+                        "辅助观测成功", 34, Renderer2D.COLORS.text,
+                        NVG_ALIGN_CENTER + NVG_ALIGN_TOP, "report-green")
+                    overlayButton(panelCenterX - 160, panelCenterY + 58, "返回目录", false)
+                    overlayButton(panelCenterX + 160, panelCenterY + 58, "再次尝试", true)
                     return
                 end
                 painter_:RoundedRect(cx - 345, cy - 115, 690, 230, 4, Renderer2D.COLORS.panel, Renderer2D.COLORS.primaryActive, 2)

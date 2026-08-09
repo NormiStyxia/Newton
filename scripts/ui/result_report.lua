@@ -78,7 +78,8 @@ function M.Install(context)
 
     function PersistResultReportSnapshot(state)
         state = state or resultReportState_
-        if not state or state.assistUsed or not context.experimentProgress_ then return false end
+        if not IsOfficialRuntimeSession() or not state or state.assistUsed
+            or not context.experimentProgress_ then return false end
         local snapshot = BuildResultReportSnapshot(state)
         if not snapshot then return false end
         local persisted, persistenceError = context.experimentProgress_:UpdateReportSnapshot(state.levelId, snapshot)
@@ -95,9 +96,10 @@ function M.Install(context)
 
         local levelId = level_.levelId or string.format("level_%02d", levelIndex_ or 1)
         local assistUsed = assistedClear_ == true or assistUsed_ == true
-        local previousClearCount = resultReportClearCounts_[levelId] or 0
+        local resultStateKey = RuntimeLevelStateKey()
+        local previousClearCount = resultReportClearCounts_[resultStateKey] or 0
         local clearCount = assistUsed and previousClearCount or previousClearCount + 1
-        if not assistUsed then resultReportClearCounts_[levelId] = clearCount end
+        if not assistUsed then resultReportClearCounts_[resultStateKey] = clearCount end
         local resultId = newResultId(levelId, clearCount)
         local seed = table.concat({ tostring(levelId), tostring(clearCount), resultId, assistUsed and "assist" or "player" }, "_")
         local selfOptions = Selector.SampleUnique(Pools.NomiSelfReviewPool, 3, seed .. ":nomi")
@@ -114,6 +116,7 @@ function M.Install(context)
 
         resultReportState_ = {
             resultId = resultId,
+            sourceKind = runtimeSession_ and runtimeSession_.sourceKind or "custom",
             experimentNumber = tonumber(levelIndex_) or 1,
             levelId = levelId,
             clearCount = clearCount,
@@ -182,7 +185,8 @@ function M.Install(context)
     function BeginResultReportAction(actionName)
         if not resultReportState_ or resultReportClosing_ then return end
         local state = resultReportState_
-        if actionName == "next" and Config.Layout.requireSelfReview and not state.selectedSelfReview then
+        local official = IsOfficialRuntimeSession()
+        if actionName == "next" and official and Config.Layout.requireSelfReview and not state.selectedSelfReview then
             state.validationMessage = "请先完成本次自我评价"
             return
         end
@@ -205,9 +209,13 @@ function M.Install(context)
                 resultReportAnimation_ = 1
                 if not replayStarted then isPaused_ = true end
             elseif actionName == "next" then
-                local nextIndex = levelIndex_ < CONFIG.levelCount and levelIndex_ + 1 or nil
-                if nextIndex and RequestStartLevel(nextIndex, true) then return end
-                RequestReturnToCatalog(nextIndex or 1, true)
+                if official then
+                    local nextIndex = levelIndex_ < CONFIG.levelCount and levelIndex_ + 1 or nil
+                    if nextIndex and RequestStartLevel(nextIndex, true) then return end
+                    RequestReturnToCatalog(nextIndex or 1, true)
+                else
+                    RequestReturnToCatalog(levelIndex_ or 1, true)
+                end
             end
         end
     end

@@ -60,15 +60,15 @@ function M.Install(context)
     end
 
     function NotifyGreenAssistantAttemptFailed(payload)
-        if greenAssistant_ then greenAssistant_:onAttemptFailed(payload) end
+        if IsOfficialRuntimeSession() and greenAssistant_ then greenAssistant_:onAttemptFailed(payload) end
     end
 
     function NotifyGreenAssistantAttemptSucceeded()
-        if greenAssistant_ then greenAssistant_:onAttemptSucceeded() end
+        if IsOfficialRuntimeSession() and greenAssistant_ then greenAssistant_:onAttemptSucceeded() end
     end
 
     function NotifyGreenAssistantLevelChanged(levelId)
-        if greenAssistant_ then greenAssistant_:onLevelChanged(levelId) end
+        if greenAssistant_ then greenAssistant_:onLevelChanged(IsOfficialRuntimeSession() and levelId or nil) end
     end
 end
 

@@ -27,7 +27,7 @@ function M.Install(context)
     end
 
     function StartAssistDemo(solution)
-        if not assistDemoRunner_ then return false end
+        if not IsOfficialRuntimeSession() or not assistDemoRunner_ then return false end
         local start = frame_ and { x = frame_.playfieldX + frame_.playfieldWidth * 0.5, y = 86 } or nil
         return assistDemoRunner_:start(solution, start)
     end

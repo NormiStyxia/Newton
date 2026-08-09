@@ -38,7 +38,7 @@ function M.Install(context)
         WallImpactShake.ResetRuntime(runtime_)
         NewtonPunchShake.Reset(newtonPunchShake_)
         failureCount_ = failureCount_ + 1
-        if level_ then context.failureCountsByLevel_[level_.levelId] = failureCount_ end
+        if level_ then context.failureCountsByLevel_[RuntimeLevelStateKey()] = failureCount_ end
         observation_ = "轨迹停止。重置后再次发射。"
         if level_ then level_.resultOverlayVisible = true end
         SetStatus("FAILED · 实验未成立")

@@ -11,6 +11,11 @@ function M.Install(context)
         return rect and x >= rect.x and x <= rect.x + rect.w and y >= rect.y and y <= rect.y + rect.h
     end
 
+    local function resultReturnIndex()
+        if not IsOfficialRuntimeSession() then return levelIndex_ or 1 end
+        return levelIndex_ < CONFIG.levelCount and levelIndex_ + 1 or 1
+    end
+
     function HandleHUDPointer(pointerFrame)
         local layout = ResolveHUDLayout(frame_)
         local x, y = pointerFrame.x, pointerFrame.y
@@ -112,14 +117,16 @@ function M.Install(context)
                     ResetExperiment()
                 elseif success_ then
                     if assistedClear_ then
-                        if inOverlayButton(cx - 80, cy + 65) then
-                            RequestReturnToCatalog(levelIndex_ < CONFIG.levelCount and levelIndex_ + 1 or 1)
-                        elseif inOverlayButton(cx + 80, cy + 65) then
+                        local panelCenterX = frame_.logicalWidth * .5
+                        local panelCenterY = frame_.logicalHeight * .5
+                        if inOverlayButton(panelCenterX - 160, panelCenterY + 58) then
+                            RequestReturnToCatalog(resultReturnIndex())
+                        elseif inOverlayButton(panelCenterX + 160, panelCenterY + 58) then
                             ResetExperiment()
                         end
                     else
                         if inOverlayButton(cx - 160, cy + 65) then
-                            RequestReturnToCatalog(levelIndex_ < CONFIG.levelCount and levelIndex_ + 1 or 1)
+                            RequestReturnToCatalog(resultReturnIndex())
                         elseif inOverlayButton(cx, cy + 65) then
                             StartReplay()
                         elseif inOverlayButton(cx + 160, cy + 65) then

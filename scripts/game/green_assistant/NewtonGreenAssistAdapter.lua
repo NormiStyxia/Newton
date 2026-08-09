@@ -15,7 +15,9 @@ Adapter.new = Adapter.New
 
 function Adapter:canTakeover(levelId)
     local context = self.context
-    return context.level_ ~= nil
+    return context.IsOfficialRuntimeSession ~= nil
+        and context.IsOfficialRuntimeSession() == true
+        and context.level_ ~= nil
         and context.apple_ ~= nil
         and context.replayBusinessMode_ == ReplayMode.NONE
         and StandardSolutions.Has(levelId)
@@ -43,10 +45,14 @@ function Adapter:prepareTakeoverScene()
 end
 
 function Adapter:getAssistReplay(levelId)
+    if not self.context.IsOfficialRuntimeSession
+        or self.context.IsOfficialRuntimeSession() ~= true then return nil end
     return StandardSolutions.Get(levelId)
 end
 
 function Adapter:beginTakeoverReplay(solution)
+    if not self.context.IsOfficialRuntimeSession
+        or self.context.IsOfficialRuntimeSession() ~= true then return false end
     return self.context.StartAssistDemo(solution)
 end
 

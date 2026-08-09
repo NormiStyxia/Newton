@@ -62,10 +62,20 @@ local officialReplace, officialError = repository:ReplaceCustom("official:level_
 expect(not officialReplace and officialError == "官方关卡为只读", "official overwrite was accepted")
 
 local custom, customMetadata = repository:CopyAsCustom("official:level_01")
-expect(custom.levelId == "custom_001" and customMetadata.sourceKind == "custom", "official copy did not isolate ID")
+expect(custom.levelId == "custom_001" and customMetadata.sourceKind == "custom"
+    and custom.originLevelId == "level_01" and custom.sourceKind == nil,
+    "official copy did not isolate runtime identity or preserve provenance")
 custom.name = "主策草稿"
 expect(repository:ReplaceCustom(customMetadata.entryId, custom), "custom replacement failed")
 expect(repository:Open("official:level_01").name == "官方关卡 1", "custom edit polluted official document")
+
+local importRepository = Repository.New({ LevelDocument = LevelDocument })
+local officialLookingImport = validLevel("level_02", "Imported official-looking JSON")
+officialLookingImport.sourceKind = "official"
+local importedCustom, importedMetadata = importRepository:ImportAsCustom(officialLookingImport)
+expect(importedCustom and importedCustom.levelId == "custom_001"
+    and importedCustom.sourceKind == nil and importedMetadata.sourceKind == "custom",
+    "imported JSON was allowed to grant itself official runtime identity")
 
 local precisionRepository = Repository.New({ LevelDocument = LevelDocument })
 local precisionOfficial = validLevel("precision_official", "Precision official")

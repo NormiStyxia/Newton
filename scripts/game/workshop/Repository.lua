@@ -116,6 +116,8 @@ function Repository:RestoreCustom(document, updatedAt, options)
     local normalizeTransform = not options or options.normalizeTransform ~= false
     local normalized, errorMessage = validateDocument(self.LevelDocument, document, normalizeTransform)
     if not normalized then return nil, errorMessage end
+    -- sourceKind belongs to RuntimeSession/repository metadata, never level JSON.
+    normalized.sourceKind = nil
     if self:FindByLevelId(normalized.levelId) then return nil, "levelId 已存在：" .. normalized.levelId end
     local id = entryId("custom", normalized.levelId)
     local entry = {
@@ -144,7 +146,12 @@ end
 function Repository:CopyAsCustom(sourceEntryId, name)
     local source, errorMessage = self:Open(sourceEntryId)
     if not source then return nil, errorMessage end
+    local sourceMetadata = self:GetEntry(sourceEntryId)
+    if sourceMetadata and sourceMetadata.sourceKind == "official" then
+        source.originLevelId = sourceMetadata.levelId
+    end
     source.levelId = self:NextCustomLevelId()
+    source.sourceKind = nil
     source.name = name or ((source.name or "未命名实验") .. " 副本")
     local metadata, restoreError = self:RestoreCustom(source)
     if not metadata then return nil, restoreError end
@@ -155,6 +162,7 @@ function Repository:ImportAsCustom(document, name)
     local normalized, errorMessage = validateDocument(self.LevelDocument, document, true)
     if not normalized then return nil, errorMessage end
     normalized.levelId = self:NextCustomLevelId()
+    normalized.sourceKind = nil
     if name and name ~= "" then normalized.name = name end
     local metadata, restoreError = self:RestoreCustom(normalized)
     if not metadata then return nil, restoreError end

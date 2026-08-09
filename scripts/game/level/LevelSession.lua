@@ -21,6 +21,17 @@ function M.Install(context)
     local DEFAULT_LEVEL_SCORE_PROFILE = context.DEFAULT_LEVEL_SCORE_PROFILE
     local experimentProgress_ = context.experimentProgress_
     local _ENV = context
+
+    function IsOfficialRuntimeSession()
+        return runtimeSession_ ~= nil and runtimeSession_.sourceKind == "official"
+    end
+
+    function RuntimeLevelStateKey()
+        local levelId = runtimeSession_ and runtimeSession_.levelId or level_ and level_.levelId or "unknown"
+        if IsOfficialRuntimeSession() then return levelId end
+        return "custom:" .. tostring(levelId)
+    end
+
     function LoadLevelDefinition(index)
         index = math.max(1, math.min(CONFIG.levelCount, index))
         local resource = string.format("Data/Levels/level_%02d.json", index)
@@ -150,11 +161,25 @@ function M.Install(context)
         local valid, errors = LevelData.Validate(normalized)
         if not valid then return nil, table.concat(errors, "；") end
 
+        -- Runtime identity is granted by the launch path, never by level JSON.
+        -- Unknown/legacy launch kinds are treated as custom by default.
+        local sourceKind = options.sourceKind == "official" and "official" or "custom"
         level_ = normalized
-        LevelPresentation.Apply(level_, LEVEL_META[level_.levelId], LEVEL_SCORE_PROFILES, DEFAULT_LEVEL_SCORE_PROFILE)
         if options.levelIndex ~= nil then levelIndex_ = tonumber(options.levelIndex) or levelIndex_ end
+        runtimeSession_ = {
+            levelId = level_.levelId,
+            levelIndex = sourceKind == "official" and levelIndex_ or nil,
+            sourceKind = sourceKind,
+            screen = options.screen or "game",
+            originLevelId = sourceKind == "custom" and level_.originLevelId or nil,
+            customLevelId = sourceKind == "custom" and level_.levelId or nil,
+            migrations = migrations,
+            disposed = false,
+        }
+        LevelPresentation.Apply(level_, sourceKind == "official" and LEVEL_META[level_.levelId] or nil,
+            LEVEL_SCORE_PROFILES, DEFAULT_LEVEL_SCORE_PROFILE)
         physicsProfile_ = PhysicsProfiles.Resolve(level_.physicsProfile)
-        failureCount_ = context.failureCountsByLevel_[level_.levelId] or 0
+        failureCount_ = context.failureCountsByLevel_[RuntimeLevelStateKey()] or 0
         observation_ = level_.observation or ""
         mapper_ = CoordinateMapper.New({
             levelWidth = level_.playfield.width,
@@ -176,20 +201,20 @@ function M.Install(context)
         local launcherRuntime = runtime_.byId[launcher.id]
         apple_ = RuntimeFactory.CreateApple(scene_, launcherRuntime)
         if options.enablePhysicsProbe ~= false then level_.physicsProbe = require("game.physics.Probe").New() end
-        runtimeSession_ = {
-            levelId = level_.levelId,
-            levelIndex = levelIndex_,
-            sourceKind = options.sourceKind or "memory",
-            screen = options.screen or "game",
-            migrations = migrations,
-            disposed = false,
-        }
         ResetSessionState(true)
         screen_ = runtimeSession_.screen
         RefreshHUDSummary()
-        if options.notifyAssistant ~= false then NotifyGreenAssistantLevelChanged(level_.levelId) end
+        if IsOfficialRuntimeSession() and options.notifyAssistant ~= false then
+            NotifyGreenAssistantLevelChanged(level_.levelId)
+        else
+            NotifyGreenAssistantLevelChanged(nil)
+        end
         if context.NotifyTutorialLevelReady then context.NotifyTutorialLevelReady(level_.levelId) end
-        if options.notifyDialogue ~= false then context.NotifyDialogueLevelReady(level_.levelId) end
+        if IsOfficialRuntimeSession() and options.notifyDialogue ~= false then
+            context.NotifyDialogueLevelReady(level_.levelId)
+        else
+            context.NotifyDialogueLevelReady(nil)
+        end
         return runtimeSession_, nil
     end
 
@@ -258,7 +283,7 @@ function M.Install(context)
 
     function RecordOfficialExperimentProgress(assisted, reportState)
         if assisted == true or not experimentProgress_ or not level_
-            or not runtimeSession_ or runtimeSession_.sourceKind ~= "official" then
+            or not IsOfficialRuntimeSession() then
             return nil, nil
         end
         local scoreSummary = LevelPresentation.BuildResultSummary(level_.scoring, ruleDeployCount_)

@@ -232,7 +232,8 @@ function M.Install(context)
     end
 
     StartAssistReplay = function(replayData)
-        if replayActive_ or not apple_ or type(replayData) ~= "table" then return false end
+        if not IsOfficialRuntimeSession() or replayActive_ or not apple_
+            or type(replayData) ~= "table" then return false end
         if type(replayData.samples) ~= "table" or #replayData.samples < 2 then return false end
         replaySamples_ = replayData.samples
         replayEvents_ = replayData.events or {}

@@ -54,7 +54,7 @@ function PreviewSession.Begin(context, levelDocument, current)
     if context.audioManager_ then context.audioManager_:enterPreview() end
     current.modal, current.textEdit, current.transaction = nil, nil, nil
     local ok, session, errorMessage = pcall(context.StartRuntimeSessionFromDocument, current.document, {
-        sourceKind = "workshop-preview",
+        sourceKind = "custom",
         screen = "workshop_preview",
         enablePhysicsProbe = false,
         notifyAssistant = false,
