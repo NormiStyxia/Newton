@@ -1186,7 +1186,7 @@ local function drawTitleMenu(painter, state)
         drawArrow(vg, MENU.width - 47, 0, MENU_ACCENT, visualProgress)
         nvgRestore(vg)
     end
-    painter:Text(MENU.x - 220, top + (#MENU_ITEMS * MENU.rowStep - 12) * MENU.scale,
+    painter:Text(MENU.x - 90, top + (#MENU_ITEMS * MENU.rowStep - 12) * MENU.scale,
         "（戳左边四个有角色介绍）", 16 * MENU.scale, TIP_COLOR,
         NVG_ALIGN_LEFT + NVG_ALIGN_TOP, "maker-body")
 end
@@ -1239,6 +1239,7 @@ local function activateMenu(state, context, index)
         context.playUIClick()
         state.settingsOpen = true
         state.settingsDrag = nil
+        state.settingsDismissPointerCaptured = false
         return true
     elseif index == 4 then
         context.playUIClick()
@@ -1265,6 +1266,7 @@ function M.Install(context)
         for _, node in ipairs(CHARACTER_NODES) do state.characterHoverProgress[node.id] = 0 end
         state.settingsOpen = false
         state.settingsDrag = nil
+        state.settingsDismissPointerCaptured = false
         state.academyIdCardCharacter = nil
         state.academyIdCardElapsed = 0
         state.profileMode = PROFILE_MODE.TITLE_IDLE
@@ -1418,6 +1420,7 @@ function M.Install(context)
             elseif not pointIn(SETTINGS, pointerFrame.x, pointerFrame.y) then
                 state.settingsOpen = false
                 state.settingsDrag = nil
+                state.settingsDismissPointerCaptured = true
                 context.playUIClick()
                 return
             end
@@ -1438,6 +1441,17 @@ function M.Install(context)
         if state.academyIdCardCharacter then
             state.academyIdCardElapsed = state.academyIdCardElapsed + frameDt
             if state.academyIdCardElapsed > .28 then state.academyIdCardCharacter = nil end
+        end
+        if state.settingsDismissPointerCaptured then
+            state.hoverIndex = nil
+            state.hoverCharacter = nil
+            state.pressedIndex = nil
+            if pointerFrame.released or not pointerFrame.down then
+                state.settingsDismissPointerCaptured = false
+            end
+            updateSelection(state, frameDt)
+            updateCharacterHover(state, frameDt)
+            return
         end
         if state.settingsOpen then
             state.hoverCharacter = nil

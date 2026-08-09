@@ -286,6 +286,7 @@ function State.New(dependencies, constants)
         selectionProgress = { 1, 0, 0, 0 },
         settingsOpen = false,
         settingsDrag = nil,
+        settingsDismissPointerCaptured = false,
         -- Legacy aliases remain for old UI callers; AudioManager owns the
         -- canonical BGM/SFX values and the two independent mute flags.
         musicVolume = .4,
