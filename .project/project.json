@@ -17,7 +17,8 @@
     "app_platforms": "1,2",
     "app_id": 895312,
     "miniapp_id": "tapmce41ecayfsfet6",
-    "developer_id": 411438
+    "developer_id": 411438,
+    "gameplay_demo_video_source": "https://tapcode-sce.spark.xd.com/videos/bac66748-5aca-4a5c-9188-54cefd824f21/1786287560639-uploaded_4c62d419.mp4"
   },
   "assets": {
     "icon": "./game_material/icon.png",
@@ -46,6 +47,6 @@
     "generated_at": "2026-08-09T12:04:57.539Z"
   },
   "metadata": {
-    "updated_at": "2026-08-09T14:59:49.122Z"
+    "updated_at": "2026-08-09T15:02:43.930Z"
   }
 }
