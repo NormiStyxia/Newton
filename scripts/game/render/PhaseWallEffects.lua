@@ -108,6 +108,48 @@ function PhaseWallEffects.FindContainingWall(runtime, worldX, worldY)
     return nil
 end
 
+local function segmentAxisInterval(start, delta, minimum, maximum)
+    if math.abs(delta) <= 0.000001 then
+        if start < minimum or start > maximum then return nil end
+        return -math.huge, math.huge
+    end
+    local first = (minimum - start) / delta
+    local second = (maximum - start) / delta
+    return math.min(first, second), math.max(first, second)
+end
+
+-- Find the first phaseable wall crossed by the swept apple-center segment.
+-- This catches a complete crossing that happens between two physics callbacks.
+function PhaseWallEffects.FindFirstCrossedWall(runtime, startX, startY, endX, endY)
+    local bestWall, bestEntry, bestExit, bestStartsInside = nil, nil, nil, false
+    for _, wall in ipairs(runtime and runtime.ordered or {}) do
+        if wall.type == "wall" and wall.phaseable then
+            local startLocalX, startLocalY = wallLocalPoint(wall, startX, startY)
+            local endLocalX, endLocalY = wallLocalPoint(wall, endX, endY)
+            local halfWidth, halfHeight = wall.worldWidth * 0.5, wall.worldHeight * 0.5
+            local startInside = math.abs(startLocalX) <= halfWidth
+                and math.abs(startLocalY) <= halfHeight
+            local deltaX, deltaY = endLocalX - startLocalX, endLocalY - startLocalY
+            local entryX, exitX = segmentAxisInterval(startLocalX, deltaX, -halfWidth, halfWidth)
+            local entryY, exitY = segmentAxisInterval(startLocalY, deltaY, -halfHeight, halfHeight)
+            if entryX and entryY then
+                local entry = math.max(entryX, entryY)
+                local exit = math.min(exitX, exitY)
+                local crossed = entry <= exit and exit >= 0 and entry <= 1
+                    and (not startInside or exit < 1 - 0.000001)
+                if crossed then
+                    entry = math.max(0, entry)
+                    if not bestEntry or entry < bestEntry then
+                        bestWall, bestEntry, bestExit, bestStartsInside =
+                            wall, entry, math.min(1, exit), startInside
+                    end
+                end
+            end
+        end
+    end
+    return bestWall, bestEntry, bestExit, bestStartsInside
+end
+
 -- Project an apple position onto the nearest/expected wall face. The returned
 -- u/v coordinates are normalized in the wall's visual local space.
 local function surfacePoint(wall, worldX, worldY, velocity, traversalKind)

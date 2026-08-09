@@ -69,6 +69,7 @@ function M.Install(context)
         apple_.body.awake = true
         Rules.Launch(rules_)
         launched_ = true
+        phasePreviousX_, phasePreviousY_ = applePos.x, applePos.y
         replaySamples_ = {
             {
                 t = 0,
@@ -122,8 +123,8 @@ function M.Install(context)
         end
         if not launched_ then return end
         flightMs_ = flightMs_ + dt * 1000
-        RecordReplay(dt)
         UpdatePhaseTraversal()
+        RecordReplay(dt)
         local p = apple_.node.position2D
         local screenX, screenY = context.design_:WorldToLogical(p.x, p.y)
         if flightMs_ - lastTrailAt_ > 55 then

@@ -64,6 +64,8 @@
 ---@field DrawGreenAssistantOverlay fun()
 ---@field ExecuteCardPlay fun(id: string, candidate: string|nil, x: number, y: number): boolean
 ---@field newtonPunchShake_ table
+---@field selectedCardId_ string|nil
+---@field selectedCardDetailAge_ number
 ---@field resultReportState_ table|nil
 ---@field screen_ "title"|"title_catalog_transition"|"catalog"|"game"|"workshop"|"workshop_preview"
 ---@field titleState_ table
@@ -117,7 +119,7 @@ own("experiment", {
     "rules_", "draggedApple_", "aimPreview_", "launched_", "outsideMs_", "flightMs_", "status_",
     "isPaused_", "bulletTimeActive_", "success_", "failed_", "absorbing_", "absorbElapsedMs_",
     "assistedClear_", "failureCount_", "failureCountsByLevel_", "observation_", "uiElapsed_", "anger_",
-    "phaseTraversing_", "phaseWallTraversal_", "stalledMs_", "trail_", "lastTrailAt_", "rulePulse_", "ruleFlash_", "newtonPunchShake_",
+    "phaseTraversing_", "phaseWallTraversal_", "phasePreviousX_", "phasePreviousY_", "stalledMs_", "trail_", "lastTrailAt_", "rulePulse_", "ruleFlash_", "newtonPunchShake_",
     "ruleDeployCount_",
 })
 own("goal", {
@@ -132,7 +134,7 @@ own("cards", {
     "cardParameterStart_", "cardDeployEnteredMs_", "cardLastMotionAtMs_", "cardPointerSamples_",
     "cardCandidate_", "cardGestureDistance_", "hoveredCardId_", "cardHoverStates_", "cardStates_",
     "cardDeckById_", "handOrder_", "cardHomeMotions_", "cardHandReordering_", "cardBurns_",
-    "cardBurnParticles_", "burningCardIds_",
+    "cardBurnParticles_", "burningCardIds_", "selectedCardId_", "selectedCardDetailAge_",
 })
 own("replay", {
     "replayActive_", "replayTime_", "replayPaused_", "replaySpeed_", "replayFinished_",
@@ -241,6 +243,7 @@ function State.New(dependencies, constants)
     context.cardParameterStart_, context.cardDeployEnteredMs_, context.cardLastMotionAtMs_ = nil, nil, nil
     context.cardPointerSamples_, context.cardCandidate_, context.cardGestureDistance_ = {}, nil, 0
     context.hoveredCardId_, context.cardHoverStates_ = nil, {}
+    context.selectedCardId_, context.selectedCardDetailAge_ = nil, 0
     context.hoveredNavigation_, context.punchHovered_ = nil, false
     context.pointer_ = {
         activeTouchId = nil,
@@ -270,7 +273,8 @@ function State.New(dependencies, constants)
     context.resultReportState_, context.resultReportClearCounts_, context.resultReportHistory_ = nil, {}, { einstein = {}, green = {} }
     context.resultReportNextId_, context.resultReportAnimation_, context.resultReportClosing_ = 0, 0, nil
     context.trail_, context.lastTrailAt_, context.sensorAngle_, context.uiElapsed_, context.anger_ = {}, 0, 0, 0, 0
-    context.phaseTraversing_, context.phaseWallTraversal_, context.stalledMs_, context.channelStates_ = false, nil, 0, {}
+    context.phaseTraversing_, context.phaseWallTraversal_ = false, nil
+    context.phasePreviousX_, context.phasePreviousY_, context.stalledMs_, context.channelStates_ = nil, nil, 0, {}
     context.cardStates_, context.cardDeckById_, context.handOrder_ = {}, {}, {}
     context.cardHomeMotions_, context.cardHandReordering_ = {}, false
     context.cardBurns_, context.cardBurnParticles_, context.burningCardIds_ = {}, {}, {}

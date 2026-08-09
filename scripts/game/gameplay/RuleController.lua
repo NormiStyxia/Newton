@@ -46,33 +46,86 @@ function M.Install(context)
     function IsInsidePhaseableWall(worldX, worldY)
         return PhaseWallEffects.FindContainingWall(runtime_, worldX, worldY) ~= nil
     end
-    function UpdatePhaseTraversal()
-        if not apple_ or not rules_.phaseActive then return end
-        local position = apple_.node.position2D
-        local wall = PhaseWallEffects.FindContainingWall(runtime_, position.x, position.y)
+    local function SegmentPoint(startX, startY, endX, endY, progress)
+        return startX + (endX - startX) * progress,
+            startY + (endY - startY) * progress
+    end
+    local function PaddedExitPoint(startX, startY, endX, endY, exitX, exitY)
+        local deltaX, deltaY = endX - startX, endY - startY
+        local length = math.sqrt(deltaX * deltaX + deltaY * deltaY)
+        if length <= 0.000001 then return exitX, exitY end
+        local padding = (apple_.radius or 0) + 0.002
+        return exitX + deltaX / length * padding,
+            exitY + deltaY / length * padding
+    end
+    local function FinishPhaseTraversal(wall, worldX, worldY, physicalX, physicalY)
+        if physicalX and physicalY then
+            local velocity = apple_.body.linearVelocity
+            -- The post-step sweep may already be beyond a second wall. Put the
+            -- apple just beyond the first wall before restoring its collision mask.
+            apple_.node:SetPosition2D(physicalX, physicalY)
+            apple_.body.linearVelocity = velocity
+            apple_.body.awake = true
+            phasePreviousX_, phasePreviousY_ = physicalX, physicalY
+        end
         if wall then
-            if not phaseTraversing_ then
-                -- The gameplay transition is unchanged; these calls only attach
-                -- an entry ripple and a local membrane opening to that transition.
-                phaseTraversing_ = true
-                phaseWallTraversal_ = wall
-                PhaseWallEffects.TriggerPass(wall, position.x, position.y,
-                    apple_.body.linearVelocity, "enter")
+            PhaseWallEffects.TriggerPass(wall, worldX, worldY,
+                apple_.body.linearVelocity, "exit")
+        end
+        phaseTraversing_ = false
+        phaseWallTraversal_ = nil
+        Rules.EndPhase(rules_)
+        RecordReplayEvent("RULE_REMOVED", "quantum-phase")
+        SetGravity()
+        UpdateAngerFromRules()
+        SetStatus("PHASE · 相位穿墙已消耗")
+    end
+    function UpdatePhaseTraversal()
+        if not apple_ then return end
+        local position = apple_.node.position2D
+        local previousX, previousY = phasePreviousX_, phasePreviousY_
+        phasePreviousX_, phasePreviousY_ = position.x, position.y
+        if not rules_.phaseActive then return end
+        previousX, previousY = previousX or position.x, previousY or position.y
+        local wall = PhaseWallEffects.FindContainingWall(runtime_, position.x, position.y)
+        if phaseTraversing_ then
+            local traversedWall, _, traversedExitT, startsInside = PhaseWallEffects.FindFirstCrossedWall(
+                runtime_, previousX, previousY, position.x, position.y)
+            if traversedWall == phaseWallTraversal_ and startsInside
+                and traversedExitT < 1 - 0.000001 then
+                local exitX, exitY = SegmentPoint(previousX, previousY, position.x, position.y, traversedExitT)
+                local physicalX, physicalY = PaddedExitPoint(
+                    previousX, previousY, position.x, position.y, exitX, exitY)
+                FinishPhaseTraversal(phaseWallTraversal_, exitX, exitY, physicalX, physicalY)
+                return
+            elseif wall == phaseWallTraversal_ then
+                return
             end
-        elseif phaseTraversing_ then
-            -- Reaching the far side is the existing phase-consumption point.
-            -- Project the exit effect back onto the traversed wall surface.
-            if phaseWallTraversal_ then
-                PhaseWallEffects.TriggerPass(phaseWallTraversal_, position.x, position.y,
-                    apple_.body.linearVelocity, "exit")
+            FinishPhaseTraversal(phaseWallTraversal_, position.x, position.y)
+            return
+        end
+
+        local crossedWall, entryT, exitT = PhaseWallEffects.FindFirstCrossedWall(
+            runtime_, previousX, previousY, position.x, position.y)
+        if crossedWall then
+            local entryX, entryY = SegmentPoint(previousX, previousY, position.x, position.y, entryT)
+            phaseTraversing_ = true
+            phaseWallTraversal_ = crossedWall
+            PhaseWallEffects.TriggerPass(crossedWall, entryX, entryY,
+                apple_.body.linearVelocity, "enter")
+            -- Consume immediately when the whole wall was crossed in one step,
+            -- so a second wall cannot be phased by the same card use.
+            if exitT < 1 - 0.000001 then
+                local exitX, exitY = SegmentPoint(previousX, previousY, position.x, position.y, exitT)
+                local physicalX, physicalY = PaddedExitPoint(
+                    previousX, previousY, position.x, position.y, exitX, exitY)
+                FinishPhaseTraversal(crossedWall, exitX, exitY, physicalX, physicalY)
             end
-            phaseTraversing_ = false
-            phaseWallTraversal_ = nil
-            Rules.EndPhase(rules_)
-            RecordReplayEvent("RULE_REMOVED", "quantum-phase")
-            SetGravity()
-            UpdateAngerFromRules()
-            SetStatus("PHASE · 相位穿墙已消耗")
+        elseif wall then
+            phaseTraversing_ = true
+            phaseWallTraversal_ = wall
+            PhaseWallEffects.TriggerPass(wall, position.x, position.y,
+                apple_.body.linearVelocity, "enter")
         end
     end
     function ApplyDecision(id, mirrorAxis)
@@ -104,6 +157,8 @@ function M.Install(context)
         elseif id == "quantum-phase" then
             phaseTraversing_ = false
             phaseWallTraversal_ = nil
+            local position = apple_.node.position2D
+            phasePreviousX_, phasePreviousY_ = position.x, position.y
             SetGravity()
         end
         ruleDeployCount_ = ruleDeployCount_ + 1

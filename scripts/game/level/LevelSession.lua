@@ -85,6 +85,7 @@ function M.Install(context)
         physicsProfile_, level_, runtimeSession_ = nil, nil, nil
         assistantInputLocked_, assistSceneActive_, assistDemoActive_ = false, false, false
         ClearCardInteraction()
+        ClearSelectedCard()
         return true
     end
 
@@ -92,6 +93,7 @@ function M.Install(context)
         if ClearResultReportState then ClearResultReportState() end
         rules_ = Rules.NewState()
         InitializeCards()
+        ClearSelectedCard()
         observation_ = level_.observation or ""
         draggedApple_, aimPreview_ = false, nil
         activeCardId_, primedCardId_ = nil, nil
@@ -111,6 +113,7 @@ function M.Install(context)
         pendingMatterRestitutions_ = nil
         physicsStepTimeScale_ = nil
         goalPulseElapsedMs_, phaseTraversing_, phaseWallTraversal_ = nil, false, nil
+        phasePreviousX_, phasePreviousY_ = nil, nil
         success_, failed_, absorbing_, absorbElapsedMs_ = false, false, false, 0
         assistedClear_ = false
         assistSceneActive_ = false
@@ -290,6 +293,7 @@ function M.Install(context)
             apple_.body.angularVelocity = 0
         end
         ClearCardInteraction()
+        ClearSelectedCard()
         SyncPhysicsUpdateEnabled()
         SetStatus(assisted and "ASSISTED CLEAR · 辅助观测成立" or "CLEARED · 观测成立")
         if assisted then PlaySound("success") end
