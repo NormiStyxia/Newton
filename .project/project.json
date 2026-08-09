@@ -8,11 +8,11 @@
   "version": "1.0.13",
   "taptap_publish": {
     "title": "不经典力学.NEWTONignore",
-    "description": "<game description>",
+    "description": "一场不太经典的力学实验。发射苹果，利用场地与策略规则修改重力、弹性与运动轨迹，把苹果送进观察皿。你可以让世界向右坠落、让墙暂时不存在，或者给苹果一点完全不讲道理的推力——如果实验失控，就让牛顿亲自把规律打回来。",
     "category": "puzzle",
     "screen_orientation": "landscape",
     "collection_type": "sce",
-    "trial_note": "<developer's note>",
+    "trial_note": "游戏是自己做的，Bug 是大家一起养的。最后一天是还在滑铲的。\n（关卡后续会有更新的，还有很多没来得及表达的创意）\n牛顿负责生气，绿毛同事负责记录，诺米负责继续加需求顺便查询晚饭菜单。\n至于这里该写什么——等绿毛同事来补～（轻哼）\n—— 一个终于勉强赶到 DDL 的实验员",
     "transparent": false,
     "app_platforms": "1,2",
     "app_id": 895312,
@@ -38,14 +38,14 @@
     ],
     "cover_horizontal": "./game_material/cover_horizontal.png",
     "cover_horizontal_url": "https://tapcode-sce.spark.xd.com/assets/game_material/p_ss8c/cover_horizontal.png",
-    "cover_vertical": "./game_material/COVER_VERTICAL_2026-08-09T13-39-20_01.png",
-    "cover_vertical_url": "https://tapcode-sce.spark.xd.com/assets/game_material/牛顿看了想打人/COVER_VERTICAL_2026-08-09T13-39-20_01.png"
+    "cover_vertical": "./game_material/cover_vertical.png",
+    "cover_vertical_url": "https://tapcode-sce.spark.xd.com/assets/game_material/p_ss8c/cover_vertical.png"
   },
   "test_qrcode": {
     "url": "https://tapcode-sce.spark.xd.com/qrcode/p_ss8c_1786277097343.png",
     "generated_at": "2026-08-09T12:04:57.539Z"
   },
   "metadata": {
-    "updated_at": "2026-08-09T14:55:02.127Z"
+    "updated_at": "2026-08-09T14:59:49.122Z"
   }
 }
