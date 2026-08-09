@@ -200,7 +200,7 @@ function M.Install(context)
         painter_:Circle(cx, cy, 32, nil, punchReady and Renderer2D.COLORS.warningActive or Renderer2D.COLORS.warningLow, punchReady and 2 or 1, punchAlpha)
         painter_:DrawFist(cx, cy - 5, 46, punchColor, punchAlpha)
         local punchStatus = punchReady and "可修正" or (rules_.punchUsed and "已使用" or "未就绪")
-        painter_:Text(cx, cy + 42, punchStatus, 10, punchColor, NVG_ALIGN_CENTER + NVG_ALIGN_TOP, "maker-display", punchAlpha)
+        painter_:Text(cx, cy + 42, punchStatus, 14, punchColor, NVG_ALIGN_CENTER + NVG_ALIGN_TOP, "maker-display", punchAlpha)
     end
 
     -- Draw the selected hand instance at a larger scale in the reserved strip
