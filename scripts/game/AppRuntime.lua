@@ -724,12 +724,14 @@ function M.Install(context)
                 DrawVelocityArrow()
                 DrawPlayfieldOverlay()
             end
-            painter_:DrawGameplayDecor(frame_)
             EndGameplayWorldShake()
             -- Pause is a fixed modal layer, even if it is opened during the
             -- short-lived world impact response.
             DrawPauseShade()
             painter_:DrawGameplayFrameChrome(frame_)
+            BeginGameplayWorldShake(frame_)
+            painter_:DrawGameplayDecor(frame_)
+            EndGameplayWorldShake()
             DrawHUD()
             context.DrawDialogueHistoryButton()
             DrawCards(nil, 71.999, true)
