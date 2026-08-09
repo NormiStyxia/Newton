@@ -20,6 +20,7 @@ function M.Install(context)
     local LEVEL_SCORE_PROFILES = context.LEVEL_SCORE_PROFILES
     local DEFAULT_LEVEL_SCORE_PROFILE = context.DEFAULT_LEVEL_SCORE_PROFILE
     local experimentProgress_ = context.experimentProgress_
+    local newtonPunchShake_ = context.newtonPunchShake_
     local _ENV = context
 
     function IsOfficialRuntimeSession()

@@ -23,6 +23,7 @@ function M.Install(context)
     local CARD_RENDER_WIDTH = context.CARD_RENDER_WIDTH
     local CARD_RENDER_HEIGHT = context.CARD_RENDER_HEIGHT
     local navigationTransition_ = context.navigationTransition_
+    local newtonPunchShake_ = context.newtonPunchShake_
     local lastValidPhysicsTimeStep = 1 / 60
     local frameScreen_ = nil
     local lastMusicScreen_ = nil
@@ -361,6 +362,7 @@ function M.Install(context)
                 matterVelocityToWorld = CONFIG.matterVelocityToWorld,
                 applyGravity = SetGravity,
                 setLaunched = function(value) launched_ = value end,
+                ---@diagnostic disable-next-line: assign-type-mismatch
                 setStatus = SetStatus,
             }
             -- Deliberately hard to trigger during a normal game, but independent

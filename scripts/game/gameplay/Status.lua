@@ -5,6 +5,7 @@ local NewtonPunchShake = require("game.render.NewtonPunchShake")
 
 ---@param context GameContext
 function M.Install(context)
+    local newtonPunchShake_ = context.newtonPunchShake_
     local _ENV = context
     function SetStatus(value)
         status_ = value

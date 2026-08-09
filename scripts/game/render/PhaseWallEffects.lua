@@ -132,7 +132,7 @@ function PhaseWallEffects.FindFirstCrossedWall(runtime, startX, startY, endX, en
             local deltaX, deltaY = endLocalX - startLocalX, endLocalY - startLocalY
             local entryX, exitX = segmentAxisInterval(startLocalX, deltaX, -halfWidth, halfWidth)
             local entryY, exitY = segmentAxisInterval(startLocalY, deltaY, -halfHeight, halfHeight)
-            if entryX and entryY then
+            if entryX and exitX and entryY and exitY then
                 local entry = math.max(entryX, entryY)
                 local exit = math.min(exitX, exitY)
                 local crossed = entry <= exit and exit >= 0 and entry <= 1

@@ -8,6 +8,7 @@ function M.Install(context)
     local ReplayMode = context.ReplayMode
     local ReplayTimeline = context.ReplayTimeline
     local CONFIG = context.CONFIG
+    local newtonPunchShake_ = context.newtonPunchShake_
     local _ENV = context
     function SetReplayMode(mode, businessMode)
         assert(mode == "none" or mode == "playing" or mode == "paused" or mode == "finished",
