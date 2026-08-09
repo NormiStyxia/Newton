@@ -33,6 +33,19 @@ expect(normal.playfieldY + normal.playfieldHeight <= normal.stageHeight
     and normal.cardHandY + 202 * 0.5 <= normal.stageHeight,
     "authored gameplay content overflows the fixed main stage")
 
+local replayControls = require("game.replay.Controller").ResolveFinishedControls(normal)
+local replayPanelRight = replayControls.panel.x + replayControls.panel.w
+expect(replayControls.replay.x >= replayControls.panel.x
+    and replayControls.replay.x + replayControls.replay.w <= replayPanelRight,
+    "replay-again button overflows the finished replay panel")
+expect(replayControls.exit.x >= replayControls.panel.x
+    and replayControls.exit.x + replayControls.exit.w <= replayPanelRight,
+    "exit-replay button overflows the finished replay panel")
+near(replayPanelRight - (replayControls.exit.x + replayControls.exit.w), 8,
+    "finished replay panel right padding")
+expect(replayControls.exit.x - (replayControls.replay.x + replayControls.replay.w) >= 6,
+    "finished replay buttons overlap")
+
 viewport.height = 1120
 local tall = design:Frame(true)
 near(tall.viewportLogicalHeight, 1120, "tall viewport logical height")

@@ -72,6 +72,36 @@ for interventionCount, expectedScore in pairs({ [0] = 100, [1] = 100, [2] = 80, 
             interventionCount, expectedScore, summary.score))
 end
 
+local inlineLevel = {
+    objective = "JSON objective",
+    shortObjective = "JSON HUD objective",
+    scoring = {
+        profileId = "custom",
+        metric = "ruleDeployCount",
+        tiers = { { score = 100, maxInterventions = 1, title = "JSON tier" }, { score = 60 } },
+    },
+}
+LevelPresentation.Apply(inlineLevel, {
+    objective = "static objective",
+    shortObjective = "static HUD objective",
+    observation = "static observation",
+}, Config.LEVEL_SCORE_PROFILES, "intervention_standard")
+expect(inlineLevel.objective == "JSON objective" and inlineLevel.shortObjective == "JSON HUD objective",
+    "inline JSON presentation did not override static level metadata")
+expect(inlineLevel.scoring.profileId == "custom" and inlineLevel.scoring.tiers[1].title == "JSON tier",
+    "inline JSON scoring did not reach the runtime presentation")
+
+local fallbackLevel = {}
+LevelPresentation.Apply(fallbackLevel, {
+    objective = "fallback objective",
+    shortObjective = "fallback HUD objective",
+    observation = "fallback observation",
+}, Config.LEVEL_SCORE_PROFILES, "intervention_standard")
+expect(fallbackLevel.objective == "fallback objective" and fallbackLevel.shortObjective == "fallback HUD objective",
+    "static presentation fallback was not retained for legacy level JSON")
+expect(fallbackLevel.scoring.profileId == "intervention_standard" and #fallbackLevel.scoring.tiers > 0,
+    "default scoring fallback was not retained for legacy level JSON")
+
 local Profiles = require("game.physics.Profiles")
 local standard = Profiles.Resolve(nil)
 local incident = Profiles.Resolve(Profiles.INCIDENT_ID)
@@ -185,6 +215,8 @@ for _, method in ipairs({
 end
 expect(type(app.context.BuildLevel) == "function" and type(app.context.HandlePointer) == "function"
     and type(app.context.HandleRender) == "function", "App installers did not compose")
+expect(type(app.context.HandleAssistDemoPointer) == "function",
+    "assist status pointer exit was not composed into the App runtime")
 expect(type(app.context.RequestEnterWorkshop) == "function"
     and type(app.context.OpenLevelWorkshop) == "function"
     and type(app.context.BeginWorkshopPreview) == "function"

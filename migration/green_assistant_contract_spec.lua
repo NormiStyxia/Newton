@@ -223,6 +223,13 @@ assistant:update(.06)
 assistant:onAttemptFailed({ reason = "C" })
 expect(assistant:getBehavior() == GreenAssistant.Behavior.OFFER, "third failure must offer takeover")
 expect(assistant.failureAssist.hasOfferedThisLevel, "offer flag was not retained")
+expect(assistant:declineTakeover(), "takeover decline failed")
+expect(assistant:getBehavior() == GreenAssistant.Behavior.IDLE, "decline did not return to idle")
+expect(assistant:poke() and assistant:getBehavior() == GreenAssistant.Behavior.OFFER,
+    "first poke after decline did not reopen the takeover offer")
+expect(assistant:declineTakeover(), "reopened takeover decline failed")
+expect(assistant:poke() and assistant:getBehavior() == GreenAssistant.Behavior.OFFER,
+    "repeated poke after decline did not reopen the takeover offer")
 expect(assistant:acceptTakeover(), "takeover acceptance failed")
 expect(assistant:getBehavior() == GreenAssistant.Behavior.TAKEOVER and adapter.locked and adapter.began,
     "takeover did not lock input and start replay")

@@ -5,6 +5,8 @@ local State = require("game.assist_demo.State")
 local StandardSolutions = require("game.assist_demo.StandardSolutions")
 local FixedStepClock = require("game.assist_demo.FixedStepClock")
 local GameAdapter = require("game.assist_demo.GameAdapter")
+local CursorView = require("game.assist_demo.CursorView")
+local AssistDemoController = require("game.assist_demo.Controller")
 
 local function Expect(condition, message)
     if not condition then error(message, 2) end
@@ -47,6 +49,41 @@ local function NewAdapter(alwaysWait)
         return not alwaysWait and self.conditionCounts[key] >= 2
     end
     return adapter
+end
+
+local statusFrame = { playfieldX = 210, playfieldWidth = 1500 }
+local statusView = CursorView.New({})
+statusView.active, statusView.presence = true, 1
+statusView:setMessage("我来试一次。")
+local statusRect = statusView:getStatusRect(statusFrame)
+Expect(statusRect.width == 500 and statusRect.height == 88 and statusRect.y == 28,
+    "assist status panel did not use the enlarged, lowered geometry")
+Expect(statusView:containsStatusPoint(statusFrame,
+    statusRect.x + statusRect.width * 0.5, statusRect.y + statusRect.height * 0.5),
+    "assist status panel center is not clickable")
+Expect(not statusView:containsStatusPoint(statusFrame, statusRect.x - 1, statusRect.y),
+    "assist status panel accepted an outside point")
+
+for _, isTouch in ipairs({ false, true }) do
+    local abortReason
+    local pointerContext = {
+        assistSceneActive_ = true,
+        assistDemoView_ = statusView,
+        frame_ = statusFrame,
+        AbortGreenAssistantTakeover = function(reason)
+            abortReason = reason
+            return true
+        end,
+    }
+    AssistDemoController.Install(pointerContext)
+    local consumed = pointerContext.HandleAssistDemoPointer({
+        x = statusRect.x + statusRect.width * 0.5,
+        y = statusRect.y + statusRect.height * 0.5,
+        pressed = true,
+        isTouch = isTouch,
+    })
+    Expect(consumed and abortReason == "pointer",
+        (isTouch and "touch" or "mouse") .. " did not exit through the assist status panel")
 end
 
 local adapter = NewAdapter(false)
