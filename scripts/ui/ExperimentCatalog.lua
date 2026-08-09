@@ -64,6 +64,14 @@ local COLORS = {
     overlay = { 35, 49, 39, 255 },
 }
 
+local CATEGORY_OFFICIAL = "official"
+local CATEGORY_CUSTOM = "custom"
+
+local function nonBlank(value, fallback)
+    if type(value) ~= "string" or value:match("^%s*$") then return fallback end
+    return value
+end
+
 local function pointIn(rect, x, y)
     return rect and x >= rect.x and x <= rect.x + rect.w and y >= rect.y and y <= rect.y + rect.h
 end
@@ -168,12 +176,27 @@ function M.ResolveLayout(frame)
         w = right.w - 50,
         h = math.max(120, actionY - briefY - 14),
     }
+    local categoryGap = 8
+    local categoryX = left.x + 18
+    local categoryY = left.y + 58
+    local categoryWidth = (left.w - 36 - categoryGap) * .5
+    local listTop = left.y + 106
     return {
         left = left,
         center = center,
         right = right,
-        listTop = left.y + 54,
-        listItemHeight = (left.h - 70) / 9,
+        categoryTabs = {
+            official = { x = categoryX, y = categoryY, w = categoryWidth, h = 44 },
+            custom = { x = categoryX + categoryWidth + categoryGap, y = categoryY, w = categoryWidth, h = 44 },
+        },
+        listTop = listTop,
+        listItemHeight = 52,
+        listViewport = {
+            x = left.x + 6,
+            y = listTop,
+            w = left.w - 12,
+            h = math.max(80, left.y + left.h - listTop - 10),
+        },
         briefViewport = briefViewport,
         startButton = { x = right.x + 21, y = actionY, w = actionWidth, h = 76 },
         workshopButton = { x = right.x + 21 + actionWidth + actionGap, y = actionY, w = actionWidth, h = 76 },
@@ -551,6 +574,19 @@ local function beginContentMotion(vg, pose)
     nvgGlobalAlpha(vg, pose and pose.alpha or 1)
 end
 
+local function drawCategoryTab(painter, rect, label, active, hovered)
+    local color = active and COLORS.ink or COLORS.inkMuted
+    if hovered and not active then color = COLORS.border end
+    painter:Text(rect.x + rect.w * .5, rect.y + rect.h * .5 - 1, label, 19, color,
+        NVG_ALIGN_CENTER + NVG_ALIGN_MIDDLE, CATALOG_HEADING_FONT)
+    if active then
+        painter:FillRect(rect.x + 14, rect.y + rect.h - 3, rect.w - 28, 2, COLORS.border, 235)
+        painter:Circle(rect.x + rect.w * .5, rect.y + rect.h - 2, 2.5, COLORS.brass, nil, nil, 245)
+    else
+        drawDottedDivider(painter, rect.x + 18, rect.y + rect.h - 3, rect.w - 36)
+    end
+end
+
 local function beginPanelMotion(vg, rect, pose, applyAlpha)
     pose = pose or { offsetX = 0, offsetY = 0, scale = 1, alpha = 1 }
     local centerX, centerY = rect.x + rect.w * .5, rect.y + rect.h * .5
@@ -565,6 +601,7 @@ local function drawBrief(painter, layout, level, state, rules, entrance)
     local viewport = layout.briefViewport
     local y = viewport.y - state.scroll
     local left, width = viewport.x, viewport.w - 10
+    local isCustom = state.category == CATEGORY_CUSTOM
     nvgSave(painter.vg)
     nvgScissor(painter.vg, viewport.x, viewport.y, viewport.w, viewport.h)
     if level then
@@ -578,17 +615,22 @@ local function drawBrief(painter, layout, level, state, rules, entrance)
             titleSize, COLORS.ink, nil, CATALOG_HEADING_FONT)
         y = y + 50
         drawDivider(painter, left, y - 7, width, 100)
-        painter:Text(left, y, "实验目的", 17, COLORS.brass, nil, CATALOG_HEADING_FONT)
-        local objectiveHeight = drawWrapped(painter, left, y + 25, width, level.objective or "", 21,
+        painter:Text(left, y, isCustom and "实验发起人" or "实验目的", 17,
+            COLORS.brass, nil, CATALOG_HEADING_FONT)
+        local primaryText = isCustom and nonBlank(level.author, "匿名实验员") or (level.objective or "")
+        local objectiveHeight = drawWrapped(painter, left, y + 25, width, primaryText, 21,
             COLORS.ink, 29, CATALOG_BODY_FONT)
         nvgRestore(painter.vg)
         y = y + 26 + objectiveHeight
         y = y + 12
 
         beginContentMotion(painter.vg, blockPose(2))
-        painter:Text(left, y, "实验说明", 17, COLORS.brass, nil, CATALOG_HEADING_FONT)
+        painter:Text(left, y, isCustom and "实验介绍" or "实验说明", 17,
+            COLORS.brass, nil, CATALOG_HEADING_FONT)
+        local description = isCustom and nonBlank(level.description, "暂无实验介绍")
+            or (level.description or "暂无说明")
         local descriptionHeight = drawWrapped(painter, left, y + 25, width,
-            level.description or "暂无说明", 18, COLORS.inkMuted, 26)
+            description, 18, COLORS.inkMuted, 26)
         nvgRestore(painter.vg)
         y = y + 26 + descriptionHeight
         y = y + 12
@@ -621,7 +663,8 @@ local function drawBrief(painter, layout, level, state, rules, entrance)
         nvgRestore(painter.vg)
     else
         beginContentMotion(painter.vg, entrance and entrance:GetReportBlockPose(1) or nil)
-        painter:Text(left, y, "实验数据读取失败", 22, COLORS.button, nil, CATALOG_BODY_FONT)
+        painter:Text(left, y, isCustom and "尚未选择自制实验" or "实验数据读取失败",
+            22, isCustom and COLORS.inkMuted or COLORS.button, nil, CATALOG_BODY_FONT)
         nvgRestore(painter.vg)
         y = y + 40
     end
@@ -729,6 +772,9 @@ end
 function M.Install(context)
     local CONFIG = context.CONFIG
     local Rules = context.Rules
+    local LevelPresentation = context.LevelPresentation
+    local LEVEL_SCORE_PROFILES = context.LEVEL_SCORE_PROFILES
+    local DEFAULT_LEVEL_SCORE_PROFILE = context.DEFAULT_LEVEL_SCORE_PROFILE
     local catalogState_ = context.catalogState_
     local experimentProgress_ = context.experimentProgress_
     local navigationTransition_ = context.navigationTransition_
@@ -766,21 +812,110 @@ function M.Install(context)
 
     navigationTransition_ = upgradeNavigationTransition(navigationTransition_)
 
+    local function categoryCount(levels)
+        return type(levels) == "table" and #levels or 0
+    end
+
+    local function clampCategoryIndex(index, levels)
+        local count = categoryCount(levels)
+        if count == 0 then return 1 end
+        return clamp(tonumber(index) or 1, 1, count)
+    end
+
+    local function rememberActiveCategory(state)
+        if state.category == CATEGORY_CUSTOM then
+            state.selectedCustomIndex = state.selectedIndex
+            state.customListScroll = state.listScroll or 0
+        else
+            state.selectedOfficialIndex = state.selectedIndex
+            state.officialListScroll = state.listScroll or 0
+        end
+    end
+
+    local function customEntryIndex(state, entryId)
+        if not entryId then return nil end
+        for index, entry in ipairs(state.customEntries or {}) do
+            if entry.entryId == entryId then return index end
+        end
+        return nil
+    end
+
+    function RefreshExperimentCatalogCustomLevels(preferredEntryId)
+        local state = catalogState_
+        local previous = state.customEntries
+            and state.customEntries[state.selectedCustomIndex or 1] or nil
+        preferredEntryId = preferredEntryId or (previous and previous.entryId)
+        local ok, recordsOrError = pcall(WorkshopListCustomExperiments)
+        local records = ok and type(recordsOrError) == "table" and recordsOrError or {}
+        state.customLoadError = ok and nil or tostring(recordsOrError)
+        state.customEntries, state.customLevels = {}, {}
+        for _, record in ipairs(records) do
+            if type(record) == "table" and type(record.document) == "table" then
+                local document = record.document
+                LevelPresentation.Apply(document, nil, LEVEL_SCORE_PROFILES, DEFAULT_LEVEL_SCORE_PROFILE)
+                state.customEntries[#state.customEntries + 1] = record
+                state.customLevels[#state.customLevels + 1] = document
+            end
+        end
+        state.selectedCustomIndex = customEntryIndex(state, preferredEntryId)
+            or clampCategoryIndex(state.selectedCustomIndex, state.customLevels)
+        if state.category == CATEGORY_CUSTOM then
+            state.levels = state.customLevels
+            state.selectedIndex = state.selectedCustomIndex
+            state.listScroll = state.customListScroll or 0
+            state.scroll, state.scrollMax = 0, 0
+            if state.transition then state.transition:Reset(state.selectedIndex) end
+        end
+        return #state.customLevels
+    end
+
+    local function activateCategory(category)
+        local state = catalogState_
+        category = category == CATEGORY_CUSTOM and CATEGORY_CUSTOM or CATEGORY_OFFICIAL
+        if state.category == category then return false end
+        rememberActiveCategory(state)
+        if category == CATEGORY_CUSTOM then RefreshExperimentCatalogCustomLevels() end
+        state.category = category
+        if category == CATEGORY_CUSTOM then
+            state.levels = state.customLevels
+            state.selectedIndex = clampCategoryIndex(state.selectedCustomIndex, state.levels)
+            state.listScroll = state.customListScroll or 0
+        else
+            state.levels = state.officialLevels
+            state.selectedIndex = clampCategoryIndex(state.selectedOfficialIndex, state.levels)
+            state.listScroll = state.officialListScroll or 0
+        end
+        state.scroll, state.scrollMax = 0, 0
+        state.listScrollMax = 0
+        state.dragStartY, state.listDragStartY, state.listPressIndex = nil, nil, nil
+        state.reportSnapshot, state.reportSnapshotAnimation = nil, 0
+        state.reportSnapshotClosing = false
+        if state.transition then state.transition:Reset(state.selectedIndex) end
+        playUIClick()
+        return true
+    end
+
     function InitializeExperimentCatalog()
         local state = catalogState_
         sketchDrawing_:Clear()
-        state.levels, state.loadErrors = {}, {}
+        state.officialLevels, state.loadErrors = {}, {}
         for index = 1, CONFIG.levelCount do
             local ok, levelOrError = pcall(LoadLevelDefinition, index)
             if ok then
-                state.levels[index] = levelOrError
+                state.officialLevels[index] = levelOrError
             else
                 local message = tostring(levelOrError)
                 state.loadErrors[index] = message
                 print(string.format("[LevelCatalog] level_%02d load failed: %s", index, message))
             end
         end
-        state.selectedIndex = clamp(tonumber(state.selectedIndex) or 1, 1, CONFIG.levelCount)
+        state.category = CATEGORY_OFFICIAL
+        state.selectedOfficialIndex = clampCategoryIndex(state.selectedOfficialIndex or state.selectedIndex,
+            state.officialLevels)
+        state.selectedIndex = state.selectedOfficialIndex
+        state.levels = state.officialLevels
+        state.officialListScroll, state.customListScroll, state.listScroll = 0, 0, 0
+        RefreshExperimentCatalogCustomLevels()
         state.scroll, state.scrollMax = 0, 0
         state.transition = CatalogTransition.New(state.selectedIndex)
         state.progressFeedback, state.progressFeedbackElapsed = nil, 0
@@ -789,14 +924,30 @@ function M.Install(context)
         state.headerBackPressed = false
     end
 
-    local function resetCatalogForNavigation(selected)
-        catalogState_.selectedIndex = clamp(selected, 1, CONFIG.levelCount)
-        catalogState_.scroll, catalogState_.scrollMax = 0, 0
-        catalogState_.dragStartY, catalogState_.toast = nil, nil
+    local function resetCatalogForNavigation(selected, category, preferredCustomEntryId)
+        local state = catalogState_
+        category = category == CATEGORY_CUSTOM and CATEGORY_CUSTOM or CATEGORY_OFFICIAL
+        state.category = category
+        if category == CATEGORY_CUSTOM then
+            RefreshExperimentCatalogCustomLevels(preferredCustomEntryId)
+            state.levels = state.customLevels
+            state.selectedIndex = customEntryIndex(state, preferredCustomEntryId)
+                or clampCategoryIndex(state.selectedCustomIndex, state.levels)
+            state.selectedCustomIndex = state.selectedIndex
+            state.listScroll = state.customListScroll or 0
+        else
+            state.levels = state.officialLevels
+            state.selectedIndex = clampCategoryIndex(selected or state.selectedOfficialIndex, state.levels)
+            state.selectedOfficialIndex = state.selectedIndex
+            state.listScroll = state.officialListScroll or 0
+        end
+        state.scroll, state.scrollMax, state.listScrollMax = 0, 0, 0
+        state.dragStartY, state.listDragStartY, state.listPressIndex, state.toast = nil, nil, nil, nil
         catalogState_.reportSnapshot, catalogState_.reportSnapshotAnimation = nil, 0
         catalogState_.reportSnapshotClosing = false
         if catalogState_.transition then catalogState_.transition:Reset(catalogState_.selectedIndex) end
-        catalogState_.progressFeedback = experimentProgress_ and experimentProgress_:ConsumeFeedback() or nil
+        catalogState_.progressFeedback = category == CATEGORY_OFFICIAL and experimentProgress_
+            and experimentProgress_:ConsumeFeedback() or nil
         catalogState_.progressFeedbackElapsed = 0
         hudDropdown_ = nil
     end
@@ -811,6 +962,7 @@ function M.Install(context)
     function RequestOpenCatalogReportSnapshot()
         if navigationTransition_:IsInputLocked() then return false end
         local state = catalogState_
+        if state.category ~= CATEGORY_OFFICIAL then return false end
         local level = state.levels[state.selectedIndex]
         local snapshot = level and experimentProgress_
             and experimentProgress_:GetReportSnapshot(level.levelId) or nil
@@ -829,18 +981,47 @@ function M.Install(context)
     function RequestStartLevel(index, suppressUIClick)
         if navigationTransition_:IsInputLocked() then return false end
         if catalogState_.transition and not catalogState_.transition:IsSettled() then return false end
-        index = clamp(tonumber(index) or catalogState_.selectedIndex or 1, 1, CONFIG.levelCount)
-        if not catalogState_.levels[index] then
+        local state = catalogState_
+        index = clampCategoryIndex(index or state.selectedIndex, state.levels)
+        if not state.levels[index] then
             catalogState_.toast = "实验数据不可用"
             catalogState_.toastTime = 2.4
             return false
         end
-        catalogState_.selectedIndex = index
+        state.selectedIndex = index
+        if state.category == CATEGORY_CUSTOM then
+            state.selectedCustomIndex = index
+        else
+            state.selectedOfficialIndex = index
+        end
         catalogState_.progressFeedback, catalogState_.progressFeedbackElapsed = nil, 0
         if experimentProgress_ then experimentProgress_:ClearPendingFeedback() end
         catalogState_.toast, hudDropdown_ = nil, nil
         sketchDrawing_:Clear()
-        BuildLevel(index)
+        if state.category == CATEGORY_CUSTOM then
+            local entry = state.customEntries[index]
+            local document, metadataOrError = nil, "自制实验数据不可用"
+            if entry then document, metadataOrError = WorkshopOpenCustomExperiment(entry.entryId) end
+            if not document then
+                state.toast = metadataOrError or "自制实验数据不可用"
+                state.toastTime = 3
+                return false
+            end
+            local session, errorMessage = StartRuntimeSessionFromDocument(document, {
+                sourceKind = "custom",
+                screen = "game",
+                enablePhysicsProbe = true,
+                notifyAssistant = false,
+                notifyDialogue = false,
+            })
+            if not session then
+                state.toast = "无法开始实验：" .. tostring(errorMessage)
+                state.toastTime = 3.5
+                return false
+            end
+        else
+            BuildLevel(index)
+        end
         if not suppressUIClick then playUIClick() end
         return true
     end
@@ -848,11 +1029,16 @@ function M.Install(context)
     function RequestReturnToCatalog(preselectIndex, suppressUIClick)
         if navigationTransition_:IsInputLocked() then return false end
         if screen_ == "workshop_preview" then return ExitWorkshopPreview("navigation") end
+        local returningSession = GetRuntimeSession and GetRuntimeSession() or nil
+        local returningCategory = returningSession and returningSession.sourceKind == "custom"
+            and CATEGORY_CUSTOM or CATEGORY_OFFICIAL
+        local preferredCustomEntryId = returningSession and returningSession.customLevelId
+            and ("custom:" .. returningSession.customLevelId) or nil
         local selected = tonumber(preselectIndex) or levelIndex_ or catalogState_.selectedIndex or 1
         if screen_ == "title" then
             if not BeginTitleCatalogExit() then return false end
             if not navigationTransition_:Start() then return false end
-            resetCatalogForNavigation(selected)
+            resetCatalogForNavigation(selected, CATEGORY_OFFICIAL)
             screen_ = "title_catalog_transition"
             if not suppressUIClick then playUIClick() end
             return true
@@ -860,7 +1046,7 @@ function M.Install(context)
         if scene_ or level_ then ReleaseLevelRuntime() end
         screen_ = "catalog"
         navigationTransition_:SetCatalogIdle()
-        resetCatalogForNavigation(selected)
+        resetCatalogForNavigation(selected, returningCategory, preferredCustomEntryId)
         if not suppressUIClick then playUIClick() end
         return true
     end
@@ -898,9 +1084,15 @@ function M.Install(context)
 
     local function selectLevel(index)
         if navigationTransition_:IsInputLocked() then return end
-        index = clamp(index, 1, CONFIG.levelCount)
+        index = clampCategoryIndex(index, catalogState_.levels)
+        if not catalogState_.levels[index] then return end
         if catalogState_.selectedIndex == index then return end
         catalogState_.selectedIndex = index
+        if catalogState_.category == CATEGORY_CUSTOM then
+            catalogState_.selectedCustomIndex = index
+        else
+            catalogState_.selectedOfficialIndex = index
+        end
         catalogState_.scroll, catalogState_.scrollMax = 0, 0
         if catalogState_.transition then catalogState_.transition:Request(index) end
         playUIClick()
@@ -967,19 +1159,33 @@ function M.Install(context)
         if input:GetKeyPress(KEY_RETURN) and actionsEnabled then RequestStartLevel(state.selectedIndex); return end
 
         if pointerFrame.pressed then
-            for index = 1, CONFIG.levelCount do
-                local item = { x = layout.left.x + 12, y = layout.listTop + (index - 1) * layout.listItemHeight,
-                    w = layout.left.w - 24, h = layout.listItemHeight - 4 }
-                if pointIn(item, x, y) then selectLevel(index); return end
+            if actionsEnabled and pointIn(layout.categoryTabs.official, x, y) then
+                activateCategory(CATEGORY_OFFICIAL)
+                return
+            end
+            if actionsEnabled and pointIn(layout.categoryTabs.custom, x, y) then
+                activateCategory(CATEGORY_CUSTOM)
+                return
+            end
+            if actionsEnabled and pointIn(layout.listViewport, x, y) then
+                state.listDragStartY = y
+                state.listDragStartScroll = state.listScroll or 0
+                state.listDragMoved = false
+                local listY = y - layout.listTop + state.listScroll
+                local index = math.floor(listY / layout.listItemHeight) + 1
+                local rowY = listY - (index - 1) * layout.listItemHeight
+                state.listPressIndex = rowY <= layout.listItemHeight - 4 and state.levels[index] and index or nil
             end
             if actionsEnabled and pointIn(layout.startButton, x, y) then RequestStartLevel(state.selectedIndex); return end
             if actionsEnabled and pointIn(layout.workshopButton, x, y) then
                 local level = state.levels[state.selectedIndex]
-                RequestEnterWorkshop(level and level.levelId or nil)
+                local customEntry = state.category == CATEGORY_CUSTOM
+                    and state.customEntries[state.selectedIndex] or nil
+                RequestEnterWorkshop(customEntry and customEntry.entryId or (level and level.levelId or nil))
                 return
             end
             local selectedLevel = state.levels[state.selectedIndex]
-            local reportAvailable = selectedLevel and experimentProgress_
+            local reportAvailable = state.category == CATEGORY_OFFICIAL and selectedLevel and experimentProgress_
                 and experimentProgress_:HasReportSnapshot(selectedLevel.levelId) or false
             if actionsEnabled and reportAvailable and pointIn(layout.reportButton, x, y) then
                 RequestOpenCatalogReportSnapshot()
@@ -989,8 +1195,22 @@ function M.Install(context)
                 state.dragStartY, state.dragStartScroll = y, state.scroll
             end
         end
+        if pointerFrame.down and state.listDragStartY then
+            local delta = state.listDragStartY - y
+            if math.abs(delta) >= 7 then state.listDragMoved = true end
+            state.listScroll = clamp(state.listDragStartScroll + delta, 0, state.listScrollMax or 0)
+            rememberActiveCategory(state)
+        end
+        if pointerFrame.released and state.listDragStartY then
+            local selectedIndex = not state.listDragMoved and state.listPressIndex or nil
+            state.listDragStartY, state.listPressIndex, state.listDragMoved = nil, nil, false
+            rememberActiveCategory(state)
+            if selectedIndex then selectLevel(selectedIndex); return end
+        elseif not pointerFrame.down and not pointerFrame.pressed then
+            state.listDragStartY, state.listPressIndex, state.listDragMoved = nil, nil, false
+        end
         if not actionsEnabled then
-            state.dragStartY = nil
+            state.dragStartY, state.listDragStartY, state.listPressIndex = nil, nil, nil
             return
         end
         if pointerFrame.down and state.dragStartY then
@@ -998,8 +1218,14 @@ function M.Install(context)
         end
         if pointerFrame.released or not pointerFrame.down then state.dragStartY = nil end
         local wheel = input.mouseMoveWheel or 0
-        if wheel ~= 0 and pointIn(layout.briefViewport, x, y) then
-            state.scroll = clamp(state.scroll - wheel * 52, 0, state.scrollMax)
+        if wheel ~= 0 then
+            if pointIn(layout.listViewport, x, y) then
+                state.listScroll = clamp(state.listScroll - wheel * layout.listItemHeight,
+                    0, state.listScrollMax or 0)
+                rememberActiveCategory(state)
+            elseif pointIn(layout.briefViewport, x, y) then
+                state.scroll = clamp(state.scroll - wheel * 52, 0, state.scrollMax)
+            end
         end
     end
 
@@ -1040,23 +1266,47 @@ function M.Install(context)
         drawCatalogForegroundDecor(painter, frame_)
         beginPanelMotion(painter.vg, layout.left, panelPoses.left, true)
         drawSectionTitle(painter, layout.left.x + 20, layout.left.y + 20, "实验清单")
+        drawCategoryTab(painter, layout.categoryTabs.official, "学院实验",
+            state.category == CATEGORY_OFFICIAL, pointIn(layout.categoryTabs.official, pointer.x, pointer.y))
+        drawCategoryTab(painter, layout.categoryTabs.custom, "自制实验",
+            state.category == CATEGORY_CUSTOM, pointIn(layout.categoryTabs.custom, pointer.x, pointer.y))
         nvgRestore(painter.vg)
         beginPanelMotion(painter.vg, layout.right, panelPoses.right, true)
-        drawSectionTitle(painter, layout.right.x + 20, layout.right.y + 20, "预习报告")
+        drawSectionTitle(painter, layout.right.x + 20, layout.right.y + 20,
+            state.category == CATEGORY_CUSTOM and "实验档案" or "预习报告")
         nvgRestore(painter.vg)
 
         beginPanelMotion(painter.vg, layout.left, panelPoses.left, false)
-        local listHeight = math.max(0, layout.left.y + layout.left.h - layout.listTop - 8)
+        local listHeight = layout.listViewport.h
         local listReveal = entrance and entrance:GetListReveal() or 1
+        local levelCount = #state.levels
+        state.listScrollMax = math.max(0, levelCount * layout.listItemHeight - listHeight)
+        state.listScroll = clamp(state.listScroll or 0, 0, state.listScrollMax)
+        rememberActiveCategory(state)
         nvgSave(painter.vg)
-        nvgScissor(painter.vg, layout.left.x + 3, layout.listTop, layout.left.w - 6,
+        nvgScissor(painter.vg, layout.listViewport.x, layout.listViewport.y, layout.listViewport.w,
             math.max(0.01, listHeight * listReveal))
-        for index = 1, CONFIG.levelCount do
+        if levelCount == 0 and state.category == CATEGORY_CUSTOM then
+            local emptyY = layout.listTop + 70
+            local emptyTitle = state.customLoadError and "自制实验读取失败" or "尚无自制实验"
+            local emptyDetail = state.customLoadError and "请稍后重试或前往实验工坊检查地图。"
+                or "可前往实验工坊创建或导入地图。"
+            painter:Text(layout.left.x + layout.left.w * .5, emptyY, emptyTitle, 22,
+                COLORS.ink, NVG_ALIGN_CENTER + NVG_ALIGN_MIDDLE, CATALOG_HEADING_FONT)
+            drawWrapped(painter, layout.left.x + 45, emptyY + 34, layout.left.w - 90,
+                emptyDetail, 17, COLORS.inkMuted, 25, CATALOG_BODY_FONT)
+        end
+        local firstVisible = math.max(1, math.floor(state.listScroll / layout.listItemHeight) + 1)
+        local lastVisible = math.min(levelCount,
+            firstVisible + math.ceil(listHeight / layout.listItemHeight) + 1)
+        for index = firstVisible, lastVisible do
             local level = state.levels[index]
-            local item = { x = layout.left.x + 12, y = layout.listTop + (index - 1) * layout.listItemHeight,
+            local item = { x = layout.left.x + 12,
+                y = layout.listTop + (index - 1) * layout.listItemHeight - state.listScroll,
                 w = layout.left.w - 24, h = layout.listItemHeight - 4 }
             local selected = state.selectedIndex == index
-            local hovered = pointIn(item, pointer.x, pointer.y)
+            local hovered = pointIn(layout.listViewport, pointer.x, pointer.y)
+                and pointIn(item, pointer.x, pointer.y)
             if selected then
                 local highlight = entrance and entrance:GetHighlightPose() or { alpha = 1, scaleX = 1 }
                 nvgSave(painter.vg)
@@ -1071,13 +1321,17 @@ function M.Install(context)
             end
             local itemPose = entrance and entrance:GetListItemPose(index) or nil
             beginContentMotion(painter.vg, itemPose)
-            painter:Text(item.x + 13, item.y + item.h * .5, string.format("实验 %02d", index), 18,
+            local prefix = state.category == CATEGORY_CUSTOM and "自制" or "实验"
+            painter:Text(item.x + 13, item.y + item.h * .5, string.format("%s %02d", prefix, index), 18,
                 selected and COLORS.ink or COLORS.inkMuted, NVG_ALIGN_LEFT + NVG_ALIGN_MIDDLE, CATALOG_MONO_FONT)
             local name = level and level.name or "数据不可用"
             local nameX = item.x + 92
-            local progress = level and experimentProgress_ and experimentProgress_:Get(level.levelId) or nil
+            local progress = state.category == CATEGORY_OFFICIAL and level and experimentProgress_
+                and experimentProgress_:Get(level.levelId) or nil
             if progress then progress.levelId = level.levelId end
-            local statusLeft = drawExperimentProgress(painter, item, progress, state.progressFeedback, state.progressFeedbackElapsed)
+            local statusLeft = state.category == CATEGORY_OFFICIAL
+                and drawExperimentProgress(painter, item, progress, state.progressFeedback, state.progressFeedbackElapsed)
+                or (item.x + item.w - 10)
             painter:Text(nameX, item.y + item.h * .5,
                 ellipsize(painter, name, statusLeft - nameX - 10, CATALOG_HEADING_FONT, 21), 21,
                 level and COLORS.ink or COLORS.button, NVG_ALIGN_LEFT + NVG_ALIGN_MIDDLE, CATALOG_HEADING_FONT)
@@ -1085,10 +1339,24 @@ function M.Install(context)
             nvgRestore(painter.vg)
         end
         nvgRestore(painter.vg)
+        if state.listScrollMax > 0 then
+            local track = {
+                x = layout.listViewport.x + layout.listViewport.w - 4,
+                y = layout.listViewport.y + 3,
+                w = 3,
+                h = layout.listViewport.h - 6,
+            }
+            painter:FillRect(track.x, track.y, track.w, track.h, COLORS.borderSoft, 105)
+            local contentHeight = levelCount * layout.listItemHeight
+            local thumbHeight = math.max(40, track.h * layout.listViewport.h / contentHeight)
+            local travel = track.h - thumbHeight
+            local thumbY = track.y + travel * state.listScroll / state.listScrollMax
+            painter:FillRect(track.x - 1, thumbY, track.w + 2, thumbHeight, COLORS.border, 220)
+        end
         nvgRestore(painter.vg)
 
         local level = state.levels[state.selectedIndex]
-        local reportAvailable = level and experimentProgress_
+        local reportAvailable = state.category == CATEGORY_OFFICIAL and level and experimentProgress_
             and experimentProgress_:HasReportSnapshot(level.levelId) or false
         if reportAvailable then
             beginPanelMotion(painter.vg, layout.right, panelPoses.right, false)

@@ -933,4 +933,21 @@ expect(context.screen_ == "catalog" and not workshop.dirty
     and workshop.draftStore:LoadDraft(workshop.document.levelId) ~= nil,
     "unsupported-size escape trapped the editor or lost its dirty draft")
 
+local catalogCustomRecords = context.WorkshopListCustomExperiments()
+expect(#catalogCustomRecords > 0, "catalog service did not expose saved custom experiments")
+for _, record in ipairs(catalogCustomRecords) do
+    expect(record.metadata.sourceKind == "custom" and record.entryId:match("^custom:"),
+        "catalog service leaked an official entry into the custom experiment list")
+end
+local catalogRecord = catalogCustomRecords[1]
+local originalCatalogName = catalogRecord.document.name
+catalogRecord.document.name = "目录读取副本"
+local reopenedCatalogDocument = context.WorkshopOpenCustomExperiment(catalogRecord.entryId)
+expect(reopenedCatalogDocument and reopenedCatalogDocument.name == originalCatalogName,
+    "catalog service returned a mutable repository document instead of a clone")
+context.screen_ = "catalog"
+expect(context.OpenLevelWorkshop(catalogRecord.entryId)
+    and workshop.entryId == catalogRecord.entryId and workshop.metadata.sourceKind == "custom",
+    "catalog custom entry did not open the matching Workshop document")
+
 print(string.format('{"mode":"WORKSHOP_CONTROLLER","checks":%d,"status":"pass"}', checks))

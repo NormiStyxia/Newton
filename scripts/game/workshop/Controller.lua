@@ -180,7 +180,12 @@ function M.Install(context)
         current.returnScreen = screen_ == "title" and "title" or "catalog"
         screen_ = "workshop"
         current.canvasTool = "pan"
-        local entryId = selectedLevelId and ("official:" .. selectedLevelId) or nil
+        local entryId = nil
+        if type(selectedLevelId) == "string" and selectedLevelId:find(":", 1, true) then
+            entryId = selectedLevelId
+        elseif selectedLevelId then
+            entryId = "official:" .. tostring(selectedLevelId)
+        end
         if not entryId or not current.repository:GetEntry(entryId) then
             entryId = current.entries[1] and current.entries[1].entryId or nil
         end
@@ -488,6 +493,11 @@ function M.Install(context)
         Selection.Clear(current)
         current.canvasTool = "pan"
         current.modal, current.textEdit, current.transaction = nil, nil, nil
+        if screen_ == "catalog" and context.RefreshExperimentCatalogCustomLevels then
+            local preferredEntryId = current.metadata and current.metadata.sourceKind == "custom"
+                and current.entryId or nil
+            context.RefreshExperimentCatalogCustomLevels(preferredEntryId)
+        end
         return true
     end
     local function leaveWorkshop()
@@ -797,6 +807,37 @@ function M.Install(context)
     end
 
     -- Stable service surface used by the catalog entry and non-visual contract tests.
+    function WorkshopListCustomExperiments()
+        InitializeLevelWorkshop()
+        local current = state()
+        local result = {}
+        if not current.repository then return result end
+        for _, metadata in ipairs(current.repository:List()) do
+            if metadata.sourceKind == "custom" then
+                local document, openedMetadata = current.repository:Open(metadata.entryId)
+                if document then
+                    result[#result + 1] = {
+                        entryId = metadata.entryId,
+                        levelId = metadata.levelId,
+                        name = metadata.name,
+                        updatedAt = metadata.updatedAt,
+                        metadata = openedMetadata,
+                        document = document,
+                    }
+                end
+            end
+        end
+        return result
+    end
+    function WorkshopOpenCustomExperiment(entryId)
+        InitializeLevelWorkshop()
+        local current = state()
+        local metadata = current.repository and current.repository:GetEntry(entryId) or nil
+        if not metadata or metadata.sourceKind ~= "custom" then
+            return nil, "自制实验不存在：" .. tostring(entryId)
+        end
+        return current.repository:Open(entryId)
+    end
     function WorkshopOpenEntry(entryId) return switchEntry(entryId) end
     function WorkshopCreateCustom() return createCustom(false) end
     function WorkshopCopyCurrent() return createCustom(true) end
