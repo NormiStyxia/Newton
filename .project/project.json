@@ -20,26 +20,30 @@
     "developer_id": 411438
   },
   "assets": {
-    "icon": "./game_material/ICON_2026-08-09T10-06-47_01.png",
+    "icon": "./game_material/ICON_2026-08-09T13-36-46_01.png",
     "screenshots": [
-      "./game_material/core_gameplay_modify_rules_1280x720.png"
+      "./game_material/SCREENSHOT_2026-08-09T13-36-46_01.png",
+      "./game_material/SCREENSHOT_2026-08-09T13-36-46_02.png",
+      "./game_material/SCREENSHOT_2026-08-09T13-36-46_03.png"
     ],
-    "promotional_image": "./game_material/PROMO_2026-08-09T10-06-47_01.jpg",
-    "promotional_image_url": "https://tapcode-sce.spark.xd.com/assets/game_material/牛顿看了想打人/PROMO_2026-08-09T10-06-47_01.jpg",
-    "icon_url": "https://tapcode-sce.spark.xd.com/assets/game_material/牛顿看了想打人/ICON_2026-08-09T10-06-47_01.png",
+    "promotional_image": "./game_material/PROMO_2026-08-09T13-36-46_01.jpg",
+    "promotional_image_url": "https://tapcode-sce.spark.xd.com/assets/game_material/牛顿看了想打人/PROMO_2026-08-09T13-36-46_01.jpg",
+    "icon_url": "https://tapcode-sce.spark.xd.com/assets/game_material/牛顿看了想打人/ICON_2026-08-09T13-36-46_01.png",
     "screenshot_urls": [
-      "https://tapcode-sce.spark.xd.com/assets/game_material/p_ss8c/core_gameplay_modify_rules_1280x720.png"
+      "https://tapcode-sce.spark.xd.com/assets/game_material/牛顿看了想打人/SCREENSHOT_2026-08-09T13-36-46_01.png",
+      "https://tapcode-sce.spark.xd.com/assets/game_material/牛顿看了想打人/SCREENSHOT_2026-08-09T13-36-46_02.png",
+      "https://tapcode-sce.spark.xd.com/assets/game_material/牛顿看了想打人/SCREENSHOT_2026-08-09T13-36-46_03.png"
     ],
-    "cover_horizontal": "./game_material/COVER_HORIZONTAL_2026-08-09T10-08-07_01.png",
-    "cover_horizontal_url": "https://tapcode-sce.spark.xd.com/assets/game_material/牛顿看了想打人/COVER_HORIZONTAL_2026-08-09T10-08-07_01.png",
-    "cover_vertical": "./game_material/COVER_VERTICAL_2026-08-09T10-09-10_01.png",
-    "cover_vertical_url": "https://tapcode-sce.spark.xd.com/assets/game_material/牛顿看了想打人/COVER_VERTICAL_2026-08-09T10-09-10_01.png"
+    "cover_horizontal": "./game_material/COVER_HORIZONTAL_2026-08-09T13-38-24_01.png",
+    "cover_horizontal_url": "https://tapcode-sce.spark.xd.com/assets/game_material/牛顿看了想打人/COVER_HORIZONTAL_2026-08-09T13-38-24_01.png",
+    "cover_vertical": "./game_material/COVER_VERTICAL_2026-08-09T13-39-20_01.png",
+    "cover_vertical_url": "https://tapcode-sce.spark.xd.com/assets/game_material/牛顿看了想打人/COVER_VERTICAL_2026-08-09T13-39-20_01.png"
   },
   "test_qrcode": {
     "url": "https://tapcode-sce.spark.xd.com/qrcode/p_ss8c_1786277097343.png",
     "generated_at": "2026-08-09T12:04:57.539Z"
   },
   "metadata": {
-    "updated_at": "2026-08-09T13:25:09.848Z"
+    "updated_at": "2026-08-09T13:39:22.037Z"
   }
 }
