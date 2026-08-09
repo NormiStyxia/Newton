@@ -707,25 +707,24 @@ end
 local function drawArchiveEmotionBar(painter, handle, state, profile)
     local bar = ARCHIVE.emotionBar
     local progress = archiveProgress(state, bar.revealStart, bar.revealEnd)
-    if state.profileMode == PROFILE_MODE.EXITING then
-        progress = archiveProgress(state, ARCHIVE.exit.emotion[1], ARCHIVE.exit.emotion[2])
-    end
+    if state.profileMode == PROFILE_MODE.EXITING then progress = archiveProgress(state, ARCHIVE.exit.emotion[1], ARCHIVE.exit.emotion[2]) end
     if progress <= .001 then return end
     local vg = painter.vg
-    local colors = archivePalette(profile)
     if handle and handle >= 0 then
         nvgSave(vg)
         nvgIntersectScissor(vg, bar.x, bar.y, bar.w, bar.h * progress)
         image(painter, handle, 0, 0, 1870, 841, 1)
         nvgRestore(vg)
     else
-        painter:FillRect(bar.x, bar.y, bar.w, bar.h * progress, colors.inkStrong, 245)
+        local topColor, bottomColor = profile.frameColors.left.base, profile.frameColors.bottom.base
+        nvgBeginPath(vg); nvgRect(vg, bar.x, bar.y, bar.w, bar.h * progress)
+        nvgFillPaint(vg, nvgLinearGradient(vg, bar.x, bar.y, bar.x, bar.y + bar.h,
+            nvgRGBA(topColor[1], topColor[2], topColor[3], 245), nvgRGBA(bottomColor[1], bottomColor[2], bottomColor[3], 245)))
+        nvgFill(vg)
     end
 
     local textProgress = archiveProgress(state, bar.textStart, bar.textEnd)
-    if state.profileMode == PROFILE_MODE.EXITING then
-        textProgress = archiveProgress(state, ARCHIVE.exit.header[1], ARCHIVE.exit.header[2])
-    end
+    if state.profileMode == PROFILE_MODE.EXITING then textProgress = archiveProgress(state, ARCHIVE.exit.header[1], ARCHIVE.exit.header[2]) end
     if textProgress <= .001 then return end
     local labels = archiveUtf8Characters(profile.observationTitle)
     for index, label in ipairs(labels) do
