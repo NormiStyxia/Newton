@@ -27,8 +27,8 @@
       "./game_material/SCREENSHOT_2026-08-09T13-36-46_03.png",
       "./game_material/character_system_chat_assist_1280x720.png"
     ],
-    "promotional_image": "./game_material/PROMO_2026-08-09T13-36-46_01.jpg",
-    "promotional_image_url": "https://tapcode-sce.spark.xd.com/assets/game_material/牛顿看了想打人/PROMO_2026-08-09T13-36-46_01.jpg",
+    "promotional_image": "./game_material/promotional.png",
+    "promotional_image_url": "https://tapcode-sce.spark.xd.com/assets/game_material/p_ss8c/promotional.png",
     "icon_url": "https://tapcode-sce.spark.xd.com/assets/game_material/牛顿看了想打人/ICON_2026-08-09T13-36-46_01.png",
     "screenshot_urls": [
       "https://tapcode-sce.spark.xd.com/assets/game_material/牛顿看了想打人/SCREENSHOT_2026-08-09T13-36-46_01.png",
@@ -46,6 +46,6 @@
     "generated_at": "2026-08-09T12:04:57.539Z"
   },
   "metadata": {
-    "updated_at": "2026-08-09T13:54:05.681Z"
+    "updated_at": "2026-08-09T14:39:58.794Z"
   }
 }
