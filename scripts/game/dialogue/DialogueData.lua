@@ -6,6 +6,7 @@ DialogueData.ANGER_THRESHOLDS = { 25, 50, 75, 100 }
 local FIRST_LEVEL_INTRO = {
     {
         speaker = "newton",
+        side = "left",
         displayName = "牛顿",
         avatarText = "牛",
         text = "欢迎来到经典力学实验室。",
@@ -13,6 +14,7 @@ local FIRST_LEVEL_INTRO = {
     },
     {
         speaker = "green",
+        side = "left",
         displayName = "绿毛同事",
         avatarText = "绿",
         text = "第一项很简单：先把苹果发射出去。",
@@ -20,6 +22,7 @@ local FIRST_LEVEL_INTRO = {
     },
     {
         speaker = "newton",
+        side = "left",
         displayName = "牛顿",
         avatarText = "牛",
         text = "拖住苹果，向后拉，然后松开。",
@@ -27,10 +30,43 @@ local FIRST_LEVEL_INTRO = {
     },
     {
         speaker = "green",
+        side = "left",
         displayName = "绿毛同事",
         avatarText = "绿",
         text = "轨迹不必完美，先让它动起来。",
         style = "GREEN",
+    },
+    {
+        speaker = "einstein",
+        side = "left",
+        displayName = "爱因斯坦",
+        avatarText = "爱",
+        text = "那么，实验室那头那个“宏伟”的建筑，作用是？",
+        style = "EINSTEIN",
+    },
+    {
+        speaker = "nomi",
+        side = "right",
+        displayName = "诺米",
+        avatarText = "诺",
+        text = "很壮观，不是吗？",
+        style = "NOMI",
+    },
+    {
+        speaker = "green",
+        side = "left",
+        displayName = "绿毛同事",
+        avatarText = "绿",
+        text = "翻译：没有任何作用。",
+        style = "GREEN",
+    },
+    {
+        speaker = "newton",
+        side = "left",
+        displayName = "牛顿",
+        avatarText = "牛",
+        text = "这东西违反的不是物理学，是实验室管理条例。",
+        style = "NEWTON",
     },
 }
 
@@ -51,6 +87,7 @@ function DialogueData.AngerMessage(threshold)
     if not text then return nil end
     return {
         speaker = "newton",
+        side = "left",
         displayName = "牛顿",
         avatarText = "牛",
         text = text,

@@ -49,6 +49,10 @@ local function fontForMessage(message)
     return FONT
 end
 
+local function sideForMessage(message)
+    return message and message.side == "right" and "right" or "left"
+end
+
 local COLORS = {
     dark = { 47, 73, 56, 255 },
     body = { 64, 83, 68, 255 },
@@ -218,8 +222,10 @@ local function layoutMessages(painter, messages, viewport)
             cursorY = cursorY + 42
         else
             local font = fontForMessage(message)
+            local side = sideForMessage(message)
+            local rowBubbleWidth = side == "right" and viewport.rightBubbleW or bubbleWidth
             local lines = wrapText(painter, message.text or "",
-                bubbleWidth - BUBBLE_PADDING_X * 2, font, BODY_FONT_SIZE)
+                rowBubbleWidth - BUBBLE_PADDING_X * 2, font, BODY_FONT_SIZE)
             local textHeight = BODY_FONT_SIZE + math.max(0, #lines - 1) * BODY_LINE_HEIGHT
             local bubbleHeight = BUBBLE_PADDING_TOP + textHeight + BUBBLE_PADDING_BOTTOM
             local bubbleOffsetY = NAME_FONT_SIZE + NAME_BUBBLE_GAP
@@ -229,11 +235,12 @@ local function layoutMessages(painter, messages, viewport)
             entries[index] = {
                 y = cursorY,
                 h = rowHeight,
-                bubbleW = bubbleWidth,
+                bubbleW = rowBubbleWidth,
                 bubbleH = bubbleHeight,
                 bubbleOffsetY = bubbleOffsetY,
                 lines = lines,
                 font = font,
+                side = side,
                 message = message,
             }
             cursorY = cursorY + rowHeight
@@ -331,9 +338,14 @@ local function conversationGeometry(rect)
         h = viewport.h - 24,
     }
     local avatarLeft = viewport.x + MESSAGE_ROW_LEFT_PADDING
+    local contentRight = track.x - SCROLLBAR_BUBBLE_GAP
     viewport.avatarCenterX = avatarLeft + AVATAR_SIZE * 0.5
     viewport.bubbleX = avatarLeft + AVATAR_COLUMN_WIDTH + BUBBLE_COLUMN_GAP
-    viewport.bubbleW = math.max(80, track.x - SCROLLBAR_BUBBLE_GAP - viewport.bubbleX)
+    viewport.rightAvatarCenterX = contentRight - AVATAR_SIZE * 0.5
+    viewport.rightBubbleX = avatarLeft
+    viewport.rightBubbleRight = contentRight - AVATAR_SIZE - BUBBLE_COLUMN_GAP
+    viewport.bubbleW = math.max(80, contentRight - viewport.bubbleX)
+    viewport.rightBubbleW = math.max(80, viewport.rightBubbleRight - viewport.rightBubbleX)
     return viewport, track
 end
 
@@ -398,13 +410,18 @@ local function drawMessage(painter, controller, entry, index, viewport, scrollOf
     end
 
     local speaker = message.speaker or (message.style == "GREEN" and "green" or "newton")
+    local side = entry.side or sideForMessage(message)
+    local isRight = side == "right"
     local isGreen = speaker == "green"
     local isEinstein = speaker == "einstein"
     local isNomi = speaker == "nomi"
     local messageFont = entry.font or (isNomi and NOMI_FONT or FONT)
-    local avatarX = snapToPixel(viewport.avatarCenterX + xOffset, pixelScale)
+    local sideOffset = isRight and -xOffset or xOffset
+    local avatarBaseX = isRight and viewport.rightAvatarCenterX or viewport.avatarCenterX
+    local avatarX = snapToPixel(avatarBaseX + sideOffset, pixelScale)
     local avatarY = snapToPixel(y + AVATAR_CENTER_Y_OFFSET, pixelScale)
-    local bubbleX = snapToPixel(viewport.bubbleX + xOffset, pixelScale)
+    local bubbleBaseX = isRight and viewport.rightBubbleX or viewport.bubbleX
+    local bubbleX = snapToPixel(bubbleBaseX + sideOffset, pixelScale)
     local nameY = y
     local bubbleY = snapToPixel(y + entry.bubbleOffsetY, pixelScale)
     local bubbleWidth = snapToPixel(entry.bubbleW, pixelScale)
@@ -424,14 +441,18 @@ local function drawMessage(painter, controller, entry, index, viewport, scrollOf
         painter:Text(avatarX, avatarY, message.avatarText or "?", 17, COLORS.dark,
             NVG_ALIGN_CENTER + NVG_ALIGN_MIDDLE, messageFont)
     end
-    painter:Text(bubbleX, nameY, message.displayName or "", NAME_FONT_SIZE, COLORS.dark,
-        NVG_ALIGN_LEFT + NVG_ALIGN_TOP, messageFont)
+    local textAlign = isRight and NVG_ALIGN_RIGHT or NVG_ALIGN_LEFT
+    local textX = isRight and bubbleX + bubbleWidth - BUBBLE_PADDING_X
+        or bubbleX + BUBBLE_PADDING_X
+    local nameX = isRight and bubbleX + bubbleWidth or bubbleX
+    painter:Text(snapToPixel(nameX, pixelScale), nameY, message.displayName or "", NAME_FONT_SIZE,
+        COLORS.dark, textAlign + NVG_ALIGN_TOP, messageFont)
     painter:RoundedRect(bubbleX, bubbleY, bubbleWidth, bubbleHeight, 7, bubbleFill, bubbleStroke, 1.5)
     for lineIndex, line in ipairs(entry.lines) do
         local lineY = bubbleY + BUBBLE_PADDING_TOP + (lineIndex - 1) * BODY_LINE_HEIGHT
-        painter:Text(snapToPixel(bubbleX + BUBBLE_PADDING_X, pixelScale),
+        painter:Text(snapToPixel(textX, pixelScale),
             snapToPixel(lineY, pixelScale), line, BODY_FONT_SIZE, COLORS.body,
-            NVG_ALIGN_LEFT + NVG_ALIGN_TOP, messageFont)
+            textAlign + NVG_ALIGN_TOP, messageFont)
     end
     nvgRestore(vg)
 end
