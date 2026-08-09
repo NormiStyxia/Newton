@@ -33,10 +33,10 @@ end
 function Presentation.Apply(level, meta, scoreProfiles, defaultScoreProfile)
     meta = meta or {}
     local inlineScoring = level.scoring
-    level.objective = meta.objective or level.objective or ""
-    level.shortObjective = meta.shortObjective or level.objective
-    level.observation = meta.observation or level.observation or ""
-    level.description = meta.description or level.description or ""
+    level.objective = level.objective or meta.objective or ""
+    level.shortObjective = level.shortObjective or meta.shortObjective or level.objective
+    level.observation = level.observation or meta.observation or ""
+    level.description = level.description or meta.description or ""
 
     if type(inlineScoring) == "table" and type(inlineScoring.tiers) == "table" then
         level.scoring = { profileId = inlineScoring.profileId, metric = inlineScoring.metric, tiers = {} }

@@ -31,6 +31,22 @@ local LEVEL_SCORE_PROFILES = {
             { score = 60, title = "观测成立", description = "使苹果稳定进入观察皿" },
         },
     },
+    intervention_level_04 = {
+        metric = "ruleDeployCount",
+        tiers = {
+            { score = 100, maxInterventions = 4, title = "精准实验", description = "不超过 4 次有效干预完成观测" },
+            { score = 80, maxInterventions = 8, title = "有效实验", description = "不超过 8 次有效干预完成观测" },
+            { score = 60, title = "观测成立", description = "使苹果稳定进入观察皿" },
+        },
+    },
+    intervention_level_05 = {
+        metric = "ruleDeployCount",
+        tiers = {
+            { score = 100, maxInterventions = 20, title = "精准实验", description = "不超过 20 次有效干预完成观测" },
+            { score = 80, maxInterventions = 30, title = "有效实验", description = "不超过 30 次有效干预完成观测" },
+            { score = 60, title = "观测成立", description = "使苹果稳定进入观察皿" },
+        },
+    },
 }
 
 -- Names and available cards stay in level JSON. This table owns presentation
@@ -53,19 +69,21 @@ local LEVEL_META = {
         description = "改变场地受力方向推动苹果穿过通道，并在合适时机恢复经典规则。",
     },
     level_04 = {
-        objective = "在挡板前施加向上冲量",
+        objective = "测试苹果在受力快速变化下的稳态",
         observation = "一次恰当的冲量胜过持续用力。",
-        description = "在苹果接近挡板时调整受力，越过障碍后进入右侧观察皿。",
+        description = "改变苹果的受力方向，使其绕过障碍后进入观察皿",
+        scoreProfile = "intervention_level_04",
     },
     level_05 = {
-        objective = "越墙后用牛顿拳恢复经典物理",
+        objective = "让苹果连续越过复杂障碍",
         observation = "重置规则，不重置结果。",
-        description = "先借持续规则越过高墙，再用牛顿修正拳清除场地规则并保留速度。",
+        description = "改变苹果移动路径越过迷宫",
+        scoreProfile = "intervention_level_05",
     },
     level_06 = {
         objective = "在薄墙前开启量子隧穿",
         observation = "这不是穿墙，只是暂时不承认墙。",
-        description = "为苹果准备一次相位充能，在关键位置穿过阻隔并完成观测。",
+        description = "为苹果准备多次相位充能，在关键位置穿过阻隔并完成观测。",
     },
     level_07 = {
         objective = "反转水平速度，回到左侧观察皿",
@@ -73,9 +91,9 @@ local LEVEL_META = {
         description = "让苹果越过观察皿后镜像水平速度，从右侧折返回目标区域。",
     },
     level_08 = {
-        objective = "借高弹性平台完成二次起跳",
+        objective = "在弹簧构成的通道里到达观察皿",
         observation = "反弹越漂亮，牛顿的眉头越紧。",
-        description = "利用弹簧台阶积累高度，越过门控结构并落入观察皿。",
+        description = "利用弹簧积累高度和水平速度，并控制落点稳定在观察皿附近",
     },
     level_09 = {
         objective = "穿墙或折返，寻找自己的解法",

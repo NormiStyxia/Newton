@@ -57,7 +57,7 @@ local COLORS = {
     wall = { 164, 184, 151, 255 },
     launcher = { 171, 91, 67, 255 },
     goal = { 87, 139, 100, 255 },
-    spring = { 178, 143, 59, 255 },
+    spring = { 87, 139, 100, 255 },
     button = { 191, 105, 76, 255 },
     door = { 132, 108, 58, 255 },
     phase = { 126, 111, 171, 255 },
@@ -200,9 +200,9 @@ function M.ResolveLayout(frame)
         listViewport = listViewport,
         listScrollbarTrack = {
             x = listViewport.x + listViewport.w - 15,
-            y = listViewport.y + 5,
+            y = listViewport.y,
             w = 12,
-            h = listViewport.h - 10,
+            h = listViewport.h,
         },
         briefViewport = briefViewport,
         startButton = { x = right.x + 21, y = actionY, w = actionWidth, h = 76 },
@@ -216,7 +216,7 @@ local function resolveListScrollbar(layout, state, levelCount)
     local scrollMax = math.max(0, contentHeight - layout.listViewport.h)
     if scrollMax <= 0 then return nil end
     local track = layout.listScrollbarTrack
-    local thumbHeight = math.max(48, track.h * layout.listViewport.h / contentHeight)
+    local thumbHeight = math.max(38, track.h * layout.listViewport.h / contentHeight)
     local travel = math.max(1, track.h - thumbHeight)
     local scroll = clamp(state.listScroll or 0, 0, scrollMax)
     return {
@@ -359,21 +359,23 @@ local function drawPreviewObject(painter, level, object, previewTransform)
     local w, h = math.max(3, mappedWidth), math.max(3, mappedHeight)
     local properties = object.properties or {}
     local sketchObject = isPilotSketchObject(level, object)
-    local color = object.type == "wall" and sketchObject and COLORS.wall
+    local phaseable = object.type == "wall" and properties.isPhaseable == true
+    local color = phaseable and COLORS.phase
+        or object.type == "wall" and sketchObject and COLORS.wall
         or object.type == "launcher" and COLORS.launcher
         or object.type == "goal_sensor" and COLORS.goal
         or object.type == "spring" and COLORS.spring
         or object.type == "button" and COLORS.button
         or object.type == "door" and COLORS.door
-        or properties.isPhaseable and COLORS.phase or COLORS.wall
+        or COLORS.wall
     local vg = painter.vg
     nvgSave(vg)
     nvgTranslate(vg, x, y)
     nvgRotate(vg, math.rad(transform.rotation or 0))
     nvgStrokeColor(vg, nvgRGBA(COLORS.border[1], COLORS.border[2], COLORS.border[3], 235))
     nvgStrokeWidth(vg, 1.5)
-    local fillAlpha = object.type == "wall" and sketchObject and 245
-        or properties.isPhaseable and 150 or 215
+    local fillAlpha = phaseable and 150
+        or object.type == "wall" and sketchObject and 245 or 215
     nvgFillColor(vg, nvgRGBA(color[1], color[2], color[3], fillAlpha))
 
     if not sketchObject and drawPreviewImage(painter, object.type, w, h) then
@@ -381,8 +383,7 @@ local function drawPreviewObject(painter, level, object, previewTransform)
         -- Existing vector drawing below remains the resource-failure fallback.
     elseif sketchObject then
         local levelId, objectId = level.levelId, object.id or object.type
-        local fillAlpha = object.type == "wall" and 245
-            or properties.isPhaseable and 150 or 215
+        local fillAlpha = phaseable and 150 or object.type == "wall" and 245 or 215
         if object.type == "goal_sensor" then
             sketchDrawing_:DrawEllipse(vg, levelId, objectId, "outer",
                 0, 0, w * .5, h * .5, color, COLORS.border, 1.5,
@@ -426,7 +427,7 @@ local function drawPreviewObject(painter, level, object, previewTransform)
         nvgBeginPath(vg); nvgMoveTo(vg, 0, -h * .5); nvgLineTo(vg, 0, h * .5); nvgStroke(vg)
     else
         nvgBeginPath(vg); nvgRect(vg, -w * .5, -h * .5, w, h); nvgFill(vg); nvgStroke(vg)
-        if properties.isPhaseable then
+        if phaseable then
             nvgBeginPath(vg); nvgMoveTo(vg, -w * .42, -h * .25); nvgLineTo(vg, w * .42, h * .25); nvgStroke(vg)
         end
     end
@@ -511,8 +512,8 @@ end
 local function drawPreviewLegend(painter, preview)
     -- The legend belongs to the fixed panel, not to either animated sheet.
     local legend = {
-        { "墙体", COLORS.wall }, { "发射器", COLORS.launcher }, { "观察皿", COLORS.goal },
-        { "弹簧/机构", COLORS.spring }, { "相位", COLORS.phase },
+        { "墙体", COLORS.wall }, { "发射器", COLORS.launcher }, { "弹簧", COLORS.spring },
+        { "门", COLORS.door }, { "相位", COLORS.phase },
     }
     local legendX, legendY = preview.x + 4, preview.y + preview.h + 24
     for _, entry in ipairs(legend) do
@@ -1412,12 +1413,9 @@ function M.Install(context)
         local listScrollbar = resolveListScrollbar(layout, state, levelCount)
         if listScrollbar then
             local track, thumb = listScrollbar.track, listScrollbar.thumb
-            painter:RoundedRect(track.x, track.y, track.w, track.h, 3,
-                COLORS.paperLight, COLORS.brassSoft, 1)
-            painter:RoundedRect(thumb.x, thumb.y, thumb.w, thumb.h, 2,
-                COLORS.selected, COLORS.border, 1.4)
-            painter:FillRect(thumb.x + 2, thumb.y + thumb.h * .5 - 1,
-                thumb.w - 4, 2, COLORS.brass, 175)
+            local railX = track.x + (track.w - 3) * .5
+            painter:FillRect(railX, track.y, 3, track.h, COLORS.borderSoft, 110)
+            painter:FillRect(railX - 1, thumb.y, 5, thumb.h, COLORS.border, 220)
         end
         nvgRestore(painter.vg)
 

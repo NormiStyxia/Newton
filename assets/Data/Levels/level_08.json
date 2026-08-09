@@ -2,306 +2,54 @@
   "schemaVersion": 1,
   "levelId": "level_08",
   "name": "胡克的台阶",
-  "playfield": {
-    "width": 1400,
-    "height": 700
-  },
+  "author": "",
+  "description": "利用弹簧积累高度和水平速度，并控制落点稳定在观察皿附近",
+  "metadata": {},
+  "playfield": { "width": 1400, "height": 700 },
   "objects": [
-    {
-      "id": "launcher_main",
-      "type": "launcher",
-      "name": "苹果发射器",
-      "transform": {
-        "x": 136.78634204934227,
-        "y": 467,
-        "width": 110,
-        "height": 96,
-        "rotation": 0
-      },
-      "properties": {
-        "launchAngle": 0,
-        "launchPower": 1,
-        "appleSpawnOffsetX": 0,
-        "appleSpawnOffsetY": 0
-      }
-    },
-    {
-      "id": "goal_main",
-      "type": "goal_sensor",
-      "name": "爱因斯坦观察窗",
-      "transform": {
-        "x": 1148,
-        "y": 489.087656529517,
-        "width": 180,
-        "height": 181.82468694096602,
-        "rotation": 0
-      },
-      "properties": {
-        "requiredStayTime": 700,
-        "targetTag": "apple"
-      }
-    },
-    {
-      "id": "wall_01",
-      "type": "wall",
-      "name": "黄铜墙",
-      "transform": {
-        "x": 533.1125827814569,
-        "y": 563.7209302325581,
-        "width": 482.11920529801324,
-        "height": 32.55813953488372,
-        "rotation": 0
-      },
-      "properties": {
-        "collisionEnabled": true,
-        "friction": 0.62,
-        "restitution": 0.32,
-        "isPhaseable": false
-      }
-    },
-    {
-      "id": "button_01",
-      "type": "button",
-      "name": "普通按钮",
-      "transform": {
-        "x": 937.8327407618133,
-        "y": 566,
-        "width": 100,
-        "height": 28,
-        "rotation": 0
-      },
-      "properties": {
-        "mode": "HOLD",
-        "channelId": "route_A",
-        "activationType": "apple",
-        "initialState": false,
-        "debounceTime": 180
-      }
-    },
-    {
-      "id": "door_01",
-      "type": "door",
-      "name": "门",
-      "transform": {
-        "x": 1365,
-        "y": 475,
-        "width": 70,
-        "height": 210,
-        "rotation": 0
-      },
-      "properties": {
-        "channelId": "route_A",
-        "response": "OPEN",
-        "initialState": "CLOSED",
-        "openDirection": "UP",
-        "openDistance": 190,
-        "duration": 420,
-        "closeDelay": 180,
-        "antiCrush": true
-      }
-    },
-    {
-      "id": "spring_01",
-      "type": "spring",
-      "name": "弹簧",
-      "transform": {
-        "x": 328.168165490521,
-        "y": 516.3023774455718,
-        "width": 110,
-        "height": 34,
-        "rotation": 90
-      },
-      "properties": {
-        "direction": "UP",
-        "impulseStrength": 10,
-        "cooldown": 500,
-        "oneShot": false,
-        "enabled": true,
-        "enabledChannel": ""
-      }
-    },
-    {
-      "id": "spring_02",
-      "type": "spring",
-      "name": "弹簧 副本",
-      "transform": {
-        "x": 374.9622131435377,
-        "y": 515.6067664024915,
-        "width": 110,
-        "height": 34,
-        "rotation": 90
-      },
-      "properties": {
-        "direction": "UP",
-        "impulseStrength": 10,
-        "cooldown": 500,
-        "oneShot": false,
-        "enabled": true,
-        "enabledChannel": ""
-      }
-    },
-    {
-      "id": "spring_03",
-      "type": "spring",
-      "name": "弹簧 副本 副本",
-      "transform": {
-        "x": 604.9982254134676,
-        "y": 512.7038006637897,
-        "width": 110,
-        "height": 34,
-        "rotation": 90
-      },
-      "properties": {
-        "direction": "UP",
-        "impulseStrength": 10,
-        "cooldown": 500,
-        "oneShot": false,
-        "enabled": true,
-        "enabledChannel": ""
-      }
-    },
-    {
-      "id": "spring_04",
-      "type": "spring",
-      "name": "弹簧 副本 副本",
-      "transform": {
-        "x": 435.85179653631695,
-        "y": 508.28909127254667,
-        "width": 110,
-        "height": 34,
-        "rotation": 90
-      },
-      "properties": {
-        "direction": "UP",
-        "impulseStrength": 10,
-        "cooldown": 500,
-        "oneShot": false,
-        "enabled": true,
-        "enabledChannel": ""
-      }
-    },
-    {
-      "id": "spring_05",
-      "type": "spring",
-      "name": "弹簧 副本 副本 副本",
-      "transform": {
-        "x": 534.3294752351296,
-        "y": 514.215544316331,
-        "width": 110,
-        "height": 34,
-        "rotation": 90
-      },
-      "properties": {
-        "direction": "UP",
-        "impulseStrength": 10,
-        "cooldown": 500,
-        "oneShot": false,
-        "enabled": true,
-        "enabledChannel": ""
-      }
-    },
-    {
-      "id": "spring_06",
-      "type": "spring",
-      "name": "弹簧 副本 副本 副本 副本",
-      "transform": {
-        "x": 487.15328462306263,
-        "y": 504.6905144907646,
-        "width": 110,
-        "height": 34,
-        "rotation": 90
-      },
-      "properties": {
-        "direction": "UP",
-        "impulseStrength": 10,
-        "cooldown": 500,
-        "oneShot": false,
-        "enabled": true,
-        "enabledChannel": ""
-      }
-    },
-    {
-      "id": "spring_07",
-      "type": "spring",
-      "name": "弹簧 副本 副本 副本 副本 副本",
-      "transform": {
-        "x": 663.1564098905693,
-        "y": 515.0316769257922,
-        "width": 110,
-        "height": 34,
-        "rotation": 90
-      },
-      "properties": {
-        "direction": "UP",
-        "impulseStrength": 10,
-        "cooldown": 500,
-        "oneShot": false,
-        "enabled": true,
-        "enabledChannel": ""
-      }
-    },
-    {
-      "id": "spring_08",
-      "type": "spring",
-      "name": "弹簧 副本 副本 副本 副本 副本 副本",
-      "transform": {
-        "x": 724.0459932833487,
-        "y": 516.5434205783336,
-        "width": 110,
-        "height": 34,
-        "rotation": 90
-      },
-      "properties": {
-        "direction": "UP",
-        "impulseStrength": 10,
-        "cooldown": 500,
-        "oneShot": false,
-        "enabled": true,
-        "enabledChannel": ""
-      }
-    },
-    {
-      "id": "wall_02",
-      "type": "wall",
-      "name": "黄铜墙 副本",
-      "transform": {
-        "x": 777.2441307911492,
-        "y": 257.11305192058694,
-        "width": 482.11920529801324,
-        "height": 32.55813953488372,
-        "rotation": 90
-      },
-      "properties": {
-        "collisionEnabled": true,
-        "friction": 0.62,
-        "restitution": 0.32,
-        "isPhaseable": false
-      }
-    }
+    { "id": "launcher_main", "type": "launcher", "name": "苹果发射器", "transform": { "x": 140, "y": 467, "width": 110, "height": 96, "rotation": 0 }, "properties": { "appleSpawnOffsetX": 0, "appleSpawnOffsetY": 0 } },
+    { "id": "goal_main", "type": "goal_sensor", "name": "观察皿", "transform": { "x": 1190, "y": 300, "width": 180, "height": 160, "rotation": 0 }, "properties": { "requiredStayTime": 1000 } },
+    { "id": "spring_001", "type": "spring", "name": "弹簧", "transform": { "x": 400, "y": 480, "width": 110, "height": 34, "rotation": 0 }, "properties": { "cooldown": 500, "impulseStrength": 10, "enabled": true, "direction": "UP", "enabledChannel": "", "oneShot": false } },
+    { "id": "spring_002", "type": "spring", "name": "弹簧", "transform": { "x": 490, "y": 480, "width": 110, "height": 34, "rotation": 0 }, "properties": { "cooldown": 500, "impulseStrength": 10, "enabled": true, "direction": "UP", "enabledChannel": "", "oneShot": false } },
+    { "id": "spring_003", "type": "spring", "name": "弹簧 副本1", "transform": { "x": 580, "y": 480, "width": 110, "height": 34, "rotation": 0 }, "properties": { "cooldown": 500, "impulseStrength": 10, "enabled": true, "direction": "UP", "enabledChannel": "", "oneShot": false } },
+    { "id": "spring_004", "type": "spring", "name": "弹簧 副本2", "transform": { "x": 670, "y": 480, "width": 110, "height": 34, "rotation": 0 }, "properties": { "cooldown": 500, "impulseStrength": 10, "enabled": true, "direction": "UP", "enabledChannel": "", "oneShot": false } },
+    { "id": "spring_005", "type": "spring", "name": "弹簧 副本3", "transform": { "x": 760, "y": 480, "width": 110, "height": 34, "rotation": 0 }, "properties": { "cooldown": 500, "impulseStrength": 10, "enabled": true, "direction": "UP", "enabledChannel": "", "oneShot": false } },
+    { "id": "spring_006", "type": "spring", "name": "弹簧 副本4", "transform": { "x": 850, "y": 480, "width": 110, "height": 34, "rotation": 0 }, "properties": { "cooldown": 500, "impulseStrength": 10, "enabled": true, "direction": "UP", "enabledChannel": "", "oneShot": false } },
+    { "id": "spring_007", "type": "spring", "name": "弹簧 副本5", "transform": { "x": 940, "y": 480, "width": 110, "height": 34, "rotation": 0 }, "properties": { "cooldown": 500, "impulseStrength": 10, "enabled": true, "direction": "UP", "enabledChannel": "", "oneShot": false } },
+    { "id": "spring_008", "type": "spring", "name": "弹簧 副本6", "transform": { "x": 1030, "y": 480, "width": 110, "height": 34, "rotation": 0 }, "properties": { "cooldown": 500, "impulseStrength": 10, "enabled": true, "direction": "UP", "enabledChannel": "", "oneShot": false } },
+    { "id": "spring_009", "type": "spring", "name": "弹簧 副本7", "transform": { "x": 1120, "y": 480, "width": 110, "height": 34, "rotation": 0 }, "properties": { "cooldown": 500, "impulseStrength": 10, "enabled": true, "direction": "UP", "enabledChannel": "", "oneShot": false } },
+    { "id": "spring_010", "type": "spring", "name": "弹簧 副本8", "transform": { "x": 1210, "y": 480, "width": 110, "height": 34, "rotation": 0 }, "properties": { "cooldown": 500, "impulseStrength": 10, "enabled": true, "direction": "UP", "enabledChannel": "", "oneShot": false } },
+    { "id": "spring_011", "type": "spring", "name": "弹簧 副本9", "transform": { "x": 1300, "y": 480, "width": 110, "height": 34, "rotation": 0 }, "properties": { "cooldown": 500, "impulseStrength": 10, "enabled": true, "direction": "UP", "enabledChannel": "", "oneShot": false } },
+    { "id": "spring_012", "type": "spring", "name": "弹簧 副本10", "transform": { "x": 310, "y": 480, "width": 110, "height": 34, "rotation": 0 }, "properties": { "cooldown": 500, "impulseStrength": 10, "enabled": true, "direction": "UP", "enabledChannel": "", "oneShot": false } },
+    { "id": "spring_024", "type": "spring", "name": "弹簧 副本22", "transform": { "x": 310, "y": 80, "width": 110, "height": 34, "rotation": 0 }, "properties": { "cooldown": 500, "impulseStrength": 10, "enabled": true, "direction": "DOWN", "enabledChannel": "", "oneShot": false } },
+    { "id": "spring_013", "type": "spring", "name": "弹簧 副本23", "transform": { "x": 400, "y": 80, "width": 110, "height": 34, "rotation": 0 }, "properties": { "cooldown": 500, "impulseStrength": 10, "enabled": true, "direction": "DOWN", "enabledChannel": "", "oneShot": false } },
+    { "id": "spring_014", "type": "spring", "name": "弹簧 副本24", "transform": { "x": 490, "y": 80, "width": 110, "height": 34, "rotation": 0 }, "properties": { "cooldown": 500, "impulseStrength": 10, "enabled": true, "direction": "DOWN", "enabledChannel": "", "oneShot": false } },
+    { "id": "spring_015", "type": "spring", "name": "弹簧 副本25", "transform": { "x": 580, "y": 80, "width": 110, "height": 34, "rotation": 0 }, "properties": { "cooldown": 500, "impulseStrength": 10, "enabled": true, "direction": "DOWN", "enabledChannel": "", "oneShot": false } },
+    { "id": "spring_016", "type": "spring", "name": "弹簧 副本26", "transform": { "x": 670, "y": 80, "width": 110, "height": 34, "rotation": 0 }, "properties": { "cooldown": 500, "impulseStrength": 10, "enabled": true, "direction": "DOWN", "enabledChannel": "", "oneShot": false } },
+    { "id": "spring_017", "type": "spring", "name": "弹簧 副本27", "transform": { "x": 760, "y": 80, "width": 110, "height": 34, "rotation": 0 }, "properties": { "cooldown": 500, "impulseStrength": 10, "enabled": true, "direction": "DOWN", "enabledChannel": "", "oneShot": false } },
+    { "id": "spring_018", "type": "spring", "name": "弹簧 副本28", "transform": { "x": 850, "y": 80, "width": 110, "height": 34, "rotation": 0 }, "properties": { "cooldown": 500, "impulseStrength": 10, "enabled": true, "direction": "DOWN", "enabledChannel": "", "oneShot": false } },
+    { "id": "spring_019", "type": "spring", "name": "弹簧 副本29", "transform": { "x": 940, "y": 80, "width": 110, "height": 34, "rotation": 0 }, "properties": { "cooldown": 500, "impulseStrength": 10, "enabled": true, "direction": "DOWN", "enabledChannel": "", "oneShot": false } },
+    { "id": "spring_020", "type": "spring", "name": "弹簧 副本30", "transform": { "x": 1030, "y": 80, "width": 110, "height": 34, "rotation": 0 }, "properties": { "cooldown": 500, "impulseStrength": 10, "enabled": true, "direction": "DOWN", "enabledChannel": "", "oneShot": false } },
+    { "id": "spring_021", "type": "spring", "name": "弹簧 副本31", "transform": { "x": 1120, "y": 80, "width": 110, "height": 34, "rotation": 0 }, "properties": { "cooldown": 500, "impulseStrength": 10, "enabled": true, "direction": "DOWN", "enabledChannel": "", "oneShot": false } },
+    { "id": "spring_022", "type": "spring", "name": "弹簧 副本32", "transform": { "x": 1210, "y": 80, "width": 110, "height": 34, "rotation": 0 }, "properties": { "cooldown": 500, "impulseStrength": 10, "enabled": true, "direction": "DOWN", "enabledChannel": "", "oneShot": false } },
+    { "id": "spring_023", "type": "spring", "name": "弹簧 副本33", "transform": { "x": 1300, "y": 80, "width": 110, "height": 34, "rotation": 0 }, "properties": { "cooldown": 500, "impulseStrength": 10, "enabled": true, "direction": "DOWN", "enabledChannel": "", "oneShot": false } }
   ],
   "cardDeck": {
     "cards": [
-      {
-        "cardId": "hooke-bounce",
-        "count": 1,
-        "order": 0,
-        "enabled": true,
-        "usageMode": "REUSABLE"
-      },
-      {
-        "cardId": "up-impulse",
-        "count": 1,
-        "order": 1,
-        "enabled": true,
-        "usageMode": "SINGLE_USE"
-      }
+      { "cardId": "hooke-bounce", "count": 1, "order": 0, "enabled": true, "usageMode": "REUSABLE" },
+      { "cardId": "up-impulse", "count": 1, "order": 1, "enabled": true, "usageMode": "REUSABLE" },
+      { "cardId": "feather-gravity", "count": 1, "order": 2, "enabled": false, "usageMode": "SINGLE_USE" },
+      { "cardId": "side-gravity", "count": 1, "order": 3, "enabled": true, "usageMode": "REUSABLE" }
     ]
   },
-  "rules": {
-    "initialGravity": {
-      "x": 0,
-      "y": 1,
-      "strength": 1
-    }
+  "rules": { "initialGravity": { "x": 0, "y": 1, "strength": 1 } },
+  "scoring": {
+    "profileId": "custom",
+    "metric": "ruleDeployCount",
+    "tiers": [
+      { "score": 100, "maxInterventions": 10, "title": "精准实验", "description": "不超过 10 次有效干预" },
+      { "score": 80, "maxInterventions": 30, "title": "有效实验", "description": "不超过 30 次有效干预" },
+      { "score": 60, "maxInterventions": 99, "title": "观测成立", "description": "完成关卡目标" }
+    ]
   }
 }

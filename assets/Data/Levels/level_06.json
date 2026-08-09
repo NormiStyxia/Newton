@@ -2,6 +2,9 @@
   "schemaVersion": 1,
   "levelId": "level_06",
   "name": "墙不存在",
+  "author": "",
+  "description": "为苹果准备多次相位充能，在关键位置穿过阻隔并完成观测。",
+  "metadata": {},
   "playfield": {
     "width": 1400,
     "height": 700
@@ -12,15 +15,13 @@
       "type": "launcher",
       "name": "苹果发射器",
       "transform": {
-        "x": 134.43708609271525,
-        "y": 467,
+        "x": 160.341,
+        "y": 468.164,
         "width": 110,
         "height": 96,
         "rotation": 0
       },
       "properties": {
-        "launchAngle": 0,
-        "launchPower": 1,
         "appleSpawnOffsetX": 0,
         "appleSpawnOffsetY": 0
       }
@@ -30,51 +31,316 @@
       "type": "goal_sensor",
       "name": "爱因斯坦观察窗",
       "transform": {
-        "x": 1148,
-        "y": 493.2200357781753,
+        "x": 1079.539,
+        "y": 432.681,
         "width": 180,
-        "height": 173.55992844364937,
+        "height": 173.56,
         "rotation": 0
       },
       "properties": {
-        "requiredStayTime": 700,
-        "targetTag": "apple"
+        "requiredStayTime": 1000
       }
     },
     {
-      "id": "button_01",
-      "type": "button",
-      "name": "普通按钮",
+      "id": "wall_01",
+      "type": "wall",
+      "name": "普通墙体",
       "transform": {
-        "x": 674.73465402736,
-        "y": 550.7395685038302,
-        "width": 100,
-        "height": 28,
+        "x": 340,
+        "y": 370,
+        "width": 20,
+        "height": 411.231,
         "rotation": 0
       },
       "properties": {
-        "mode": "HOLD",
-        "gravityThreshold": 1,
-        "channelId": "route_A",
-        "activationType": "apple",
-        "initialState": false,
-        "debounceTime": 180
+        "collisionEnabled": true,
+        "isPhaseable": true
+      }
+    },
+    {
+      "id": "wall_02",
+      "type": "wall",
+      "name": "普通墙体 副本",
+      "transform": {
+        "x": 440,
+        "y": 250,
+        "width": 20,
+        "height": 455.471,
+        "rotation": 0
+      },
+      "properties": {
+        "collisionEnabled": true,
+        "isPhaseable": true
+      }
+    },
+    {
+      "id": "wall_03",
+      "type": "wall",
+      "name": "普通墙体 副本 副本",
+      "transform": {
+        "x": 540,
+        "y": 350,
+        "width": 20,
+        "height": 455.471,
+        "rotation": 0
+      },
+      "properties": {
+        "collisionEnabled": true,
+        "isPhaseable": true
+      }
+    },
+    {
+      "id": "wall_04",
+      "type": "wall",
+      "name": "普通墙体 副本 副本 副本",
+      "transform": {
+        "x": 630,
+        "y": 310,
+        "width": 20,
+        "height": 370,
+        "rotation": 0
+      },
+      "properties": {
+        "collisionEnabled": true,
+        "isPhaseable": true
+      }
+    },
+    {
+      "id": "wall_06",
+      "type": "wall",
+      "name": "普通墙体 副本 副本 副本 副本 副本",
+      "transform": {
+        "x": 810,
+        "y": 250,
+        "width": 20,
+        "height": 230,
+        "rotation": 0
+      },
+      "properties": {
+        "collisionEnabled": true,
+        "isPhaseable": true
+      }
+    },
+    {
+      "id": "wall_07",
+      "type": "wall",
+      "name": "普通墙体",
+      "transform": {
+        "x": 850,
+        "y": 350,
+        "width": 100,
+        "height": 20,
+        "rotation": 0
+      },
+      "properties": {
+        "collisionEnabled": true,
+        "isPhaseable": true
+      }
+    },
+    {
+      "id": "wall_08",
+      "type": "wall",
+      "name": "普通墙体 副本 副本 副本",
+      "transform": {
+        "x": 900,
+        "y": 250,
+        "width": 20,
+        "height": 455.471,
+        "rotation": 0
+      },
+      "properties": {
+        "collisionEnabled": true,
+        "isPhaseable": true
+      }
+    },
+    {
+      "id": "wall_09",
+      "type": "wall",
+      "name": "普通墙体 副本",
+      "transform": {
+        "x": 230,
+        "y": 160,
+        "width": 300,
+        "height": 20,
+        "rotation": 0
+      },
+      "properties": {
+        "collisionEnabled": true,
+        "isPhaseable": true
+      }
+    },
+    {
+      "id": "wall_10",
+      "type": "wall",
+      "name": "普通墙体 副本 副本 副本",
+      "transform": {
+        "x": 1000,
+        "y": 350,
+        "width": 20,
+        "height": 455.471,
+        "rotation": 0
+      },
+      "properties": {
+        "collisionEnabled": true,
+        "isPhaseable": true
+      }
+    },
+    {
+      "id": "wall_11",
+      "type": "wall",
+      "name": "普通墙体 副本 副本",
+      "transform": {
+        "x": 1130,
+        "y": 340,
+        "width": 300,
+        "height": 20,
+        "rotation": 0
+      },
+      "properties": {
+        "collisionEnabled": true,
+        "isPhaseable": true
+      }
+    },
+    {
+      "id": "wall_12",
+      "type": "wall",
+      "name": "普通墙体 副本",
+      "transform": {
+        "x": 1240,
+        "y": 400,
+        "width": 20,
+        "height": 100,
+        "rotation": 0
+      },
+      "properties": {
+        "collisionEnabled": true,
+        "isPhaseable": true
+      }
+    },
+    {
+      "id": "wall_13",
+      "type": "wall",
+      "name": "普通墙体 副本 副本",
+      "transform": {
+        "x": 1090,
+        "y": 170,
+        "width": 20,
+        "height": 130.269,
+        "rotation": 0
+      },
+      "properties": {
+        "collisionEnabled": true,
+        "isPhaseable": true
+      }
+    },
+    {
+      "id": "wall_14",
+      "type": "wall",
+      "name": "普通墙体 副本 副本 副本",
+      "transform": {
+        "x": 1225,
+        "y": 180,
+        "width": 350,
+        "height": 20,
+        "rotation": 0
+      },
+      "properties": {
+        "collisionEnabled": true,
+        "isPhaseable": true
+      }
+    },
+    {
+      "id": "wall_15",
+      "type": "wall",
+      "name": "普通墙体 副本",
+      "transform": {
+        "x": 660,
+        "y": 130,
+        "width": 100,
+        "height": 20,
+        "rotation": 0
+      },
+      "properties": {
+        "collisionEnabled": true,
+        "isPhaseable": true
+      }
+    },
+    {
+      "id": "wall_16",
+      "type": "wall",
+      "name": "普通墙体 副本 副本 副本",
+      "transform": {
+        "x": 700,
+        "y": 80,
+        "width": 20,
+        "height": 130.269,
+        "rotation": 0
+      },
+      "properties": {
+        "collisionEnabled": true,
+        "isPhaseable": true
+      }
+    },
+    {
+      "id": "wall_05",
+      "type": "wall",
+      "name": "普通墙体 副本",
+      "transform": {
+        "x": 760,
+        "y": 470,
+        "width": 100,
+        "height": 20,
+        "rotation": 0
+      },
+      "properties": {
+        "collisionEnabled": true,
+        "isPhaseable": true
+      }
+    },
+    {
+      "id": "wall_17",
+      "type": "wall",
+      "name": "普通墙体 副本 副本 副本",
+      "transform": {
+        "x": 810,
+        "y": 510,
+        "width": 20,
+        "height": 130.269,
+        "rotation": 0
+      },
+      "properties": {
+        "collisionEnabled": true,
+        "isPhaseable": true
       }
     }
   ],
   "cardDeck": {
     "cards": [
       {
-        "cardId": "quantum-phase",
+        "cardId": "feather-gravity",
         "count": 1,
         "order": 0,
+        "enabled": false,
+        "usageMode": "REUSABLE"
+      },
+      {
+        "cardId": "up-impulse",
+        "count": 1,
+        "order": 1,
+        "enabled": false,
+        "usageMode": "SINGLE_USE"
+      },
+      {
+        "cardId": "side-gravity",
+        "count": 6,
+        "order": 1,
         "enabled": true,
         "usageMode": "SINGLE_USE"
       },
       {
-        "cardId": "feather-gravity",
-        "count": 1,
-        "order": 0,
+        "cardId": "quantum-phase",
+        "count": 4,
+        "order": 3,
         "enabled": true,
         "usageMode": "SINGLE_USE"
       }
@@ -86,5 +352,29 @@
       "y": 1,
       "strength": 1
     }
+  },
+  "scoring": {
+    "profileId": "custom",
+    "metric": "ruleDeployCount",
+    "tiers": [
+      {
+        "score": 100,
+        "maxInterventions": 4,
+        "title": "精准实验",
+        "description": "不超过 4 次有效干预"
+      },
+      {
+        "score": 80,
+        "maxInterventions": 8,
+        "title": "有效实验",
+        "description": "不超过 8 次有效干预"
+      },
+      {
+        "score": 60,
+        "maxInterventions": 999,
+        "title": "观测成立",
+        "description": "完成关卡目标"
+      }
+    ]
   }
 }

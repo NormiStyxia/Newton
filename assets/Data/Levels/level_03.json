@@ -2,6 +2,8 @@
   "schemaVersion": 1,
   "levelId": "level_03",
   "name": "世界向右落",
+  "objective": "利用定向引力，再用牛顿拳让世界归位",
+  "shortObjective": "定向引力推进，牛顿拳归位",
   "playfield": {
     "width": 1400,
     "height": 700
@@ -282,5 +284,28 @@
       "y": 1,
       "strength": 1
     }
+  },
+  "scoring": {
+    "profileId": "custom",
+    "metric": "ruleDeployCount",
+    "tiers": [
+      {
+        "score": 100,
+        "maxInterventions": 1,
+        "title": "精准实验",
+        "description": "不超过 1 次有效干预"
+      },
+      {
+        "score": 80,
+        "maxInterventions": 3,
+        "title": "有效实验",
+        "description": "不超过 3 次有效干预"
+      },
+      {
+        "score": 60,
+        "title": "观测成立",
+        "description": "完成关卡目标"
+      }
+    ]
   }
 }
