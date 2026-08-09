@@ -1,6 +1,7 @@
 local DialogueData = {}
 
 DialogueData.FIRST_LEVEL_ID = "level_01"
+DialogueData.SECOND_LEVEL_ID = "level_02"
 DialogueData.ANGER_THRESHOLDS = { 25, 50, 75, 100 }
 
 local FIRST_LEVEL_INTRO = {
@@ -77,7 +78,28 @@ local ANGER_MESSAGES = {
     [100] = "够了。把苹果放回牛顿能理解的宇宙里。",
 }
 
+local SECOND_LEVEL_INTRO = {
+    {
+        speaker = "green",
+        side = "left",
+        displayName = "绿毛同事",
+        avatarText = "绿",
+        text = "这一关需要稍微修改一下实验条件。",
+        style = "GREEN",
+    },
+    {
+        speaker = "green",
+        side = "left",
+        displayName = "绿毛同事",
+        avatarText = "绿",
+        text = "绿色的是场地牌。它会改变实验场本身的规则，并持续生效。",
+        style = "GREEN",
+        tutorialMarker = "level02_feather_gravity_action",
+    },
+}
+
 function DialogueData.Intro(levelId)
+    if levelId == DialogueData.SECOND_LEVEL_ID then return SECOND_LEVEL_INTRO end
     if levelId ~= DialogueData.FIRST_LEVEL_ID then return {} end
     return FIRST_LEVEL_INTRO
 end

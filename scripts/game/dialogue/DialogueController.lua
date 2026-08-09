@@ -70,6 +70,11 @@ function Controller:Init(context)
     self.historyHovered = false
 end
 
+function Controller:_NotifyTutorialMarker(message)
+    if not message or not message.tutorialMarker or not self.context.NotifyTutorialDialogueMarker then return end
+    self.context.NotifyTutorialDialogueMarker(self.currentLevelId, message.tutorialMarker)
+end
+
 function Controller:IsActive()
     return self.state ~= STATE.CLOSED
 end
@@ -171,6 +176,7 @@ function Controller:_RevealNext()
     self.messageAges[self.visibleCount] = 0
     self.messageElapsed = 0
     if self.followBottom then self.scrollOffset = self.maxScroll end
+    self:_NotifyTutorialMarker(self.messages[self.visibleCount])
     return true
 end
 
@@ -185,6 +191,20 @@ function Controller:RevealAll()
     self.scrollOffset = self.maxScroll
     self.state = STATE.REVEALED
     self.log:MarkRead(self.currentLevelId)
+    for index = 1, self.visibleCount do self:_NotifyTutorialMarker(self.messages[index]) end
+end
+
+function Controller:AppendMessages(levelId, messages)
+    if levelId == nil or levelId ~= self.currentLevelId then return false end
+    local levelMessages = self.log:GetMessages(levelId)
+    for _, message in ipairs(messages or {}) do
+        local copy = {}
+        for key, value in pairs(message) do copy[key] = value end
+        levelMessages[#levelMessages + 1] = copy
+    end
+    self.messages = levelMessages
+    self:_SyncAppendedMessages()
+    return #(messages or {}) > 0
 end
 
 function Controller:Close()
@@ -221,8 +241,9 @@ function Controller:OnLevelReady(levelId, anger)
     self.currentLevelId = levelId
     self.historyButtonGeometry = nil
     self.lastAnger = clamp(anger or 0, 0, MAX_ANGER)
-    if levelId ~= DialogueData.FIRST_LEVEL_ID or self.log:HasIntro(levelId) then return end
-    self.log:RecordIntro(levelId, DialogueData.Intro(levelId))
+    local intro = DialogueData.Intro(levelId)
+    if #intro == 0 or self.log:HasIntro(levelId) then return end
+    self.log:RecordIntro(levelId, intro)
     self:OpenIntro()
 end
 
@@ -418,6 +439,11 @@ function M.Install(context)
 
     function NotifyDialogueLevelReady(levelId)
         if dialogueController_ then dialogueController_:OnLevelReady(levelId, anger_) end
+    end
+
+    function AppendDialogueMessages(levelId, messages)
+        if dialogueController_ then return dialogueController_:AppendMessages(levelId, messages) end
+        return false
     end
 
     function UpdateDialogue(dt, pointerFrame)

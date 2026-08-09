@@ -48,6 +48,15 @@
 ---@field UpdateDialogue fun(dt: number, pointerFrame: table): boolean
 ---@field DrawDialogueHistoryButton fun()
 ---@field DrawDialogueOverlay fun()
+---@field InitializeTutorial fun()
+---@field DestroyTutorial fun()
+---@field NotifyTutorialLevelReady fun(levelId: string)
+---@field ResetTutorialForLevel fun(levelId: string)
+---@field NotifyTutorialDialogueMarker fun(levelId: string, marker: string)
+---@field UpdateTutorial fun(dt: number)
+---@field GetTutorialRenderModel fun(): table
+---@field CancelTutorialForLevelComplete fun()
+---@field AppendDialogueMessages fun(levelId: string, messages: table): boolean
 ---@field InitializeAssistDemo fun()
 ---@field DestroyAssistDemo fun()
 ---@field StartAssistDemo fun(solution: table): boolean, string|nil

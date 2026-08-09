@@ -4,6 +4,7 @@ local EinsteinObserver = require("game.render.EinsteinObserver")
 local WallImpactShake = require("game.render.WallImpactShake")
 local NewtonPunchShake = require("game.render.NewtonPunchShake")
 local ResultReportConfig = require("ui.result_report_config")
+local TutorialView = require("game.render.TutorialView")
 
 local TITLE_BACKGROUND_FILL = { 248, 231, 206, 255 }
 local CATALOG_BACKGROUND_FILL = { 247, 239, 211, 255 }
@@ -236,6 +237,7 @@ function M.Install(context)
         lastMusicScreen_ = nil
         frame_ = FrameForCurrentScreen()
         context.InitializeDialogue()
+        context.InitializeTutorial()
         context.InitializeAssistDemo()
         InitializeTitleScreen()
         InitializeGreenAssistant()
@@ -264,6 +266,7 @@ function M.Install(context)
         ShutdownLevelWorkshop()
         if scene_ or level_ then ReleaseLevelRuntime() end
         context.DestroyDialogue()
+        context.DestroyTutorial()
         DestroyGreenAssistant()
         context.DestroyAssistDemo()
         if painter_ then painter_:Destroy(); painter_ = nil end
@@ -415,6 +418,9 @@ function M.Install(context)
         elseif not isPaused_ and absorbing_ then
             UpdateExperiment(dt)
         end
+        -- Tutorial is a passive observer. Running it after gameplay means a
+        -- same-frame field activation or victory is reflected before render.
+        context.UpdateTutorial(dt)
         if context.debugDraw_ and physicsWorld_ then physicsWorld_:DrawDebugGeometry() end
     end
 
@@ -747,6 +753,7 @@ function M.Install(context)
             context.DrawAssistDemo()
             DrawHUDDropdown()
             context.DrawDialogueOverlay()
+            TutorialView.Draw(painter_, frame_, context)
             DrawResultOverlay()
             DrawGreenAssistantTopLayer(DrawGreenAssistant)
             DrawGreenAssistantTopLayer(context.DrawGreenAssistantOverlay)

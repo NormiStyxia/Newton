@@ -136,6 +136,7 @@ function M.Install(context)
         if SnapDoorsToTargets then SnapDoorsToTargets() end
         SyncPhysicsUpdateEnabled()
         SetStatus("READY · 等待发射")
+        if context.ResetTutorialForLevel then context.ResetTutorialForLevel(level_.levelId) end
     end
 
     ---@param document table
@@ -187,6 +188,7 @@ function M.Install(context)
         screen_ = runtimeSession_.screen
         RefreshHUDSummary()
         if options.notifyAssistant ~= false then NotifyGreenAssistantLevelChanged(level_.levelId) end
+        if context.NotifyTutorialLevelReady then context.NotifyTutorialLevelReady(level_.levelId) end
         if options.notifyDialogue ~= false then context.NotifyDialogueLevelReady(level_.levelId) end
         return runtimeSession_, nil
     end
@@ -285,7 +287,13 @@ function M.Install(context)
             level_.assistedClear = assisted
             level_.resultOverlayVisible = true
         end
-        local reportState = GenerateResultReport and GenerateResultReport() or nil
+        local reportState = nil
+        if assisted then
+            if ClearResultReportState then ClearResultReportState() end
+            isPaused_ = true
+        elseif GenerateResultReport then
+            reportState = GenerateResultReport()
+        end
         RecordOfficialExperimentProgress(assisted, reportState)
         if apple_ and apple_.body then
             apple_.body.bodyType = BT_STATIC
