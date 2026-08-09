@@ -433,6 +433,20 @@ function GreenAssistant:render()
     self.view:render(self.animator:getCurrentFrameData(), debugInfo)
 end
 
+function GreenAssistant:_showTakeoverOffer(reason, result)
+    if not self.config.features.takeover or not self.takeover:canStart(self.levelId) then return false end
+    self.failureAssist:markOffered()
+    self:_hideMessage()
+    self:setBehavior(BehaviorState.OFFER, reason or "failure-threshold")
+    self.view:showChoice(self.config.failureAssist.offerText, {
+        { id = "decline", label = self.config.failureAssist.declineText },
+        { id = "accept", label = self.config.failureAssist.acceptText },
+    })
+    self:_emit("onDialogueOpened", self.config.failureAssist.offerText)
+    self:_emit("onTakeoverOffered", result)
+    return true
+end
+
 function GreenAssistant:handlePointer(x, y, pointer)
     if not self.enabled or not self.visible or not pointer then return false end
     pointer.x, pointer.y = x, y
@@ -471,6 +485,12 @@ function GreenAssistant:poke()
     local behavior = self.behaviorState:get()
     if behavior == BehaviorState.DRAGGING or behavior == BehaviorState.OFFER
         or behavior == BehaviorState.TAKEOVER or behavior == BehaviorState.SUCCESS then return false end
+    if self.failureAssist:canReoffer() and self:_showTakeoverOffer("declined-retry", {
+        kind = "offer",
+        failureCount = self.failureAssist.failureCount,
+        threshold = self.failureAssist.threshold,
+        reoffered = true,
+    }) then return true end
     local line, pokeCount, animationName = self.interaction:poke(self.elapsed)
     if not line then return false end
     self:_showTimedMessage(line, self.config.interaction.duration, BehaviorState.INTERACT)
@@ -494,18 +514,7 @@ function GreenAssistant:onAttemptFailed(payload)
     local behavior = self.behaviorState:get()
     if behavior == BehaviorState.OFFER or behavior == BehaviorState.TAKEOVER or behavior == BehaviorState.DISABLED then return false end
     local result = self.failureAssist:onAttemptFailed(payload or {})
-    if result.kind == "offer" and self.config.features.takeover and self.takeover:canStart(self.levelId) then
-        self.failureAssist:markOffered()
-        self:_hideMessage()
-        self:setBehavior(BehaviorState.OFFER, "failure-threshold")
-        self.view:showChoice(self.config.failureAssist.offerText, {
-            { id = "decline", label = self.config.failureAssist.declineText },
-            { id = "accept", label = self.config.failureAssist.acceptText },
-        })
-        self:_emit("onDialogueOpened", self.config.failureAssist.offerText)
-        self:_emit("onTakeoverOffered", result)
-        return true
-    end
+    if result.kind == "offer" and self:_showTakeoverOffer("failure-threshold", result) then return true end
 
     local lines = self.config.failureAssist.observeLines
     local line = lines[math.min(#lines, math.max(1, result.failureCount))] or "我看到了。"

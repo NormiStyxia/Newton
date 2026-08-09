@@ -25,6 +25,10 @@ function FailureAssist:markOffered()
     self.hasOfferedThisLevel = true
 end
 
+function FailureAssist:canReoffer()
+    return self.failureCount >= self.threshold and self.hasOfferedThisLevel
+end
+
 function FailureAssist:onAttemptSucceeded()
     self.failureCount = 0
 end
