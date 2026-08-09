@@ -1,8 +1,5 @@
--- The illustrated title page is one fixed design stage.  Its artwork and
--- interaction rectangles share the same coordinates so resize never changes
--- the relationship between the title, characters, and menu.
 local M = {}
-
+local CharacterProfiles = require("ui.CharacterProfiles")
 local SOURCE_OFFSET_X = 0
 local TITLE_FILL = { 248, 231, 206, 255 }
 local MENU = {
@@ -89,99 +86,8 @@ local PROFILE_MODE = {
     EXITING = "EXITING_PROFILE",
 }
 
--- The supplied profile layers share a 1280 x 576 logical canvas.  Doodle,
--- signature, and back were exported at 2000 x 900, the exact same aspect and
--- offsets, so every layer can be drawn over the full 1870 x 841 title stage.
-local PROFILE = {
-    characterId = "newton",
-    plateColor = { 251, 234, 212, 255 },
-    root = {
-        pivotX = 438.3,
-        pivotY = 774.0,
-        startOffsetX = 431.2,
-        startOffsetY = 1.2,
-        startScale = .64,
-        targetScale = 1,
-    },
-    enter = {
-        sketchFlipStart = 0,
-        sketchFlipEnd = .16,
-        formalFlipStart = .16,
-        formalFlipEnd = .31,
-        moveStart = .31,
-        moveEnd = .71,
-        plateEnd = .30,
-        backdropStart = .36,
-        backdropEnd = .74,
-        frameStart = .55,
-        frameDuration = .17,
-        frameStagger = .09,
-        doodleStart = .91,
-        doodleEnd = 1.07,
-        signatureStart = .99,
-        signatureEnd = 1.19,
-        backStart = 1.08,
-        backEnd = 1.22,
-        total = 1.22,
-    },
-    exit = {
-        backStart = 0,
-        backEnd = .12,
-        signatureStart = .05,
-        signatureEnd = .22,
-        doodleStart = .12,
-        doodleEnd = .30,
-        backdropStart = .28,
-        backdropEnd = .56,
-        frameStart = .24,
-        frameDuration = .13,
-        frameStagger = .07,
-        moveStart = .56,
-        moveEnd = .96,
-        formalFlipStart = .96,
-        formalFlipEnd = 1.11,
-        sketchFlipStart = 1.11,
-        sketchFlipEnd = 1.27,
-        plateFadeStart = .96,
-        plateFadeEnd = 1.27,
-        total = 1.27,
-    },
-    backdropPivot = { x = 470, y = 416 },
-    doodlePivot = { x = 441, y = 446 },
-    signatureOffset = 16,
-    backPivot = { x = 134, y = 79 },
-    backHit = { x = 30, y = 20, w = 230, h = 125 },
-}
-
--- The bands share two perpendicular axes but keep independent centers and
--- lengths. Their deliberate overhangs and gaps make a poster composition,
--- rather than a closed square frame.
-local PROFILE_FRAME_BANDS = (function()
-    local function bandFromCenter(centerX, centerY, length, angleDegrees, t1, t2,
-            baseColor, startColor, endColor, reverse)
-        local angle = angleDegrees * DEGREES_TO_RADIANS
-        local halfLength = length * .5
-        local dx, dy = math.cos(angle) * halfLength, math.sin(angle) * halfLength
-        local startX, startY = centerX - dx, centerY - dy
-        local endX, endY = centerX + dx, centerY + dy
-        if reverse then startX, startY, endX, endY = endX, endY, startX, startY end
-        return {
-            x1 = startX, y1 = startY, x2 = endX, y2 = endY, t1 = t1, t2 = t2,
-            baseColor = baseColor, gradientStartColor = startColor, gradientEndColor = endColor,
-        }
-    end
-    return {
-        bandFromCenter(456, 85, 758, -13, 116, 112,
-            { 236, 64, 0, 255 }, { 232, 61, 0, 255 }, { 240, 67, 2, 255 }, true),
-        bandFromCenter(126, 399, 836, 77, 114, 118,
-            { 146, 42, 26, 255 }, { 142, 39, 24, 255 }, { 150, 45, 28, 255 }),
-        bandFromCenter(481, 778, 732, -13, 122, 118,
-            { 249, 131, 0, 255 }, { 246, 127, 0, 255 }, { 252, 135, 3, 255 }),
-        bandFromCenter(830, 456, 816, 77, 108, 104,
-            { 255, 108, 0, 255 }, { 252, 104, 0, 255 }, { 255, 112, 2, 255 }, true),
-    }
-end)()
-
+local PROFILE = CharacterProfiles.COMMON
+local PROFILE_FRAME_GEOMETRY = CharacterProfiles.FRAME_GEOMETRY
 -- The right-hand profile is a paper archive laid out in the same fixed title
 -- stage.  The supplied info_base already contains the three observation
 -- photos as one static composition; they intentionally have no separate
@@ -246,6 +152,14 @@ local ARCHIVE = {
     exit = { baseStart = .88, baseEnd = 1.16, edges = { .80, 1.04 },
         emotion = { .72, .96 }, header = { .67, .90 } },
 }
+
+local function profileForState(state)
+    return CharacterProfiles.Get(state.profileCharacterId) or CharacterProfiles.Get("newton")
+end
+
+local function archivePalette(profile)
+    return profile.archiveColors
+end
 
 local SETTINGS = {
     x = 1088, y = 86, w = 656, h = 672,
@@ -537,7 +451,7 @@ local function archiveTextBlockHeight(lines, lineHeight)
     return math.max(1, #lines) * lineHeight
 end
 
-local function buildArchiveLayout(painter)
+local function buildArchiveLayout(painter, profile)
     local metrics = ARCHIVE.layout
     local contentLeft = metrics.contentLeft
     local contentRight = metrics.expressionColumnLeft - metrics.safeGap
@@ -561,19 +475,16 @@ local function buildArchiveLayout(painter)
 
         local academyY = metrics.academyTitleY + verticalOffset
             + metrics.titleHeight + metrics.titleToBodyGap
-        local academyRows = {
-            { label = "所属", value = "经典力学维护处", start = .32, finish = .49 },
-            { label = "职务", value = "实验监督员", start = .34, finish = .51 },
-            { label = "负责事项", value = "苹果、重力，以及阻止实验人员\n擅自修改自然规律", start = .36, finish = .55 },
-        }
-        for _, row in ipairs(academyRows) do
+        local rowStarts = { .32, .34, .36 }
+        local rowFinishes = { .49, .51, .55 }
+        for index, row in ipairs(profile.academyRecord) do
             local lines = archiveWrapLines(painter, row.value, valueWidth, bodyFont, metrics.bodyFontSize)
             result.academyRows[#result.academyRows + 1] = {
                 label = row.label,
                 valueLines = lines,
                 y = academyY,
-                start = row.start,
-                finish = row.finish,
+                start = rowStarts[index] or .36,
+                finish = rowFinishes[index] or .55,
             }
             academyY = academyY + archiveTextBlockHeight(lines, metrics.bodyLineHeight)
         end
@@ -584,8 +495,7 @@ local function buildArchiveLayout(painter)
         result.personal = {
             x = contentLeft,
             y = personalY,
-            lines = archiveWrapLines(painter,
-                "对实验秩序、测量精度与因果关系有严格要求。通常保持克制，直到有人开始把重力方向、弹性响应和运动轨迹当作可编辑参数。",
+            lines = archiveWrapLines(painter, profile.introText,
                 contentRight - contentLeft, bodyFont, metrics.bodyFontSize),
             start = .42,
             finish = .63,
@@ -597,8 +507,8 @@ local function buildArchiveLayout(painter)
         result.quote = {
             x = contentLeft + 28,
             y = quoteY,
-            lines = archiveWrapLines(painter, "“请先解释为什么它在往右掉。”",
-                contentRight - contentLeft - 28, "report-newton", metrics.quoteFontSize),
+            lines = archiveWrapLines(painter, profile.quoteText,
+                contentRight - contentLeft - 28, profile.quoteFont, metrics.quoteFontSize),
             start = .52,
             finish = .69,
         }
@@ -606,7 +516,7 @@ local function buildArchiveLayout(painter)
         result.note = {
             x = contentLeft + 39,
             y = result.quoteBottom + noteGap,
-            lines = archiveWrapLines(painter, "学院备注：该问题尚未得到实验人员充分重视。",
+            lines = archiveWrapLines(painter, profile.noteText,
                 contentRight - contentLeft - 39, "report-green", metrics.noteFontSize),
             start = .52,
             finish = .69,
@@ -648,9 +558,9 @@ local function drawArchiveStar(vg, x, y, radius, colorValue, filled, alpha)
     end
 end
 
-local function drawArchiveLine(vg, x1, y1, x2, y2, amount, width)
+local function drawArchiveLine(vg, x1, y1, x2, y2, amount, width, colorValue)
     if amount <= .001 then return end
-    nvgStrokeColor(vg, archiveColor(ARCHIVE.ink, amount))
+    nvgStrokeColor(vg, archiveColor(colorValue or ARCHIVE.ink, amount))
     nvgStrokeWidth(vg, width or 1.6)
     nvgBeginPath(vg)
     nvgMoveTo(vg, x1, y1)
@@ -671,7 +581,7 @@ local function drawArchiveCenterOutLine(vg, centerX, y, leftX, rightX, amount, w
     nvgStroke(vg)
 end
 
-local function drawArchiveHorizontalEdges(painter, state)
+local function drawArchiveHorizontalEdges(painter, state, profile)
     local timing = state.profileMode == PROFILE_MODE.EXITING and ARCHIVE.exit.edges or ARCHIVE.enter.edges
     local progress = archiveProgress(state, timing[1], timing[2])
     if progress <= .001 then return end
@@ -681,14 +591,15 @@ local function drawArchiveHorizontalEdges(painter, state)
     local topY = frame.y
     local bottomY = frame.y + frame.h
     local vg = painter.vg
+    local colors = archivePalette(profile)
     drawArchiveCenterOutLine(vg, centerX, topY, frame.x, frame.x + frame.w, progress,
-        frame.thickWidth, ARCHIVE.inkStrong, .94)
+        frame.thickWidth, colors.inkStrong, .94)
     drawArchiveCenterOutLine(vg, centerX, topY + frame.thinOffset, frame.x, frame.x + frame.w, progress,
-        frame.thinWidth, ARCHIVE.ink, .74)
+        frame.thinWidth, colors.ink, .74)
     drawArchiveCenterOutLine(vg, centerX, bottomY, frame.x, frame.x + frame.w, progress,
-        frame.thickWidth, ARCHIVE.inkStrong, .94)
+        frame.thickWidth, colors.inkStrong, .94)
     drawArchiveCenterOutLine(vg, centerX, bottomY - frame.thinOffset, frame.x, frame.x + frame.w, progress,
-        frame.thinWidth, ARCHIVE.ink, .74)
+        frame.thinWidth, colors.ink, .74)
 end
 
 local function drawArchiveBase(painter, handle, state)
@@ -699,7 +610,7 @@ local function drawArchiveBase(painter, handle, state)
     if progress > .001 then image(painter, handle, 0, 0, 1870, 841, progress) end
 end
 
-local function drawArchiveTag(painter, tag, tagPosition, state, index)
+local function drawArchiveTag(painter, tag, tagPosition, state, index, profile)
     local tagProgress = archiveProgress(state, tag.tagStart, tag.tagEnd)
     if state.profileMode == PROFILE_MODE.EXITING then
         local startTime = .72 + (index - 1) * .08
@@ -707,8 +618,9 @@ local function drawArchiveTag(painter, tag, tagPosition, state, index)
     end
     if tagProgress <= .001 then return end
     local vg = painter.vg
+    local colors = archivePalette(profile)
     local width = tag.w * tagProgress
-    painter:FillRect(tagPosition.x, tagPosition.y, width, ARCHIVE.layout.titleHeight, ARCHIVE.inkStrong, 235)
+    painter:FillRect(tagPosition.x, tagPosition.y, width, ARCHIVE.layout.titleHeight, colors.inkStrong, 235)
     local textProgress = clamp((tagProgress - .55) / .45, 0, 1)
     if textProgress > .001 then
         painter:Text(tagPosition.x + 17, tagPosition.y + 8, tag.label, 24, ARCHIVE.paper,
@@ -727,9 +639,10 @@ local function drawArchiveBlock(painter, block, progress, colorValue, font, size
     end
 end
 
-local function drawArchiveBody(painter, state, layout)
+local function drawArchiveBody(painter, state, layout, profile)
     local mode = state.profileMode
     local metrics = ARCHIVE.layout
+    local colors = archivePalette(profile)
     for _, row in ipairs(layout.academyRows) do
         local startTime, endTime = row.start, row.finish
         if mode == PROFILE_MODE.EXITING then
@@ -737,9 +650,9 @@ local function drawArchiveBody(painter, state, layout)
         end
         local progress = archiveProgress(state, startTime, endTime)
         drawArchiveBlock(painter, { x = layout.contentLeft, y = row.y, lines = { row.label } },
-            progress, ARCHIVE.body, "maker-body", metrics.bodyFontSize, metrics.bodyLineHeight)
+            progress, colors.body, "maker-body", metrics.bodyFontSize, metrics.bodyLineHeight)
         drawArchiveBlock(painter, { x = layout.contentLeft + metrics.labelColumnWidth, y = row.y,
-            lines = row.valueLines }, progress, ARCHIVE.body, "maker-body", metrics.bodyFontSize,
+            lines = row.valueLines }, progress, colors.body, "maker-body", metrics.bodyFontSize,
             metrics.bodyLineHeight)
     end
 
@@ -749,19 +662,19 @@ local function drawArchiveBody(painter, state, layout)
         quoteStart, quoteEnd = quoteStart + .36, quoteEnd + .36
         personalProgress = archiveProgress(state, quoteStart, quoteEnd)
     end
-    drawArchiveBlock(painter, layout.personal, personalProgress, ARCHIVE.body, "maker-body",
+    drawArchiveBlock(painter, layout.personal, personalProgress, colors.body, "maker-body",
         metrics.bodyFontSize, metrics.bodyLineHeight)
 
     quoteStart, quoteEnd = layout.quote.start, layout.quote.finish
     if mode == PROFILE_MODE.EXITING then quoteStart, quoteEnd = .88, 1.08 end
     local quoteProgress = archiveProgress(state, quoteStart, quoteEnd)
-    drawArchiveBlock(painter, layout.quote, quoteProgress, ARCHIVE.inkStrong, "report-newton",
+    drawArchiveBlock(painter, layout.quote, quoteProgress, colors.inkStrong, profile.quoteFont,
         metrics.quoteFontSize, metrics.quoteLineHeight)
-    drawArchiveBlock(painter, layout.note, quoteProgress, ARCHIVE.bodyMuted, "report-green",
+    drawArchiveBlock(painter, layout.note, quoteProgress, colors.bodyMuted, "report-green",
         metrics.noteFontSize, metrics.noteLineHeight, 14)
 end
 
-local function drawArchiveHeader(painter, state, layout)
+local function drawArchiveHeader(painter, state, layout, profile)
     local pair = state.profileMode == PROFILE_MODE.EXITING and ARCHIVE.exit.header or ARCHIVE.enter.header
     local progress = archiveProgress(state, pair[1], pair[2])
     if progress <= .001 then return end
@@ -769,24 +682,29 @@ local function drawArchiveHeader(painter, state, layout)
     local verticalOffset = ARCHIVE.layout.verticalOffset or 0
     local titleX = layout.contentLeft
     local titleY = h.titleY + verticalOffset
-    local chineseWidth = archiveTextWidth(painter, "牛顿", "report-summary", h.chineseSize)
+    local colors = archivePalette(profile)
+    local chineseWidth = archiveTextWidth(painter, profile.nameCn, "report-summary", h.chineseSize)
     local latinX = titleX + chineseWidth + h.nameGap
     local latinY = titleY + h.latinOffsetY
     local lineY = titleY + h.chineseSize + h.lineGap
     local subY = lineY - h.subtitleRise
-    painter:Text(titleX, titleY, "牛顿", h.chineseSize, ARCHIVE.warm,
+    local lineColor = profile.id == "newton" and colors.ink or profile.accentColor
+    local starColor = profile.id == "newton" and colors.inkStrong or profile.accentColor
+    painter:Text(titleX, titleY, profile.nameCn, h.chineseSize, colors.warm,
         NVG_ALIGN_LEFT + NVG_ALIGN_TOP, "report-summary", archiveTextAlpha(progress))
-    painter:Text(latinX, latinY, "NEWTON", h.latinSize, ARCHIVE.inkStrong,
+    painter:Text(latinX, latinY, profile.nameEn, h.latinSize, colors.inkStrong,
         NVG_ALIGN_LEFT + NVG_ALIGN_TOP, "maker-body", archiveTextAlpha(progress))
-    painter:Text(layout.headerCenterX, subY, "CLASSICAL MECHANICS / SUPERVISOR", 17, ARCHIVE.bodyMuted,
+    painter:Text(layout.headerCenterX, subY, profile.subTitle, 17, colors.bodyMuted,
         NVG_ALIGN_CENTER + NVG_ALIGN_TOP, "maker-body", archiveTextAlpha(progress))
-    drawArchiveLine(painter.vg, layout.contentLeft, lineY, layout.headerLeftStarX - 12, lineY, progress, 1.1)
-    drawArchiveLine(painter.vg, layout.headerRightStarX + 12, lineY, layout.contentRight, lineY, progress, 1.1)
-    drawArchiveStar(painter.vg, layout.headerLeftStarX, lineY, 5.2, ARCHIVE.inkStrong, true, progress)
-    drawArchiveStar(painter.vg, layout.headerRightStarX, lineY, 5.2, ARCHIVE.inkStrong, true, progress)
+    drawArchiveLine(painter.vg, layout.contentLeft, lineY, layout.headerLeftStarX - 12, lineY,
+        progress, 1.1, lineColor)
+    drawArchiveLine(painter.vg, layout.headerRightStarX + 12, lineY, layout.contentRight, lineY,
+        progress, 1.1, lineColor)
+    drawArchiveStar(painter.vg, layout.headerLeftStarX, lineY, 5.2, starColor, true, progress)
+    drawArchiveStar(painter.vg, layout.headerRightStarX, lineY, 5.2, starColor, true, progress)
 end
 
-local function drawArchiveEmotionBar(painter, handle, state)
+local function drawArchiveEmotionBar(painter, handle, state, profile)
     local bar = ARCHIVE.emotionBar
     local progress = archiveProgress(state, bar.revealStart, bar.revealEnd)
     if state.profileMode == PROFILE_MODE.EXITING then
@@ -794,17 +712,22 @@ local function drawArchiveEmotionBar(painter, handle, state)
     end
     if progress <= .001 then return end
     local vg = painter.vg
-    nvgSave(vg)
-    nvgIntersectScissor(vg, bar.x, bar.y, bar.w, bar.h * progress)
-    image(painter, handle, 0, 0, 1870, 841, 1)
-    nvgRestore(vg)
+    local colors = archivePalette(profile)
+    if handle and handle >= 0 then
+        nvgSave(vg)
+        nvgIntersectScissor(vg, bar.x, bar.y, bar.w, bar.h * progress)
+        image(painter, handle, 0, 0, 1870, 841, 1)
+        nvgRestore(vg)
+    else
+        painter:FillRect(bar.x, bar.y, bar.w, bar.h * progress, colors.inkStrong, 245)
+    end
 
     local textProgress = archiveProgress(state, bar.textStart, bar.textEnd)
     if state.profileMode == PROFILE_MODE.EXITING then
         textProgress = archiveProgress(state, ARCHIVE.exit.header[1], ARCHIVE.exit.header[2])
     end
     if textProgress <= .001 then return end
-    local labels = { "情", "绪", "观", "测", "样", "本" }
+    local labels = archiveUtf8Characters(profile.observationTitle)
     for index, label in ipairs(labels) do
         painter:Text(bar.x + bar.w * .5, 205 + (index - 1) * 55, label, 38, ARCHIVE.paper,
             NVG_ALIGN_CENTER + NVG_ALIGN_TOP, "report-summary", archiveTextAlpha(textProgress))
@@ -813,21 +736,21 @@ local function drawArchiveEmotionBar(painter, handle, state)
     drawArchiveStar(vg, bar.x + bar.w * .5, 654, 6, ARCHIVE.paper, true, textProgress)
 end
 
-local function drawProfileInfoOverlay(painter, profileArt, state)
-    local layout = buildArchiveLayout(painter)
+local function drawProfileInfoOverlay(painter, profileArt, state, profile)
+    local layout = buildArchiveLayout(painter, profile)
     nvgSave(painter.vg)
     nvgTranslate(painter.vg, ARCHIVE.contentOffsetX, 0)
-    drawArchiveHeader(painter, state, layout)
+    drawArchiveHeader(painter, state, layout, profile)
     for index, tag in ipairs(ARCHIVE.tags) do
-        drawArchiveTag(painter, tag, layout.tags[index], state, index)
+        drawArchiveTag(painter, tag, layout.tags[index], state, index, profile)
     end
-    drawArchiveBody(painter, state, layout)
+    drawArchiveBody(painter, state, layout, profile)
     nvgRestore(painter.vg)
-    drawArchiveEmotionBar(painter, profileArt.infoFrame, state)
+    drawArchiveEmotionBar(painter, profileArt.infoFrame, state, profile)
 end
 
-local function profileRootTransform(state)
-    local root = PROFILE.root
+local function profileRootTransform(state, profile)
+    local root = profile.root
     local mode = state.profileMode
     local elapsed = state.profileElapsed or 0
     local amount = 0
@@ -846,9 +769,9 @@ local function profileRootTransform(state)
         lerp(root.startScale, root.targetScale, amount), flipScaleX
 end
 
-local function drawProfileCharacterLayer(painter, handle, offsetX, offsetY, scale, flipScaleX)
+local function drawProfileCharacterLayer(painter, handle, offsetX, offsetY, scale, flipScaleX, profile)
     if not handle or handle < 0 or flipScaleX <= .001 then return end
-    local root = PROFILE.root
+    local root = profile.root
     beginVisualTransform(painter.vg, root.pivotX, root.pivotY, offsetX, offsetY, 0,
         scale * flipScaleX, scale)
     image(painter, handle, 0, 0, 1870, 841)
@@ -863,7 +786,7 @@ local function profileFrameProgress(state, index)
         local startTime = PROFILE.enter.frameStart + (index - 1) * PROFILE.enter.frameStagger
         return easeOutCubic(rangeProgress(elapsed, startTime, startTime + PROFILE.enter.frameDuration))
     elseif mode == PROFILE_MODE.EXITING then
-        local reverseIndex = #PROFILE_FRAME_BANDS - index
+        local reverseIndex = #PROFILE_FRAME_GEOMETRY - index
         local startTime = PROFILE.exit.frameStart + reverseIndex * PROFILE.exit.frameStagger
         return 1 - easeOutCubic(rangeProgress(elapsed, startTime, startTime + PROFILE.exit.frameDuration))
     end
@@ -900,27 +823,35 @@ local function drawGrowingBand(vg, band, progress)
     nvgFill(vg)
 end
 
-local function drawProfileFrames(painter, state)
-    for index, band in ipairs(PROFILE_FRAME_BANDS) do
+local function drawProfileFrames(painter, state, profile)
+    for index, geometry in ipairs(PROFILE_FRAME_GEOMETRY) do
+        local palette = profile.frameColors[geometry.colorKey]
+        local band = {
+            x1 = geometry.x1, y1 = geometry.y1, x2 = geometry.x2, y2 = geometry.y2,
+            t1 = geometry.t1, t2 = geometry.t2,
+            baseColor = palette.base,
+            gradientStartColor = palette.start,
+            gradientEndColor = palette.finish,
+        }
         drawGrowingBand(painter.vg, band, profileFrameProgress(state, index))
     end
 end
 
-local function drawProfileBackdrop(painter, handle, state)
+local function drawProfileBackdrop(painter, handle, state, profile)
     local progress = profileLayerProgress(state, "backdrop")
     if progress <= .001 then return end
     local amount = smoothStep(progress)
     local scale = lerp(.72, 1, amount)
-    beginVisualTransform(painter.vg, PROFILE.backdropPivot.x, PROFILE.backdropPivot.y, 0, 0, 0, scale)
+    beginVisualTransform(painter.vg, profile.backdropPivot.x, profile.backdropPivot.y, 0, 0, 0, scale)
     image(painter, handle, 0, 0, 1870, 841, amount)
     nvgRestore(painter.vg)
 end
 
-local function drawProfileDoodle(painter, handle, state)
+local function drawProfileDoodle(painter, handle, state, profile)
     local progress = profileLayerProgress(state, "doodle")
     if progress <= .001 then return end
     local scale = .97 + .03 * smoothStep(progress)
-    beginVisualTransform(painter.vg, PROFILE.doodlePivot.x, PROFILE.doodlePivot.y, 0, 0, 0, scale)
+    beginVisualTransform(painter.vg, profile.doodlePivot.x, profile.doodlePivot.y, 0, 0, 0, scale)
     image(painter, handle, 0, 0, 1870, 841, progress)
     nvgRestore(painter.vg)
 end
@@ -945,36 +876,37 @@ local function drawProfileBack(painter, handle, state)
 end
 
 local function drawProfileScene(painter, art, state)
-    local profileArt = art.profiles and art.profiles[PROFILE.characterId]
+    local profile = profileForState(state)
+    local profileArt = art.profiles and art.profiles[profile.id]
     if not profileArt then return end
-    local node = characterById(PROFILE.characterId)
+    local node = characterById(profile.id)
     local elapsed = state.profileElapsed or 0
     if state.profileMode == PROFILE_MODE.ENTERING and elapsed < PROFILE.enter.sketchFlipEnd then
         local flip = 1 - rangeProgress(elapsed, PROFILE.enter.sketchFlipStart, PROFILE.enter.sketchFlipEnd)
         drawSketchCharacterFlip(painter, art, node, state.profileSketchElapsed or 0, flip)
     end
 
-    local offsetX, offsetY, scale, flipScaleX = profileRootTransform(state)
+    local offsetX, offsetY, scale, flipScaleX = profileRootTransform(state, profile)
     local settled = state.profileMode == PROFILE_MODE.IDLE
     local body = settled and profileArt.bodySettled or profileArt.body
     local head = settled and profileArt.headSettled or profileArt.head
     if not body or body < 0 then body = profileArt.body end
     if not head or head < 0 then head = profileArt.head end
-    drawProfileBackdrop(painter, profileArt.backdrop, state)
+    drawProfileBackdrop(painter, profileArt.backdrop, state, profile)
     drawArchiveBase(painter, profileArt.infoBase, state)
-    drawProfileCharacterLayer(painter, body, offsetX, offsetY, scale, flipScaleX)
-    drawProfileFrames(painter, state)
-    drawProfileCharacterLayer(painter, head, offsetX, offsetY, scale, flipScaleX)
-    drawProfileInfoOverlay(painter, profileArt, state)
+    drawProfileCharacterLayer(painter, body, offsetX, offsetY, scale, flipScaleX, profile)
+    drawProfileFrames(painter, state, profile)
+    drawProfileCharacterLayer(painter, head, offsetX, offsetY, scale, flipScaleX, profile)
+    drawProfileInfoOverlay(painter, profileArt, state, profile)
     drawProfileSignature(painter, profileArt.signature, state)
-    drawProfileDoodle(painter, profileArt.doodle, state)
+    drawProfileDoodle(painter, profileArt.doodle, state, profile)
     drawProfileBack(painter, profileArt.back, state)
 
     if state.profileMode == PROFILE_MODE.EXITING and elapsed >= PROFILE.exit.sketchFlipStart then
         local flip = rangeProgress(elapsed, PROFILE.exit.sketchFlipStart, PROFILE.exit.sketchFlipEnd)
         drawSketchCharacterFlip(painter, art, node, state.profileSketchElapsed or 0, flip)
     end
-    drawArchiveHorizontalEdges(painter, state)
+    drawArchiveHorizontalEdges(painter, state, profile)
 end
 
 local function drawFourPointStar(vg, x, y, radius, progress)
@@ -1305,7 +1237,7 @@ function M.Install(context)
 
     function openAcademyIdCard(characterId)
         if state.profileMode ~= PROFILE_MODE.TITLE_IDLE then return false end
-        if characterId == PROFILE.characterId then
+        if CharacterProfiles.Get(characterId) then
             state.profileMode = PROFILE_MODE.ENTERING
             state.profileElapsed = 0
             state.profileCharacterId = characterId
@@ -1320,9 +1252,7 @@ function M.Install(context)
             print("[TitleScreen] entering character profile: " .. characterId)
             return true
         end
-        state.academyIdCardCharacter = characterId
-        state.academyIdCardElapsed = 0
-        print("[TitleScreen] profile assets pending for: " .. tostring(characterId))
+        print("[TitleScreen] unknown character profile: " .. tostring(characterId))
         return false
     end
 
@@ -1364,7 +1294,8 @@ function M.Install(context)
             return
         end
 
-        local hovered = pointIn(PROFILE.backHit, pointerFrame.x, pointerFrame.y)
+        local profile = profileForState(state)
+        local hovered = pointIn(profile.backHit or PROFILE.backHit, pointerFrame.x, pointerFrame.y)
         state.profileBackHover = hovered
         state.profileBackHoverProgress = moveTowards(state.profileBackHoverProgress or 0, hovered and 1 or 0,
             frameDt / CHARACTER_HOVER_SECONDS)
@@ -1552,9 +1483,11 @@ function M.Install(context)
             return
         end
 
+        local profile = profileForState(state)
         local plateProgress = profilePlateProgress(state)
-        if plateProgress < .999 then drawTitleContent(painter_, art, state, PROFILE.characterId, nil) end
-        painter_:FillRect(0, 0, 1870, 841, PROFILE.plateColor, math.floor(255 * plateProgress + .5))
+        if plateProgress < .999 then drawTitleContent(painter_, art, state, profile.id, nil) end
+        painter_:FillRect(0, 0, 1870, 841, profile.plateColor or PROFILE.plateColor,
+            math.floor(255 * plateProgress + .5))
         drawProfileScene(painter_, art, state)
         nvgRestore(painter_.vg)
     end

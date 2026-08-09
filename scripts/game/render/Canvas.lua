@@ -21,6 +21,8 @@
 local Renderer = {}
 Renderer.__index = Renderer
 
+local CharacterProfiles = require("ui.CharacterProfiles")
+
 local BODY_DISPLAY_FONT = "Fonts/LeMiMuHeYuanTi.ttf"
 local NOMI_FONT = "Fonts/HongLeiXiaoZhiTiaoQingChunTi.ttf"
 local CHANGAN_FONT = "Fonts/PingFangChangAnTi.ttf"
@@ -134,6 +136,28 @@ function Renderer:Init()
         or self.fontNewton == -1 or self.fontGreen == -1 or self.fontReportSummary == -1 then
         error("正文/标题字体加载失败: " .. BODY_DISPLAY_FONT)
     end
+    local profileImages = {}
+    for _, profile in ipairs(CharacterProfiles.Ordered()) do
+        local assets = profile.assets
+        local function load(filename)
+            if not filename then return -1 end
+            return nvgCreateImage(self.vg, assets.directory .. "/" .. filename, 0)
+        end
+        local body = load(assets.body)
+        local head = load(assets.head)
+        profileImages[profile.id] = {
+            body = body,
+            bodySettled = assets.bodySettled and load(assets.bodySettled) or body,
+            head = head,
+            headSettled = assets.headSettled and load(assets.headSettled) or head,
+            backdrop = load(assets.backdrop),
+            infoBase = load(assets.infoBase),
+            infoFrame = load(assets.infoFrame),
+            doodle = load(assets.doodle),
+            signature = load(assets.signature),
+            back = load(assets.back),
+        }
+    end
     self.images = {
         apple = nvgCreateImage(self.vg, "image/phase1/apple.png", 0),
         launcher = nvgCreateImage(self.vg, "image/phase1/launcher.png", 0),
@@ -168,20 +192,7 @@ function Renderer:Init()
                     right1 = nvgCreateImage(self.vg, "image/title_screen/character_right_1_hover.png", 0),
                     right2 = nvgCreateImage(self.vg, "image/title_screen/character_right_2_hover.png", 0),
                 },
-                profiles = {
-                    newton = {
-                        body = nvgCreateImage(self.vg, "image/title_screen/profile_newton/body.png", 0),
-                        bodySettled = nvgCreateImage(self.vg, "image/title_screen/profile_newton/body_settled.png", 0),
-                        head = nvgCreateImage(self.vg, "image/title_screen/profile_newton/head.png", 0),
-                        headSettled = nvgCreateImage(self.vg, "image/title_screen/profile_newton/head_settled.png", 0),
-                        backdrop = nvgCreateImage(self.vg, "image/title_screen/profile_newton/backdrop.png", 0),
-                        infoBase = nvgCreateImage(self.vg, "image/title_screen/profile_newton/info_base.png", 0),
-                        infoFrame = nvgCreateImage(self.vg, "image/title_screen/profile_newton/info_frame.png", 0),
-                        doodle = nvgCreateImage(self.vg, "image/title_screen/profile_newton/doodle.png", 0),
-                        signature = nvgCreateImage(self.vg, "image/title_screen/profile_newton/signature.png", 0),
-                        back = nvgCreateImage(self.vg, "image/title_screen/profile_newton/back.png", 0),
-                    },
-                },
+                profiles = profileImages,
             },
             hudFrame = nvgCreateImage(self.vg, "image/ui_svg/runtime/hud_frame@2x.png", 0),
             gameplayFrame = nvgCreateImage(self.vg, "image/ui_svg/runtime/gameplay_frame@2x.png", 0),
