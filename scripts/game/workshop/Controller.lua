@@ -353,13 +353,26 @@ function M.Install(context)
         local edit = current.textEdit
         local accepted, errorMessage = TextTransfer.AppendInput(edit, text,
             edit.maxLength or Export.MAX_JSON_BYTES)
-        if accepted then TextEditor.ResetBlink(edit, current.elapsed) else toast(errorMessage, 5) end
+        if accepted then
+            TextEditor.ResetBlink(edit, current.elapsed)
+            if edit.mode == "import" and current.modal then
+                current.modal.text = edit.value
+                current.modal.scroll = 0
+                current.modal.receivedTextInput = true
+            end
+        else
+            toast(errorMessage, 5)
+        end
     end
 
     local function pasteImportClipboard()
         local current = state()
         local edit = current.textEdit
         if not edit or edit.mode ~= "import" then return false end
+        if TextTransfer.GetClipboardMode(ui) ~= "direct" then
+            toast("请保持导入窗口激活，然后按 Ctrl+V 或使用系统长按粘贴", 5)
+            return true
+        end
         local text, errorMessage = TextTransfer.ReadClipboard(ui, Export.MAX_JSON_BYTES)
         if not text then toast("无法粘贴：" .. tostring(errorMessage), 5); return false end
         edit.value, edit.clipboardEchoRemaining = text, text
@@ -374,7 +387,8 @@ function M.Install(context)
         local current = state()
         local edit = current.textEdit
         if not edit then return false end
-        local action = TextEditor.KeyAction(edit, input, current.elapsed)
+        local directClipboard = TextTransfer.GetClipboardMode(ui) == "direct"
+        local action = TextEditor.KeyAction(edit, input, current.elapsed, directClipboard)
         if action == "paste" then pasteImportClipboard()
         elseif action == "cancel" then
             if current.modal and (edit.mode == "rename" or edit.mode == "import") then current.modal = nil end
@@ -412,8 +426,15 @@ function M.Install(context)
 
     local function openImport()
         local current = state()
-        current.modal = { kind = "import", title = "导入 JSON", text = "", scroll = 0,
-            maxBytes = Export.MAX_JSON_BYTES }
+        local clipboardMode = TextTransfer.GetClipboardMode(ui)
+        current.modal = {
+            kind = "import",
+            title = "导入 JSON",
+            text = "",
+            scroll = 0,
+            maxBytes = Export.MAX_JSON_BYTES,
+            clipboardMode = clipboardMode,
+        }
         beginTextEdit(nil, "", "import")
         rebuildUI()
     end

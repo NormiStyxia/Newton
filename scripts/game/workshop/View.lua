@@ -224,7 +224,8 @@ function View.BuildControls(state, layout, interaction)
         elseif modal.kind == "rename" then
             definitions = { { "confirm", "确认" }, { "cancel", "取消" } }
         elseif modal.kind == "import" then
-            definitions = { { "paste", "从剪贴板粘贴" }, { "confirm", "导入为新关卡" }, { "cancel", "取消" } }
+            local pasteLabel = modal.clipboardMode == "direct" and "从设备剪贴板读取" or "如何粘贴"
+            definitions = { { "paste", pasteLabel }, { "confirm", "导入为新关卡" }, { "cancel", "取消" } }
         elseif modal.kind == "export" then
             definitions = { { "copy", "复制全部" }, { "close", "关闭" } }
         else
@@ -621,9 +622,16 @@ local function drawModal(painter, state, controls)
         painter:StrokeRect(body.x, body.y, body.w, body.h, COLORS.line, 1)
         nvgSave(painter.vg)
         nvgScissor(painter.vg, body.x + 8, body.y + 8, body.w - 16, body.h - 16)
-        local text = modal.kind == "export" and (modal.payload and modal.payload.text or "")
+        local sourceText = modal.kind == "export" and (modal.payload and modal.payload.text or "")
             or (state.textEdit and state.textEdit.value or modal.text or "")
-        text = modal.previewText or text
+        local text = sourceText
+        if modal.kind == "import" and sourceText == "" then
+            text = modal.clipboardMode == "direct"
+                and "点击“从设备剪贴板读取”，或在此窗口按 Ctrl+V / 使用系统长按粘贴"
+                or "请保持此窗口激活，然后按 Ctrl+V；触屏设备请使用系统长按粘贴"
+        elseif modal.previewText then
+            text = modal.previewText
+        end
         nvgTranslate(painter.vg, 0, -(modal.previewOffsetY or modal.scroll or 0))
         painter:TextBox(body.x + 10, body.y + 10, body.w - 20, text, 14, COLORS.lightText,
             NVG_ALIGN_LEFT + NVG_ALIGN_TOP, "maker-body", 1.4)

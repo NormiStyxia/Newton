@@ -2,6 +2,23 @@ local TextEditor = require("game.workshop.TextEditor")
 
 local TextTransfer = {}
 
+local DIRECT_CLIPBOARD_PLATFORMS = {
+    Windows = true,
+    Linux = true,
+    Mac = true,
+    Android = true,
+    iOS = true,
+    HarmonyOS = true,
+}
+
+function TextTransfer.GetClipboardMode(clipboard)
+    if not _G.GetPlatform then return "event" end
+    local ok, platform = pcall(GetPlatform)
+    if not ok or not DIRECT_CLIPBOARD_PLATFORMS[platform] then return "event" end
+    if clipboard and type(clipboard.GetClipboardText) == "function" then return "direct" end
+    return "event"
+end
+
 local function enableSystemClipboard(clipboard)
     if not clipboard then return false, "剪贴板接口不可用" end
     local ok, errorMessage = pcall(function()
@@ -18,6 +35,10 @@ function TextTransfer.WriteClipboard(clipboard, value)
     if type(value) ~= "string" then return false, "没有可复制的文本" end
     local enabled, enableError = enableSystemClipboard(clipboard)
     if not enabled then return false, enableError end
+    if TextTransfer.GetClipboardMode(clipboard) == "event" then
+        local ok, errorMessage = pcall(clipboard.SetClipboardText, clipboard, value)
+        return ok, ok and nil or tostring(errorMessage)
+    end
     local ok, readBack = pcall(function()
         clipboard:SetClipboardText(value)
         return clipboard:GetClipboardText()
@@ -28,6 +49,9 @@ function TextTransfer.WriteClipboard(clipboard, value)
 end
 
 function TextTransfer.ReadClipboard(clipboard, maxBytes)
+    if TextTransfer.GetClipboardMode(clipboard) ~= "direct" then
+        return nil, "当前环境需要使用 Ctrl+V 或系统长按粘贴"
+    end
     local enabled, enableError = enableSystemClipboard(clipboard)
     if not enabled then return nil, enableError end
     local ok, value = pcall(clipboard.GetClipboardText, clipboard)

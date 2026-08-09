@@ -135,11 +135,13 @@ function TextEditor.End(edit, elapsed)
     TextEditor.ResetBlink(edit, elapsed)
 end
 
-function TextEditor.KeyAction(edit, source, elapsed)
+function TextEditor.KeyAction(edit, source, elapsed, directClipboard)
     if source:GetKeyDown(KEY_CTRL) and source:GetKeyPress(KEY_A) then
         TextEditor.SelectAll(edit, elapsed); return "handled"
     end
-    if edit.mode == "import" and source:GetKeyDown(KEY_CTRL) and source:GetKeyPress(KEY_V) then return "paste" end
+    if edit.mode == "import" and source:GetKeyDown(KEY_CTRL) and source:GetKeyPress(KEY_V) then
+        return directClipboard and "paste" or "active"
+    end
     if source:GetKeyPress(KEY_BACKSPACE) then TextEditor.Backspace(edit, elapsed); return "handled" end
     if source:GetKeyPress(KEY_DELETE) then TextEditor.Delete(edit, elapsed); return "handled" end
     if source:GetKeyPress(KEY_LEFT) then TextEditor.Move(edit, -1, elapsed); return "handled" end
