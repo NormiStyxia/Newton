@@ -1,6 +1,7 @@
 -- gameplay/Status: private runtime functions installed into the App context.
 local M = {}
 local WallImpactShake = require("game.render.WallImpactShake")
+local NewtonPunchShake = require("game.render.NewtonPunchShake")
 
 ---@param context GameContext
 function M.Install(context)
@@ -34,6 +35,7 @@ function M.Install(context)
     end
     function RegisterFailure(reason)
         WallImpactShake.ResetRuntime(runtime_)
+        NewtonPunchShake.Reset(newtonPunchShake_)
         failureCount_ = failureCount_ + 1
         if level_ then context.failureCountsByLevel_[level_.levelId] = failureCount_ end
         observation_ = "轨迹停止。重置后再次发射。"

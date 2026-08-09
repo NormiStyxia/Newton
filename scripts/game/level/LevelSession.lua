@@ -1,6 +1,7 @@
 -- level/LevelSession: private runtime functions installed into the App context.
 local M = {}
 local WallImpactShake = require("game.render.WallImpactShake")
+local NewtonPunchShake = require("game.render.NewtonPunchShake")
 
 ---@param context GameContext
 function M.Install(context)
@@ -70,6 +71,7 @@ function M.Install(context)
         if ClearResultReportState then ClearResultReportState() end
         if SetReplayMode then SetReplayMode("none") end
         WallImpactShake.ResetRuntime(runtime_)
+        NewtonPunchShake.Reset(newtonPunchShake_)
         if scene_ then scene_:SetUpdateEnabled(false) end
         renderer:SetNumViewports(0)
         if audio_ then
@@ -121,6 +123,7 @@ function M.Install(context)
         replayNextSampleMs_, replayPreviousSample_ = 0, nil
         cardBurns_, cardBurnParticles_, burningCardIds_ = {}, {}, {}
         rulePulse_, ruleFlash_, ruleDeployCount_ = nil, nil, 0
+        NewtonPunchShake.Reset(newtonPunchShake_)
         trail_, lastTrailAt_, anger_ = {}, 0, 0
         if isFreshLevel then sensorAngle_, uiElapsed_ = 0, 0 end
         RestoreAppleContactMaterial()
@@ -231,6 +234,7 @@ function M.Install(context)
         if runtime_ then
             PhaseWallEffects.ResetRuntime(runtime_)
             WallImpactShake.ResetRuntime(runtime_)
+            NewtonPunchShake.Reset(newtonPunchShake_)
             for _, object in ipairs(runtime_.ordered) do
                 object.contactMs = 0
                 if object.type == "goal_sensor" then

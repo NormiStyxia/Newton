@@ -2,6 +2,7 @@
 local M = {}
 local EinsteinObserver = require("game.render.EinsteinObserver")
 local WallImpactShake = require("game.render.WallImpactShake")
+local NewtonPunchShake = require("game.render.NewtonPunchShake")
 
 local TITLE_BACKGROUND_FILL = { 248, 231, 206, 255 }
 local CATALOG_BACKGROUND_FILL = { 247, 239, 211, 255 }
@@ -97,6 +98,24 @@ function M.Install(context)
         nvgSave(painter_.vg)
         nvgResetScissor(painter_.vg)
         draw()
+        nvgRestore(painter_.vg)
+    end
+
+    local function BeginGameplayWorldShake(frame)
+        nvgSave(painter_.vg)
+        local shake = newtonPunchShake_
+        local shakeX = shake and shake.visualShakeX or 0
+        local shakeY = shake and shake.visualShakeY or 0
+        local shakeRotation = shake and shake.visualShakeRotation or 0
+        if shakeX == 0 and shakeY == 0 and shakeRotation == 0 then return end
+        local pivotX = frame.playfieldX + frame.playfieldWidth * .5
+        local pivotY = frame.playfieldY + frame.playfieldHeight * .5
+        nvgTranslate(painter_.vg, pivotX + shakeX, pivotY + shakeY)
+        nvgRotate(painter_.vg, shakeRotation)
+        nvgTranslate(painter_.vg, -pivotX, -pivotY)
+    end
+
+    local function EndGameplayWorldShake()
         nvgRestore(painter_.vg)
     end
 
@@ -302,7 +321,9 @@ function M.Install(context)
         UpdateRuleFeedback(dt)
         UpdatePhaseWallEffects(dt)
         if not isPaused_ and not replayActive_ then
-            WallImpactShake.UpdateRuntime(runtime_, dt * CurrentPhysicsTimeScale())
+            local visualDt = dt * CurrentPhysicsTimeScale()
+            WallImpactShake.UpdateRuntime(runtime_, visualDt)
+            NewtonPunchShake.Update(newtonPunchShake_, visualDt)
         end
         context.UpdateAssistDemo(dt)
         -- Sample once, then give the screen-space Companion first chance to
@@ -681,8 +702,13 @@ function M.Install(context)
                 return
             end
             painter_:DrawBackground(frame_)
+            BeginGameplayWorldShake(frame_)
             painter_:DrawGameplayWallArt(frame_)
+            EndGameplayWorldShake()
             painter_:DrawNewton(frame_, level_, anger_, observation_)
+            -- Shake only the authored Gameplay world. HUD, Newton's panel,
+            -- cards and modal overlays remain in the fixed stage transform.
+            BeginGameplayWorldShake(frame_)
             painter_:DrawGround(frame_)
             local goalPulseProgress = goalPulseElapsedMs_ and math.max(0, math.min(1, goalPulseElapsedMs_ / 460)) or nil
             if runtime_ then for _, object in ipairs(runtime_.ordered) do painter_:DrawObject(frame_, object, { sensorAngle = sensorAngle_, success = success_ and not replayActive_, goalPulseProgress = goalPulseProgress }, context.design_, mapper_) end end
@@ -695,10 +721,13 @@ function M.Install(context)
                 painter_:DrawApple(frame_, apple_, 1 - absorbProgress * .65, 1 - absorbProgress * .65, context.design_)
                 DrawVelocityArrow()
                 DrawPlayfieldOverlay()
-                DrawPauseShade()
             end
-            painter_:DrawGameplayFrameChrome(frame_)
             painter_:DrawGameplayDecor(frame_)
+            EndGameplayWorldShake()
+            -- Pause is a fixed modal layer, even if it is opened during the
+            -- short-lived world impact response.
+            DrawPauseShade()
+            painter_:DrawGameplayFrameChrome(frame_)
             DrawHUD()
             context.DrawDialogueHistoryButton()
             DrawCards(nil, 71.999, true)

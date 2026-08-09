@@ -98,6 +98,12 @@ local function impactWave(progress, rebound)
     return -rebound * (1 - t)
 end
 
+-- Shared by other short visual impact responses. This is presentation-only;
+-- it never reads or writes a physics transform.
+function WallImpactShake.SampleWave(progress, rebound)
+    return impactWave(progress, rebound)
+end
+
 local function updateWall(wall, dt)
     local state = wall.wallShake
     if not state then return end

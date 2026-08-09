@@ -63,6 +63,7 @@
 ---@field AbortGreenAssistantTakeover fun(reason: string|nil): boolean
 ---@field DrawGreenAssistantOverlay fun()
 ---@field ExecuteCardPlay fun(id: string, candidate: string|nil, x: number, y: number): boolean
+---@field newtonPunchShake_ table
 ---@field resultReportState_ table|nil
 ---@field screen_ "title"|"title_catalog_transition"|"catalog"|"game"|"workshop"|"workshop_preview"
 ---@field titleState_ table
@@ -116,7 +117,7 @@ own("experiment", {
     "rules_", "draggedApple_", "aimPreview_", "launched_", "outsideMs_", "flightMs_", "status_",
     "isPaused_", "bulletTimeActive_", "success_", "failed_", "absorbing_", "absorbElapsedMs_",
     "assistedClear_", "failureCount_", "failureCountsByLevel_", "observation_", "uiElapsed_", "anger_",
-    "phaseTraversing_", "phaseWallTraversal_", "stalledMs_", "trail_", "lastTrailAt_", "rulePulse_", "ruleFlash_",
+    "phaseTraversing_", "phaseWallTraversal_", "stalledMs_", "trail_", "lastTrailAt_", "rulePulse_", "ruleFlash_", "newtonPunchShake_",
     "ruleDeployCount_",
 })
 own("goal", {
@@ -274,6 +275,17 @@ function State.New(dependencies, constants)
     context.cardHomeMotions_, context.cardHandReordering_ = {}, false
     context.cardBurns_, context.cardBurnParticles_, context.burningCardIds_ = {}, {}, {}
     context.rulePulse_, context.ruleFlash_, context.ruleDeployCount_ = nil, nil, 0
+    context.newtonPunchShake_ = {
+        active = false,
+        elapsed = 0,
+        impulseSign = 1,
+        directionX = 0,
+        directionY = 0,
+        rotationAmplitude = 0,
+        visualShakeX = 0,
+        visualShakeY = 0,
+        visualShakeRotation = 0,
+    }
     context.screen_ = "title"
     local catalogTransition = dependencies.CatalogTransition
         or require("ui.ExperimentCatalogTransition")

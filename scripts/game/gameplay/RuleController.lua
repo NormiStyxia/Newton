@@ -1,5 +1,6 @@
 -- gameplay/RuleController: private runtime functions installed into the App context.
 local M = {}
+local NewtonPunchShake = require("game.render.NewtonPunchShake")
 
 ---@param context GameContext
 function M.Install(context)
@@ -145,6 +146,7 @@ function M.Install(context)
         for cardId in pairs(rules_.activeFields) do removedRules[#removedRules + 1] = cardId end
         if rules_.phaseActive then removedRules[#removedRules + 1] = "quantum-phase" end
         if not Rules.Punch(rules_) then return false end
+        NewtonPunchShake.Trigger(newtonPunchShake_)
         phaseTraversing_ = false
         phaseWallTraversal_ = nil
         SetGravity()
