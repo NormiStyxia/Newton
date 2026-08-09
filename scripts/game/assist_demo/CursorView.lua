@@ -9,6 +9,14 @@ local COLORS = {
     shadow = { 32, 55, 44, 255 },
 }
 
+local STATUS = {
+    width = 500,
+    height = 64,
+    messageHeight = 88,
+    y = 28,
+    entranceOffset = 22,
+}
+
 local function Clamp01(value)
     return math.max(0, math.min(1, value or 0))
 end
@@ -57,6 +65,26 @@ end
 function CursorView:setMessage(text) self.message = text end
 function CursorView:setTarget(target) self.target = target end
 function CursorView:getPosition() return self.x, self.y end
+
+function CursorView:getStatusRect(frame)
+    if not frame then return nil end
+    local progress = SmoothStep(self.presence)
+    local width = math.min(STATUS.width, math.max(0, (frame.playfieldWidth or STATUS.width) - 24))
+    local height = self.message and STATUS.messageHeight or STATUS.height
+    return {
+        x = frame.playfieldX + frame.playfieldWidth * 0.5 - width * 0.5,
+        y = STATUS.y - (1 - progress) * STATUS.entranceOffset,
+        width = width,
+        height = height,
+    }
+end
+
+function CursorView:containsStatusPoint(frame, x, y)
+    if not self.active or self.closing or self.presence <= 0 then return false end
+    local rect = self:getStatusRect(frame)
+    return rect ~= nil and x >= rect.x and x <= rect.x + rect.width
+        and y >= rect.y and y <= rect.y + rect.height
+end
 
 function CursorView:moveTo(x, y, duration)
     if not self.cursorInitialized then
@@ -187,19 +215,17 @@ function CursorView:_drawCursor(alpha)
 end
 
 function CursorView:_drawStatus(frame, alpha)
-    local progress = SmoothStep(self.presence)
-    local width = 390
-    local height = self.message and 68 or 50
-    local x = frame.playfieldX + frame.playfieldWidth * 0.5 - width * 0.5
-    local y = 16 - (1 - progress) * 18
+    local rect = self:getStatusRect(frame)
+    if not rect then return end
+    local x, y, width, height = rect.x, rect.y, rect.width, rect.height
     self.renderer:RoundedRect(x + 2, y + 4, width, height, 7, COLORS.shadow, nil, nil, math.floor(alpha * 0.14))
     self.renderer:RoundedRect(x, y, width, height, 7, COLORS.paper, COLORS.inkSoft, 1.5, math.floor(alpha * 0.94))
-    self.renderer:Circle(x + 24, y + 24, 9, nil, COLORS.inkSoft, 1.5, alpha)
-    self.renderer:Text(x + 24, y + 16, "A", 11, COLORS.ink, NVG_ALIGN_CENTER + NVG_ALIGN_TOP, "maker-body", alpha)
-    self.renderer:Text(x + 43, y + 14, "绿毛同事正在操作  ·  ESC 退出", 15, COLORS.ink,
+    self.renderer:Circle(x + 31, y + 31, 12, nil, COLORS.inkSoft, 1.8, alpha)
+    self.renderer:Text(x + 31, y + 20, "A", 14, COLORS.ink, NVG_ALIGN_CENTER + NVG_ALIGN_TOP, "maker-body", alpha)
+    self.renderer:Text(x + 58, y + 18, "绿毛同事正在操作  ·  ESC/点击此处退出", 19, COLORS.ink,
         NVG_ALIGN_LEFT + NVG_ALIGN_TOP, "maker-display", alpha)
     if self.message then
-        self.renderer:Text(x + 43, y + 39, self.message, 12, COLORS.inkSoft,
+        self.renderer:Text(x + 58, y + 53, self.message, 15, COLORS.inkSoft,
             NVG_ALIGN_LEFT + NVG_ALIGN_TOP, "maker-body", math.floor(alpha * 0.9))
     end
 end

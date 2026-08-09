@@ -61,6 +61,7 @@
 ---@field DestroyAssistDemo fun()
 ---@field StartAssistDemo fun(solution: table): boolean, string|nil
 ---@field UpdateAssistDemo fun(dt: number)
+---@field HandleAssistDemoPointer fun(pointerFrame: table): boolean
 ---@field UpdateAssistDemoPhysicsStep fun(dt: number)
 ---@field AdvanceAssistDemoSimulation fun(dt: number): integer
 ---@field DrawAssistDemo fun()

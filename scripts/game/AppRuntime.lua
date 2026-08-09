@@ -291,6 +291,10 @@ function M.Install(context)
         if assistSceneActive_ and input:GetKeyPress(KEY_ESCAPE) then
             assistEscapeHandled = context.AbortGreenAssistantTakeover("escape") == true
         end
+        local assistPointerHandled = false
+        if assistSceneActive_ and not assistEscapeHandled and context.HandleAssistDemoPointer then
+            assistPointerHandled = context.HandleAssistDemoPointer(pointerFrame)
+        end
         RefreshHUDSummary()
         hudEscapeConsumed_ = false
         if not assistEscapeHandled and hudDropdown_ and input:GetKeyPress(KEY_ESCAPE) then
@@ -300,8 +304,11 @@ function M.Install(context)
         end
         local reportVisible = IsResultReportVisible and IsResultReportVisible()
         frame_.assistantBubbleAvoidRect = reportVisible and ResultReportConfig.ResolveRect(frame_) or nil
-        local dialoguePointerConsumed = (reportVisible or context.assistantInputLocked_)
-            and false or context.UpdateDialogue(dt, pointerFrame)
+        local dialoguePointerConsumed = assistPointerHandled
+        if not dialoguePointerConsumed then
+            dialoguePointerConsumed = (reportVisible or context.assistantInputLocked_)
+                and false or context.UpdateDialogue(dt, pointerFrame)
+        end
         if audio_ then audio_:Update(dt) end
         uiElapsed_ = uiElapsed_ + dt
         UpdateRuleFeedback(dt)

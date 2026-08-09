@@ -36,6 +36,14 @@ function M.Install(context)
         if assistDemoRunner_ then assistDemoRunner_:update(dt) end
     end
 
+    function HandleAssistDemoPointer(pointerFrame)
+        if not assistSceneActive_ or not assistDemoView_ or not pointerFrame or not pointerFrame.pressed then
+            return false
+        end
+        if not assistDemoView_:containsStatusPoint(frame_, pointerFrame.x, pointerFrame.y) then return false end
+        return context.AbortGreenAssistantTakeover("pointer") == true
+    end
+
     function UpdateAssistDemoPhysicsStep(dt)
         if assistDemoRunner_ then assistDemoRunner_:afterPhysicsStep(dt) end
     end
