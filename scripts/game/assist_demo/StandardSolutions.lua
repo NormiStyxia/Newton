@@ -43,6 +43,15 @@ local function Side(direction)
     }
 end
 
+local function Phase()
+    return {
+        type = "PLAY_CARD",
+        cardId = "quantum-phase",
+        cursorDuration = 0.2,
+        approachDuration = 0.12,
+    }
+end
+
 local function CardTarget(cardId)
     return { type = "CARD", cardId = cardId, duration = 0.14 }
 end
@@ -164,6 +173,27 @@ local SOLUTIONS = {
             WaitX(1100, "LEFT", 8.0, CardTarget("side-gravity")),
             Side("UP"),
             { type = "WAIT_CONDITION", condition = "GOAL_REACHED", timeout = 12.0 }
+        ),
+    },
+
+    level_06 = {
+        levelId = "level_06",
+        actions = Append(BaseActions(),
+            -- Bottom route: phase wall_01, wall_03 and wall_17, then rise
+            -- past wall_08 and phase wall_10 into the observation dish.
+            Side("RIGHT"),
+            { type = "LAUNCH", pullX = -24, pullY = -6, cursorDuration = 0.65 },
+            WaitX(280, "RIGHT", 6.0, CardTarget("quantum-phase")),
+            Phase(),
+            WaitX(470, "RIGHT", 6.0, CardTarget("quantum-phase")),
+            Phase(),
+            WaitX(750, "RIGHT", 6.0, CardTarget("quantum-phase")),
+            Phase(),
+            WaitX(920, "RIGHT", 6.0, CardTarget("side-gravity")),
+            Side("UP"),
+            WaitX(945, "RIGHT", 4.0, CardTarget("quantum-phase")),
+            Phase(),
+            { type = "WAIT_CONDITION", condition = "GOAL_REACHED", timeout = 8.0 }
         ),
     },
 
