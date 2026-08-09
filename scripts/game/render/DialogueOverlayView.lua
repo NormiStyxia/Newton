@@ -4,7 +4,6 @@ local PANEL_ASPECT = 1343 / 2002
 local PANEL_HEIGHT = 660
 local PANEL_VISUAL_SCALE = 1.06
 local FONT = "maker-body"
-local NOMI_FONT = "nomi-font"
 local AVATAR_SIZE = 68
 local CONVERSATION_LEFT_INSET = 16
 local CONVERSATION_RIGHT_RATIO = 0.815
@@ -43,9 +42,6 @@ local LAYOUT_CACHE = setmetatable({}, { __mode = "k" })
 local FOOTER_STATE = setmetatable({}, { __mode = "k" })
 
 local function fontForMessage(message)
-    if message and message.speaker == "nomi" then
-        return NOMI_FONT
-    end
     return FONT
 end
 
@@ -415,7 +411,7 @@ local function drawMessage(painter, controller, entry, index, viewport, scrollOf
     local isGreen = speaker == "green"
     local isEinstein = speaker == "einstein"
     local isNomi = speaker == "nomi"
-    local messageFont = entry.font or (isNomi and NOMI_FONT or FONT)
+    local messageFont = entry.font or FONT
     local sideOffset = isRight and -xOffset or xOffset
     local avatarBaseX = isRight and viewport.rightAvatarCenterX or viewport.avatarCenterX
     local avatarX = snapToPixel(avatarBaseX + sideOffset, pixelScale)

@@ -17,6 +17,7 @@ local OPEN_DURATION = 0.34
 local CLOSE_DURATION = 0.26
 local BUBBLE_DURATION = 0.26
 local MESSAGE_INTERVAL = 0.52
+local SCROLL_WHEEL_STEP = 54 / 20
 local MAX_ANGER = 100
 
 local function clamp(value, minimum, maximum)
@@ -323,7 +324,7 @@ function Controller:_HandleScrollbar(pointerFrame)
 
     local wheel = self.context.input.mouseMoveWheel
     if wheel ~= 0 and pointIn(geometry.viewport, x, y) then
-        self:ScrollBy(-wheel * 54)
+        self:ScrollBy(-wheel * SCROLL_WHEEL_STEP)
         return true
     end
     return false
