@@ -2,13 +2,19 @@ local TextEditor = require("game.workshop.TextEditor")
 
 local TextTransfer = {}
 
+local DIRECT_CLIPBOARD_PLATFORMS = {
+    Windows = true,
+    Linux = true,
+    Mac = true,
+    Android = true,
+    iOS = true,
+    HarmonyOS = true,
+}
+
 function TextTransfer.GetClipboardMode(clipboard)
-    if _G.GetPlatform then
-        local ok, platform = pcall(GetPlatform)
-        if not ok or platform == "Web" then return "event" end
-    else
-        return "event"
-    end
+    if not _G.GetPlatform then return "event" end
+    local ok, platform = pcall(GetPlatform)
+    if not ok or not DIRECT_CLIPBOARD_PLATFORMS[platform] then return "event" end
     if clipboard and type(clipboard.GetClipboardText) == "function" then return "direct" end
     return "event"
 end
