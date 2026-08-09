@@ -3,6 +3,41 @@ local M = {}
 local WallImpactShake = require("game.render.WallImpactShake")
 local NewtonPunchShake = require("game.render.NewtonPunchShake")
 
+---@param frame table
+---@return table
+function M.ResolveFinishedControls(frame)
+    local panelWidth, panelHeight = 350, 48
+    local buttonHeight, replayWidth, exitWidth = 34, 92, 84
+    local rightPadding, buttonGap = 8, 6
+    local centerX = frame.playfieldX + frame.playfieldWidth - 190
+    local centerY = frame.playfieldY + frame.playfieldHeight - 54
+    local panel = {
+        x = centerX - panelWidth * .5,
+        y = centerY - panelHeight * .5,
+        w = panelWidth,
+        h = panelHeight,
+    }
+    local exit = {
+        x = panel.x + panel.w - rightPadding - exitWidth,
+        y = centerY - buttonHeight * .5,
+        w = exitWidth,
+        h = buttonHeight,
+    }
+    local replay = {
+        x = exit.x - buttonGap - replayWidth,
+        y = centerY - buttonHeight * .5,
+        w = replayWidth,
+        h = buttonHeight,
+    }
+    return {
+        panel = panel,
+        replay = replay,
+        exit = exit,
+        titleX = panel.x + 15,
+        titleY = centerY - 9,
+    }
+end
+
 ---@param context GameContext
 function M.Install(context)
     local ReplayMode = context.ReplayMode
@@ -58,18 +93,17 @@ function M.Install(context)
         if not press then return end
         local cx, cy = frame_.playfieldX + frame_.playfieldWidth * .5, frame_.playfieldY + 34
         if replayFinished_ then
-            local endX = frame_.playfieldX + frame_.playfieldWidth - 190
-            local endY = frame_.playfieldY + frame_.playfieldHeight - 54
-            local function inEndButton(offsetX, width)
-                return x >= endX + offsetX - width * .5 and x <= endX + offsetX + width * .5
-                    and y >= endY - 17 and y <= endY + 17
+            local controls = M.ResolveFinishedControls(frame_)
+            local function inEndButton(rect)
+                return x >= rect.x and x <= rect.x + rect.w
+                    and y >= rect.y and y <= rect.y + rect.h
             end
-            if inEndButton(38, 92) then
+            if inEndButton(controls.replay) then
                 replayTime_ = 0
                 SetReplayMode("playing")
                 ReplayLog("restart")
                 return
-            elseif inEndButton(137, 84) then
+            elseif inEndButton(controls.exit) then
                 StopReplay()
                 return
             end

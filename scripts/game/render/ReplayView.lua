@@ -1,5 +1,6 @@
 -- render/ReplayView: private runtime functions installed into the App context.
 local M = {}
+local ReplayController = require("game.replay.Controller")
 
 local function drawTransportIcon(vg, x, y, showPlay, color)
     nvgSave(vg)
@@ -182,16 +183,20 @@ function M.Install(context)
             painter_:Text(feedX + 42, feedY + 58 + row * 34, item.status, 13, item.active and Renderer2D.COLORS.greenSecondary or Renderer2D.COLORS.secondary)
         end
         if replayFinished_ then
-            local endX = frame_.playfieldX + frame_.playfieldWidth - 190
-            local endY = frame_.playfieldY + frame_.playfieldHeight - 54
-            painter_:RoundedRect(endX - 175, endY - 24, 350, 48, 4, Renderer2D.COLORS.panel, Renderer2D.COLORS.primaryActive, 2, 245)
-            painter_:Text(endX - 160, endY - 9, "回放完成", 16, Renderer2D.COLORS.text, NVG_ALIGN_LEFT + NVG_ALIGN_TOP, "maker-display")
-            local function endButton(x, width, label)
-                painter_:RoundedRect(x - width * .5, endY - 17, width, 34, 4, Renderer2D.COLORS.darkSecondary, Renderer2D.COLORS.greenLight, 1, 168)
-                painter_:Text(x, endY - 9, label, 15, Renderer2D.COLORS.greenSecondary, NVG_ALIGN_CENTER + NVG_ALIGN_TOP, "maker-display")
+            local controls = ReplayController.ResolveFinishedControls(frame_)
+            local panel = controls.panel
+            painter_:RoundedRect(panel.x, panel.y, panel.w, panel.h, 4,
+                Renderer2D.COLORS.panel, Renderer2D.COLORS.primaryActive, 2, 245)
+            painter_:Text(controls.titleX, controls.titleY, "回放完成", 16,
+                Renderer2D.COLORS.text, NVG_ALIGN_LEFT + NVG_ALIGN_TOP, "maker-display")
+            local function endButton(rect, label)
+                painter_:RoundedRect(rect.x, rect.y, rect.w, rect.h, 4,
+                    Renderer2D.COLORS.darkSecondary, Renderer2D.COLORS.greenLight, 1, 168)
+                painter_:Text(rect.x + rect.w * .5, controls.titleY, label, 15,
+                    Renderer2D.COLORS.greenSecondary, NVG_ALIGN_CENTER + NVG_ALIGN_TOP, "maker-display")
             end
-            endButton(endX + 38, 92, "再次播放")
-            endButton(endX + 137, 84, "退出回放")
+            endButton(controls.replay, "再次播放")
+            endButton(controls.exit, "退出回放")
         end
     end
 end
