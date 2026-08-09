@@ -359,9 +359,9 @@
     "tiers": [
       {
         "score": 100,
-        "maxInterventions": 4,
+        "maxInterventions": 5,
         "title": "精准实验",
-        "description": "不超过 4 次有效干预"
+        "description": "不超过 5 次有效干预"
       },
       {
         "score": 80,
