@@ -5,6 +5,7 @@ DraftStore.__index = DraftStore
 local ROOT = "level-workshop"
 local DRAFT_DIR = ROOT .. "/drafts"
 local LEVEL_DIR = ROOT .. "/levels"
+local SYNC_PATH = ROOT .. "/sync.json"
 
 local function safeId(levelId)
     return type(levelId) == "string" and levelId:match("^[%w_-]+$") ~= nil
@@ -53,6 +54,7 @@ function DraftStore.New(options)
     self.memoryDrafts = {}
     self.memoryBackups = {}
     self.memoryLevels = {}
+    self.memorySync = nil
     if self.adapter then
         pcall(function()
             self.adapter:createDir(ROOT)
@@ -195,7 +197,26 @@ function DraftStore:ListDrafts()
     return result
 end
 
-function DraftStore:SaveCustom(document)
+function DraftStore:LoadSyncState()
+    if self.memorySync then return self.clone(self.memorySync), nil end
+    local envelope, errorMessage = readEnvelope(self, SYNC_PATH)
+    if envelope and type(envelope) == "table" then
+        self.memorySync = self.clone(envelope)
+        return self.clone(envelope), nil
+    end
+    if errorMessage == "本地持久化不可用" then return {}, errorMessage end
+    self.memorySync = {}
+    return {}, nil
+end
+
+function DraftStore:SaveSyncState(syncState)
+    if type(syncState) ~= "table" then return false, "同步状态格式无效" end
+    self.memorySync = self.clone(syncState)
+    local persisted, persistenceError = writeAtomic(self, SYNC_PATH, syncState)
+    return true, { memory = true, persisted = persisted, error = persistenceError }
+end
+
+function DraftStore:SaveCustom(document, syncMetadata)
     local levelId = document and document.levelId
     if not safeId(levelId) then return false, "levelId 格式无效" end
     local snapshot = Numeric.NormalizeDocument(self.clone(document))
@@ -206,6 +227,11 @@ function DraftStore:SaveCustom(document)
         updatedAt = self.clock(),
         document = snapshot,
     }
+    if type(syncMetadata) == "table" then
+        envelope.cloudEntityId = syncMetadata.cloudEntityId
+        envelope.syncRevision = syncMetadata.syncRevision
+        envelope.syncState = syncMetadata.syncState
+    end
     self.memoryLevels[levelId] = self.clone(envelope)
     local persisted, persistenceError = writeAtomic(self, levelPath(levelId), envelope)
     return true, { memory = true, persisted = persisted, error = persistenceError, updatedAt = envelope.updatedAt }

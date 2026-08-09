@@ -399,6 +399,7 @@ function State.New(dependencies, constants)
         repository = nil,
         history = nil,
         draftStore = nil,
+        cloudSync = nil,
         persistenceKind = "memory-only",
         entries = {},
         initializationErrors = {},

@@ -1,6 +1,7 @@
 local Repository = require("game.workshop.Repository")
 local History = require("game.workshop.History")
 local DraftStore = require("game.workshop.DraftStore")
+local CustomLevelCloudSync = require("game.workshop.CustomLevelCloudSync")
 local Export = require("game.workshop.Export")
 local Layout = require("game.workshop.Layout")
 local Interaction = require("game.workshop.Interaction")
@@ -38,6 +39,68 @@ function M.Install(context)
         current.status = tostring(message)
     end
     local function refreshEntries() state().entries = state().repository:List() end
+    local function refreshCatalog(preferredEntryId)
+        if context.RefreshExperimentCatalogCustomLevels then
+            context.RefreshExperimentCatalogCustomLevels(preferredEntryId)
+        end
+    end
+    local function persistRemoteRecord(record, mode)
+        local current = state()
+        if not current.repository or type(record) ~= "table" then return end
+        local localEntry = current.repository:FindByLevelId(record.localLevelId)
+        if mode == "delete" then
+            if current.document and current.document.levelId == record.localLevelId and current.dirty then
+                record.syncState = "conflict"
+                record.remoteDeleted = true
+                return
+            end
+            if localEntry and localEntry.sourceKind == "custom" then
+                local deleted, deleteError = current.draftStore:DeleteCustom(record.localLevelId)
+                if not deleted then print("[WorkshopCloud] 云端删除未能清理本地文件：" .. tostring(deleteError)) end
+                current.repository:DeleteCustom(localEntry.entryId)
+                refreshEntries()
+                refreshCatalog()
+            end
+            return
+        end
+        local remoteDocument = mode == "conflict" and record.remoteDocument or record.document
+        if type(remoteDocument) ~= "table" then return end
+        local report = LevelDocument.ValidateDetailed(remoteDocument)
+        if not report.valid then
+            print("[WorkshopCloud] 忽略无效云实验：" .. report.errors[1].message)
+            return
+        end
+        local document = clone(LevelDocument, remoteDocument)
+        local existing = current.repository:FindByLevelId(document.levelId)
+        if existing and (mode == "new" or mode == "conflict") then
+            document.levelId = current.repository:NextCustomLevelId()
+            document.name = (document.name or "未命名实验") .. "（云端副本）"
+            existing = nil
+        end
+        local metadata
+        if existing and existing.sourceKind == "custom" then
+            local replaced, replaceError = current.repository:ReplaceCustom(existing.entryId, document, record.updatedAt)
+            if not replaced then
+                print("[WorkshopCloud] 云实验更新失败：" .. tostring(replaceError))
+                return
+            end
+            metadata = current.repository:GetEntry(existing.entryId)
+        else
+            metadata = current.repository:RestoreCustom(document, record.updatedAt, { normalizeTransform = false })
+            if not metadata then return end
+        end
+        local saved, persistence = current.draftStore:SaveCustom(document, {
+            cloudEntityId = record.entityId,
+            syncRevision = record.remoteRevision,
+            syncState = mode == "conflict" and "conflictCopy" or "synced",
+        })
+        if not saved then
+            print("[WorkshopCloud] 云实验本地保存失败：" .. tostring(persistence))
+            return
+        end
+        refreshEntries()
+        refreshCatalog(metadata and metadata.entryId or nil)
+    end
     local function refreshSelection()
         local current = state()
         Selection.Normalize(current, current.document)
@@ -157,6 +220,14 @@ function M.Install(context)
         current.history = History.New({ clone = LevelDocument.Clone, limit = 100 })
         current.draftStore = DraftStore.New({ clone = LevelDocument.Clone, json = cjson, adapter = adapter })
         current.persistenceKind = current.draftStore:PersistenceKind()
+        local syncState = current.draftStore:LoadSyncState()
+        current.cloudSync = CustomLevelCloudSync.New({
+            draftStore = current.draftStore,
+            levelDocument = LevelDocument,
+            json = cjson,
+            state = type(syncState) == "table" and syncState or nil,
+            onRemoteRecord = persistRemoteRecord,
+        })
         current.supportedTypes = LevelDocument.SupportedTypes()
         current.initializationErrors = current.repository:InitializeOfficial(CONFIG.levelCount, function(index)
             local document, errorMessage = LevelData.Load(string.format("Data/Levels/level_%02d.json", index))
@@ -166,10 +237,21 @@ function M.Install(context)
         for _, envelope in ipairs(current.draftStore:LoadCustomLevels()) do
             local metadata, errorMessage = current.repository:RestoreCustom(envelope.document, envelope.updatedAt,
                 { normalizeTransform = false })
-            if not metadata then current.initializationErrors[#current.initializationErrors + 1] = errorMessage end
+            if metadata then
+                current.cloudSync:RegisterLocal(envelope.document, envelope)
+            else
+                current.initializationErrors[#current.initializationErrors + 1] = errorMessage
+            end
         end
         current.initialized = true
         refreshEntries()
+        current.cloudSync:Refresh(function(ok, errorMessage)
+            if ok then
+                print("[WorkshopCloud] 同账号自制实验同步完成")
+            else
+                print("[WorkshopCloud] 使用本地自制实验：" .. tostring(errorMessage))
+            end
+        end)
         return #current.initializationErrors == 0
     end
     function OpenLevelWorkshop(selectedLevelId)
@@ -206,13 +288,20 @@ function M.Install(context)
         if not replaced then toast("保存失败：" .. tostring(replaceError)); return false end
         local ok, persistence = current.draftStore:SaveCustom(current.document)
         if not ok then toast("保存失败：" .. tostring(persistence)); return false end
+        local cloudQueued, cloudError = current.cloudSync:QueueSave(current.document)
         local draftDeleted, draftDeleteError = current.draftStore:DeleteDraft(current.document.levelId)
         current.dirty, current.autoSaveDue = false, nil
         current.persistenceKind = current.draftStore:PersistenceKind()
         refreshEntries()
-        if not draftDeleted then toast("关卡已保存，但旧草稿清理失败：" .. tostring(draftDeleteError), 5)
-        else toast(persistence.persisted and "关卡已保存到本地槽位，建议同时导出 JSON"
-            or "关卡已保存在运行内存，请导出 JSON 备份") end
+        if not draftDeleted then
+            toast("关卡已保存，但旧草稿清理失败：" .. tostring(draftDeleteError), 5)
+        elseif cloudQueued then
+            toast(persistence.persisted and "关卡已保存，正在同步到云端"
+                or "关卡已保存在运行内存，正在同步到云端")
+        else
+            toast((persistence.persisted and "关卡已保存到本地槽位" or "关卡已保存在运行内存")
+                .. " · 云同步未启动：" .. tostring(cloudError), 5)
+        end
         return true
     end
     local function createCustom(copyCurrent)
@@ -228,6 +317,8 @@ function M.Install(context)
             return false
         end
         current.persistenceKind = current.draftStore:PersistenceKind()
+        current.cloudSync:RegisterLocal(document)
+        current.cloudSync:QueueSave(document)
         current.dirty = false
         refreshEntries()
         openEntryNow(metadata.entryId, { skipRecovery = true })
@@ -242,9 +333,12 @@ function M.Install(context)
     local function deleteCurrent()
         local current = state()
         if current.readOnly then toast("官方关卡不能删除"); return false end
+        local levelId = current.document.levelId
+        local entityId = current.cloudSync:FindEntityId(levelId)
         local ok, errorMessage = DocumentActions.DeleteCustom(current.repository, current.draftStore,
-            current.entryId, current.document.levelId)
+            current.entryId, levelId)
         if not ok then toast(errorMessage); return false end
+        if entityId then current.cloudSync:QueueDelete(entityId) end
         current.modal, current.dirty = nil, false
         refreshEntries()
         local target = current.entries[1] and current.entries[1].entryId
@@ -457,8 +551,13 @@ function M.Install(context)
         openEntryNow(metadata.entryId, { skipRecovery = true })
         state().dirty, state().autoSaveDue = false, nil
         state().persistenceKind = state().draftStore:PersistenceKind()
-        toast(persistence.persisted and "JSON 已导入并保存为独立自定义关卡"
-            or "JSON 已导入到运行内存，请立即导出备份")
+        local cloudQueued, cloudError = state().cloudSync:QueueSave(imported)
+        if not cloudQueued and cloudError == "同步正在进行" then
+            state().cloudSync:RegisterLocal(imported)
+            cloudQueued = true
+        end
+        toast(cloudQueued and "JSON 已导入并正在同步到云端"
+            or "JSON 已导入到本地，但云同步未启动：" .. tostring(cloudError))
         return true
     end
 
@@ -561,6 +660,7 @@ function M.Install(context)
             if not deleted then toast("恢复副本已保存，但旧草稿清理失败：" .. tostring(errorMessage), 5) end
             current.modal = nil; refreshEntries(); openEntryNow(metadata.entryId, { skipRecovery = true })
             state().dirty = true; state().history:Push(state().document, state().view, "草稿另存")
+            state().cloudSync:QueueSave(imported)
             state().autoSaveDue = state().elapsed + state().autoSaveDelay
             rebuildUI(); return
         end
