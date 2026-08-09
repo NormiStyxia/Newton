@@ -79,10 +79,6 @@ function M.Install(context)
         pointerFrame = pointerFrame or PointerState()
         local x, y = pointerFrame.x, pointerFrame.y
         local down, press, release = pointerFrame.down, pointerFrame.pressed, pointerFrame.released
-        if IsResultReportVisible and IsResultReportVisible() then
-            HandleResultReportInput(pointerFrame)
-            return
-        end
         local assistantConsumed = assistantHandled
         if assistantConsumed == nil then
             assistantConsumed = HandleGreenAssistantPointer(x, y, pointerFrame)
@@ -90,6 +86,10 @@ function M.Install(context)
         if assistantConsumed then
             hoveredNavigation_, punchHovered_ = nil, false
             SetHoveredCard(nil)
+            return
+        end
+        if IsResultReportVisible and IsResultReportVisible() then
+            HandleResultReportInput(pointerFrame)
             return
         end
         if context.assistantInputLocked_ then

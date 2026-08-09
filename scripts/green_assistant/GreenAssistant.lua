@@ -463,7 +463,12 @@ function GreenAssistant:handlePointer(x, y, pointer)
     end
 
     local hitCharacter = self.view:hitTestCharacter(x, y)
-    if behavior == BehaviorState.TAKEOVER or behavior == BehaviorState.SUCCESS or behavior == BehaviorState.DISABLED then
+    if behavior == BehaviorState.SUCCESS and hitCharacter and pointer.pressed == true then
+        self:_hideMessage()
+        self:setBehavior(BehaviorState.IDLE, "success-pointer")
+        behavior = self.behaviorState:get()
+    end
+    if behavior == BehaviorState.TAKEOVER or behavior == BehaviorState.DISABLED then
         return hitCharacter and (pointer.pressed or pointer.down or pointer.released) or false
     end
 

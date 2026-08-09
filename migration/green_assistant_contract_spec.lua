@@ -245,6 +245,23 @@ expect(adapter.assisted and not adapter.locked, "takeover did not finish assiste
 expect(assistant:getBehavior() == GreenAssistant.Behavior.SUCCESS, "takeover did not enter success behavior")
 expect(assistant.animator:getCurrentAnimation() == "takeover_finish",
     "takeover completion did not begin the finish animation")
+mockView.hitCharacter = true
+local successDragX, successDragY = mockView.x, mockView.y
+expect(assistant:handlePointer(successDragX, successDragY,
+    { down = true, pressed = true, released = false }),
+    "success character did not accept a drag candidate")
+expect(assistant:getBehavior() == GreenAssistant.Behavior.IDLE,
+    "pressing the success character did not release the timed success lock")
+assistant:update(.26)
+expect(assistant:getBehavior() == GreenAssistant.Behavior.DRAGGING,
+    "success character could not be dragged after the report opened")
+expect(assistant:handlePointer(successDragX + 8, successDragY - 12,
+    { down = false, pressed = false, released = true }),
+    "success character drag release was not consumed")
+assistant:update(.06)
+expect(assistant:getBehavior() == GreenAssistant.Behavior.IDLE,
+    "success character did not settle after report-page dragging")
+mockView.hitCharacter = false
 assistant:onLevelChanged("level_02")
 expect(assistant.failureAssist.failureCount == 0 and not assistant.failureAssist.hasOfferedThisLevel,
     "new level did not reset failure assist")

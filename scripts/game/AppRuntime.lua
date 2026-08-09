@@ -322,10 +322,10 @@ function M.Install(context)
         -- Sample once, then give the screen-space Companion first chance to
         -- apply a rigid drag before its animation/update and before rendering.
         local assistantPointerConsumed = dialoguePointerConsumed
-        if not dialoguePointerConsumed and not reportVisible then
+        if not dialoguePointerConsumed then
             assistantPointerConsumed = HandleGreenAssistantPointer(pointerFrame.x, pointerFrame.y, pointerFrame)
         end
-        if not reportVisible then UpdateGreenAssistant(dt) end
+        UpdateGreenAssistant(dt)
         if UpdateResultReport then UpdateResultReport(dt) end
         if screen_ ~= "game" and screen_ ~= "workshop_preview" then return end
         -- Replay owns the input/update frame. Do not let cards, reset shortcuts,
