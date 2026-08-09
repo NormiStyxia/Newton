@@ -226,6 +226,7 @@ function Renderer:Init()
             reportRetry = nvgCreateImage(self.vg, "image/ui/report/report_retry_button.png", 0),
             reportReplay = nvgCreateImage(self.vg, "image/ui/report/report_replay_button.png", 0),
             reportNext = nvgCreateImage(self.vg, "image/ui/report/report_next_button.png", 0),
+            reportWorkshop = nvgCreateImage(self.vg, "image/ui/report/report_workshop_button.png", 0),
             reportSignature = nvgCreateImage(self.vg, "image/ui/report/student_signature.png", 0),
         },
         newtonAnger = {
