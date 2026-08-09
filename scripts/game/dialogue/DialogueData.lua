@@ -2,6 +2,7 @@ local DialogueData = {}
 
 DialogueData.FIRST_LEVEL_ID = "level_01"
 DialogueData.SECOND_LEVEL_ID = "level_02"
+DialogueData.THIRD_LEVEL_ID = "level_03"
 DialogueData.ANGER_THRESHOLDS = { 25, 50, 75, 100 }
 
 local FIRST_LEVEL_INTRO = {
@@ -98,8 +99,45 @@ local SECOND_LEVEL_INTRO = {
     },
 }
 
+local THIRD_LEVEL_INTRO = {
+    {
+        speaker = "green",
+        side = "left",
+        displayName = "绿毛同事",
+        avatarText = "绿",
+        text = "上一关已经学会改实验规则了。",
+        style = "GREEN",
+    },
+    {
+        speaker = "green",
+        side = "left",
+        displayName = "绿毛同事",
+        avatarText = "绿",
+        text = "不过有时候，规则改完以后还得改回来。",
+        style = "GREEN",
+    },
+    {
+        speaker = "newton",
+        side = "left",
+        displayName = "牛顿",
+        avatarText = "牛",
+        text = "……你还打算自己决定什么时候恢复物理定律？",
+        style = "NEWTON",
+    },
+    {
+        speaker = "green",
+        side = "left",
+        displayName = "绿毛同事",
+        avatarText = "绿",
+        text = "当然。不然这个按钮留着干嘛。",
+        style = "GREEN",
+        tutorialMarker = "level03_side_gravity_action",
+    },
+}
+
 function DialogueData.Intro(levelId)
     if levelId == DialogueData.SECOND_LEVEL_ID then return SECOND_LEVEL_INTRO end
+    if levelId == DialogueData.THIRD_LEVEL_ID then return THIRD_LEVEL_INTRO end
     if levelId ~= DialogueData.FIRST_LEVEL_ID then return {} end
     return FIRST_LEVEL_INTRO
 end

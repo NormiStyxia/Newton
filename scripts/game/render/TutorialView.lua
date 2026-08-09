@@ -37,12 +37,7 @@ local function targetCardPose(context, targetId)
     return context.CardHomePose(targetId)
 end
 
-function View.Draw(painter, frame, context)
-    if not painter or not frame or not context or not context.GetTutorialRenderModel then return end
-    if context.replayActive_ or context.success_ or context.failed_ or context.assistSceneActive_ then return end
-    local model = context.GetTutorialRenderModel()
-    if not model.visible or model.targetType ~= "card" then return end
-
+local function drawCardTarget(painter, frame, context, model)
     local pose = targetCardPose(context, model.targetId)
     if not pose then return end
 
@@ -88,6 +83,56 @@ function View.Draw(painter, frame, context)
         19, TEXT_COLOR, NVG_ALIGN_CENTER + NVG_ALIGN_TOP, "maker-display")
     painter:Text(labelX + labelWidth * 0.5, labelY + 34, model.hint or "",
         15, TEXT_COLOR, NVG_ALIGN_CENTER + NVG_ALIGN_TOP, "maker-body")
+end
+
+local function drawPunchTarget(painter, frame, model)
+    local elapsed = model.elapsed or 0
+    local pulse = 0.5 + 0.5 * math.sin(elapsed * math.pi * 2.4)
+    local x = frame.playfieldX + frame.playfieldWidth - 58
+    local y = frame.cardHandY + 23
+    local alpha = math.floor(145 + pulse * 80)
+    local radius = 46 + pulse * 3
+
+    nvgStrokeColor(painter.vg,
+        nvgRGBA(HIGHLIGHT_SHADOW[1], HIGHLIGHT_SHADOW[2], HIGHLIGHT_SHADOW[3], 90))
+    nvgStrokeWidth(painter.vg, 8)
+    nvgBeginPath(painter.vg)
+    nvgCircle(painter.vg, x, y, radius + 4)
+    nvgStroke(painter.vg)
+
+    nvgStrokeColor(painter.vg,
+        nvgRGBA(HIGHLIGHT_COLOR[1], HIGHLIGHT_COLOR[2], HIGHLIGHT_COLOR[3], alpha))
+    nvgStrokeWidth(painter.vg, 3)
+    nvgBeginPath(painter.vg)
+    nvgCircle(painter.vg, x, y, radius)
+    nvgStroke(painter.vg)
+
+    local labelWidth = 250
+    local labelHeight = 58
+    local labelX = clamp(x - labelWidth * 0.5, frame.playfieldX + 12,
+        frame.playfieldX + frame.playfieldWidth - labelWidth - 12)
+    local labelY = math.max(frame.playfieldY + 10, y - 164)
+    painter:RoundedRect(labelX, labelY, labelWidth, labelHeight, 7,
+        PANEL_FILL, PANEL_STROKE, 1.5)
+    painter:Text(labelX + labelWidth * 0.5, labelY + 9, model.instruction or "",
+        19, TEXT_COLOR, NVG_ALIGN_CENTER + NVG_ALIGN_TOP, "maker-display")
+    painter:Text(labelX + labelWidth * 0.5, labelY + 34, model.hint or "",
+        15, TEXT_COLOR, NVG_ALIGN_CENTER + NVG_ALIGN_TOP, "maker-body")
+
+    local arrowTop = labelY + labelHeight + 8 + pulse * 4
+    drawArrow(painter.vg, x, arrowTop, y - radius - 8, alpha)
+end
+
+function View.Draw(painter, frame, context)
+    if not painter or not frame or not context or not context.GetTutorialRenderModel then return end
+    if context.replayActive_ or context.success_ or context.failed_ or context.assistSceneActive_ then return end
+    local model = context.GetTutorialRenderModel()
+    if not model.visible then return end
+    if model.targetType == "card" then
+        drawCardTarget(painter, frame, context, model)
+    elseif model.targetType == "ui" and model.targetId == "newton_punch" then
+        drawPunchTarget(painter, frame, model)
+    end
 end
 
 return View

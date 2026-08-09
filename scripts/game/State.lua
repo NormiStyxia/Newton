@@ -53,6 +53,8 @@
 ---@field NotifyTutorialLevelReady fun(levelId: string)
 ---@field ResetTutorialForLevel fun(levelId: string)
 ---@field NotifyTutorialDialogueMarker fun(levelId: string, marker: string)
+---@field NotifyTutorialFieldRuleActivated fun(cardId: string)
+---@field NotifyTutorialNewtonPunchExecuted fun(removedRules: string[])
 ---@field UpdateTutorial fun(dt: number)
 ---@field GetTutorialRenderModel fun(): table
 ---@field CancelTutorialForLevelComplete fun()

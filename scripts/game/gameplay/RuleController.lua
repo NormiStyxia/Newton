@@ -190,6 +190,9 @@ function M.Install(context)
             SetStatus("RULE DEPLOYED · " .. definition.name)
             StartRuleFeedback(id, candidate, definition.accent)
             PlaySound("card")
+            if context.NotifyTutorialFieldRuleActivated then
+                context.NotifyTutorialFieldRuleActivated(id)
+            end
             return true
         end
         local applied = launched_ and ApplyDecision(id, candidate) or false
@@ -212,6 +215,9 @@ function M.Install(context)
         RecordReplayEvent("NEWTON_PUNCH")
         SetStatus("NEWTON · 修正拳已出手")
         PlaySound("punch")
+        if context.NotifyTutorialNewtonPunchExecuted then
+            context.NotifyTutorialNewtonPunchExecuted(removedRules)
+        end
         return true
     end
 end
