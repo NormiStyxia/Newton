@@ -282,11 +282,6 @@ function M.Install(context)
             UpdateLevelWorkshop(dt, pointerFrame)
             return
         end
-        if screen_ == "workshop_preview" and input:GetKeyPress(KEY_ESCAPE) then
-            playUIClick()
-            ExitWorkshopPreview("escape")
-            return
-        end
         if not level_ or not apple_ then return end
         local assistEscapeHandled = false
         if assistSceneActive_ and input:GetKeyPress(KEY_ESCAPE) then

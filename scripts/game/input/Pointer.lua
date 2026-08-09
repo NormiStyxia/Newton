@@ -5,6 +5,25 @@ local M = {}
 function M.Install(context)
     local _ENV = context
 
+    local function pointInPauseButton(screenX, screenY)
+        if screen_ ~= "game" and screen_ ~= "workshop_preview" then return false end
+        if not frame_ or not context.design_ then return false end
+        local x, y = context.design_:ScreenToLogical(screenX, screenY)
+        local titleX = frame_.workspaceX - 37
+        return x >= titleX + 375 and x <= titleX + 421 and y >= 23 and y <= 69
+    end
+
+    local function handleSecondaryPauseTouch(touchId, screenX, screenY)
+        local pointer = context.pointer_
+        if pointer.activeTouchId == nil or pointer.pauseTouchId ~= nil then return false end
+        if not pointInPauseButton(screenX, screenY) then return false end
+        pointer.pauseTouchId = touchId
+        if context.hudDropdown_ then context.hudDropdown_ = nil end
+        if context.playUIClick then context.playUIClick() end
+        if context.ToggleTacticalPause then context.ToggleTacticalPause() end
+        return true
+    end
+
     local function buildPointerFrame(x, y, rawDown, rawPressed, rawReleased, isTouch)
         local insideStage = context.design_:IsLogicalPointInMainStage(x, y)
         local captured = context.pointer_.stagePointerCaptured == true
@@ -35,8 +54,8 @@ function M.Install(context)
     end
 
     -- Touch events carry physical screen coordinates, the same coordinate space as
-    -- input.mousePosition. A single active touch keeps a gesture from triggering
-    -- more than one game action on mobile devices.
+    -- input.mousePosition. The primary touch owns the stage gesture; a secondary
+    -- touch is accepted only for the top-level pause control.
     ---@return table PointerFrame { x, y, down, pressed, released, isTouch, insideStage }
     function PointerState()
         if context.pointer_.activeTouchId ~= nil or context.pointer_.touchPressed or context.pointer_.touchReleased then
@@ -59,16 +78,20 @@ function M.Install(context)
     end
     function HandleTouchBegin(_eventType, eventData)
         context.HandleFirstAudioGesture()
+        local touchId = eventData:GetInt("TouchID")
+        local screenX, screenY = eventData:GetInt("X"), eventData:GetInt("Y")
+        if handleSecondaryPauseTouch(touchId, screenX, screenY) then return end
         if context.pointer_.activeTouchId ~= nil then return end
-        context.pointer_.activeTouchId = eventData:GetInt("TouchID")
-        context.pointer_.touchX = eventData:GetInt("X")
-        context.pointer_.touchY = eventData:GetInt("Y")
+        context.pointer_.activeTouchId = touchId
+        context.pointer_.touchX = screenX
+        context.pointer_.touchY = screenY
         context.pointer_.touchPressed = true
     end
 
     ---@param _eventType string
     ---@param eventData TouchMoveEventData
     function HandleTouchMove(_eventType, eventData)
+        if eventData:GetInt("TouchID") == context.pointer_.pauseTouchId then return end
         if eventData:GetInt("TouchID") ~= context.pointer_.activeTouchId then return end
         context.pointer_.touchX = eventData:GetInt("X")
         context.pointer_.touchY = eventData:GetInt("Y")
@@ -77,6 +100,10 @@ function M.Install(context)
     ---@param _eventType string
     ---@param eventData TouchEndEventData
     function HandleTouchEnd(_eventType, eventData)
+        if eventData:GetInt("TouchID") == context.pointer_.pauseTouchId then
+            context.pointer_.pauseTouchId = nil
+            return
+        end
         if eventData:GetInt("TouchID") ~= context.pointer_.activeTouchId then return end
         context.pointer_.touchX = eventData:GetInt("X")
         context.pointer_.touchY = eventData:GetInt("Y")

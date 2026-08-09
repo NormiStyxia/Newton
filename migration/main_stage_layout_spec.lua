@@ -113,14 +113,21 @@ local inputStub = { mousePosition = mouse }
 function inputStub:GetMouseButtonDown() return mouse.down end
 function inputStub:GetMouseButtonPress() return mouse.pressed end
 function inputStub:GetMouseButtonRelease() return mouse.released end
-local pointerContext = {
+local pointerContext
+pointerContext = {
     design_ = design,
+    frame_ = highDpr,
+    screen_ = "workshop_preview",
     pointer_ = {
         activeTouchId = nil, touchX = 0, touchY = 0,
         touchPressed = false, touchReleased = false, stagePointerCaptured = nil,
+        pauseTouchId = nil,
     },
     input = inputStub,
     MOUSEB_LEFT = 1,
+    HandleFirstAudioGesture = function() end,
+    ToggleTacticalPause = function() pointerContext.pauseToggleCount = (pointerContext.pauseToggleCount or 0) + 1 end,
+    playUIClick = function() pointerContext.pauseClickCount = (pointerContext.pauseClickCount or 0) + 1 end,
 }
 require("game.input.Pointer").Install(pointerContext)
 
@@ -162,6 +169,18 @@ pointerContext.HandleTouchBegin("TouchBegin", touchEvent(8, 1880, 1120))
 local insideTouch = pointerContext.PointerState()
 expect(insideTouch.isTouch and insideTouch.insideStage and insideTouch.pressed and insideTouch.down,
     "a touch beginning inside the stage was not captured")
+-- A second finger may operate the preview pause control without stealing the
+-- primary stage gesture (the pause button is at logical x=418, y=46; the
+-- high-DPR frame has 140 logical pixels of top stage padding).
+pointerContext.HandleTouchBegin("TouchBegin", touchEvent(9, 836, 372))
+local secondaryTouchFrame = pointerContext.PointerState()
+expect(pointerContext.pointer_.pauseTouchId == 9
+    and pointerContext.pauseToggleCount == 1 and pointerContext.pauseClickCount == 1
+    and secondaryTouchFrame.down and not secondaryTouchFrame.pressed,
+    "a secondary pause touch did not coexist with the primary stage gesture")
+pointerContext.HandleTouchEnd("TouchEnd", touchEvent(9, 836, 372))
+expect(pointerContext.pointer_.pauseTouchId == nil and pointerContext.pointer_.activeTouchId == 8,
+    "secondary pause touch release stole the primary touch")
 pointerContext.HandleTouchMove("TouchMove", touchEvent(8, 1880, 100))
 local outsideTouchDrag = pointerContext.PointerState()
 expect(not outsideTouchDrag.insideStage and outsideTouchDrag.down,

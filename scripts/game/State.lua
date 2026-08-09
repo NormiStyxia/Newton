@@ -243,6 +243,7 @@ function State.New(dependencies, constants)
     context.hoveredNavigation_, context.punchHovered_ = nil, false
     context.pointer_ = {
         activeTouchId = nil,
+        pauseTouchId = nil,
         touchX = 0,
         touchY = 0,
         touchPressed = false,
