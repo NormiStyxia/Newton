@@ -7,7 +7,7 @@
   "entry": "main.lua",
   "version": "1.0.12",
   "taptap_publish": {
-    "title": "不经典力学.NEWTONignore",
+    "title": "牛顿看了想打人",
     "description": "<game description>",
     "category": "puzzle",
     "screen_orientation": "landscape",
@@ -20,16 +20,30 @@
     "developer_id": 411438
   },
   "assets": {
-    "icon": "",
-    "screenshots": [],
-    "promotional_image": "./game_material/promotional.png",
-    "promotional_image_url": "https://tapcode-sce.spark.xd.com/assets/game_material/p_ss8c/promotional.png"
+    "icon": "./game_material/ICON_2026-08-09T09-12-00_01.png",
+    "screenshots": [
+      "./game_material/SCREENSHOT_2026-08-09T09-12-00_01.png",
+      "./game_material/SCREENSHOT_2026-08-09T09-12-00_02.png",
+      "./game_material/SCREENSHOT_2026-08-09T09-12-00_03.png"
+    ],
+    "promotional_image": "./game_material/PROMO_2026-08-09T09-12-00_01.jpg",
+    "promotional_image_url": "https://tapcode-sce.spark.xd.com/assets/game_material/牛顿看了想打人/PROMO_2026-08-09T09-12-00_01.jpg",
+    "icon_url": "https://tapcode-sce.spark.xd.com/assets/game_material/牛顿看了想打人/ICON_2026-08-09T09-12-00_01.png",
+    "screenshot_urls": [
+      "https://tapcode-sce.spark.xd.com/assets/game_material/牛顿看了想打人/SCREENSHOT_2026-08-09T09-12-00_01.png",
+      "https://tapcode-sce.spark.xd.com/assets/game_material/牛顿看了想打人/SCREENSHOT_2026-08-09T09-12-00_02.png",
+      "https://tapcode-sce.spark.xd.com/assets/game_material/牛顿看了想打人/SCREENSHOT_2026-08-09T09-12-00_03.png"
+    ],
+    "cover_horizontal": "./game_material/COVER_HORIZONTAL_2026-08-09T09-13-20_01.png",
+    "cover_horizontal_url": "https://tapcode-sce.spark.xd.com/assets/game_material/牛顿看了想打人/COVER_HORIZONTAL_2026-08-09T09-13-20_01.png",
+    "cover_vertical": "./game_material/COVER_VERTICAL_2026-08-09T09-14-31_01.png",
+    "cover_vertical_url": "https://tapcode-sce.spark.xd.com/assets/game_material/牛顿看了想打人/COVER_VERTICAL_2026-08-09T09-14-31_01.png"
   },
   "test_qrcode": {
     "url": "https://tapcode-sce.spark.xd.com/qrcode/p_ss8c_1786058005282.png",
     "generated_at": "2026-08-06T23:13:25.424Z"
   },
   "metadata": {
-    "updated_at": "2026-08-07T22:18:39.020Z"
+    "updated_at": "2026-08-09T09:14:33.159Z"
   }
 }
