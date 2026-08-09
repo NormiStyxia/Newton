@@ -61,6 +61,17 @@ Calibration.ApplyAppleMassProperties(body)
 near(body.mass, 1, 1e-12, "apple mass")
 near(body.inertia, 0.1443867317, 1e-12, "apple inertia")
 
+local Config = require("game.Config").LegacyConstants()
+local LevelPresentation = require("game.level.Presentation")
+local scoring = Config.LEVEL_SCORE_PROFILES.intervention_standard
+for interventionCount, expectedScore in pairs({ [0] = 100, [1] = 100, [2] = 80, [3] = 80, [4] = 60 }) do
+    local summary = LevelPresentation.BuildResultSummary(scoring, interventionCount)
+    expect(summary.interventionCount == interventionCount, "score summary intervention count mismatch")
+    expect(summary.score == expectedScore,
+        string.format("score mismatch at %d interventions: expected %d, got %d",
+            interventionCount, expectedScore, summary.score))
+end
+
 local Profiles = require("game.physics.Profiles")
 local standard = Profiles.Resolve(nil)
 local incident = Profiles.Resolve(Profiles.INCIDENT_ID)

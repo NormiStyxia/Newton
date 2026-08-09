@@ -90,17 +90,25 @@ function M.Install(context)
         hudInterventionCount_ = math.max(0, math.floor(tonumber(count) or 0))
     end
 
+    local function CurrentHUDScoreSummary()
+        local count = math.max(0, math.floor(tonumber(ruleDeployCount_) or 0))
+        if not level_ then return { score = nil, interventionCount = count } end
+        return LevelPresentation.BuildResultSummary(level_.scoring, count)
+    end
+
     function RefreshHUDSummary()
         if not level_ then return end
+        local summary = CurrentHUDScoreSummary()
         UpdateRuleSummary(rules_)
         UpdateObjectiveText(level_.shortObjective or level_.objective)
-        UpdateInterventionCount(ruleDeployCount_)
-        UpdateExpectedScore(LevelPresentation.ExpectedScore(level_.scoring, ruleDeployCount_))
+        UpdateInterventionCount(summary.interventionCount)
+        UpdateExpectedScore(summary.score)
         if #hudRuleList_ < 2 and hudDropdown_ == "rules" then hudDropdown_ = nil end
     end
 
     function DrawHUD()
         local f = frame_
+        local scoreSummary = CurrentHUDScoreSummary()
         local layout = ResolveHUDLayout(f)
         local titleX = layout.titleX
         painter_:Text(titleX + 62, 19, "牛顿看了想打人", 29, Renderer2D.COLORS.white, NVG_ALIGN_LEFT + NVG_ALIGN_TOP, "maker-display")
@@ -143,7 +151,7 @@ function M.Install(context)
             Renderer2D.COLORS.text, NVG_ALIGN_CENTER + NVG_ALIGN_MIDDLE, "maker-display")
 
         local right = layout.right
-        local scoreText = hudExpectedScore_ and tostring(hudExpectedScore_) or "--"
+        local scoreText = scoreSummary.score and tostring(scoreSummary.score) or "--"
         painter_:Text(right.x + 20, 46, "预估分数：", 18, Renderer2D.COLORS.secondary,
             NVG_ALIGN_LEFT + NVG_ALIGN_MIDDLE, "maker-display")
         painter_:Text(right.x + 132, 46, scoreText, 20, Renderer2D.COLORS.text,
@@ -152,12 +160,23 @@ function M.Install(context)
             NVG_ALIGN_CENTER + NVG_ALIGN_MIDDLE, "maker-display")
         painter_:Text(right.x + 168, 46, "规则干预：", 18, Renderer2D.COLORS.secondary,
             NVG_ALIGN_LEFT + NVG_ALIGN_MIDDLE, "maker-display")
-        painter_:Text(right.x + 282, 46, tostring(math.min(99, hudInterventionCount_)), 20,
+        painter_:Text(right.x + 282, 46, tostring(math.min(99, scoreSummary.interventionCount)), 20,
             Renderer2D.COLORS.text, NVG_ALIGN_RIGHT + NVG_ALIGN_MIDDLE, "report-green")
         painter_:Text(right.x + 288, 46, "次", 18, Renderer2D.COLORS.secondary,
             NVG_ALIGN_LEFT + NVG_ALIGN_MIDDLE, "maker-display")
-        painter_:Text(right.x + 327, 46, "▼", 14, Renderer2D.COLORS.secondary,
-            NVG_ALIGN_RIGHT + NVG_ALIGN_MIDDLE, "maker-display")
+        local chevronColor = Renderer2D.COLORS.secondary
+        nvgSave(painter_.vg)
+        nvgStrokeColor(painter_.vg, nvgRGBA(
+            chevronColor[1], chevronColor[2], chevronColor[3], 220))
+        nvgStrokeWidth(painter_.vg, 2.2)
+        nvgLineCap(painter_.vg, NVG_ROUND)
+        nvgLineJoin(painter_.vg, NVG_ROUND)
+        nvgBeginPath(painter_.vg)
+        nvgMoveTo(painter_.vg, right.x + 314, 43)
+        nvgLineTo(painter_.vg, right.x + 320, 49)
+        nvgLineTo(painter_.vg, right.x + 326, 43)
+        nvgStroke(painter_.vg)
+        nvgRestore(painter_.vg)
     end
 
     local function DrawHUDPaperFrame(rect)
@@ -183,9 +202,11 @@ function M.Install(context)
             return
         end
 
+        local scoreSummary = CurrentHUDScoreSummary()
         painter_:Text(rect.x + 18, rect.y + 15, "实时评级摘要", 15, Renderer2D.COLORS.secondary, nil, "report-green")
         painter_:Text(rect.x + 18, rect.y + 39,
-            string.format("当前预估分数：%s · 规则干预：%d 次", hudExpectedScore_ and tostring(hudExpectedScore_) or "--", hudInterventionCount_),
+            string.format("当前预估分数：%s · 规则干预：%d 次",
+                scoreSummary.score and tostring(scoreSummary.score) or "--", scoreSummary.interventionCount),
             18, Renderer2D.COLORS.text, nil, "maker-display")
         painter_:FillRect(rect.x + 18, rect.y + 75, rect.w - 36, 1, Renderer2D.COLORS.greenLight, 180)
         for index, tier in ipairs(level_.scoring and level_.scoring.tiers or {}) do
