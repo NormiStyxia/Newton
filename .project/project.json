@@ -5,7 +5,7 @@
     "id": "1838934907"
   },
   "entry": "main.lua",
-  "version": "1.0.13",
+  "version": "1.0.15",
   "taptap_publish": {
     "title": "不经典力学.NEWTONignore",
     "description": "一场不太经典的力学实验。发射苹果，利用场地与策略规则修改重力、弹性与运动轨迹，把苹果送进观察皿。你可以让世界向右坠落、让墙暂时不存在，或者给苹果一点完全不讲道理的推力——如果实验失控，就让牛顿亲自把规律打回来。",
@@ -24,8 +24,8 @@
     "icon": "./game_material/icon.png",
     "screenshots": [
       "./game_material/screenshot_1.png",
-      "./game_material/SCREENSHOT_2026-08-09T13-36-46_02.png",
-      "./game_material/SCREENSHOT_2026-08-09T13-36-46_03.png",
+      "./game_material/screenshot_2.png",
+      "./game_material/screenshot_3.png",
       "./game_material/character_system_chat_assist_1280x720.png"
     ],
     "promotional_image": "./game_material/promotional.png",
@@ -33,8 +33,8 @@
     "icon_url": "https://tapcode-sce.spark.xd.com/assets/game_material/p_ss8c/icon.png",
     "screenshot_urls": [
       "https://tapcode-sce.spark.xd.com/assets/game_material/p_ss8c/screenshot_1.png",
-      "https://tapcode-sce.spark.xd.com/assets/game_material/牛顿看了想打人/SCREENSHOT_2026-08-09T13-36-46_02.png",
-      "https://tapcode-sce.spark.xd.com/assets/game_material/牛顿看了想打人/SCREENSHOT_2026-08-09T13-36-46_03.png",
+      "https://tapcode-sce.spark.xd.com/assets/game_material/p_ss8c/screenshot_2.png",
+      "https://tapcode-sce.spark.xd.com/assets/game_material/p_ss8c/screenshot_3.png",
       "https://tapcode-sce.spark.xd.com/assets/game_material/p_ss8c/character_system_chat_assist_1280x720.png"
     ],
     "cover_horizontal": "./game_material/cover_horizontal.png",
@@ -47,6 +47,7 @@
     "generated_at": "2026-08-09T15:11:56.701Z"
   },
   "metadata": {
-    "updated_at": "2026-08-09T15:11:56.701Z"
+    "updated_at": "2026-08-09T15:16:38.426Z",
+    "promo_dependent_hash": "52cbd54b5fc801bbb35286c5f3c8cbfb"
   }
 }
