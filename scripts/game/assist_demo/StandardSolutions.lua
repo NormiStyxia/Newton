@@ -85,12 +85,11 @@ local SOLUTIONS = {
     level_03 = {
         levelId = "level_03",
         actions = Append(BaseActions(),
-            { type = "LAUNCH", pullX = -52.5, pullY = 32.3, cursorDuration = 0.65 },
-            WaitX(350, "RIGHT", 5.0, CardTarget("side-gravity")),
             Side("RIGHT"),
-            WaitX(700, "RIGHT", 8.0, { type = "NEWTON_PUNCH", duration = 0.14 }),
+            { type = "LAUNCH", pullX = 0, pullY = 60, cursorDuration = 0.65 },
+            WaitStopped(6.0, { type = "NEWTON_PUNCH", duration = 0.14 }),
             { type = "NEWTON_PUNCH", cursorDuration = 0.12 },
-            { type = "WAIT_CONDITION", condition = "GOAL_REACHED", timeout = 12.0 }
+            { type = "WAIT_CONDITION", condition = "GOAL_REACHED", timeout = 8.0 }
         ),
     },
 
