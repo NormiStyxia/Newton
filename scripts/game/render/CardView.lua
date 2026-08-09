@@ -202,6 +202,44 @@ function M.Install(context)
         local punchStatus = punchReady and "可修正" or (rules_.punchUsed and "已使用" or "未就绪")
         painter_:Text(cx, cy + 42, punchStatus, 10, punchColor, NVG_ALIGN_CENTER + NVG_ALIGN_TOP, "maker-display", punchAlpha)
     end
+
+    -- Draw the selected hand instance at a larger scale in the reserved strip
+    -- just inside the laboratory edge. The same surface renderer supplies the
+    -- artwork, definition text and live usage badge as the hand card.
+    function DrawSelectedCardDetail()
+        if not selectedCardId_ or screen_ ~= "game" or isPaused_ or replayActive_ or success_ or failed_
+            or context.assistantInputLocked_ or assistSceneActive_
+            or (dialogueController_ and dialogueController_:IsActive())
+            or (IsResultOverlayVisible and IsResultOverlayVisible())
+            or (IsResultReportVisible and IsResultReportVisible()) then
+            return
+        end
+        local card, cardState, def = SelectedCardData()
+        if not card or not cardState or not def then return end
+
+        local detailScale = 1.70
+        local width = CARD_RENDER_WIDTH * detailScale
+        local height = CARD_RENDER_HEIGHT * detailScale
+        local top = frame_.playfieldY + 8
+        local bottomLimit = (frame_.groundY or (frame_.playfieldY + frame_.playfieldHeight)) - 18
+        top = math.min(top, bottomLimit - height)
+        top = math.max(frame_.playfieldY + 10, top)
+        local x = frame_.playfieldX + width * .5 + 14
+        local y = top + height * .5
+
+        local progress = math.max(0, math.min(1, (selectedCardDetailAge_ or 0) / .14))
+        local eased = 1 - (1 - progress) ^ 3
+        local alpha = .70 + .30 * eased
+        local animatedScale = detailScale * (.96 + .04 * eased)
+        local animatedX = x - 12 * (1 - eased)
+
+        nvgSave(painter_.vg)
+        nvgTranslate(painter_.vg, animatedX, y)
+        nvgScale(painter_.vg, animatedScale, animatedScale)
+        DrawCardSurface(card.cardId, def, card, cardState, true, false, alpha)
+        nvgRestore(painter_.vg)
+    end
+
     function DrawSelectorArrow(x, y, direction, active, alpha)
         local function fillArrow(drawX, drawY, color, opacity, shaftWidth, headHalf, extent)
             nvgFillColor(painter_.vg, nvgRGBA(color[1], color[2], color[3], math.floor(opacity * 255)))

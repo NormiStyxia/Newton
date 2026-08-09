@@ -3,6 +3,7 @@ local M = {}
 local EinsteinObserver = require("game.render.EinsteinObserver")
 local WallImpactShake = require("game.render.WallImpactShake")
 local NewtonPunchShake = require("game.render.NewtonPunchShake")
+local ResultReportConfig = require("ui.result_report_config")
 
 local TITLE_BACKGROUND_FILL = { 248, 231, 206, 255 }
 local CATALOG_BACKGROUND_FILL = { 247, 239, 211, 255 }
@@ -314,6 +315,7 @@ function M.Install(context)
             hudEscapeConsumed_ = true
         end
         local reportVisible = IsResultReportVisible and IsResultReportVisible()
+        frame_.assistantBubbleAvoidRect = reportVisible and ResultReportConfig.ResolveRect(frame_) or nil
         local dialoguePointerConsumed = (reportVisible or context.assistantInputLocked_)
             and false or context.UpdateDialogue(dt, pointerFrame)
         if audio_ then audio_:Update(dt) end
@@ -735,6 +737,7 @@ function M.Install(context)
             if not replayActive_ then DrawRulePulse() end
             DrawCardParameterSelector()
             DrawCards(72, nil, false)
+            DrawSelectedCardDetail()
             DrawCardBurns()
             DrawCardBurnParticles()
             DrawRuleFlash()

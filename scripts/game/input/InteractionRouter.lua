@@ -150,13 +150,18 @@ function M.Install(context)
                 -- event. Keep the line and prediction visible for short drags.
                 UpdateAppleDrag(x, y)
             else
-                TryCardPress(x, y)
+                if not TryCardPress(x, y) then ClearSelectedCard() end
             end
         end
         if down and draggedApple_ and not launched_ then UpdateAppleDrag(x, y) end
         if down and activeCardId_ and activeCardStart_ then
             local dx, dy = x - activeCardStart_.x, y - activeCardStart_.y
-            if dx * dx + dy * dy >= 12 * 12 then activeCardDragged_ = true end
+            if dx * dx + dy * dy >= 12 * 12 and not activeCardDragged_ then
+                activeCardDragged_ = true
+                -- A hand gesture has become an action, so the read-only detail
+                -- card leaves immediately without changing deployment state.
+                ClearSelectedCard()
+            end
             activeCardPointer_ = { x = x, y = y }
             if activeCardDragged_ and not activeCardDeploying_ then
                 local home = CardHomePose(activeCardId_)

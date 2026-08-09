@@ -26,6 +26,7 @@ function M.Install(context)
         replayPaused_ = mode == "paused" or mode == "finished"
         replayFinished_ = mode == "finished"
         if mode ~= "none" then
+            ClearSelectedCard()
             WallImpactShake.ResetRuntime(runtime_)
             NewtonPunchShake.Reset(newtonPunchShake_)
         end

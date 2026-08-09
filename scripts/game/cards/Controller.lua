@@ -15,6 +15,8 @@ function M.Install(context)
         cardHoverStates_ = {}
         cardHomeMotions_ = {}
         cardHandReordering_ = false
+        selectedCardId_ = nil
+        selectedCardDetailAge_ = 0
         if not level_ or not level_.cardDeck then return end
         local ordered = {}
         for _, card in ipairs(level_.cardDeck.cards or {}) do
@@ -61,6 +63,7 @@ function M.Install(context)
         end
     end
     function QueueCardResolution(id, x, y, candidate, pose)
+        ClearSelectedCard()
         burningCardIds_[id] = true
         cardBurns_[#cardBurns_ + 1] = {
             id = id,
@@ -88,6 +91,50 @@ function M.Install(context)
             if card.enabled and state and not state.consumed and (state.usageMode == "REUSABLE" or state.remainingUses > 0) then result[#result + 1] = card end
         end
         return result
+    end
+
+    -- The detail preview is only a view of the live hand instance. Keep its
+    -- identity as a card id so reordering and usage updates never create a
+    -- second copy of card state.
+    function ClearSelectedCard()
+        selectedCardId_ = nil
+        selectedCardDetailAge_ = 0
+    end
+
+    function SelectCard(id)
+        local card = cardDeckById_[id]
+        local state = cardStates_[id]
+        if not card or not state or not card.enabled or state.consumed
+            or (state.usageMode ~= "REUSABLE" and state.remainingUses <= 0) then
+            ClearSelectedCard()
+            return false
+        end
+        if selectedCardId_ == id then
+            ClearSelectedCard()
+            return false
+        end
+        selectedCardId_ = id
+        selectedCardDetailAge_ = 0
+        return true
+    end
+
+    function SelectedCardData()
+        if not selectedCardId_ then return nil, nil, nil end
+        local card = cardDeckById_[selectedCardId_]
+        local state = cardStates_[selectedCardId_]
+        local def = Rules.CARDS[selectedCardId_]
+        if not card or not state or not def or not card.enabled or state.consumed
+            or (state.usageMode ~= "REUSABLE" and state.remainingUses <= 0) then
+            return nil, nil, nil
+        end
+        return card, state, def
+    end
+
+    function ValidateSelectedCard()
+        if selectedCardId_ then
+            local card = SelectedCardData()
+            if not card then ClearSelectedCard() end
+        end
     end
     function CardPose(index, count)
         local entries = CardEntries()
@@ -429,6 +476,7 @@ function M.Install(context)
         local wasDragged = activeCardDragged_
         local wasDeploying = activeCardDeploying_
         if not wasDragged then
+            if not isPaused_ then SelectCard(id) end
             -- Phaser's primed transition starts from the nominal slot, not an
             -- interrupted hand-reorder tween.
             cardHomeMotions_[id] = nil
@@ -488,6 +536,7 @@ function M.Install(context)
             return
         end
         local burnPose = CurrentCardVisualPose(id)
+        ClearSelectedCard()
         activeCardId_ = nil
         QueueCardResolution(id, deployment.x, deployment.y, candidate, burnPose)
         ClearCardInteraction()
@@ -520,6 +569,7 @@ function M.Install(context)
 
         local burnPose = CurrentCardVisualPose(id) or CardHomePose(id)
         if not burnPose then return false end
+        ClearSelectedCard()
         activeCardId_, primedCardId_ = nil, nil
         ClearCardInteraction()
         SetHoveredCard(nil)
@@ -563,6 +613,8 @@ function M.Install(context)
     function UpdateCardAnimations(dt)
         UpdateCardHomeMotions(dt)
         UpdateCardHoverStates(dt)
+        ValidateSelectedCard()
+        if selectedCardId_ then selectedCardDetailAge_ = selectedCardDetailAge_ + math.max(0, dt) end
         for i = #cardBurns_, 1, -1 do
             local burn = cardBurns_[i]
             burn.elapsed = burn.elapsed + dt * 1000

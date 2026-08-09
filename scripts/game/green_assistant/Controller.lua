@@ -38,12 +38,14 @@ function M.Install(context)
     end
 
     function DrawGreenAssistant()
+        if greenAssistant_ and frame_ then greenAssistant_:setFrame(frame_) end
         if greenAssistant_ and greenAssistant_:getBehavior() ~= GreenAssistant.Behavior.OFFER then
             greenAssistant_:render()
         end
     end
 
     function DrawGreenAssistantOverlay()
+        if greenAssistant_ and frame_ then greenAssistant_:setFrame(frame_) end
         if greenAssistant_ and greenAssistant_:getBehavior() == GreenAssistant.Behavior.OFFER then
             greenAssistant_:render()
         end

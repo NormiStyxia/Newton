@@ -18,6 +18,22 @@ local function PointInRect(x, y, rect)
     return rect and x >= rect.x and x <= rect.x + rect.width and y >= rect.y and y <= rect.y + rect.height
 end
 
+local function RectSize(rect, primary, fallback)
+    if not rect then return 0 end
+    return tonumber(rect[primary] or rect[fallback]) or 0
+end
+
+local function OverlapsRect(x, y, width, height, obstacle, gap)
+    if not obstacle then return false end
+    gap = math.max(0, gap or 0)
+    local obstacleWidth = RectSize(obstacle, "width", "w")
+    local obstacleHeight = RectSize(obstacle, "height", "h")
+    return x < obstacle.x + obstacleWidth + gap
+        and x + width > obstacle.x - gap
+        and y < obstacle.y + obstacleHeight + gap
+        and y + height > obstacle.y - gap
+end
+
 local function FrameTexture(frame)
     return frame and (frame.texture or frame.path) or nil
 end
@@ -109,6 +125,7 @@ function View.New(options)
     self.logicalWidth = 1
     self.logicalHeight = 1
     self.companionZone = nil
+    self.bubbleAvoidRect = nil
     self.visible = true
     self.enabled = true
     -- The current sprite source faces left.  Keep this asset convention in
@@ -143,6 +160,7 @@ function View:setFrame(frame)
     self.logicalWidth = math.max(1, frame.logicalWidth or self.logicalWidth)
     self.logicalHeight = math.max(1, frame.logicalHeight or self.logicalHeight)
     self.companionZone = frame.companionZone
+    self.bubbleAvoidRect = frame.assistantBubbleAvoidRect
 end
 
 function View:getHomePosition()
@@ -355,8 +373,29 @@ function View:_updateBubbleLayout()
     self.messageLineHeight = BUBBLE_LINE_HEIGHT
     local preferredX = self.position.x + 62
     local preferredY = self.position.y - self.config.ui.spriteHeight * self.config.ui.scale - height + 38
-    local x = math.max(BUBBLE_MARGIN, math.min(self.logicalWidth - width - BUBBLE_MARGIN, preferredX))
-    local y = math.max(BUBBLE_MARGIN, math.min(self.logicalHeight - height - BUBBLE_MARGIN, preferredY))
+    local minX = BUBBLE_MARGIN
+    local maxX = math.max(minX, self.logicalWidth - width - BUBBLE_MARGIN)
+    local function clampX(value)
+        return math.max(minX, math.min(maxX, value))
+    end
+    local minY = BUBBLE_MARGIN
+    local maxY = math.max(minY, self.logicalHeight - height - BUBBLE_MARGIN)
+    local y = math.max(minY, math.min(maxY, preferredY))
+    local x = clampX(preferredX)
+    local obstacle = self.bubbleAvoidRect
+    if obstacle and OverlapsRect(x, y, width, height, obstacle, BUBBLE_MARGIN) then
+        local obstacleWidth = RectSize(obstacle, "width", "w")
+        local leftOfObstacle = clampX(obstacle.x - width - BUBBLE_MARGIN)
+        local leftOfCharacter = clampX(self.position.x - width - 62)
+        local rightOfObstacle = clampX(obstacle.x + obstacleWidth + BUBBLE_MARGIN)
+        local candidates = { leftOfObstacle, leftOfCharacter, rightOfObstacle }
+        for _, candidateX in ipairs(candidates) do
+            if not OverlapsRect(candidateX, y, width, height, obstacle, BUBBLE_MARGIN) then
+                x = candidateX
+                break
+            end
+        end
+    end
     self.bubbleRect = { x = x, y = y, width = width, height = height }
     if self.choices then
         local buttonWidth = (width - BUBBLE_PADDING_X * 2 - BUBBLE_BUTTON_GAP)

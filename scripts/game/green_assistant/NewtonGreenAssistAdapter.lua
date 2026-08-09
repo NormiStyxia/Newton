@@ -27,6 +27,7 @@ function Adapter:lockPlayerInput()
     context.assistantInputLocked_ = true
     if context.CancelAppleDrag then context.CancelAppleDrag() end
     if context.ClearCardInteraction then context.ClearCardInteraction() end
+    if context.ClearSelectedCard then context.ClearSelectedCard() end
 end
 
 function Adapter:unlockPlayerInput()
@@ -37,6 +38,7 @@ function Adapter:prepareTakeoverScene()
     local context = self.context
     context.assistantInputLocked_ = true
     context.assistSceneActive_ = true
+    if context.ClearSelectedCard then context.ClearSelectedCard() end
     if context.level_ then context.level_.resultOverlayVisible = false end
 end
 
