@@ -189,10 +189,10 @@ end)()
 local ARCHIVE = {
     contentOffsetX = 105,
     edgeFrame = {
-        x = 764,
-        y = 51,
-        w = 976,
-        h = 739,
+        x = 0,
+        y = 2,
+        w = 1870,
+        h = 837,
         thickWidth = 3.2,
         thinWidth = 1.1,
         thinOffset = 8,
@@ -218,13 +218,13 @@ local ARCHIVE = {
         labelColumnWidth = 135,
     },
     header = {
-        titleY = 72,
+        titleY = 104,
         chineseSize = 70,
         latinSize = 39,
         nameGap = 16,
         latinOffsetY = 20,
-        lineGap = 14,
-        subtitleGap = 8,
+        lineGap = 42,
+        subtitleRise = 12,
     },
     tags = {
         { label = "学院登记", w = 214,
@@ -773,7 +773,7 @@ local function drawArchiveHeader(painter, state, layout)
     local latinX = titleX + chineseWidth + h.nameGap
     local latinY = titleY + h.latinOffsetY
     local lineY = titleY + h.chineseSize + h.lineGap
-    local subY = lineY + h.subtitleGap
+    local subY = lineY - h.subtitleRise
     painter:Text(titleX, titleY, "牛顿", h.chineseSize, ARCHIVE.warm,
         NVG_ALIGN_LEFT + NVG_ALIGN_TOP, "report-summary", archiveTextAlpha(progress))
     painter:Text(latinX, latinY, "NEWTON", h.latinSize, ARCHIVE.inkStrong,
@@ -815,7 +815,6 @@ end
 
 local function drawProfileInfoOverlay(painter, profileArt, state)
     local layout = buildArchiveLayout(painter)
-    drawArchiveHorizontalEdges(painter, state)
     nvgSave(painter.vg)
     nvgTranslate(painter.vg, ARCHIVE.contentOffsetX, 0)
     drawArchiveHeader(painter, state, layout)
@@ -975,6 +974,7 @@ local function drawProfileScene(painter, art, state)
         local flip = rangeProgress(elapsed, PROFILE.exit.sketchFlipStart, PROFILE.exit.sketchFlipEnd)
         drawSketchCharacterFlip(painter, art, node, state.profileSketchElapsed or 0, flip)
     end
+    drawArchiveHorizontalEdges(painter, state)
 end
 
 local function drawFourPointStar(vg, x, y, radius, progress)
