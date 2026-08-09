@@ -92,6 +92,76 @@ expect(copiedPrecision and math.abs(copiedPrecision.objects[3].transform.x - 121
     and copiedPrecision.objects[3].transform.rotation == 0,
     "new custom copy did not normalize transform precision")
 
+local function addWall(document, id, transform)
+    local wall = LevelDocument.NewObject("wall", id, transform.x, transform.y)
+    wall.transform = LevelDocument.Clone(transform)
+    document.objects[#document.objects + 1] = wall
+    return wall
+end
+
+local levelThreeBoundaryFixture = LevelDocument.New("level_03", "世界向右落")
+addWall(levelThreeBoundaryFixture, "wall_03", {
+    x = 675.3035731588158, y = 518.7455006564065,
+    width = 24, height = 122.50899868718695, rotation = 0,
+})
+addWall(levelThreeBoundaryFixture, "wall_04", {
+    x = 770.8398397908985, y = 518.7455006564065,
+    width = 24, height = 122.50899868718695, rotation = 0,
+})
+addWall(levelThreeBoundaryFixture, "wall_11", {
+    x = 405.2711569734426, y = 521.6820853244031,
+    width = 198.63064255100974, height = 20, rotation = 150,
+})
+addWall(levelThreeBoundaryFixture, "wall_12", {
+    x = 296.34831503442547, y = 544.636045120533,
+    width = 198.63064255100974, height = 20, rotation = 165,
+})
+local levelThreeRepository = Repository.New({ LevelDocument = LevelDocument })
+expect(#levelThreeRepository:InitializeOfficial(1, function() return levelThreeBoundaryFixture end) == 0,
+    "level 3 boundary fixture failed to initialize")
+local copiedLevelThree, copiedLevelThreeMetadata = levelThreeRepository:CopyAsCustom("official:level_03")
+expect(copiedLevelThree and copiedLevelThreeMetadata
+    and LevelDocument.ValidateDetailed(copiedLevelThree).valid,
+    "copying level 3 failed after transform persistence normalization")
+
+local rotatedBoundaryFixture = validLevel("rotated_boundaries", "Rotated boundaries")
+local rotatedTransform = { width = 198.63064255100974, height = 20, rotation = 150 }
+local originalExtents = LevelDocument.RotatedHalfExtents(rotatedTransform)
+addWall(rotatedBoundaryFixture, "touch_left", {
+    x = originalExtents.x, y = 300, width = rotatedTransform.width,
+    height = rotatedTransform.height, rotation = rotatedTransform.rotation,
+})
+addWall(rotatedBoundaryFixture, "touch_right", {
+    x = rotatedBoundaryFixture.playfield.width - originalExtents.x, y = 300,
+    width = rotatedTransform.width, height = rotatedTransform.height, rotation = rotatedTransform.rotation,
+})
+addWall(rotatedBoundaryFixture, "touch_top", {
+    x = 700, y = originalExtents.y, width = rotatedTransform.width,
+    height = rotatedTransform.height, rotation = rotatedTransform.rotation,
+})
+addWall(rotatedBoundaryFixture, "touch_bottom", {
+    x = 700, y = LevelDocument.PLAYFIELD_GROUND_Y - originalExtents.y,
+    width = rotatedTransform.width, height = rotatedTransform.height, rotation = rotatedTransform.rotation,
+})
+local normalizedRotatedBoundaries = Numeric.NormalizeDocument(LevelDocument.Clone(rotatedBoundaryFixture))
+expect(LevelDocument.ValidateDetailed(normalizedRotatedBoundaries).valid,
+    "three-decimal normalization pushed a rotated boundary object out of the playfield")
+for index = 4, #normalizedRotatedBoundaries.objects do
+    local transform = normalizedRotatedBoundaries.objects[index].transform
+    for _, field in ipairs({ "x", "y", "width", "height", "rotation" }) do
+        local scaled = transform[field] * 1000
+        expect(math.abs(scaled - math.floor(scaled + 0.5)) < 1e-7,
+            "boundary correction left a transform outside three-decimal persistence precision")
+    end
+end
+
+local invalidBoundaryFixture = validLevel("invalid_boundary", "Invalid boundary")
+invalidBoundaryFixture.objects[3].transform.x = 90
+local normalizedInvalidBoundary = Numeric.NormalizeDocument(LevelDocument.Clone(invalidBoundaryFixture))
+expect(normalizedInvalidBoundary.objects[3].transform.x == 90
+    and not LevelDocument.ValidateDetailed(normalizedInvalidBoundary).valid,
+    "normalization silently repaired an object that was already out of bounds")
+
 local secondCustom = repository:CreateCustom("第二份草稿")
 expect(secondCustom.levelId == "custom_002", "custom level IDs are not monotonic")
 expect(repository:NextObjectId(custom, "wall") == "wall_002", "object ID generation collided")
@@ -243,6 +313,10 @@ expect(decodedPrecisionExport and math.abs(decodedPrecisionExport.objects[3].tra
     and decodedPrecisionExport.objects[3].transform.rotation == 0
     and precisionExport.objects[3].transform.x == 1219.8025366858,
     "export did not normalize serialized transform precision without mutating the source")
+local levelThreeExportPayload = Export.Prepare(copiedLevelThree, LevelDocument, fakeJson)
+local exportedLevelThree = levelThreeExportPayload and fakeJson.decode(levelThreeExportPayload.text)
+expect(exportedLevelThree and LevelDocument.ValidateDetailed(exportedLevelThree).valid,
+    "save/export normalization reintroduced level 3 boundary errors")
 
 local fakeFiles = {}
 local fakeAdapter = { kind = "contract-slot" }

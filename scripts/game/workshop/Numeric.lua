@@ -1,4 +1,5 @@
 local Numeric = {}
+local LevelDocument = require("game.level.LevelDocument")
 
 Numeric.INSPECTOR_DECIMALS = 2
 Numeric.PERSISTENCE_DECIMALS = 3
@@ -6,6 +7,8 @@ Numeric.PERSISTENCE_DECIMALS = 3
 local TRANSFORM_FIELDS = {
     x = true, y = true, width = true, height = true, rotation = true,
 }
+
+local PERSISTENCE_FACTOR = 10 ^ Numeric.PERSISTENCE_DECIMALS
 
 local function finite(value)
     return type(value) == "number"
@@ -63,16 +66,44 @@ function Numeric.NormalizeInspectorValue(fieldKey, value)
     return value
 end
 
+local function ceilToPersistenceGrid(value)
+    return math.ceil(value * PERSISTENCE_FACTOR) / PERSISTENCE_FACTOR
+end
+
+local function floorToPersistenceGrid(value)
+    return math.floor(value * PERSISTENCE_FACTOR) / PERSISTENCE_FACTOR
+end
+
+local function clamp(value, minimum, maximum)
+    return math.max(minimum, math.min(maximum, value))
+end
+
+-- Preserve valid legacy placements while keeping persisted transforms on the 0.001 grid.
+local function normalizeTransform(transform, playfield)
+    local wasWithinPlayfield = LevelDocument.IsTransformWithinPlayfield(transform, playfield)
+    for field in pairs(TRANSFORM_FIELDS) do
+        if finite(transform[field]) then
+            transform[field] = Numeric.Round(transform[field], Numeric.PERSISTENCE_DECIMALS)
+        end
+    end
+
+    if not wasWithinPlayfield or LevelDocument.IsTransformWithinPlayfield(transform, playfield) then return end
+
+    local extents = LevelDocument.RotatedHalfExtents(transform)
+    local minimumX = ceilToPersistenceGrid(extents.x)
+    local maximumX = floorToPersistenceGrid(playfield.width - extents.x)
+    local minimumY = ceilToPersistenceGrid(extents.y)
+    local maximumY = floorToPersistenceGrid(LevelDocument.PLAYFIELD_GROUND_Y - extents.y)
+    if minimumX <= maximumX then transform.x = clamp(transform.x, minimumX, maximumX) end
+    if minimumY <= maximumY then transform.y = clamp(transform.y, minimumY, maximumY) end
+end
+
 function Numeric.NormalizeDocument(document)
     if type(document) ~= "table" or type(document.objects) ~= "table" then return document end
     for _, object in ipairs(document.objects) do
         local transform = type(object) == "table" and object.transform or nil
         if type(transform) == "table" then
-            for field in pairs(TRANSFORM_FIELDS) do
-                if finite(transform[field]) then
-                    transform[field] = Numeric.Round(transform[field], Numeric.PERSISTENCE_DECIMALS)
-                end
-            end
+            normalizeTransform(transform, document.playfield)
         end
     end
     return document

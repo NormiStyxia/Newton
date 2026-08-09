@@ -225,7 +225,7 @@ local function ValidateEnum(report, value, values, path, label)
     return true
 end
 
-local function RotatedHalfExtents(transform)
+function LevelDocument.RotatedHalfExtents(transform)
     local radians = math.rad(transform.rotation)
     local cosValue = math.abs(math.cos(radians))
     local sinValue = math.abs(math.sin(radians))
@@ -233,6 +233,21 @@ local function RotatedHalfExtents(transform)
         x = cosValue * transform.width * 0.5 + sinValue * transform.height * 0.5,
         y = sinValue * transform.width * 0.5 + cosValue * transform.height * 0.5,
     }
+end
+
+function LevelDocument.IsTransformWithinPlayfield(transform, playfield)
+    if type(transform) ~= "table" or type(playfield) ~= "table"
+        or not IsFiniteNumber(transform.x) or not IsFiniteNumber(transform.y)
+        or not IsFiniteNumber(transform.width) or not IsFiniteNumber(transform.height)
+        or not IsFiniteNumber(transform.rotation) or not IsFiniteNumber(playfield.width) then
+        return false
+    end
+
+    local extents = LevelDocument.RotatedHalfExtents(transform)
+    return transform.x - extents.x >= -BOUNDARY_EPSILON
+        and transform.x + extents.x <= playfield.width + BOUNDARY_EPSILON
+        and transform.y - extents.y >= -BOUNDARY_EPSILON
+        and transform.y + extents.y <= LevelDocument.PLAYFIELD_GROUND_Y + BOUNDARY_EPSILON
 end
 
 local function ValidateSafeTree(report, root)
@@ -297,11 +312,7 @@ local function ValidateTransform(report, object, index, playfield)
     if not (validX and validY and validWidth and validHeight and validRotation) or type(playfield) ~= "table" then return end
     if not IsFiniteNumber(playfield.width) or not IsFiniteNumber(playfield.height) then return end
 
-    local extents = RotatedHalfExtents(transform)
-    if transform.x - extents.x < -BOUNDARY_EPSILON
-        or transform.x + extents.x > playfield.width + BOUNDARY_EPSILON
-        or transform.y - extents.y < -BOUNDARY_EPSILON
-        or transform.y + extents.y > LevelDocument.PLAYFIELD_GROUND_Y + BOUNDARY_EPSILON then
+    if not LevelDocument.IsTransformWithinPlayfield(transform, playfield) then
         Error(report, "OUT_OF_BOUNDS", prefix, tostring(object.id or index) .. " 超出可运行关卡边界")
     end
 end
