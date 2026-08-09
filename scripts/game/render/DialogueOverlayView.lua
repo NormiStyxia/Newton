@@ -23,6 +23,7 @@ local BODY_LINE_HEIGHT = 25
 local BUBBLE_PADDING_X = 16
 local BUBBLE_PADDING_TOP = 12
 local BUBBLE_PADDING_BOTTOM = 12
+local MIN_BUBBLE_WIDTH = 96
 local NAME_BUBBLE_GAP = 5
 local MESSAGE_GAP = 14
 local FOOTER_TOP_RATIO = 0.852
@@ -206,8 +207,21 @@ local function wrapText(painter, value, maxWidth, font, size)
     return lines
 end
 
+local function measureLinesWidth(painter, lines, font, size)
+    local vg = painter.vg
+    painter:UseFont(font)
+    nvgFontSize(vg, size)
+    local maximum = 0
+    for _, line in ipairs(lines) do
+        local measured = nvgTextBounds(vg, 0, 0, line, nil)
+        if type(measured) ~= "number" then measured = utf8Length(line) * size * 0.92 end
+        maximum = math.max(maximum, measured)
+    end
+    return maximum
+end
+
 local function layoutMessages(painter, messages, viewport)
-    local bubbleWidth = viewport.bubbleW
+    local maxBubbleWidth = viewport.bubbleW
     local entries = {}
     local cursorY = 6
 
@@ -219,9 +233,15 @@ local function layoutMessages(painter, messages, viewport)
         else
             local font = fontForMessage(message)
             local side = sideForMessage(message)
-            local rowBubbleWidth = side == "right" and viewport.rightBubbleW or bubbleWidth
-            local lines = wrapText(painter, message.text or "",
-                rowBubbleWidth - BUBBLE_PADDING_X * 2, font, BODY_FONT_SIZE)
+            local rowMaxBubbleWidth = side == "right" and viewport.rightBubbleW or maxBubbleWidth
+            local maxContentWidth = rowMaxBubbleWidth - BUBBLE_PADDING_X * 2
+            local naturalLines = wrapText(painter, message.text or "", math.huge, font, BODY_FONT_SIZE)
+            local naturalContentWidth = measureLinesWidth(painter, naturalLines, font, BODY_FONT_SIZE)
+            local wrapWidth = math.max(1, math.min(maxContentWidth, naturalContentWidth))
+            local lines = wrapText(painter, message.text or "", wrapWidth, font, BODY_FONT_SIZE)
+            local lineContentWidth = measureLinesWidth(painter, lines, font, BODY_FONT_SIZE)
+            local rowBubbleWidth = math.min(rowMaxBubbleWidth,
+                math.max(MIN_BUBBLE_WIDTH, lineContentWidth + BUBBLE_PADDING_X * 2))
             local textHeight = BODY_FONT_SIZE + math.max(0, #lines - 1) * BODY_LINE_HEIGHT
             local bubbleHeight = BUBBLE_PADDING_TOP + textHeight + BUBBLE_PADDING_BOTTOM
             local bubbleOffsetY = NAME_FONT_SIZE + NAME_BUBBLE_GAP
@@ -338,10 +358,9 @@ local function conversationGeometry(rect)
     viewport.avatarCenterX = avatarLeft + AVATAR_SIZE * 0.5
     viewport.bubbleX = avatarLeft + AVATAR_COLUMN_WIDTH + BUBBLE_COLUMN_GAP
     viewport.rightAvatarCenterX = contentRight - AVATAR_SIZE * 0.5
-    viewport.rightBubbleX = avatarLeft
     viewport.rightBubbleRight = contentRight - AVATAR_SIZE - BUBBLE_COLUMN_GAP
     viewport.bubbleW = math.max(80, contentRight - viewport.bubbleX)
-    viewport.rightBubbleW = math.max(80, viewport.rightBubbleRight - viewport.rightBubbleX)
+    viewport.rightBubbleW = math.max(80, viewport.rightBubbleRight - avatarLeft)
     return viewport, track
 end
 
@@ -416,7 +435,9 @@ local function drawMessage(painter, controller, entry, index, viewport, scrollOf
     local avatarBaseX = isRight and viewport.rightAvatarCenterX or viewport.avatarCenterX
     local avatarX = snapToPixel(avatarBaseX + sideOffset, pixelScale)
     local avatarY = snapToPixel(y + AVATAR_CENTER_Y_OFFSET, pixelScale)
-    local bubbleBaseX = isRight and viewport.rightBubbleX or viewport.bubbleX
+    local bubbleBaseX = isRight
+        and viewport.rightBubbleRight - entry.bubbleW
+        or viewport.bubbleX
     local bubbleX = snapToPixel(bubbleBaseX + sideOffset, pixelScale)
     local nameY = y
     local bubbleY = snapToPixel(y + entry.bubbleOffsetY, pixelScale)
