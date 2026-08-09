@@ -171,7 +171,7 @@ function M.Install(context)
             local velocity = apple_.body.linearVelocity
             local matterSpeed = CurrentMatterSpeedFromWorld(velocity)
             stalledMs_ = matterSpeed < 0.1 and stalledMs_ + dt * 1000 or 0
-            if stalledMs_ > 5200 then
+            if stalledMs_ > 10000 then
                 CaptureReplayFinalSample()
                 failed_ = true
                 launched_ = false

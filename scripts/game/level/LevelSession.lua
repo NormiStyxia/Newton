@@ -205,6 +205,15 @@ function M.Install(context)
     end
     function ResetExperiment(playResetSound)
         if not apple_ or not level_ then return end
+        -- A manual refresh after launch ends the current attempt. Count it as
+        -- a failure before the reset clears the transient experiment state.
+        if launched_ and not assistDemoActive_ then
+            CaptureReplayFinalSample()
+            failed_ = true
+            launched_ = false
+            apple_.body.bodyType = BT_STATIC
+            RegisterFailure("MANUAL_RESET")
+        end
         if level_.physicsProbe then
             level_.physicsProbe:Stop({ apple = apple_ })
         end
