@@ -182,14 +182,14 @@ local SOLUTIONS = {
             -- Bottom route: phase wall_01, wall_03 and wall_17, then rise
             -- past wall_08 and phase wall_10 into the observation dish.
             Side("RIGHT"),
-            { type = "LAUNCH", pullX = -24, pullY = -6, cursorDuration = 0.65 },
+            { type = "LAUNCH", pullX = -24, pullY = -10, cursorDuration = 0.65 },
             WaitX(280, "RIGHT", 6.0, CardTarget("quantum-phase")),
             Phase(),
             WaitX(470, "RIGHT", 6.0, CardTarget("quantum-phase")),
             Phase(),
             WaitX(750, "RIGHT", 6.0, CardTarget("quantum-phase")),
             Phase(),
-            WaitX(920, "RIGHT", 6.0, CardTarget("side-gravity")),
+            WaitX(855, "RIGHT", 6.0, CardTarget("side-gravity")),
             Side("UP"),
             WaitX(945, "RIGHT", 4.0, CardTarget("quantum-phase")),
             Phase(),
