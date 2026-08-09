@@ -117,6 +117,7 @@ function M.Install(context)
         resultReportState_ = {
             resultId = resultId,
             sourceKind = runtimeSession_ and runtimeSession_.sourceKind or "custom",
+            sourceScreen = runtimeSession_ and runtimeSession_.screen or "game",
             experimentNumber = tonumber(levelIndex_) or 1,
             levelId = levelId,
             clearCount = clearCount,

@@ -398,6 +398,8 @@ function M.Install(context)
             painter_:ImageRect(reportNext, drawZones.next.x, drawZones.next.y,
                 drawZones.next.w, drawZones.next.h, nextAlpha)
         elseif state.sourceKind ~= "official" then
+            local returnLabel = state.sourceScreen == "workshop_preview"
+                and "返回实验工坊" or "返回实验目录"
             if reportWorkshop and reportWorkshop >= 0 then
                 painter_:ImageRect(reportWorkshop, drawZones.next.x, drawZones.next.y,
                     drawZones.next.w, drawZones.next.h, alpha)
@@ -406,7 +408,7 @@ function M.Install(context)
                     4, c.primary, c.border, 1, alpha)
             end
             painter_:Text(drawZones.next.x + drawZones.next.w * 0.5,
-                drawZones.next.y + drawZones.next.h * 0.5, "返回关卡工坊", 20, c.primaryText,
+                drawZones.next.y + drawZones.next.h * 0.5, returnLabel, 20, c.primaryText,
                 NVG_ALIGN_CENTER + NVG_ALIGN_MIDDLE, "report-summary", alpha)
         end
         if state.validationMessage then
