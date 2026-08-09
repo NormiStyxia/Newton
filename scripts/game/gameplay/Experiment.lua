@@ -112,7 +112,10 @@ function M.Install(context)
                     level_.resultOverlayVisible = context.assistDemoActive_ ~= true
                 end
                 local reportState = nil
-                if not context.assistDemoActive_ and GenerateResultReport then
+                if assistedClear_ then
+                    if ClearResultReportState then ClearResultReportState() end
+                    if not context.assistDemoActive_ then isPaused_ = true end
+                elseif GenerateResultReport then
                     reportState = GenerateResultReport()
                 end
                 RecordOfficialExperimentProgress(assistedClear_, reportState)

@@ -160,12 +160,18 @@ function M.Install(context)
             NVG_ALIGN_RIGHT + NVG_ALIGN_MIDDLE, "maker-display")
     end
 
+    local function DrawHUDPaperFrame(rect)
+        if not rect then return end
+        painter_:FillRect(rect.x, rect.y, rect.w, rect.h, Renderer2D.COLORS.panel, 252)
+        painter_:StrokeRect(rect.x, rect.y, rect.w, rect.h, Renderer2D.COLORS.darkPrimary, 2)
+        painter_:StrokeRect(rect.x + 6, rect.y + 6, rect.w - 12, rect.h - 12,
+            Renderer2D.COLORS.greenLight, 1, 190)
+    end
+
     function DrawHUDDropdown()
         if not hudDropdown_ or not level_ then return end
         local rect = ResolveHUDDropdownRect(hudDropdown_)
-        painter_:FillRect(rect.x, rect.y, rect.w, rect.h, Renderer2D.COLORS.panel, 252)
-        painter_:StrokeRect(rect.x, rect.y, rect.w, rect.h, Renderer2D.COLORS.darkPrimary, 2)
-        painter_:StrokeRect(rect.x + 6, rect.y + 6, rect.w - 12, rect.h - 12, Renderer2D.COLORS.greenLight, 1, 190)
+        DrawHUDPaperFrame(rect)
         if hudDropdown_ == "rules" then
             painter_:Text(rect.x + 18, rect.y + 16, "当前生效规则", 15, Renderer2D.COLORS.secondary, nil, "report-green")
             for index, entry in ipairs(hudRuleList_) do
@@ -244,6 +250,23 @@ function M.Install(context)
                 painter_:Text(x, y - 8, label, 16, secondary and Renderer2D.COLORS.text or Renderer2D.COLORS.white, NVG_ALIGN_CENTER + NVG_ALIGN_TOP, "maker-display")
             end
             if success_ then
+                if assistedClear_ then
+                    local panelWidth = math.min(560, math.max(240, frame_.logicalWidth - 48))
+                    local panelHeight = 108
+                    local panel = {
+                        x = frame_.logicalWidth * .5 - panelWidth * .5,
+                        y = frame_.logicalHeight * .5 - panelHeight * .5,
+                        w = panelWidth,
+                        h = panelHeight,
+                    }
+                    DrawHUDPaperFrame(panel)
+                    painter_:Text(frame_.logicalWidth * .5, panel.y + panel.h * .5,
+                        "辅助观测成功", 30, Renderer2D.COLORS.text,
+                        NVG_ALIGN_CENTER + NVG_ALIGN_MIDDLE, "report-green")
+                    overlayButton(cx - 80, cy + 65, "返回目录", false)
+                    overlayButton(cx + 80, cy + 65, "再次尝试", true)
+                    return
+                end
                 painter_:RoundedRect(cx - 345, cy - 115, 690, 230, 4, Renderer2D.COLORS.panel, Renderer2D.COLORS.primaryActive, 2)
                 painter_:Text(cx, cy - 75, assistedClear_ and "辅助观测成立" or "观测成立", 42, Renderer2D.COLORS.text, NVG_ALIGN_CENTER + NVG_ALIGN_TOP, "maker-display")
                 painter_:Text(cx, cy - 6,
