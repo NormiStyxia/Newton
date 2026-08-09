@@ -1,5 +1,6 @@
 local M = {}
 local CharacterProfiles = require("ui.CharacterProfiles")
+local Renderer2D = require("game.render.Canvas")
 local SOURCE_OFFSET_X = 0
 local TITLE_FILL = { 248, 231, 206, 255 }
 local MENU = {
@@ -165,8 +166,8 @@ local SETTINGS = {
     x = 1088, y = 86, w = 656, h = 672,
     paddingX = 42,
     contentTop = 112,
-    rowHeight = 52,
-    rowGap = 12,
+    rowHeight = 58,
+    rowGap = 14,
     sliderWidth = 380,
 }
 
@@ -1003,20 +1004,20 @@ end
 
 local function drawSlider(painter, rect, label, value)
     local vg = painter.vg
-    painter:Text(rect.x, rect.y - 25, label, 19, MENU_INK, nil, "maker-body")
+    painter:Text(rect.x, rect.y - 27, label, 23, MENU_INK, nil, "maker-body")
     nvgStrokeColor(vg, nvgRGBA(109, 119, 90, 120))
-    nvgStrokeWidth(vg, 2)
+    nvgStrokeWidth(vg, 2.4)
     nvgBeginPath(vg)
     nvgMoveTo(vg, rect.x, rect.y)
     nvgLineTo(vg, rect.x + rect.w, rect.y)
     nvgStroke(vg)
     local knobX = rect.x + rect.w * clamp(value, 0, 1)
     nvgBeginPath(vg)
-    nvgCircle(vg, knobX, rect.y, 7)
+    nvgCircle(vg, knobX, rect.y, 8)
     nvgFillColor(vg, nvgRGBA(MENU_ACCENT[1], MENU_ACCENT[2], MENU_ACCENT[3], 255))
     nvgFill(vg)
     painter:Text(rect.x + rect.w + 18, rect.y, string.format("%d%%", math.floor(value * 100 + .5)),
-        17, MENU_INK, NVG_ALIGN_LEFT + NVG_ALIGN_MIDDLE, "maker-body")
+        21, MENU_INK, NVG_ALIGN_LEFT + NVG_ALIGN_MIDDLE, "maker-body")
 end
 
 local function setMusicVolume(state, context, value)
@@ -1429,41 +1430,44 @@ function M.Install(context)
         local rows = settingsRows()
         painter:FillRect(0, 0, 1870, 841, { 38, 50, 36, 255 }, 54)
         painter:FillRect(SETTINGS.x, SETTINGS.y, SETTINGS.w, SETTINGS.h, OVERLAY_FILL)
-        painter:StrokeRect(SETTINGS.x, SETTINGS.y, SETTINGS.w, SETTINGS.h, MENU_ACCENT, 1.4, 225)
-        painter:Text(SETTINGS.x + 42, SETTINGS.y + 30, "设置", 30, MENU_INK, nil, "maker-body")
-        painter:Text(SETTINGS.x + SETTINGS.w - 42, SETTINGS.y + 39, "ESC 关闭", 15, TIP_COLOR,
+        painter:StrokeRect(SETTINGS.x, SETTINGS.y, SETTINGS.w, SETTINGS.h,
+            Renderer2D.COLORS.darkPrimary, 2)
+        painter:StrokeRect(SETTINGS.x + 6, SETTINGS.y + 6, SETTINGS.w - 12, SETTINGS.h - 12,
+            Renderer2D.COLORS.greenLight, 1, 190)
+        painter:Text(SETTINGS.x + 42, SETTINGS.y + 30, "设置", 38, MENU_INK, nil, "maker-body")
+        painter:Text(SETTINGS.x + SETTINGS.w - 42, SETTINGS.y + 39, "ESC 关闭", 17, TIP_COLOR,
             NVG_ALIGN_RIGHT + NVG_ALIGN_MIDDLE, "maker-body")
-        painter:Text(rows.bgmVolume.x, rows.bgmVolume.y - 16, "音乐", 16, TIP_COLOR, nil, "maker-body")
+        painter:Text(rows.bgmVolume.x, rows.bgmVolume.y - 20, "音乐", 20, TIP_COLOR, nil, "maker-body")
         drawSlider(painter, rows.bgmVolume.slider, "音乐音量", state.bgmVolume)
         local function drawToggle(row, enabled)
-            local checkX, checkY = row.x + 18, row.y + row.h * .5
+            local checkX, checkY = row.x + 20, row.y + row.h * .5
             nvgBeginPath(vg)
-            nvgRect(vg, checkX - 10, checkY - 10, 20, 20)
+            nvgRect(vg, checkX - 11, checkY - 11, 22, 22)
             if enabled then
                 nvgFillColor(vg, nvgRGBA(MENU_ACCENT[1], MENU_ACCENT[2], MENU_ACCENT[3], 255))
                 nvgFill(vg)
             else
                 nvgStrokeColor(vg, nvgRGBA(MENU_MUTED[1], MENU_MUTED[2], MENU_MUTED[3], 190))
-                nvgStrokeWidth(vg, 1.4)
+                nvgStrokeWidth(vg, 1.6)
                 nvgStroke(vg)
             end
-            painter:Text(checkX + 30, checkY, row.label, 19, MENU_INK,
+            painter:Text(checkX + 34, checkY, row.label, 22, MENU_INK,
                 NVG_ALIGN_LEFT + NVG_ALIGN_MIDDLE, "maker-body")
         end
         drawToggle(rows.bgmMute, state.bgmMuted)
-        painter:Text(rows.sfxVolume.x, rows.sfxVolume.y - 16, "音效", 16, TIP_COLOR, nil, "maker-body")
+        painter:Text(rows.sfxVolume.x, rows.sfxVolume.y - 20, "音效", 20, TIP_COLOR, nil, "maker-body")
         drawSlider(painter, rows.sfxVolume.slider, "音效音量", state.sfxVolume)
         drawToggle(rows.sfxMute, state.sfxMuted)
 
         local trackRow = rows.trackSelector
-        painter:Text(trackRow.x, trackRow.y + 5, trackRow.label, 18, TIP_COLOR, nil, "maker-body")
+        painter:Text(trackRow.x, trackRow.y + 5, trackRow.label, 20, TIP_COLOR, nil, "maker-body")
         local title = context.getCurrentTrackTitle and context.getCurrentTrackTitle() or "未播放音乐"
         local centerX = trackRow.x + trackRow.w * .5
-        painter:Text(centerX - 150, trackRow.y + 34, "‹", 30, MENU_ACCENT,
+        painter:Text(centerX - 150, trackRow.y + 34, "‹", 36, MENU_ACCENT,
             NVG_ALIGN_CENTER + NVG_ALIGN_MIDDLE, "maker-body")
-        painter:Text(centerX, trackRow.y + 34, title, 18, MENU_INK,
+        painter:Text(centerX, trackRow.y + 34, title, 22, MENU_INK,
             NVG_ALIGN_CENTER + NVG_ALIGN_MIDDLE, "maker-body")
-        painter:Text(centerX + 150, trackRow.y + 34, "›", 30, MENU_ACCENT,
+        painter:Text(centerX + 150, trackRow.y + 34, "›", 36, MENU_ACCENT,
             NVG_ALIGN_CENTER + NVG_ALIGN_MIDDLE, "maker-body")
     end
 
