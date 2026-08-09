@@ -45,6 +45,15 @@ function M.Install(context)
     local CONFIG = context.CONFIG
     local newtonPunchShake_ = context.newtonPunchShake_
     local _ENV = context
+    local function ApplyReplayState(state)
+        if not state or not apple_ then return end
+        apple_.body.bodyType = BT_STATIC
+        apple_.node:SetPosition2D(state.x, state.y)
+        apple_.node:SetRotation2D(state.angle or 0)
+        apple_.body.linearVelocity = Vector2(0, 0)
+        apple_.body.angularVelocity = 0
+        if state.mechanisms and ApplyReplayMechanisms then ApplyReplayMechanisms(state.mechanisms) end
+    end
     function SetReplayMode(mode, businessMode)
         assert(mode == "none" or mode == "playing" or mode == "paused" or mode == "finished",
             "unknown replay mode: " .. tostring(mode))
@@ -101,6 +110,7 @@ function M.Install(context)
             if inEndButton(controls.replay) then
                 replayTime_ = 0
                 SetReplayMode("playing")
+                ApplyReplayState(ReplayStateAt(0))
                 ReplayLog("restart")
                 return
             elseif inEndButton(controls.exit) then
@@ -115,6 +125,7 @@ function M.Install(context)
             if replayFinished_ then
                 replayTime_ = 0
                 SetReplayMode("playing")
+                ApplyReplayState(ReplayStateAt(0))
                 ReplayLog("restart")
             else
                 local wasPaused = replayMode_ == "paused"
@@ -142,6 +153,7 @@ function M.Install(context)
             vx = v.x,
             vy = v.y,
             angle = apple_.node.rotation2D,
+            mechanisms = CaptureReplayMechanisms and CaptureReplayMechanisms() or nil,
         }
         local previous = replayPreviousSample_ or current
         local simulationDelta = math.max(0, dt * 1000)
@@ -156,6 +168,8 @@ function M.Install(context)
                 vx = previous.vx + (current.vx - previous.vx) * progress,
                 vy = previous.vy + (current.vy - previous.vy) * progress,
                 angle = previous.angle + deltaAngle * progress,
+                mechanisms = ReplayTimeline.InterpolateMechanisms(
+                    previous.mechanisms, current.mechanisms, progress),
             }
             replayNextSampleMs_ = replayNextSampleMs_ + CONFIG.replaySampleMs
         end
@@ -176,6 +190,7 @@ function M.Install(context)
         local p, v = apple_.node.position2D, apple_.body.linearVelocity
         replaySamples_[#replaySamples_ + 1] = {
             t = terminalTime, x = p.x, y = p.y, vx = v.x, vy = v.y, angle = apple_.node.rotation2D,
+            mechanisms = CaptureReplayMechanisms and CaptureReplayMechanisms() or nil,
         }
         replayPreviousSample_ = replaySamples_[#replaySamples_]
     end
@@ -215,6 +230,7 @@ function M.Install(context)
         replaySavedApple_ = {
             x = p.x, y = p.y, angle = apple_.node.rotation2D,
             bodyType = apple_.body.bodyType, vx = v.x, vy = v.y, angularVelocity = apple_.body.angularVelocity,
+            mechanisms = CaptureReplayMechanisms and CaptureReplayMechanisms() or nil,
         }
         SetReplayMode("playing", ReplayMode.PLAYER_REPLAY)
         absorbing_ = false
@@ -229,6 +245,7 @@ function M.Install(context)
         apple_.body.linearVelocity = Vector2(0, 0)
         apple_.body.angularVelocity = 0
         RestoreAppleContactMaterial()
+        ApplyReplayState(ReplayStateAt(0))
         SyncPhysicsUpdateEnabled()
         SetStatus("REPLAY · 轨迹回放")
         ReplayLog("start")
@@ -248,6 +265,7 @@ function M.Install(context)
             apple_.body.linearVelocity = Vector2(saved.vx, saved.vy)
             apple_.body.angularVelocity = saved.angularVelocity
             apple_.body.awake = true
+            if saved.mechanisms and ApplyReplayMechanisms then ApplyReplayMechanisms(saved.mechanisms) end
         end
         RestoreAppleContactMaterial()
         SyncPhysicsUpdateEnabled()
@@ -260,13 +278,7 @@ function M.Install(context)
         if replayMode_ ~= "playing" then return end
         replayTime_ = ReplayTimeline.Advance(replayTime_, ReplayDuration(), math.max(0, dt) * 1000, replaySpeed_)
         local state = ReplayStateAt(replayTime_)
-        if state and apple_ then
-            apple_.body.bodyType = BT_STATIC
-            apple_.node:SetPosition2D(state.x, state.y)
-            apple_.node:SetRotation2D(state.angle or 0)
-            apple_.body.linearVelocity = Vector2(0, 0)
-            apple_.body.angularVelocity = 0
-        end
+        ApplyReplayState(state)
         if replayTime_ >= ReplayDuration() then
             SetReplayMode("finished")
             ReplayLog("finished")
@@ -293,10 +305,7 @@ function M.Install(context)
         apple_.shape.trigger = false
         SetReplayMode("playing", ReplayMode.ASSIST_TAKEOVER)
         local state = ReplayStateAt(0)
-        if state then
-            apple_.node:SetPosition2D(state.x, state.y)
-            apple_.node:SetRotation2D(state.angle or 0)
-        end
+        ApplyReplayState(state)
         SyncPhysicsUpdateEnabled()
         SetStatus("ASSIST · 接管中")
         ReplayLog("assist-start")

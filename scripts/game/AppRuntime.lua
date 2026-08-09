@@ -708,7 +708,7 @@ function M.Install(context)
             BeginGameplayWorldShake(frame_)
             painter_:DrawGround(frame_)
             local goalPulseProgress = goalPulseElapsedMs_ and math.max(0, math.min(1, goalPulseElapsedMs_ / 460)) or nil
-            if runtime_ then for _, object in ipairs(runtime_.ordered) do painter_:DrawObject(frame_, object, { sensorAngle = sensorAngle_, success = success_ and not replayActive_, goalPulseProgress = goalPulseProgress }, context.design_, mapper_) end end
+            if runtime_ then for _, object in ipairs(runtime_.ordered) do painter_:DrawObject(frame_, object, { sensorAngle = sensorAngle_, success = success_ and not replayActive_, goalPulseProgress = goalPulseProgress, replayActive = replayActive_ }, context.design_, mapper_) end end
             if not replayActive_ then
                 DrawTrail()
                 DrawCardPrediction()

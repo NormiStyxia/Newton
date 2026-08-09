@@ -83,8 +83,9 @@ function M.Install(context)
         -- Field cards can be deployed while the apple is still mounted. Their
         -- t=0 events already belong to this attempt and must survive launch.
         replayNextSampleMs_ = CONFIG.replaySampleMs
-        replayPreviousSample_ = replaySamples_[1]
         SetGravity()
+        replaySamples_[1].mechanisms = CaptureReplayMechanisms and CaptureReplayMechanisms() or nil
+        replayPreviousSample_ = replaySamples_[1]
         SetStatus("FLIGHT · 规则已生效")
         PlaySound("launch")
     end

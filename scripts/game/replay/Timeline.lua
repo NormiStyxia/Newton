@@ -6,6 +6,51 @@ local function InterpolateAngle(from, to, progress)
     return from + delta * progress
 end
 
+local function CopyState(state)
+    local copy = {}
+    for key, value in pairs(state or {}) do copy[key] = value end
+    return copy
+end
+
+---@param fromStates table[]|nil
+---@param toStates table[]|nil
+---@param progress number
+---@return table[]|nil
+function ReplayTimeline.InterpolateMechanisms(fromStates, toStates, progress)
+    if type(fromStates) ~= "table" and type(toStates) ~= "table" then return nil end
+    fromStates = type(fromStates) == "table" and fromStates or toStates
+    toStates = type(toStates) == "table" and toStates or fromStates
+    progress = math.max(0, math.min(1, progress or 0))
+
+    local fromById = {}
+    for _, state in ipairs(fromStates or {}) do fromById[state.id] = state end
+
+    local result, included = {}, {}
+    for _, toState in ipairs(toStates or {}) do
+        local fromState = fromById[toState.id] or toState
+        local state = CopyState(progress < 1 and fromState or toState)
+        if toState.type == "door" and type(fromState.openness) == "number"
+            and type(toState.openness) == "number" then
+            state.openness = fromState.openness + (toState.openness - fromState.openness) * progress
+            local delta = toState.openness - fromState.openness
+            if math.abs(delta) > .0001 then state.state = delta > 0 and "OPENING" or "CLOSING" end
+        elseif toState.type == "goal_sensor" then
+            local fromContactMs = tonumber(fromState.contactMs) or 0
+            local toContactMs = tonumber(toState.contactMs) or fromContactMs
+            local fromProgress = tonumber(fromState.contactProgress) or 0
+            local toProgress = tonumber(toState.contactProgress) or fromProgress
+            state.contactMs = fromContactMs + (toContactMs - fromContactMs) * progress
+            state.contactProgress = fromProgress + (toProgress - fromProgress) * progress
+        end
+        result[#result + 1] = state
+        included[state.id] = true
+    end
+    for _, fromState in ipairs(fromStates or {}) do
+        if not included[fromState.id] then result[#result + 1] = CopyState(fromState) end
+    end
+    return result
+end
+
 ---@param playhead number
 ---@param duration number
 ---@param frameDeltaMs number
@@ -41,6 +86,7 @@ function ReplayTimeline.StateAt(samples, playhead)
         vx = from.vx + (to.vx - from.vx) * progress,
         vy = from.vy + (to.vy - from.vy) * progress,
         angle = InterpolateAngle(from.angle, to.angle, progress),
+        mechanisms = ReplayTimeline.InterpolateMechanisms(from.mechanisms, to.mechanisms, progress),
     }
 end
 

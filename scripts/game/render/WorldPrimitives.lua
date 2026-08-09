@@ -501,7 +501,24 @@ function M.Install(Renderer, COLORS, color, tint)
             end
             nvgRestore(self.vg)
         elseif object.type == "door" then
-            local alpha = object.openness == 1 and 51 or 255
+            local openness = math.max(0, math.min(1, object.openness or 0))
+            local alpha = state.replayActive and math.floor(255 - openness * 148)
+                or (openness == 1 and 51 or 255)
+            if state.replayActive and openness > .001 then
+                local closedX, closedY = design:WorldToLogical(object.worldX, object.worldY)
+                nvgStrokeColor(self.vg, color(COLORS.primaryActive, 178))
+                nvgStrokeWidth(self.vg, 3)
+                nvgBeginPath(self.vg)
+                nvgMoveTo(self.vg, closedX, closedY)
+                nvgLineTo(self.vg, x, y)
+                nvgStroke(self.vg)
+                nvgSave(self.vg)
+                nvgTranslate(self.vg, closedX, closedY)
+                nvgRotate(self.vg, rotation)
+                self:StrokeRect(-w * .5, -h * .5, w, h, COLORS.primaryActive, 2, 128)
+                nvgRestore(self.vg)
+                self:Circle(x, y, 5, COLORS.primaryActive, COLORS.white, 1, 238)
+            end
             nvgSave(self.vg)
             nvgTranslate(self.vg, x, y)
             nvgRotate(self.vg, rotation)
@@ -544,12 +561,19 @@ function M.Install(Renderer, COLORS, color, tint)
             nvgRestore(self.vg)
         elseif object.type == "button" then
             local visualState = object.active and "ACTIVE" or (object.contactCount > 0 and not object.conditionSatisfied and "CONTACT_INVALID" or "IDLE")
+            local replayActive = state.replayActive == true
             nvgSave(self.vg); nvgTranslate(self.vg, x, y); nvgRotate(self.vg, rotation)
             self:FillRect(-w * .5, -h * .5, w, h, COLORS.darkPrimary)
-            self:StrokeRect(-w * .5, -h * .5, w, h, COLORS.darkSecondary, 2)
+            self:StrokeRect(-w * .5, -h * .5, w, h,
+                replayActive and visualState == "ACTIVE" and COLORS.primaryActive or COLORS.darkSecondary,
+                replayActive and visualState == "ACTIVE" and 4 or 2)
             local plateY = object.active and 1 or -h * .18
             local plate = visualState == "ACTIVE" and COLORS.primaryActive or (visualState == "CONTACT_INVALID" and COLORS.playfieldAccent or COLORS.warningActive)
             self:FillRect(-math.max(12, w - 12) * .5, plateY - math.max(6, h * .45) * .5, math.max(12, w - 12), math.max(6, h * .45), plate)
+            if replayActive and visualState == "ACTIVE" then
+                self:StrokeRect(-math.max(12, w - 12) * .5, plateY - math.max(6, h * .45) * .5,
+                    math.max(12, w - 12), math.max(6, h * .45), COLORS.white, 2, 220)
+            end
             if visualState == "CONTACT_INVALID" then self:FillRect(-math.max(10, w - 20) * .5, h * .3 - 1, math.max(10, w - 20), 2, COLORS.greenStrong, 184) end
             nvgRestore(self.vg)
         end

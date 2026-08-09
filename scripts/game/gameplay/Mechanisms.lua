@@ -20,6 +20,58 @@ function M.Install(context)
             object.worldY + oy * object.openness
         )
     end
+    function CaptureReplayMechanisms()
+        local snapshot = {}
+        if not runtime_ then return snapshot end
+        for _, object in ipairs(runtime_.ordered) do
+            if object.type == "button" then
+                snapshot[#snapshot + 1] = {
+                    id = object.id,
+                    type = object.type,
+                    active = object.active == true,
+                    contactCount = object.contactCount or 0,
+                    conditionSatisfied = object.conditionSatisfied == true,
+                }
+            elseif object.type == "door" then
+                snapshot[#snapshot + 1] = {
+                    id = object.id,
+                    type = object.type,
+                    openness = object.openness or 0,
+                    targetOpen = object.targetOpen == true,
+                    state = object.state,
+                }
+            elseif object.type == "goal_sensor" then
+                snapshot[#snapshot + 1] = {
+                    id = object.id,
+                    type = object.type,
+                    active = object.active == true,
+                    contactMs = object.contactMs or 0,
+                    contactProgress = object.contactProgress or 0,
+                }
+            end
+        end
+        return snapshot
+    end
+    function ApplyReplayMechanisms(snapshot)
+        if not runtime_ or type(snapshot) ~= "table" then return end
+        for _, state in ipairs(snapshot) do
+            local object = runtime_.byId[state.id]
+            if object and object.type == "button" and state.type == "button" then
+                object.active = state.active == true
+                object.contactCount = math.max(0, state.contactCount or 0)
+                object.conditionSatisfied = state.conditionSatisfied == true
+            elseif object and object.type == "door" and state.type == "door" then
+                object.openness = math.max(0, math.min(1, state.openness or 0))
+                object.targetOpen = state.targetOpen == true
+                object.state = state.state or (object.openness >= 1 and "OPEN" or "CLOSED")
+                ApplyDoorPose(object)
+            elseif object and object.type == "goal_sensor" and state.type == "goal_sensor" then
+                object.active = state.active == true
+                object.contactMs = math.max(0, state.contactMs or 0)
+                object.contactProgress = math.max(0, math.min(1, state.contactProgress or 0))
+            end
+        end
+    end
     function DoorBlockedByApple(object)
         if not apple_ then return false end
         local openX, openY = DoorOpenVector(object)
