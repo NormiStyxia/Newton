@@ -26,7 +26,6 @@ function M.Install(context)
     local newtonPunchShake_ = context.newtonPunchShake_
     local lastValidPhysicsTimeStep = 1 / 60
     local frameScreen_ = nil
-    local lastMusicScreen_ = nil
     local _ENV = context
 
     local function currentNavigationTransition()
@@ -70,23 +69,6 @@ function M.Install(context)
         end
         return lastValidPhysicsTimeStep
     end
-    local function musicContextForScreen(screen)
-        if screen == "title" or screen == "title_catalog_transition" or screen == "catalog" then
-            return "academy"
-        end
-        if screen == "workshop" or screen == "game" then return "gameplay" end
-        -- workshop_preview intentionally inherits the editor's context.
-        return nil
-    end
-
-    local function SyncMusicContext()
-        local desired = musicContextForScreen(screen_)
-        if desired and desired ~= lastMusicScreen_ then
-            context.setMusicContext(desired, { showNowPlaying = lastMusicScreen_ ~= nil })
-            lastMusicScreen_ = desired
-        end
-    end
-
     local function StartGlobalBGM()
         return context.setMusicContext("academy", { showNowPlaying = false, fadeIn = 0.45 })
     end
@@ -235,7 +217,6 @@ function M.Install(context)
         -- The catalog uses the same fixed 1880 x 840 stage as gameplay, so its
         -- authored artwork is centered on taller viewports from the first frame.
         screen_ = "title"
-        lastMusicScreen_ = nil
         frame_ = FrameForCurrentScreen()
         context.InitializeDialogue()
         context.InitializeTutorial()
@@ -278,7 +259,6 @@ function M.Install(context)
     ---@param eventData UpdateEventData
     function HandleUpdate(_eventType, eventData)
         local dt = eventData:GetFloat("TimeStep")
-        SyncMusicContext()
         if context.audioManager_ then context.audioManager_:Update(dt)
         else context.globalBGM_:Update(dt) end
         frame_ = FrameForCurrentScreen()
