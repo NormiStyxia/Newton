@@ -247,16 +247,22 @@ function M.Install(context)
     -- separate depth-67 element and must not be painted into this lower pass.
     function DrawPauseStatus()
         if assistSceneActive_ or replayMode_ ~= "none" or not isPaused_ then return end
+        local label = "\u{5B9E}\u{9A8C}\u{6682}\u{505C} \u{00B7} \u{89C4}\u{5219}\u{5361}\u{4ECD}\u{53EF}\u{64CD}\u{4F5C}"
+        local fontSize = 18
         local right = frame_.playfieldX + frame_.playfieldWidth - 24
         local top = frame_.playfieldY + 16
-        painter_:FillRect(right - 196, top, 196, 24, Renderer2D.COLORS.panel, 255)
+        local width = math.max(284,
+            math.ceil(textWidth(label, fontSize, "maker-display")) + 48)
+        local rect = { x = right - width, y = top, w = width, h = 48 }
+        DrawHUDPaperFrame(rect)
         painter_:Text(
-            right - 9,
-            top + 3,
-            "\u{5B9E}\u{9A8C}\u{6682}\u{505C} \u{00B7} \u{89C4}\u{5219}\u{5361}\u{4ECD}\u{53EF}\u{64CD}\u{4F5C}",
-            13,
+            rect.x + rect.w * .5,
+            rect.y + rect.h * .5,
+            label,
+            fontSize,
             Renderer2D.COLORS.text,
-            NVG_ALIGN_RIGHT + NVG_ALIGN_TOP
+            NVG_ALIGN_CENTER + NVG_ALIGN_MIDDLE,
+            "maker-display"
         )
     end
     function DrawResultOverlay()
