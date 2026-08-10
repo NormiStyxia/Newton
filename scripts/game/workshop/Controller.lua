@@ -2,6 +2,7 @@ local Repository = require("game.workshop.Repository")
 local History = require("game.workshop.History")
 local DraftStore = require("game.workshop.DraftStore")
 local CustomLevelCloudSync = require("game.workshop.CustomLevelCloudSync")
+local DraftCloudSync = require("game.workshop.DraftCloudSync")
 local Export = require("game.workshop.Export")
 local Layout = require("game.workshop.Layout")
 local Interaction = require("game.workshop.Interaction")
@@ -101,6 +102,29 @@ function M.Install(context)
         refreshEntries()
         refreshCatalog(metadata and metadata.entryId or nil)
     end
+    local function persistRemoteDraft(envelope)
+        local current = state()
+        if not current.draftStore or type(envelope) ~= "table" or type(envelope.document) ~= "table" then return end
+        if current.document and current.document.levelId == envelope.levelId and current.dirty then
+            print("[WorkshopCloud] 当前关卡正在编辑，保留本地草稿")
+            return
+        end
+        local restored, result = current.draftStore:RestoreDraft(envelope)
+        if not restored then
+            print("[WorkshopCloud] 云草稿恢复失败：" .. tostring(result))
+            return
+        end
+        if result.restored and current.document and current.document.levelId == envelope.levelId
+            and not current.modal then
+            current.modal = {
+                kind = "recovery",
+                title = "发现云端未完成草稿",
+                message = string.format("%s\n最后同步：%s\n可继续、放弃，或另存为新关卡。",
+                    envelope.document.name or envelope.levelId, nowText(envelope.updatedAt)),
+                draft = clone(LevelDocument, envelope),
+            }
+        end
+    end
     local function refreshSelection()
         local current = state()
         Selection.Normalize(current, current.document)
@@ -118,10 +142,17 @@ function M.Install(context)
         current.canUndo = current.history and current.history:CanUndo() or false
         current.canRedo = current.history and current.history:CanRedo() or false
     end
+    local function markDraftCloudDirty(current)
+        current.cloudDraftRevision = (current.cloudDraftRevision or 0) + 1
+        if not current.cloudDraftSyncDue then
+            current.cloudDraftSyncDue = current.elapsed + (current.cloudDraftSyncInterval or 30)
+        end
+    end
     local function markChanged(label)
         local current = state()
         current.dirty = true
         current.autoSaveDue = current.elapsed + current.autoSaveDelay
+        markDraftCloudDirty(current)
         current.history:Push(current.document, current.view, label)
         refreshSelection()
         refreshValidation()
@@ -159,6 +190,60 @@ function M.Install(context)
             or ((reason or "草稿已保存在运行内存") .. " · 本地槽位不可用")
         return true
     end
+    local function syncDraftToCloud(reason, draftAlreadySaved)
+        local current = state()
+        if not current.document or current.readOnly or not current.dirty then return true end
+        if not draftAlreadySaved and not saveDraft() then return false end
+        local envelope, loadError = current.draftStore:LoadDraft(current.document.levelId)
+        if not envelope then
+            current.cloudDraftSyncDue = current.elapsed + (current.cloudDraftSyncInterval or 30)
+            current.status = "云草稿同步未启动：" .. tostring(loadError)
+            return false
+        end
+        local levelId = current.document.levelId
+        local revision = current.cloudDraftRevision or 0
+        current.cloudDraftSyncDue = nil
+        local queued, queueError = current.draftCloudSync:QueueSave(envelope, function(ok, errorMessage)
+            local latest = state()
+            if ok then
+                latest.cloudDraftSyncedRevision = math.max(latest.cloudDraftSyncedRevision or 0, revision)
+                if latest.document and latest.document.levelId == levelId and latest.dirty
+                    and (latest.cloudDraftRevision or 0) <= revision then
+                    latest.status = reason or "草稿已自动同步云端"
+                end
+            else
+                print("[WorkshopCloud] 云草稿同步失败：" .. tostring(errorMessage))
+            end
+            if latest.document and latest.document.levelId == levelId and latest.dirty
+                and (latest.cloudDraftRevision or 0) > (latest.cloudDraftSyncedRevision or 0)
+                and not latest.cloudDraftSyncDue then
+                latest.cloudDraftSyncDue = latest.elapsed + (latest.cloudDraftSyncInterval or 30)
+            end
+        end)
+        if not queued then
+            current.cloudDraftSyncDue = current.elapsed + (current.cloudDraftSyncInterval or 30)
+            current.status = "草稿已保存在本地 · 云同步未启动：" .. tostring(queueError)
+            return false
+        end
+        current.status = "草稿已保存 · 正在同步云端"
+        return true
+    end
+    local function saveDraftAndSync(reason)
+        if not saveDraft(reason) then return false end
+        syncDraftToCloud(reason or "草稿已同步云端", true)
+        return true
+    end
+    local function deleteCloudDraft(levelId)
+        local current = state()
+        if not current.draftCloudSync then return false end
+        local queued, errorMessage = current.draftCloudSync:QueueDelete(levelId, function(ok, reason)
+            if not ok then print("[WorkshopCloud] 云草稿删除失败：" .. tostring(reason)) end
+        end)
+        if not queued and errorMessage ~= "云草稿服务不可用" then
+            print("[WorkshopCloud] 云草稿删除未启动：" .. tostring(errorMessage))
+        end
+        return queued
+    end
     local function openEntryNow(entryId, options)
         options = options or {}
         local current = state()
@@ -172,6 +257,10 @@ function M.Install(context)
         current.view = options.viewState and clone(LevelDocument, options.viewState) or DocumentActions.NewViewState()
         if current.layout and current.layout.folded then current.view.drawerMode = "files" end
         current.dirty = options.dirty == true
+        current.cloudDraftRevision = current.dirty and 1 or 0
+        current.cloudDraftSyncedRevision = 0
+        current.cloudDraftSyncDue = current.dirty
+            and current.elapsed + (current.cloudDraftSyncInterval or 30) or nil
         current.transaction, current.touchScroll, current.textEdit = nil, nil, nil
         current.history:Reset(current.document, current.view, "打开关卡")
         refreshValidation()
@@ -228,6 +317,10 @@ function M.Install(context)
             state = type(syncState) == "table" and syncState or nil,
             onRemoteRecord = persistRemoteRecord,
         })
+        current.draftCloudSync = DraftCloudSync.New({
+            levelDocument = LevelDocument,
+            json = cjson,
+        })
         current.supportedTypes = LevelDocument.SupportedTypes()
         current.initializationErrors = current.repository:InitializeOfficial(CONFIG.levelCount, function(index)
             local document, errorMessage = LevelData.Load(string.format("Data/Levels/level_%02d.json", index))
@@ -250,6 +343,14 @@ function M.Install(context)
                 print("[WorkshopCloud] 同账号自制实验同步完成")
             else
                 print("[WorkshopCloud] 使用本地自制实验：" .. tostring(errorMessage))
+            end
+        end)
+        current.draftCloudSync:Refresh(function(ok, draftsOrError)
+            if ok then
+                for _, envelope in pairs(draftsOrError or {}) do persistRemoteDraft(envelope) end
+                print("[WorkshopCloud] 同账号关卡草稿同步完成")
+            else
+                print("[WorkshopCloud] 使用本地关卡草稿：" .. tostring(draftsOrError))
             end
         end)
         return #current.initializationErrors == 0
@@ -290,7 +391,10 @@ function M.Install(context)
         if not ok then toast("保存失败：" .. tostring(persistence)); return false end
         local cloudQueued, cloudError = current.cloudSync:QueueSave(current.document)
         local draftDeleted, draftDeleteError = current.draftStore:DeleteDraft(current.document.levelId)
+        deleteCloudDraft(current.document.levelId)
         current.dirty, current.autoSaveDue = false, nil
+        current.cloudDraftSyncDue = nil
+        current.cloudDraftRevision, current.cloudDraftSyncedRevision = 0, 0
         current.persistenceKind = current.draftStore:PersistenceKind()
         refreshEntries()
         if not draftDeleted then
@@ -324,6 +428,7 @@ function M.Install(context)
         openEntryNow(metadata.entryId, { skipRecovery = true })
         state().dirty = true
         state().autoSaveDue = state().elapsed + state().autoSaveDelay
+        markDraftCloudDirty(state())
         state().history:Push(state().document, state().view, copyCurrent and "复制关卡" or "新建关卡")
         refreshHistoryFlags()
         toast(copyCurrent and "已创建可编辑副本" or "已创建新关卡")
@@ -339,6 +444,7 @@ function M.Install(context)
             current.entryId, levelId)
         if not ok then toast(errorMessage); return false end
         if entityId then current.cloudSync:QueueDelete(entityId) end
+        deleteCloudDraft(levelId)
         current.modal, current.dirty = nil, false
         refreshEntries()
         local target = current.entries[1] and current.entries[1].entryId
@@ -354,6 +460,7 @@ function M.Install(context)
         current.document, current.view = document, viewState
         current.dirty, current.textEdit = true, nil
         current.autoSaveDue = current.elapsed + current.autoSaveDelay
+        markDraftCloudDirty(current)
         refreshSelection(); refreshValidation(); rebuildUI()
         current.status = "已撤销"
     end
@@ -365,6 +472,7 @@ function M.Install(context)
         current.document, current.view = document, viewState
         current.dirty, current.textEdit = true, nil
         current.autoSaveDue = current.elapsed + current.autoSaveDelay
+        markDraftCloudDirty(current)
         refreshSelection(); refreshValidation(); rebuildUI()
         current.status = "已重做"
     end
@@ -567,7 +675,7 @@ function M.Install(context)
         local report = LevelDocument.ValidateDetailed(current.document)
         current.validation = report
         if not report.valid then toast("无法预览：" .. report.errors[1].message, 5); return false end
-        saveDraft("预览前草稿已保存")
+        saveDraftAndSync("预览前草稿已同步云端")
         Selection.Clear(current)
         local started, errorMessage = PreviewSession.Begin(context, LevelDocument, current)
         if not started then
@@ -613,12 +721,15 @@ function M.Install(context)
         local current = state()
         local modal = current.modal
         if action == "cancel" then current.modal = nil; rebuildUI(); return end
-        if action == "save" and not saveDraft("草稿已保存") then return end
-        if action == "save" then current.dirty, current.autoSaveDue = false, nil end
+        if action == "save" and not saveDraftAndSync("草稿已同步云端") then return end
+        if action == "save" then
+            current.dirty, current.autoSaveDue, current.cloudDraftSyncDue = false, nil, nil
+        end
         if action == "discard" then
             if current.document and not current.readOnly then
                 local deleted, errorMessage = current.draftStore:DeleteDraft(current.document.levelId)
                 if not deleted then toast("放弃失败：" .. tostring(errorMessage), 5); return end
+                deleteCloudDraft(current.document.levelId)
             end
             current.dirty = false
         end
@@ -641,11 +752,13 @@ function M.Install(context)
                 or DocumentActions.NewViewState()
             current.dirty = true
             current.autoSaveDue = current.elapsed + current.autoSaveDelay
+            markDraftCloudDirty(current)
             current.history:Reset(current.document, current.view, "恢复草稿")
             current.status = "已恢复未完成草稿"
         elseif action == "discard" then
             local deleted, errorMessage = current.draftStore:DeleteDraft(current.document.levelId)
             if not deleted then toast("放弃草稿失败：" .. tostring(errorMessage), 5); return end
+            deleteCloudDraft(current.document.levelId)
             current.status = "草稿已放弃"
         elseif action == "saveAs" then
             local imported, metadata = current.repository:ImportAsCustom(draft.document, (draft.document.name or "未命名实验") .. " 恢复副本")
@@ -658,10 +771,12 @@ function M.Install(context)
             end
             local deleted, errorMessage = current.draftStore:DeleteDraft(draft.levelId)
             if not deleted then toast("恢复副本已保存，但旧草稿清理失败：" .. tostring(errorMessage), 5) end
+            deleteCloudDraft(draft.levelId)
             current.modal = nil; refreshEntries(); openEntryNow(metadata.entryId, { skipRecovery = true })
             state().dirty = true; state().history:Push(state().document, state().view, "草稿另存")
             state().cloudSync:QueueSave(imported)
             state().autoSaveDue = state().elapsed + state().autoSaveDelay
+            markDraftCloudDirty(state())
             rebuildUI(); return
         end
         current.modal = nil
@@ -705,7 +820,8 @@ function M.Install(context)
         if not isControlEnabled(id, current) then return false end
         playUIClick()
         if id == "exit" then leaveWorkshop()
-        elseif id == "draft" then if editable() and saveDraft("草稿已手动保存") then toast("草稿已保存") end
+        elseif id == "draft" then
+            if editable() and saveDraftAndSync("草稿已手动同步云端") then toast("草稿已保存") end
         elseif id == "save" then SaveWorkshopCurrent()
         elseif id == "export" then openExport()
         elseif id == "import" then openImport()
@@ -785,6 +901,9 @@ function M.Install(context)
         if current.dirty and current.autoSaveDue and current.elapsed >= current.autoSaveDue then
             current.autoSaveDue = nil; saveDraft("草稿已自动保存")
         end
+        if current.dirty and current.cloudDraftSyncDue and current.elapsed >= current.cloudDraftSyncDue then
+            syncDraftToCloud("草稿已自动同步云端")
+        end
         rebuildUI()
         if not current.layout.supported then
             if input:GetKeyPress(KEY_ESCAPE) then
@@ -839,18 +958,18 @@ function M.Install(context)
             return
         end
         if textEditing then
-            if pointerFrame.pressed then
-                for _, row in ipairs(current.controls.inspectorRows or {}) do
-                    if View.PointIn(row.rect, x, y) then
-                        if current.textEdit and current.textEdit.fieldKey == row.field.key then
-                            View.PlaceTextCursor(context.painter_, current.textEdit, row.valueRect or row.rect,
-                                x, current.elapsed)
-                        elseif commitTextEdit() then handleInspectorRow(row, x) end
-                        return
-                    end
+            if not pointerFrame.pressed then return end
+            for _, row in ipairs(current.controls.inspectorRows or {}) do
+                if current.textEdit and current.textEdit.fieldKey == row.field.key
+                    and View.PointIn(row.rect, x, y) then
+                    View.PlaceTextCursor(context.painter_, current.textEdit, row.valueRect or row.rect,
+                        x, current.elapsed)
+                    return
                 end
             end
-            return
+            -- A press outside the active field behaves like Return. On success the
+            -- same press continues through normal control/canvas dispatch below.
+            if not commitTextEdit() then return end
         end
         if input:GetKeyDown(KEY_CTRL) and input:GetKeyPress(KEY_S) then SaveWorkshopCurrent(); return end
         if input:GetKeyDown(KEY_CTRL) and input:GetKeyDown(KEY_SHIFT) and input:GetKeyPress(KEY_Z) then redo(); return end
@@ -897,7 +1016,7 @@ function M.Install(context)
     end
 
     function ShutdownLevelWorkshop()
-        if state().initialized then saveDraft("退出前草稿已保存") end
+        if state().initialized then saveDraftAndSync("退出前草稿已同步云端") end
         Selection.Clear(state())
         state().canvasTool = "pan"
         if input then input:SetScreenKeyboardVisible(false) end
@@ -947,7 +1066,7 @@ function M.Install(context)
     function WorkshopDuplicateSelected() return duplicateSelected() end
     function WorkshopUndo() return undo() end
     function WorkshopRedo() return redo() end
-    function WorkshopSaveDraft() return saveDraft("草稿已手动保存") end
+    function WorkshopSaveDraft() return saveDraftAndSync("草稿已手动同步云端") end
     function WorkshopPrepareExport() return Export.Prepare(state().document, LevelDocument, cjson) end
     function WorkshopOpenImport() openImport(); return true end
     function WorkshopPasteImport() return pasteImportClipboard() end

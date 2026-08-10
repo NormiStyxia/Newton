@@ -63,9 +63,9 @@ end
 
 renderer = { viewports = 0 }
 function renderer:SetNumViewports(value) self.viewports = value end
-input = {}
+input = { keyboardVisible = false }
 input.mouseMoveWheel = 0
-function input:SetScreenKeyboardVisible(_) end
+function input:SetScreenKeyboardVisible(value) self.keyboardVisible = value == true end
 function input:GetKeyDown(key) return self.downKeys and self.downKeys[key] == true or false end
 KEY_ESCAPE, KEY_CTRL, KEY_S, KEY_Z, KEY_Y, KEY_D, KEY_DELETE = 27, 1000, 83, 90, 89, 68, 127
 KEY_C = 67
@@ -340,9 +340,40 @@ expect(restartedContext.workshopState_.repository:GetEntry("custom:custom_001") 
     "copied custom level was orphaned after a simulated restart")
 local officialName = workshop.repository:Open("official:level_01").name
 workshop.document.name = "主策编辑版"
+local formalNameBeforeDraftSync = workshop.repository:GetEntry(workshop.entryId).name
+local uploadedCloudDraft, deletedCloudDraftId = nil, nil
+workshop.draftCloudSync = {
+    QueueSave = function(_, envelope, callback)
+        uploadedCloudDraft = LevelDocument.Clone(envelope)
+        if callback then callback(true, nil) end
+        return true, nil
+    end,
+    QueueDelete = function(_, levelId, callback)
+        deletedCloudDraftId = levelId
+        if callback then callback(true, nil) end
+        return true, nil
+    end,
+}
+context.UpdateLevelWorkshop(29.9, idlePointer())
+expect(uploadedCloudDraft == nil,
+    "cloud draft sync ran before the 30-second interval elapsed")
+context.UpdateLevelWorkshop(0.2, idlePointer())
+local listedNameAfterDraftSync = nil
+for _, entry in ipairs(workshop.entries) do
+    if entry.entryId == workshop.entryId then listedNameAfterDraftSync = entry.name; break end
+end
+expect(workshop.cloudDraftSyncInterval == 30 and uploadedCloudDraft
+    and uploadedCloudDraft.document.name == "主策编辑版" and workshop.dirty,
+    "dirty editor document was not automatically synced to the cloud draft slot after 30 seconds")
+expect(workshop.repository:GetEntry(workshop.entryId).name == formalNameBeforeDraftSync
+    and listedNameAfterDraftSync == formalNameBeforeDraftSync,
+    "cloud draft sync changed the formal level selection before Save Level was chosen")
 expect(context.SaveWorkshopCurrent(), "custom level formal save failed")
 expect(not workshop.dirty and workshop.repository:Open("official:level_01").name == officialName,
     "custom save polluted official data")
+expect(workshop.repository:GetEntry(workshop.entryId).name == "主策编辑版"
+    and deletedCloudDraftId == workshop.document.levelId,
+    "Save Level did not publish the formal name or clear its separate cloud draft")
 
 local countBefore = #workshop.document.objects
 context.WorkshopAddObject("wall")
@@ -487,6 +518,43 @@ clickRect(context, workshop, inspectorRow(context, workshop, "transform.width").
 replaceTextAndCommit(context, workshop, "180.1234567")
 expect(math.abs(workshop.selectedObject.transform.width - 180.123) < 1e-9,
     "Inspector number edit did not normalize width to three decimals")
+
+clickRect(context, workshop, inspectorRow(context, workshop, "transform.width").rect)
+expect(workshop.textEdit ~= nil and input.keyboardVisible,
+    "Inspector number edit did not acquire text focus")
+workshop.textEdit.value, workshop.textEdit.selectAll = "181.2349", false
+local statusBar = workshop.layout.bottom
+clickWorkspace(context, workshop, statusBar.x + statusBar.w * 0.5, statusBar.y + statusBar.h * 0.5)
+expect(workshop.textEdit == nil and not input.keyboardVisible
+    and math.abs(workshop.selectedObject.transform.width - 181.235) < 1e-9,
+    "clicking blank workspace did not commit and release Inspector text focus")
+
+clickRect(context, workshop, inspectorRow(context, workshop, "transform.width").rect)
+workshop.textEdit.value, workshop.textEdit.selectAll = "182.3456", false
+clickWorkspace(context, workshop, statusBar.x + statusBar.w * 0.5, statusBar.y + statusBar.h * 0.5, true)
+expect(workshop.textEdit == nil and not input.keyboardVisible
+    and math.abs(workshop.selectedObject.transform.width - 182.346) < 1e-9,
+    "touching blank workspace did not commit and release Inspector text focus")
+
+clickRect(context, workshop, inspectorRow(context, workshop, "transform.width").rect)
+workshop.textEdit.value, workshop.textEdit.selectAll = "183.4567", false
+local gridBeforeOutsideCommit = workshop.view.showGrid
+clickControl(context, workshop, "grid")
+expect(workshop.textEdit == nil and math.abs(workshop.selectedObject.transform.width - 183.457) < 1e-9
+    and workshop.view.showGrid ~= gridBeforeOutsideCommit,
+    "outside-click commit did not continue dispatching the clicked workshop control")
+clickControl(context, workshop, "grid")
+
+clickRect(context, workshop, inspectorRow(context, workshop, "transform.width").rect)
+workshop.textEdit.value, workshop.textEdit.selectAll = "not-a-number", false
+clickWorkspace(context, workshop, statusBar.x + statusBar.w * 0.5, statusBar.y + statusBar.h * 0.5)
+expect(workshop.textEdit ~= nil and input.keyboardVisible
+    and math.abs(workshop.selectedObject.transform.width - 183.457) < 1e-9,
+    "invalid outside-click commit discarded the edit or changed the field")
+input.pressedKey = KEY_ESCAPE
+updateWorkshop(context)
+expect(workshop.textEdit == nil and not input.keyboardVisible,
+    "Escape did not cancel the invalid Inspector edit after outside-click validation")
 
 local collisionBefore = workshop.selectedObject.properties.collisionEnabled
 clickRect(context, workshop, inspectorRow(context, workshop, "properties.collisionEnabled").rect)

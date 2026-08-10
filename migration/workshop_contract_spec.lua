@@ -10,6 +10,7 @@ local LevelDocument = require("game.level.LevelDocument")
 local Repository = require("game.workshop.Repository")
 local History = require("game.workshop.History")
 local DraftStore = require("game.workshop.DraftStore")
+local DraftCloudSync = require("game.workshop.DraftCloudSync")
 local Export = require("game.workshop.Export")
 local Layout = require("game.workshop.Layout")
 local Interaction = require("game.workshop.Interaction")
@@ -384,6 +385,60 @@ draftDocument.name = "运行时变更"
 local loadedDraft = store:LoadDraft("custom_draft")
 expect(loadedDraft.document.name == "未完成" and loadedDraft.viewState.zoom == 1.2, "draft leaked mutable state")
 expect(#store:ListDrafts() == 1, "draft list mismatch")
+
+local cloudValues, cloudGetCount, cloudSetCount = {}, 0, 0
+local fakeCloud = {}
+function fakeCloud:Get(key, events)
+    cloudGetCount = cloudGetCount + 1
+    events.ok({ [key] = cloudValues[key] and LevelDocument.Clone(cloudValues[key]) or nil }, {})
+end
+function fakeCloud:Set(key, value, events)
+    cloudSetCount = cloudSetCount + 1
+    cloudValues[key] = LevelDocument.Clone(value)
+    events.ok()
+end
+local draftCloud = DraftCloudSync.New({
+    levelDocument = LevelDocument, json = fakeJson, cloud = fakeCloud, clock = function() return now end,
+})
+local cloudSaveResult = nil
+expect(draftCloud:QueueSave(loadedDraft, function(ok) cloudSaveResult = ok end)
+    and cloudSaveResult == true and cloudGetCount == 1 and cloudSetCount == 1
+    and cloudValues[DraftCloudSync.KEY].drafts.custom_draft.document.name == "未完成",
+    "editor draft did not upload through the isolated cloud draft key")
+local incompleteDocument = validLevel("custom_incomplete", "尚未放置发射器")
+for index = #incompleteDocument.objects, 1, -1 do
+    if incompleteDocument.objects[index].type == "launcher" then table.remove(incompleteDocument.objects, index) end
+end
+local incompleteEnvelope = {
+    kind = "editor-draft", levelId = incompleteDocument.levelId, updatedAt = now,
+    source = "custom", document = incompleteDocument, viewState = {},
+}
+expect(draftCloud:QueueSave(incompleteEnvelope)
+    and cloudValues[DraftCloudSync.KEY].drafts.custom_incomplete ~= nil,
+    "an unfinished draft was rejected only because its launcher was temporarily absent")
+local unsafeDraft = LevelDocument.Clone(incompleteEnvelope)
+unsafeDraft.levelId, unsafeDraft.document.levelId = "custom_unsafe", "custom_unsafe"
+unsafeDraft.document.metadata = { resourcePath = "Models/Arbitrary.mdl" }
+expect(not draftCloud:QueueSave(unsafeDraft),
+    "cloud draft validation accepted an arbitrary project resource reference")
+local refreshedDrafts = nil
+local secondDraftCloud = DraftCloudSync.New({
+    levelDocument = LevelDocument, json = fakeJson, cloud = fakeCloud, clock = function() return now end,
+})
+expect(secondDraftCloud:Refresh(function(ok, drafts) if ok then refreshedDrafts = drafts end end)
+    and refreshedDrafts and refreshedDrafts.custom_draft
+    and refreshedDrafts.custom_draft.viewState.zoom == 1.2,
+    "cloud draft refresh did not recover the editor envelope")
+local cloudRecoveryStore = DraftStore.New({ clone = LevelDocument.Clone, json = fakeJson })
+local cloudRestored, cloudRestoreResult = cloudRecoveryStore:RestoreDraft(refreshedDrafts.custom_draft)
+expect(cloudRestored and cloudRestoreResult.restored
+    and cloudRecoveryStore:LoadDraft("custom_draft").document.name == "未完成",
+    "remote editor draft did not enter the isolated recovery slot")
+local cloudDeleteResult = nil
+expect(secondDraftCloud:QueueDelete("custom_draft", function(ok) cloudDeleteResult = ok end)
+    and cloudDeleteResult == true
+    and cloudValues[DraftCloudSync.KEY].drafts.custom_draft == nil,
+    "formal-save cleanup did not remove the separate cloud draft")
 
 loadedDraft.document.name = "第二版"
 expect(store:SaveDraft("custom_draft", loadedDraft.document, { zoom = 1.4 }, "custom"),

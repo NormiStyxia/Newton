@@ -166,6 +166,34 @@ function DraftStore:LoadDraft(levelId)
     return self.clone(envelope), nil
 end
 
+function DraftStore:RestoreDraft(envelope)
+    local levelId = type(envelope) == "table" and envelope.levelId or nil
+    if not safeId(levelId) or envelope.kind ~= "editor-draft" or type(envelope.document) ~= "table"
+        or envelope.document.levelId ~= levelId then
+        return false, "云草稿格式无效"
+    end
+    local existing = self:LoadDraft(levelId)
+    if existing and (tonumber(existing.updatedAt) or 0) >= (tonumber(envelope.updatedAt) or 0) then
+        return true, { restored = false, newerLocal = true, updatedAt = existing.updatedAt }
+    end
+    if existing then self.memoryBackups[levelId] = self.clone(existing) end
+    local restored = {
+        kind = "editor-draft",
+        schemaVersion = envelope.document.schemaVersion,
+        levelId = levelId,
+        updatedAt = tonumber(envelope.updatedAt) or self.clock(),
+        source = envelope.source or "custom",
+        document = Numeric.NormalizeDocument(self.clone(envelope.document)),
+        viewState = self.clone(type(envelope.viewState) == "table" and envelope.viewState or {}),
+    }
+    self.memoryDrafts[levelId] = self.clone(restored)
+    local persisted, persistenceError = writeAtomic(self, draftPath(levelId), restored)
+    return true, {
+        restored = true, memory = true, persisted = persisted,
+        error = persistenceError, updatedAt = restored.updatedAt,
+    }
+end
+
 function DraftStore:DeleteDraft(levelId)
     if not safeId(levelId) then return false, "levelId 格式无效" end
     local deleted, errorMessage = deleteSlotFiles(self, draftPath(levelId))
