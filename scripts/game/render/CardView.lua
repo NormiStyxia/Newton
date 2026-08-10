@@ -107,7 +107,10 @@ function M.Install(context)
         end
 
         local titleSize = FitSingleLine(def.name, "maker-display", 16, 11, CARD_RENDER_WIDTH * .52)
-        painter_:Text(0, top + CARD_RENDER_HEIGHT * .065, def.name, titleSize, titleColor,
+        -- Keep the title inside the illustrated header strip: move it upward
+        -- while retaining a fixed safe inset from the rounded top edge.
+        local titleY = math.max(top + 6 * scale, top + CARD_RENDER_HEIGHT * .04)
+        painter_:Text(0, titleY, def.name, titleSize, titleColor,
             NVG_ALIGN_CENTER + NVG_ALIGN_TOP, "maker-display", opaque)
 
         local useText = (field and "场地 · " or "决策 · ") .. CardUseLabel(usage, remaining)
