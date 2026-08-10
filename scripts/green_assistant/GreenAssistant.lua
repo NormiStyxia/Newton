@@ -463,6 +463,29 @@ function GreenAssistant:_showTakeoverOffer(reason, result)
     return true
 end
 
+function GreenAssistant:_playPokeAnimation(animationName, returnBehavior)
+    if not animationName then return end
+    self.animator:play(animationName, {
+        restart = true,
+        fallbackAnimation = self.config.fallbackAnimation,
+        onFinished = function()
+            if self.behaviorState:get() == returnBehavior then
+                self:_playBehaviorAnimation(returnBehavior, true)
+            end
+        end,
+    })
+end
+
+function GreenAssistant:_pokeWhileOffering()
+    if not self.config.features.interaction
+        or self.behaviorState:get() ~= BehaviorState.OFFER then return false end
+    local line, pokeCount, animationName = self.interaction:poke(self.elapsed)
+    if not line then return false end
+    self:_playPokeAnimation(animationName, BehaviorState.OFFER)
+    self:_emit("onPoked", pokeCount, line, animationName)
+    return true
+end
+
 function GreenAssistant:handlePointer(x, y, pointer)
     if not self.enabled or not self.visible or not pointer then return false end
     pointer.x, pointer.y = x, y
@@ -473,8 +496,13 @@ function GreenAssistant:handlePointer(x, y, pointer)
             if choice.id == "accept" then self:acceptTakeover() else self:declineTakeover() end
             return true
         end
+        local hitCharacter = self.view:hitTestCharacter(x, y)
+        if pointer.pressed == true and hitCharacter then
+            self:_pokeWhileOffering()
+            return true
+        end
         if (pointer.pressed or pointer.down or pointer.released)
-            and (self.view:hitTestBubble(x, y) or self.view:hitTestCharacter(x, y)) then return true end
+            and (self.view:hitTestBubble(x, y) or hitCharacter) then return true end
         return false
     end
 
@@ -511,21 +539,14 @@ function GreenAssistant:poke()
         failureCount = self.failureAssist.failureCount,
         threshold = self.failureAssist.threshold,
         reoffered = true,
-    }) then return true end
+    }) then
+        self:_pokeWhileOffering()
+        return true
+    end
     local line, pokeCount, animationName = self.interaction:poke(self.elapsed)
     if not line then return false end
     self:_showTimedMessage(line, self.config.interaction.duration, BehaviorState.INTERACT)
-    if animationName then
-        self.animator:play(animationName, {
-            restart = true,
-            fallbackAnimation = self.config.fallbackAnimation,
-            onFinished = function()
-                if self.behaviorState:get() == BehaviorState.INTERACT then
-                    self:_playBehaviorAnimation(BehaviorState.INTERACT, true)
-                end
-            end,
-        })
-    end
+    self:_playPokeAnimation(animationName, BehaviorState.INTERACT)
     self:_emit("onPoked", pokeCount, line, animationName)
     return true
 end

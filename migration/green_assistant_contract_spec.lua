@@ -252,6 +252,23 @@ expect(assistant:declineTakeover(), "takeover decline failed")
 expect(assistant:getBehavior() == GreenAssistant.Behavior.IDLE, "decline did not return to idle")
 expect(assistant:poke() and assistant:getBehavior() == GreenAssistant.Behavior.OFFER,
     "first poke after decline did not reopen the takeover offer")
+expect(assistant.animator:getCurrentAnimation() == "tap_react_a"
+    or assistant.animator:getCurrentAnimation() == "tap_react_b",
+    "poke that reopened the takeover offer did not play a tap reaction")
+local reopenedMessage, reopenedChoice = mockView.message, mockView.choice
+assistant:update(.31)
+mockView.hitCharacter = true
+expect(assistant:handlePointer(mockView.x, mockView.y,
+    { down = true, pressed = true, released = false }),
+    "offer-page character poke was not captured")
+expect(assistant:getBehavior() == GreenAssistant.Behavior.OFFER
+    and mockView.message == reopenedMessage and mockView.choice == reopenedChoice,
+    "offer-page character poke replaced or closed the takeover choice")
+expect(assistant.animator:getCurrentAnimation() == "tap_react_a"
+    or assistant.animator:getCurrentAnimation() == "tap_react_b",
+    "offer-page character poke did not play a tap reaction")
+mockView.hitCharacter = false
+assistant:update(.31)
 expect(assistant:declineTakeover(), "reopened takeover decline failed")
 expect(assistant:poke() and assistant:getBehavior() == GreenAssistant.Behavior.OFFER,
     "repeated poke after decline did not reopen the takeover offer")
