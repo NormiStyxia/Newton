@@ -3,6 +3,7 @@ local DialogueData = {}
 DialogueData.FIRST_LEVEL_ID = "level_01"
 DialogueData.SECOND_LEVEL_ID = "level_02"
 DialogueData.THIRD_LEVEL_ID = "level_03"
+DialogueData.FOURTH_LEVEL_ID = "level_04"
 DialogueData.ANGER_THRESHOLDS = { 25, 50, 75, 100 }
 
 local FIRST_LEVEL_INTRO = {
@@ -151,9 +152,45 @@ local THIRD_LEVEL_INTRO = {
     },
 }
 
+local FOURTH_LEVEL_INTRO = {
+    {
+        speaker = "newton",
+        side = "left",
+        displayName = "牛顿",
+        avatarText = "牛",
+        text = "你最好解释一下墙体为什么飘在空中。",
+        style = "NEWTON",
+    },
+    {
+        speaker = "einstein",
+        side = "left",
+        displayName = "爱因斯坦",
+        avatarText = "爱",
+        text = "学院新型磁悬浮技术。",
+        style = "EINSTEIN",
+    },
+    {
+        speaker = "nomi",
+        side = "right",
+        displayName = "诺米",
+        avatarText = "诺",
+        text = "就是钉在墙上了而已啊。",
+        style = "NOMI",
+    },
+    {
+        speaker = "green",
+        side = "left",
+        displayName = "绿毛同事",
+        avatarText = "绿",
+        text = "总结：学院新型磁悬浮技术的核心部件，是钉子。",
+        style = "GREEN",
+    },
+}
+
 function DialogueData.Intro(levelId)
     if levelId == DialogueData.SECOND_LEVEL_ID then return SECOND_LEVEL_INTRO end
     if levelId == DialogueData.THIRD_LEVEL_ID then return THIRD_LEVEL_INTRO end
+    if levelId == DialogueData.FOURTH_LEVEL_ID then return FOURTH_LEVEL_INTRO end
     if levelId ~= DialogueData.FIRST_LEVEL_ID then return {} end
     return FIRST_LEVEL_INTRO
 end
