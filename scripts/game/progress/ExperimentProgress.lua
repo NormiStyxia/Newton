@@ -3,6 +3,8 @@ ExperimentProgress.__index = ExperimentProgress
 
 local ROOT = "experiment-progress"
 local PROGRESS_PATH = ROOT .. "/official-experiments.json"
+local CLOUD_KEY = "official_experiment_progress_v1"
+local CLOUD_MAX_TEXT_BYTES = 1024 * 1024
 local SCHEMA_VERSION = 2
 local VALID_SCORES = { [60] = true, [80] = true, [100] = true }
 local SNAPSHOT_SCHEMA_VERSION = 1
@@ -104,6 +106,38 @@ local function cloneRecord(record)
     }
 end
 
+local function shouldReplaceSnapshot(current, candidate)
+    if not candidate then return false end
+    if not current then return true end
+    if candidate.score ~= current.score then return candidate.score > current.score end
+    return candidate.clearedAt > current.clearedAt
+end
+
+local function mergeRecord(localRecord, remoteRecord)
+    local merged = cloneRecord(localRecord)
+    local remote = cloneRecord(remoteRecord)
+    local changed = false
+
+    if remote.completed and not merged.completed then
+        merged.completed = true
+        changed = true
+    end
+    if remote.bestScore and (not merged.bestScore or remote.bestScore > merged.bestScore) then
+        merged.bestScore = remote.bestScore
+        merged.completed = true
+        changed = true
+    end
+    if shouldReplaceSnapshot(merged.lastReportSnapshot, remote.lastReportSnapshot) then
+        merged.lastReportSnapshot = remote.lastReportSnapshot
+        merged.completed = true
+        if not merged.bestScore or remote.lastReportSnapshot.score > merged.bestScore then
+            merged.bestScore = remote.lastReportSnapshot.score
+        end
+        changed = true
+    end
+    return merged, changed
+end
+
 local function encode(self, value)
     if not self.json or type(self.json.encode) ~= "function" then return nil, "JSON encoder unavailable" end
     local ok, text = pcall(self.json.encode, value)
@@ -125,13 +159,21 @@ local function readEnvelope(self, path)
     return decode(self, text)
 end
 
-local function writeAtomic(self)
-    if not self.adapter then return false, "local persistence unavailable" end
-    local text, encodeError = encode(self, {
+local function localEnvelope(self)
+    local experiments = {}
+    for levelId, record in pairs(self.records) do
+        if validLevelId(levelId) then experiments[levelId] = cloneRecord(record) end
+    end
+    return {
         kind = "experiment-progress",
         schemaVersion = SCHEMA_VERSION,
-        experiments = self.records,
-    })
+        experiments = experiments,
+    }
+end
+
+local function writeAtomic(self)
+    if not self.adapter then return false, "local persistence unavailable" end
+    local text, encodeError = encode(self, localEnvelope(self))
     if not text then return false, encodeError end
 
     local temporary, backup = PROGRESS_PATH .. ".tmp", PROGRESS_PATH .. ".bak"
@@ -157,8 +199,13 @@ function ExperimentProgress.New(options)
     local self = setmetatable({}, ExperimentProgress)
     self.json = options and options.json
     self.adapter = options and options.adapter or createLocalAdapter()
+    self.cloud = options and options.cloud or _G.clientCloud
     self.records = {}
     self.pendingFeedback = nil
+    self.cloudSyncing = false
+    self.cloudUploadPending = false
+    self.cloudStatus = "offline"
+    self.cloudLastError = nil
     if self.adapter then pcall(self.adapter.createDir, self.adapter, ROOT) end
     self:Load()
     return self
@@ -174,6 +221,133 @@ function ExperimentProgress:Load()
         if validLevelId(levelId) then self.records[levelId] = cloneRecord(record) end
     end
     return true
+end
+
+function ExperimentProgress:IsCloudAvailable()
+    return self.cloud and type(self.cloud.Get) == "function" and type(self.cloud.Set) == "function"
+end
+
+function ExperimentProgress:_requestCloudGet(callback)
+    if not self:IsCloudAvailable() then callback(false, "官方实验云存档服务不可用"); return end
+    self.cloud:Get(CLOUD_KEY, {
+        ok = function(values)
+            local payload = values and values[CLOUD_KEY] or nil
+            if type(payload) ~= "table" then payload = { schemaVersion = SCHEMA_VERSION, experiments = {} } end
+            callback(true, payload)
+        end,
+        error = function(code, reason)
+            callback(false, string.format("读取官方实验云存档失败（%s）：%s", tostring(code), tostring(reason)))
+        end,
+        timeout = function() callback(false, "读取官方实验云存档超时") end,
+    })
+end
+
+function ExperimentProgress:_requestCloudSet(payload, callback)
+    if not self:IsCloudAvailable() then callback(false, "官方实验云存档服务不可用"); return end
+    local text, encodeError = encode(self, payload)
+    if not text then callback(false, "官方实验云存档序列化失败：" .. tostring(encodeError)); return end
+    if #text > CLOUD_MAX_TEXT_BYTES then
+        callback(false, "官方实验云存档超过 1 MiB 限制")
+        return
+    end
+    self.cloud:Set(CLOUD_KEY, payload, {
+        ok = function() callback(true, nil) end,
+        error = function(code, reason)
+            callback(false, string.format("写入官方实验云存档失败（%s）：%s", tostring(code), tostring(reason)))
+        end,
+        timeout = function() callback(false, "写入官方实验云存档超时") end,
+    })
+end
+
+function ExperimentProgress:_mergeCloudEnvelope(payload)
+    local remoteRecords = type(payload) == "table" and payload.experiments or nil
+    if type(remoteRecords) ~= "table" then return false end
+    local changed = false
+    for levelId, remoteRecord in pairs(remoteRecords) do
+        if validLevelId(levelId) and type(remoteRecord) == "table" then
+            local merged, recordChanged = mergeRecord(self.records[levelId], remoteRecord)
+            if recordChanged then
+                self.records[levelId] = merged
+                changed = true
+            end
+        end
+    end
+    return changed
+end
+
+function ExperimentProgress:_finishCloudSync(ok, errorMessage, callback)
+    self.cloudSyncing = false
+    self.cloudStatus = ok and "ready" or "failed"
+    self.cloudLastError = errorMessage
+    if ok then
+        print("[ExperimentProgressCloud] 官方实验进度、分数和报告已同步")
+    else
+        self.cloudUploadPending = true
+        print("[ExperimentProgressCloud] 同步失败：" .. tostring(errorMessage))
+    end
+    if callback then callback(ok, errorMessage) end
+    if ok and self.cloudUploadPending then self:_flushCloudUpload() end
+end
+
+function ExperimentProgress:_syncCloud(callback)
+    self.cloudSyncing = true
+    self.cloudStatus = "syncing"
+    self.cloudLastError = nil
+    self.cloudUploadPending = false
+    self:_requestCloudGet(function(readOk, payloadOrError)
+        if not readOk then
+            self:_finishCloudSync(false, payloadOrError, callback)
+            return
+        end
+        local changed = self:_mergeCloudEnvelope(payloadOrError)
+        if changed then
+            local persisted, persistenceError = writeAtomic(self)
+            if not persisted and self.adapter then
+                print("[ExperimentProgressCloud] 合并后的本地缓存保存失败：" .. tostring(persistenceError))
+            end
+        end
+        self:_requestCloudSet(localEnvelope(self), function(saved, saveError)
+            self:_finishCloudSync(saved, saveError, callback)
+        end)
+    end)
+end
+
+function ExperimentProgress:_flushCloudUpload()
+    if self.cloudSyncing or not self.cloudUploadPending then return end
+    if not self:IsCloudAvailable() then
+        self.cloudStatus = "offline"
+        self.cloudLastError = "官方实验云存档服务不可用"
+        return
+    end
+    self:_syncCloud(nil)
+end
+
+function ExperimentProgress:RefreshCloud(callback)
+    if self.cloudSyncing then
+        if callback then callback(false, "官方实验云同步正在进行") end
+        return false
+    end
+    if not self:IsCloudAvailable() then
+        self.cloudStatus = "offline"
+        self.cloudLastError = "官方实验云存档服务不可用"
+        if callback then callback(false, self.cloudLastError) end
+        return false
+    end
+    self.cloudUploadPending = true
+    self.cloudStatus = "loading"
+    print("[ExperimentProgressCloud] 开始合并官方实验云存档")
+    self:_syncCloud(callback)
+    return true
+end
+
+function ExperimentProgress:QueueCloudUpload()
+    self.cloudUploadPending = true
+    self:_flushCloudUpload()
+    return self:IsCloudAvailable()
+end
+
+function ExperimentProgress:GetCloudStatus()
+    return self.cloudStatus, self.cloudLastError
 end
 
 function ExperimentProgress:Get(levelId)
@@ -225,6 +399,7 @@ function ExperimentProgress:Record(levelId, score, reportSnapshot)
             bestScore = nextRecord.bestScore,
         }
     end
+    if firstCompletion or bestImproved or snapshotUpdated then self:QueueCloudUpload() end
     return {
         completed = true,
         firstCompletion = firstCompletion,
@@ -247,7 +422,9 @@ function ExperimentProgress:UpdateReportSnapshot(levelId, reportSnapshot)
     if previousSnapshot and snapshot.score < previousSnapshot.score then return true, nil end
     record.lastReportSnapshot = snapshot
     self.records[levelId] = record
-    return writeAtomic(self)
+    local persisted, persistenceError = writeAtomic(self)
+    self:QueueCloudUpload()
+    return persisted, persistenceError
 end
 
 function ExperimentProgress:ConsumeFeedback()

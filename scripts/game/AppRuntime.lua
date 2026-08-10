@@ -224,6 +224,13 @@ function M.Install(context)
         InitializeTitleScreen()
         InitializeGreenAssistant()
         InitializeExperimentCatalog()
+        if context.experimentProgress_ then
+            context.experimentProgress_:RefreshCloud(function(ok, errorMessage)
+                if not ok then
+                    print("[ExperimentProgressCloud] 启动同步未完成：" .. tostring(errorMessage))
+                end
+            end)
+        end
         renderer:SetNumViewports(0)
         RefreshWorkspaceLayout()
         SubscribeToEvent("Update", "HandleUpdate")
