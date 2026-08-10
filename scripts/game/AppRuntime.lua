@@ -86,8 +86,15 @@ function M.Install(context)
         nvgRestore(painter_.vg)
     end
 
-    local function BeginGameplayWorldShake(frame)
+    local function BeginGameplayWorldShake(frame, clipToPlayfield)
         nvgSave(painter_.vg)
+        if clipToPlayfield then
+            -- Authored object skins can extend beyond their physics bounds.
+            -- Keep the gameplay content inside the lab so it never paints
+            -- over the fixed top HUD; decorative overlays remain unclipped.
+            nvgScissor(painter_.vg, frame.playfieldX, frame.playfieldY,
+                frame.playfieldWidth, frame.playfieldHeight)
+        end
         local shake = newtonPunchShake_
         local shakeX = shake and shake.visualShakeX or 0
         local shakeY = shake and shake.visualShakeY or 0
@@ -712,7 +719,7 @@ function M.Install(context)
             painter_:DrawNewton(frame_, level_, anger_, observation_, uiElapsed_)
             -- Shake only the authored Gameplay world. HUD, Newton's panel,
             -- cards and modal overlays remain in the fixed stage transform.
-            BeginGameplayWorldShake(frame_)
+            BeginGameplayWorldShake(frame_, true)
             painter_:DrawGround(frame_)
             local goalPulseProgress = goalPulseElapsedMs_ and math.max(0, math.min(1, goalPulseElapsedMs_ / 460)) or nil
             if runtime_ then for _, object in ipairs(runtime_.ordered) do painter_:DrawObject(frame_, object, { sensorAngle = sensorAngle_, success = success_ and not replayActive_, goalPulseProgress = goalPulseProgress, replayActive = replayActive_ }, context.design_, mapper_) end end
