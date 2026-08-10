@@ -1392,8 +1392,9 @@ function M.Install(context)
             end
             local itemPose = entrance and entrance:GetListItemPose(index) or nil
             beginContentMotion(painter.vg, itemPose)
-            local prefix = state.category == CATEGORY_CUSTOM and "自制" or "实验"
-            painter:Text(item.x + 13, item.y + item.h * .5, string.format("%s %02d", prefix, index), 18,
+            -- Category identity comes from state.category and repository/runtime
+            -- metadata; the numbered label is presentation-only in both tabs.
+            painter:Text(item.x + 13, item.y + item.h * .5, string.format("实验 %02d", index), 18,
                 selected and COLORS.ink or COLORS.inkMuted, NVG_ALIGN_LEFT + NVG_ALIGN_MIDDLE, CATALOG_MONO_FONT)
             local name = level and level.name or "数据不可用"
             local nameX = item.x + 92
