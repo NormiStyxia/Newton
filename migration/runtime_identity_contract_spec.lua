@@ -14,6 +14,7 @@ local ResultReport = require("ui.result_report")
 local LevelPresentation = require("game.level.Presentation")
 local Rules = require("game.gameplay.Rules")
 local ReplayMode = require("game.replay.Mode")
+local InteractionRouter = require("game.input.InteractionRouter")
 
 local context = setmetatable({
     failureCountsByLevel_ = {},
@@ -23,6 +24,26 @@ local context = setmetatable({
     CONFIG = { levelCount = 9 },
 }, { __index = _G })
 LevelSession.Install(context)
+
+local overlayContext = setmetatable({
+    Rules = Rules,
+    ReplayMode = ReplayMode,
+    CONFIG = { levelCount = 9 },
+}, { __index = _G })
+InteractionRouter.Install(overlayContext)
+local assistedLayout = overlayContext.ResolveAssistedResultLayout({
+    playfieldX = 323,
+    playfieldY = 112,
+    playfieldWidth = 1500,
+    playfieldHeight = 596,
+})
+expect(assistedLayout.panel.w == 620 and assistedLayout.panel.h == 210,
+    "assisted result panel no longer matches the failure overlay footprint")
+expect(assistedLayout.centerX == 1073 and assistedLayout.centerY == 410,
+    "assisted result panel no longer shares the failure overlay center")
+expect(assistedLayout.returnButton.x == 973 and assistedLayout.retryButton.x == 1173
+    and assistedLayout.returnButton.y == 470 and assistedLayout.retryButton.y == 470,
+    "assisted result buttons lost their symmetric compact spacing")
 
 context.runtimeSession_ = { sourceKind = "custom", levelId = "level_02" }
 context.level_ = { levelId = "level_02" }

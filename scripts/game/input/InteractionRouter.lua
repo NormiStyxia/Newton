@@ -16,6 +16,25 @@ function M.Install(context)
         return levelIndex_ < CONFIG.levelCount and levelIndex_ + 1 or 1
     end
 
+    function ResolveAssistedResultLayout(frame)
+        local centerX = frame.playfieldX + frame.playfieldWidth * .5
+        local centerY = frame.playfieldY + frame.playfieldHeight * .5
+        local panelWidth, panelHeight = 620, 210
+        local buttonOffset, buttonY = 100, centerY + 60
+        return {
+            centerX = centerX,
+            centerY = centerY,
+            panel = {
+                x = centerX - panelWidth * .5,
+                y = centerY - panelHeight * .5,
+                w = panelWidth,
+                h = panelHeight,
+            },
+            returnButton = { x = centerX - buttonOffset, y = buttonY },
+            retryButton = { x = centerX + buttonOffset, y = buttonY },
+        }
+    end
+
     function HandleHUDPointer(pointerFrame)
         local layout = ResolveHUDLayout(frame_)
         local x, y = pointerFrame.x, pointerFrame.y
@@ -117,11 +136,10 @@ function M.Install(context)
                     ResetExperiment()
                 elseif success_ then
                     if assistedClear_ then
-                        local panelCenterX = frame_.logicalWidth * .5
-                        local panelCenterY = frame_.logicalHeight * .5
-                        if inOverlayButton(panelCenterX - 160, panelCenterY + 58) then
+                        local layout = ResolveAssistedResultLayout(frame_)
+                        if inOverlayButton(layout.returnButton.x, layout.returnButton.y) then
                             RequestReturnToCatalog(resultReturnIndex())
-                        elseif inOverlayButton(panelCenterX + 160, panelCenterY + 58) then
+                        elseif inOverlayButton(layout.retryButton.x, layout.retryButton.y) then
                             ResetExperiment()
                         end
                     else
