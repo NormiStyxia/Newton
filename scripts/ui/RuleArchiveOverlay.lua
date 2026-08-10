@@ -8,6 +8,9 @@ local CLOSE_CARD_DURATION = .24
 local CLOSE_STAGGER = .03
 local MASK_DURATION = .16
 local FOCUS_DURATION = .11
+local MAX_BASE_SCALE = 1.82
+local MAX_INTERACTION_SCALE = 1.12
+local MAX_LIFT = 32
 
 local CARD_ANGLES = { -5, -3, -1, 1, 3, 5 }
 local CARD_ARC_OFFSETS = { 13, 6, 1, 1, 6, 13 }
@@ -138,17 +141,26 @@ end
 function RuleArchiveOverlay:ResolveLayout(frame)
     local count = math.max(1, #self.cards)
     local gap = 18
-    local availableWidth = math.max(480, math.min(1320, frame.logicalWidth - 140))
-    local scale = math.min(1.06,
-        (availableWidth - gap * (count - 1)) / (self.cardWidth * count))
+    local titleY = clamp(frame.logicalHeight * .10, 68, 92)
+    local cardsTop = math.max(titleY + 100, frame.logicalHeight * .235)
+    local cardsBottom = frame.logicalHeight - 45
+    local availableWidth = math.max(480, math.min(1660, frame.logicalWidth - 100))
+    local widthScale = (availableWidth - gap * (count - 1)) / (self.cardWidth * count)
+    local maxAngle = math.rad(5)
+    local interactionHeight = (self.cardHeight * math.cos(maxAngle)
+        + self.cardWidth * math.sin(maxAngle)) * MAX_INTERACTION_SCALE
+    local heightScale = (cardsBottom - cardsTop - MAX_LIFT - 26) / interactionHeight
+    local scale = math.min(MAX_BASE_SCALE, widthScale, heightScale)
     scale = math.max(.72, scale)
     local cardWidth = self.cardWidth * scale
     local cardHeight = self.cardHeight * scale
     local spacing = cardWidth + gap
     local totalWidth = cardWidth * count + gap * (count - 1)
     local centerX = frame.logicalWidth * .5
-    local centerY = clamp(frame.logicalHeight * .56,
-        330 + cardHeight * .5, frame.logicalHeight - cardHeight * .5 - 54)
+    local interactionHalfHeight = interactionHeight * scale * .5
+    local centerY = clamp(frame.logicalHeight * .59,
+        cardsTop + MAX_LIFT + interactionHalfHeight,
+        cardsBottom - interactionHalfHeight - 13)
     local startX = centerX - totalWidth * .5 + cardWidth * .5
     local cards = {}
     for index = 1, #self.cards do
@@ -161,9 +173,10 @@ function RuleArchiveOverlay:ResolveLayout(frame)
     end
     return {
         centerX = centerX,
-        titleY = centerY - cardHeight * .5 - 72,
+        titleY = titleY,
         dealX = centerX,
-        dealY = centerY + cardHeight * .58,
+        dealY = math.min(frame.logicalHeight - cardHeight * .44,
+            centerY + cardHeight * .42),
         cardWidth = cardWidth,
         cardHeight = cardHeight,
         cards = cards,
@@ -306,11 +319,11 @@ function RuleArchiveOverlay:Draw(painter, frame)
 
     local layout = self:ResolveLayout(frame)
     local titleAlpha = math.floor(255 * maskProgress)
-    painter:Text(layout.centerX, layout.titleY, "规则档案", 34, COLORS.paper,
+    painter:Text(layout.centerX, layout.titleY, "规则档案", 42, COLORS.paper,
         NVG_ALIGN_CENTER + NVG_ALIGN_MIDDLE, "maker-display", titleAlpha)
-    painter:Text(layout.centerX - 100, layout.titleY, "✦", 18, COLORS.brass,
+    painter:Text(layout.centerX - 140, layout.titleY, "✦", 20, COLORS.brass,
         NVG_ALIGN_CENTER + NVG_ALIGN_MIDDLE, "report-green", titleAlpha)
-    painter:Text(layout.centerX + 100, layout.titleY, "✦", 18, COLORS.brass,
+    painter:Text(layout.centerX + 140, layout.titleY, "✦", 20, COLORS.brass,
         NVG_ALIGN_CENTER + NVG_ALIGN_MIDDLE, "report-green", titleAlpha)
 
     local drawOrder = {}

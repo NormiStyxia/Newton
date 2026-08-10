@@ -28,6 +28,8 @@ expect(archive:IsOpen(), "deal animation should finish within the requested dura
 
 local layout = archive:ResolveLayout(frame)
 expect(#layout.cards == 6, "layout must contain six card poses")
+expect(layout.titleY <= 92, "archive title must stay in the top header band")
+expect(layout.cardWidth >= 225, "design-size cards should use the wider archive workspace")
 local expectedAngles = { -5, -3, -1, 1, 3, 5 }
 for index, pose in ipairs(layout.cards) do
     expect(pose.angle == expectedAngles[index], "card fan angle must remain stable")
@@ -38,6 +40,23 @@ for index, pose in ipairs(layout.cards) do
     expect(pose.y - halfHeight >= 0 and pose.y + halfHeight <= frame.logicalHeight,
         "card must remain vertically visible")
     if index > 1 then expect(pose.x > layout.cards[index - 1].x, "cards must be ordered horizontally") end
+end
+
+for index = 1, #layout.cards do
+    archive.selectedIndex = index
+    archive.focus[index] = 1
+    local pose = archive:_pose(index, layout)
+    local angle = math.rad(pose.angle)
+    local halfWidth = archive.cardWidth * pose.scale * .5
+    local halfHeight = archive.cardHeight * pose.scale * .5
+    local extentX = math.abs(halfWidth * math.cos(angle)) + math.abs(halfHeight * math.sin(angle))
+    local extentY = math.abs(halfWidth * math.sin(angle)) + math.abs(halfHeight * math.cos(angle))
+    expect(pose.x - extentX >= 0 and pose.x + extentX <= frame.logicalWidth,
+        "focused card must not overflow horizontally")
+    expect(pose.y - extentY >= 0 and pose.y + extentY <= frame.logicalHeight,
+        "focused card must not overflow vertically")
+    archive.selectedIndex = nil
+    archive.focus[index] = 0
 end
 
 local third = layout.cards[3]
@@ -67,6 +86,7 @@ expect(not archive:IsVisible(), "programmatic close should reset the overlay")
 
 local compact = archive:ResolveLayout({ logicalWidth = 1280, logicalHeight = 720 })
 expect(#compact.cards == 6, "compact landscape layout must keep all six cards")
+expect(compact.cardWidth > 170, "compact landscape should still enlarge cards when space allows")
 for _, pose in ipairs(compact.cards) do
     local halfWidth = compact.cardWidth * .5
     local halfHeight = compact.cardHeight * .5
