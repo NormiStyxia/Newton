@@ -246,7 +246,11 @@ function Controller:OnLevelReady(levelId, anger)
     self.historyButtonGeometry = nil
     self.lastAnger = clamp(anger or 0, 0, MAX_ANGER)
     local intro = DialogueData.Intro(levelId)
-    if #intro == 0 or self.log:HasIntro(levelId) then return end
+    if #intro == 0 then return end
+    -- OnLevelReady denotes a new level session, unlike ResetExperiment. Start
+    -- a fresh communication timeline so replayed tutorial markers can bind to
+    -- the newly reset Tutorial Runner and follow-up messages cannot go stale.
+    self.log:ResetLevel(levelId)
     self.log:RecordIntro(levelId, intro)
     self:OpenIntro()
 end

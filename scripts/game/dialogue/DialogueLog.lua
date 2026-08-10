@@ -17,6 +17,12 @@ function DialogueLog:Init()
     self.levels = {}
 end
 
+function DialogueLog:ResetLevel(levelId)
+    if levelId == nil then return false end
+    self.levels[levelId] = nil
+    return true
+end
+
 function DialogueLog:_Level(levelId)
     local level = self.levels[levelId]
     if level then return level end

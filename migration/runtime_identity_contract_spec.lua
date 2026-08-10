@@ -9,6 +9,7 @@ end
 local LevelSession = require("game.level.LevelSession")
 local Tutorial = require("game.tutorial.Controller")
 local Dialogue = require("game.dialogue.DialogueController")
+local DialogueData = require("game.dialogue.DialogueData")
 local GreenAdapter = require("game.green_assistant.NewtonGreenAssistAdapter")
 local ResultReport = require("ui.result_report")
 local LevelPresentation = require("game.level.Presentation")
@@ -68,6 +69,7 @@ expect(context.GetTutorialRenderModel().visible == true,
     "official level_02 tutorial was disabled by the identity guard")
 
 context.anger_ = 0
+context.playUIClick = function() end
 Dialogue.Install(context)
 context.InitializeDialogue()
 context.runtimeSession_.sourceKind = "custom"
@@ -80,6 +82,24 @@ context.NotifyDialogueLevelReady("level_02")
 expect(context.dialogueController_.currentLevelId == "level_02"
     and context.dialogueController_:IsActive(),
     "official dialogue was disabled by the identity guard")
+
+context.AppendDialogueMessages("level_02", {
+    { speaker = "green", side = "left", displayName = "Green", text = "stale follow-up", style = "GREEN" },
+})
+expect(context.dialogueController_.log:MessageCount("level_02") > #DialogueData.Intro("level_02"),
+    "re-entry setup did not create a previous-session follow-up")
+context.NotifyDialogueLevelReady(nil)
+context.NotifyTutorialLevelReady("level_02")
+context.NotifyDialogueLevelReady("level_02")
+expect(context.dialogueController_:IsActive()
+    and context.dialogueController_.openMode == "intro"
+    and context.dialogueController_.visibleCount == 0,
+    "official level re-entry did not restart its communication intro")
+expect(context.dialogueController_.log:MessageCount("level_02") == #DialogueData.Intro("level_02"),
+    "official level re-entry retained stale follow-up messages from the previous session")
+context.dialogueController_:RevealAll()
+expect(context.GetTutorialRenderModel().visible == true,
+    "re-entered communication did not replay the tutorial marker")
 
 context.level_, context.apple_ = {}, {}
 context.replayBusinessMode_, context.assistDemoActive_ = ReplayMode.NONE, false
