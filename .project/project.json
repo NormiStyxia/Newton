@@ -5,7 +5,7 @@
     "id": "1838934907"
   },
   "entry": "main.lua",
-  "version": "1.0.18",
+  "version": "1.0.19",
   "taptap_publish": {
     "title": "不经典力学.NEWTONignore",
     "description": "一场不太经典的力学实验。发射苹果，利用场地与策略规则修改重力、弹性与运动轨迹，把苹果送进观察皿。你可以让世界向右坠落、让墙暂时不存在，或者给苹果一点完全不讲道理的推力——如果实验失控，就让牛顿亲自把规律打回来。",
@@ -43,11 +43,11 @@
     "cover_vertical_url": "https://tapcode-sce.spark.xd.com/assets/game_material/p_ss8c/cover_vertical.png"
   },
   "test_qrcode": {
-    "url": "https://tapcode-sce.spark.xd.com/qrcode/p_ss8c_1786383501276.png",
-    "generated_at": "2026-08-10T17:38:21.403Z"
+    "url": "https://tapcode-sce.spark.xd.com/qrcode/p_ss8c_1786385933704.png",
+    "generated_at": "2026-08-10T18:18:53.850Z"
   },
   "metadata": {
-    "updated_at": "2026-08-10T17:38:21.403Z",
+    "updated_at": "2026-08-10T18:18:53.850Z",
     "promo_dependent_hash": "52cbd54b5fc801bbb35286c5f3c8cbfb"
   }
 }
