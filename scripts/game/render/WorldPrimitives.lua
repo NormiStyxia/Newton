@@ -514,8 +514,10 @@ function M.Install(Renderer, COLORS, color, tint)
             nvgRestore(self.vg)
         elseif object.type == "door" then
             local openness = math.max(0, math.min(1, object.openness or 0))
-            local alpha = state.replayActive and math.floor(255 - openness * 148)
-                or (openness == 1 and 51 or 255)
+            -- The translated pose already communicates that the door is open.
+            -- Keep the actual door panel opaque; replay supplies its own closed
+            -- outline and connector instead of ghosting the moved panel.
+            local alpha = 255
             if state.replayActive and openness > .001 then
                 local closedX, closedY = design:WorldToLogical(object.worldX, object.worldY)
                 nvgStrokeColor(self.vg, color(COLORS.primaryActive, 178))

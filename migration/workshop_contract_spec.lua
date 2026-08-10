@@ -718,8 +718,8 @@ local identityMapper = {
     LevelSizeToWorld = function(_, w, h) return w, h end,
 }
 fakeRenderer:DrawObject({}, runtimeDoor, {}, identityDesign, identityMapper)
-expect(fakeRenderer.lastNineSliceAlpha == 51,
-    "open runtime door did not preserve the nine-slice transparency state")
+expect(fakeRenderer.lastNineSliceAlpha == 255,
+    "open runtime door became translucent")
 expect(fakeRenderer:DrawWorkshopObjectArt(LevelDocument.NewObject("launcher", "art_launcher", 100, 100),
     0, 0, 90, 90, 0, .9), "workshop launcher art did not reuse the runtime PNG handle")
 expect(fakeRenderer:DrawWorkshopObjectArt(LevelDocument.NewObject("goal_sensor", "art_goal", 100, 100),
