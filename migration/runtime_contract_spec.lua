@@ -34,17 +34,28 @@ expect(dragX >= -76 and dragY <= 78, "launcher directional clamp differs")
 
 local Rules = require("game.gameplay.Rules")
 local rules = Rules.NewState()
+expect(not Rules.UseDecision(rules, "up-impulse", false), "generic decision accepted before launch")
+expect(Rules.ChargeQuantumPhase(rules) == 1 and rules.phaseActive,
+    "quantum phase did not charge before launch")
+expect(Rules.ChargeQuantumPhase(rules) == 2, "quantum phase charges did not stack")
+local consumedPhase, remainingPhase = Rules.ConsumeQuantumPhaseCharge(rules)
+expect(consumedPhase and remainingPhase == 1 and rules.phaseActive,
+    "phase traversal consumed more than one charge")
+consumedPhase, remainingPhase = Rules.ConsumeQuantumPhaseCharge(rules)
+expect(consumedPhase and remainingPhase == 0 and not rules.phaseActive,
+    "last phase charge did not expire")
 expect(Rules.ToggleField(rules, "feather-gravity"), "field cannot be selected before launch")
 expect(Rules.Launch(rules), "first launch rejected")
 expect(not Rules.Launch(rules), "second launch accepted")
 local gravity = Rules.GetGravity(rules, { x = 0, y = 1, strength = 1 })
 near(gravity.strength, 1.05 * 0.55, 1e-12, "feather gravity")
-expect(Rules.UseDecision(rules, "quantum-phase", false) and rules.phaseActive, "phase decision failed")
-expect(not Rules.UseDecision(rules, "quantum-phase", false), "single-use decision repeated")
-Rules.EndPhase(rules)
-expect(Rules.UseDecision(rules, "quantum-phase", true) and rules.phaseActive,
-    "phase decision with another available card use failed")
+expect(Rules.UseDecision(rules, "up-impulse", false), "post-launch decision failed")
+expect(not Rules.UseDecision(rules, "up-impulse", false), "single-use decision repeated")
+expect(Rules.ChargeQuantumPhase(rules) == 1 and Rules.ChargeQuantumPhase(rules) == 2,
+    "post-launch quantum phase charges did not stack")
 expect(Rules.CanPunch(rules) and Rules.Punch(rules), "Newton punch failed")
+expect(Rules.GetQuantumPhaseCharges(rules) == 0 and not rules.phaseActive,
+    "Newton punch did not clear phase charges")
 expect(not Rules.CanPunch(rules), "Newton punch repeated")
 for count = 1, 10 do
     local hand = Rules.CardHand(count, 900, 800, 1500)

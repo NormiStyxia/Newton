@@ -19,7 +19,8 @@ function M.Install(context)
         if id == "mirror-motion" then
             return (candidate == "HORIZONTAL" and "水平" or "垂直") .. "速度已镜像，另一轴速度保持不变。"
         end
-        return "苹果获得一次相位充能，下一次可穿过玻璃相位墙。"
+        return "苹果获得一层相位充能，当前共 " .. tostring(Rules.GetQuantumPhaseCharges(rules_))
+            .. " 层；每穿过一面玻璃相位墙消耗一层。"
     end
     function StartRuleFeedback(id, candidate, accent)
         observation_ = RuleFeedbackText(id, candidate)
@@ -63,7 +64,8 @@ function M.Install(context)
         if physicalX and physicalY then
             local velocity = apple_.body.linearVelocity
             -- The post-step sweep may already be beyond a second wall. Put the
-            -- apple just beyond the first wall before restoring its collision mask.
+            -- apple just beyond the first wall before applying the remaining
+            -- charge count to its collision mask.
             apple_.node:SetPosition2D(physicalX, physicalY)
             apple_.body.linearVelocity = velocity
             apple_.body.awake = true
@@ -75,11 +77,16 @@ function M.Install(context)
         end
         phaseTraversing_ = false
         phaseWallTraversal_ = nil
-        Rules.EndPhase(rules_)
+        local consumed, remainingCharges = Rules.ConsumeQuantumPhaseCharge(rules_)
+        if not consumed then return end
         RecordReplayEvent("RULE_REMOVED", "quantum-phase")
         SetGravity()
         UpdateAngerFromRules()
-        SetStatus("PHASE · 相位穿墙已消耗")
+        if remainingCharges > 0 then
+            SetStatus("PHASE · 消耗 1 层，剩余 ×" .. tostring(remainingCharges))
+        else
+            SetStatus("PHASE · 消耗 1 层，充能已耗尽")
+        end
     end
     function UpdatePhaseTraversal()
         if not apple_ then return end
@@ -115,7 +122,7 @@ function M.Install(context)
             PhaseWallEffects.TriggerPass(crossedWall, entryX, entryY,
                 apple_.body.linearVelocity, "enter")
             -- Consume immediately when the whole wall was crossed in one step,
-            -- so a second wall cannot be phased by the same card use.
+            -- so a second wall cannot be phased by the same charge.
             if exitT < 1 - 0.000001 then
                 local exitX, exitY = SegmentPoint(previousX, previousY, position.x, position.y, exitT)
                 local physicalX, physicalY = PaddedExitPoint(
@@ -142,7 +149,12 @@ function M.Install(context)
         -- Rules.usedDecisions only protects callers that have no card use left.
         local hasAvailableUse = cardState and (cardState.usageMode == "REUSABLE"
             or (cardState.remainingUses or 0) > 0)
-        if not Rules.UseDecision(rules_, id, hasAvailableUse) then return false end
+        if id == "quantum-phase" then
+            if not hasAvailableUse then return false end
+            Rules.ChargeQuantumPhase(rules_)
+        elseif not Rules.UseDecision(rules_, id, hasAvailableUse) then
+            return false
+        end
         if id == "up-impulse" then
             local v = apple_.body.linearVelocity
             apple_.body.linearVelocity = Vector2(v.x, v.y + 5.52 * CurrentPhysicsTimeScale())
@@ -165,7 +177,11 @@ function M.Install(context)
         ruleDeployCount_ = ruleDeployCount_ + 1
         RecordReplayEvent("CARD_PLAYED", id)
         UpdateAngerFromRules()
-        SetStatus("RULE DEPLOYED · " .. (Rules.CARDS[id] and Rules.CARDS[id].name or id))
+        local deployedStatus = "RULE DEPLOYED · " .. (Rules.CARDS[id] and Rules.CARDS[id].name or id)
+        if id == "quantum-phase" then
+            deployedStatus = deployedStatus .. " · 充能 ×" .. tostring(Rules.GetQuantumPhaseCharges(rules_))
+        end
+        SetStatus(deployedStatus)
         StartRuleFeedback(id, mirrorAxis, Rules.CARDS[id] and Rules.CARDS[id].accent)
         PlaySound("card")
         return true

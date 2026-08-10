@@ -1,6 +1,12 @@
 -- cards/Controller: private runtime functions installed into the App context.
 local M = {}
 
+-- Quantum Phase is a charge card even though it keeps the existing Decision
+-- classification. No other Decision card may resolve before launch.
+local function CanResolveBeforeLaunch(id)
+    return id == "quantum-phase"
+end
+
 ---@param context GameContext
 function M.Install(context)
     local Rules = context.Rules
@@ -527,7 +533,7 @@ function M.Install(context)
             ClearCardInteraction()
             return
         end
-        if Rules.CARDS[id].kind == "decision" and not launched_ then
+        if Rules.CARDS[id].kind == "decision" and not launched_ and not CanResolveBeforeLaunch(id) then
             SetStatus("CARD · 当前没有已发射的实验对象")
             local from = CurrentCardVisualPose(id)
             activeCardId_ = nil
@@ -557,7 +563,7 @@ function M.Install(context)
         if not card or not card.enabled or not state or not definition then return false end
         if state.consumed or (state.usageMode ~= "REUSABLE" and state.remainingUses <= 0) then return false end
         if burningCardIds_[id] or #cardBurns_ > 0 then return false end
-        if definition.kind == "decision" and not launched_ then return false end
+        if definition.kind == "decision" and not launched_ and not CanResolveBeforeLaunch(id) then return false end
         if id == "side-gravity" then
             if candidate ~= "LEFT" and candidate ~= "RIGHT" and candidate ~= "UP" and candidate ~= "DOWN" then
                 return false

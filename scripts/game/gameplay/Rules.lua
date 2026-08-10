@@ -14,7 +14,7 @@ Rules.CARDS = {
     ["hooke-bounce"] = { kind = "field", name = "弹性响应", short = "高弹性", symbol = "↟", description = "提高弹簧的弹射倍率", accent = { 95, 143, 104 } },
     ["up-impulse"] = { kind = "decision", name = "向上冲量", short = "上冲", symbol = "↑", description = "立即施加一次向上冲量", accent = { 180, 147, 69 } },
     ["mirror-motion"] = { kind = "decision", name = "运动镜像", short = "镜像", symbol = "⇆", description = "滑动选择水平或垂直速度镜像", accent = { 180, 147, 69 } },
-    ["quantum-phase"] = { kind = "decision", name = "量子相位", short = "相位", symbol = "∿", description = "下一次穿过可相位墙体", accent = { 128, 118, 181 } },
+    ["quantum-phase"] = { kind = "decision", name = "量子相位", short = "相位", symbol = "∿", description = "增加一层相位充能，每穿过一面可相位墙消耗一层", accent = { 128, 118, 181 } },
 }
 
 function Rules.NewState()
@@ -24,6 +24,7 @@ function Rules.NewState()
         usedDecisions = {},
         launched = false,
         phaseActive = false,
+        phaseCharges = 0,
         punchUsed = false,
         sideGravity = { x = 0, y = 1 },
         restitutionMultiplier = 1,
@@ -58,7 +59,36 @@ function Rules.Launch(state)
     return true
 end
 
+function Rules.GetQuantumPhaseCharges(state)
+    local charges = math.max(0, math.floor(tonumber(state.phaseCharges) or 0))
+    -- Keep compatibility with rule states produced before charge counting was
+    -- introduced, including direct callers of the generic decision API.
+    if charges == 0 and state.phaseActive then return 1 end
+    return charges
+end
+
+-- Quantum Phase is intentionally separate from UseDecision: it may charge
+-- before launch and every available card use adds one independent traversal.
+function Rules.ChargeQuantumPhase(state)
+    local charges = Rules.GetQuantumPhaseCharges(state) + 1
+    state.phaseCharges = charges
+    state.phaseActive = true
+    state.usedDecisions = state.usedDecisions or {}
+    state.usedDecisions["quantum-phase"] = true
+    return charges
+end
+
+function Rules.ConsumeQuantumPhaseCharge(state)
+    local charges = Rules.GetQuantumPhaseCharges(state)
+    if charges <= 0 then return false, 0 end
+    charges = charges - 1
+    state.phaseCharges = charges
+    state.phaseActive = charges > 0
+    return true, charges
+end
+
 function Rules.EndPhase(state)
+    state.phaseCharges = 0
     state.phaseActive = false
 end
 
@@ -75,6 +105,7 @@ function Rules.Punch(state)
     if not Rules.CanPunch(state) then return false end
     state.punchUsed = true
     state.activeFields = {}
+    state.phaseCharges = 0
     state.phaseActive = false
     state.sideGravity = { x = 0, y = 1 }
     state.restitutionMultiplier = 1
@@ -133,7 +164,10 @@ function Rules.ActiveRuleList(state)
     table.sort(remaining)
     for _, id in ipairs(remaining) do append(id) end
     if state.phaseActive then
-        result[#result + 1] = { id = "quantum-phase", label = "量子相位 · 已充能" }
+        result[#result + 1] = {
+            id = "quantum-phase",
+            label = "量子相位 · 已充能 ×" .. tostring(Rules.GetQuantumPhaseCharges(state)),
+        }
     end
     return result
 end
