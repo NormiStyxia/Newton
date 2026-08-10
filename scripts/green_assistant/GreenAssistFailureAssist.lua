@@ -6,6 +6,7 @@ function FailureAssist.New(config)
     self.threshold = math.max(1, math.floor(config and config.failureThreshold or 3))
     self.failureCount = 0
     self.hasOfferedThisLevel = false
+    self.hasSucceededThisLevel = false
     return self
 end
 
@@ -29,13 +30,19 @@ function FailureAssist:canReoffer()
     return self.failureCount >= self.threshold and self.hasOfferedThisLevel
 end
 
+function FailureAssist:canOfferOnPoke()
+    return self.hasSucceededThisLevel or self:canReoffer()
+end
+
 function FailureAssist:onAttemptSucceeded()
     self.failureCount = 0
+    self.hasSucceededThisLevel = true
 end
 
 function FailureAssist:onLevelChanged()
     self.failureCount = 0
     self.hasOfferedThisLevel = false
+    self.hasSucceededThisLevel = false
 end
 
 function FailureAssist:getFailureCount()

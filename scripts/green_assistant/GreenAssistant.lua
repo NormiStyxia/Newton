@@ -534,11 +534,14 @@ function GreenAssistant:poke()
     local behavior = self.behaviorState:get()
     if behavior == BehaviorState.DRAGGING or behavior == BehaviorState.OFFER
         or behavior == BehaviorState.TAKEOVER or behavior == BehaviorState.SUCCESS then return false end
-    if self.failureAssist:canReoffer() and self:_showTakeoverOffer("declined-retry", {
+    local replayAfterSuccess = self.failureAssist.hasSucceededThisLevel == true
+    if self.failureAssist:canOfferOnPoke() and self:_showTakeoverOffer(
+        replayAfterSuccess and "completed-replay" or "declined-retry", {
         kind = "offer",
         failureCount = self.failureAssist.failureCount,
         threshold = self.failureAssist.threshold,
-        reoffered = true,
+        reoffered = not replayAfterSuccess,
+        replayAfterSuccess = replayAfterSuccess,
     }) then
         self:_pokeWhileOffering()
         return true

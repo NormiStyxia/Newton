@@ -222,6 +222,21 @@ expect(mockView.message == "好了。", "normal success message was not shown")
 assistant:update(1.81)
 expect(mockView.message == nil and assistant:getBehavior() == GreenAssistant.Behavior.IDLE,
     "normal success message did not expire without locking the companion")
+expect(assistant.failureAssist:canOfferOnPoke(),
+    "normal success did not retain the post-clear demonstration entry")
+mockView.hitCharacter = true
+local replayPokeX, replayPokeY = mockView.x, mockView.y
+expect(assistant:handlePointer(replayPokeX, replayPokeY,
+    { down = true, pressed = true, released = false }),
+    "post-clear character press was not captured")
+expect(assistant:handlePointer(replayPokeX, replayPokeY,
+    { down = false, pressed = false, released = true }),
+    "post-clear character release was not captured")
+expect(assistant:getBehavior() == GreenAssistant.Behavior.OFFER and mockView.choice ~= nil,
+    "post-clear character click did not reopen the demonstration offer")
+expect(assistant:declineTakeover() and assistant:getBehavior() == GreenAssistant.Behavior.IDLE,
+    "post-clear demonstration decline did not return to idle")
+mockView.hitCharacter = false
 assistant:onAttemptSucceeded()
 mockView.hitCharacter = true
 local reportDragX, reportDragY = mockView.x, mockView.y
@@ -239,6 +254,8 @@ expect(assistant:getBehavior() == GreenAssistant.Behavior.IDLE,
 mockView.hitCharacter = false
 
 assistant:onLevelChanged("level_01")
+expect(not assistant.failureAssist:canOfferOnPoke(),
+    "changing levels did not clear the post-clear demonstration entry")
 assistant:onAttemptFailed({ reason = "A" })
 expect(assistant:getBehavior() == GreenAssistant.Behavior.OBSERVE, "first failure must observe")
 assistant:update(.06)
