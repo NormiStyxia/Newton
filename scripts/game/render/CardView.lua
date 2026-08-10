@@ -1,6 +1,12 @@
 -- render/CardView: private runtime functions installed into the App context.
 local M = {}
 
+local DESCRIPTION_WIDTH_RATIO = .80
+local DESCRIPTION_TOP_RATIO = .852
+local DESCRIPTION_HEIGHT_RATIO = .102
+local DESCRIPTION_FONT_RATIO = .042
+local DESCRIPTION_LINE_HEIGHT = 1.08
+
 ---@param context GameContext
 function M.Install(context)
     local Rules = context.Rules
@@ -9,7 +15,6 @@ function M.Install(context)
     local CARD_RENDER_HEIGHT = context.CARD_RENDER_HEIGHT
     local _ENV = context
     local singleLineSizeCache = {}
-    local textBoxSizeCache = {}
 
     local function RemainingUses(remaining)
         return math.max(0, math.floor(tonumber(remaining) or 0))
@@ -34,27 +39,6 @@ function M.Install(context)
             size = math.max(minimumSize, preferredSize * maximumWidth / width)
         end
         singleLineSizeCache[key] = size
-        return size
-    end
-
-    local function FitTextBox(value, font, preferredSize, minimumSize, width, maximumHeight, lineHeight)
-        local key = table.concat({ font, value, preferredSize, minimumSize, width, maximumHeight, lineHeight }, "|")
-        if textBoxSizeCache[key] then return textBoxSizeCache[key] end
-        painter_:UseFont(font)
-        nvgTextAlign(painter_.vg, NVG_ALIGN_CENTER + NVG_ALIGN_TOP)
-        nvgTextLineHeight(painter_.vg, lineHeight)
-        local size = preferredSize
-        while size > minimumSize do
-            nvgFontSize(painter_.vg, size)
-            local bounds = nvgTextBoxBounds(painter_.vg, 0, 0, width, value)
-            local height = bounds and bounds[4] and bounds[2] and (bounds[4] - bounds[2]) or size
-            if height <= maximumHeight then
-                textBoxSizeCache[key] = size
-                return size
-            end
-            size = math.max(minimumSize, size - .5)
-        end
-        textBoxSizeCache[key] = size
         return size
     end
 
@@ -127,13 +111,32 @@ function M.Install(context)
             nvgRestore(painter_.vg)
         end
 
-        local descriptionWidth = CARD_RENDER_WIDTH * .78
-        local descriptionHeight = CARD_RENDER_HEIGHT * .10
-        local descriptionSize = FitTextBox(def.description, "maker-body", 9.5, 7.5,
-            descriptionWidth, descriptionHeight, 1.15)
-        painter_:TextBox(-descriptionWidth * .5, top + CARD_RENDER_HEIGHT * .873,
+        -- Every description uses the same card-relative scale and is clipped to
+        -- the illustrated footer panel. This keeps long two-line copy inside the
+        -- rectangle without making short card descriptions a different size.
+        local descriptionWidth = CARD_RENDER_WIDTH * DESCRIPTION_WIDTH_RATIO
+        local descriptionTop = top + CARD_RENDER_HEIGHT * DESCRIPTION_TOP_RATIO
+        local descriptionHeight = CARD_RENDER_HEIGHT * DESCRIPTION_HEIGHT_RATIO
+        local descriptionSize = CARD_RENDER_HEIGHT * DESCRIPTION_FONT_RATIO
+        local descriptionLeft = -descriptionWidth * .5
+        painter_:UseFont("maker-body")
+        nvgFontSize(painter_.vg, descriptionSize)
+        nvgTextLineHeight(painter_.vg, DESCRIPTION_LINE_HEIGHT)
+        nvgTextAlign(painter_.vg, NVG_ALIGN_CENTER + NVG_ALIGN_TOP)
+        local bounds = nvgTextBoxBounds(painter_.vg, descriptionLeft, 0,
+            descriptionWidth, def.description)
+        local measuredTop = bounds and bounds[2] or 0
+        local measuredHeight = bounds and bounds[4]
+            and math.max(0, bounds[4] - measuredTop) or descriptionSize
+        local descriptionY = descriptionTop + math.max(0, (descriptionHeight - measuredHeight) * .5)
+            - measuredTop
+        nvgSave(painter_.vg)
+        nvgIntersectScissor(painter_.vg, descriptionLeft, descriptionTop,
+            descriptionWidth, descriptionHeight)
+        painter_:TextBox(descriptionLeft, descriptionY,
             descriptionWidth, def.description, descriptionSize, bodyColor,
-            NVG_ALIGN_CENTER + NVG_ALIGN_TOP, "maker-body", 1.15, opaque)
+            NVG_ALIGN_CENTER + NVG_ALIGN_TOP, "maker-body", DESCRIPTION_LINE_HEIGHT, opaque)
+        nvgRestore(painter_.vg)
         if not options.hideUsage then DrawCardBadge(CardBadgeText(usage, remaining), opacity) end
     end
 
