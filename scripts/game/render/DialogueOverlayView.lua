@@ -13,10 +13,14 @@ local MESSAGE_ROW_LEFT_PADDING = 22
 local AVATAR_COLUMN_WIDTH = 64
 local BUBBLE_COLUMN_GAP = 8
 local AVATAR_CENTER_Y_OFFSET = AVATAR_SIZE * 0.5
-local SCROLLBAR_WIDTH = 9
-local SCROLLBAR_CENTER_RATIO = 0.76
-local SCROLLBAR_BUBBLE_GAP = 14
-local SCROLLBAR_THUMB_SIZE = 28
+local LEFT_CONTENT_RIGHT_RATIO = 0.76
+local LEFT_CONTENT_RIGHT_OFFSET = 18.5
+local SCROLLBAR_WIDTH = 3
+local SCROLLBAR_THUMB_WIDTH = 4
+local SCROLLBAR_RIGHT_INSET = 5
+local RIGHT_AVATAR_SCROLL_GAP = 14
+local RIGHT_BUBBLE_AVATAR_GAP = 12
+local SCROLLBAR_MIN_THUMB_HEIGHT = 40
 local BODY_FONT_SIZE = 19
 local NAME_FONT_SIZE = 16
 local BODY_LINE_HEIGHT = 25
@@ -66,8 +70,9 @@ local COLORS = {
     einsteinStroke = { 126, 119, 148, 255 },
     nomiBubble = { 211, 222, 233, 255 },
     nomiStroke = { 105, 127, 151, 255 },
-    scrollTrack = { 79, 117, 72, 88 },
-    scrollTrackInner = { 190, 211, 157, 82 },
+    scrollTrack = { 154, 166, 139, 76 },
+    scrollThumb = { 47, 73, 56, 158 },
+    scrollThumbActive = { 47, 73, 56, 224 },
     angerFill = { 217, 130, 118, 255 },
     angerFillHigh = { 187, 73, 67, 255 },
     angerTrack = { 231, 226, 189, 255 },
@@ -348,18 +353,21 @@ local function conversationGeometry(rect)
         h = rect.h * (CONVERSATION_BOTTOM_RATIO - CONVERSATION_TOP_RATIO),
     }
     local track = {
-        x = rect.x + rect.w * SCROLLBAR_CENTER_RATIO - SCROLLBAR_WIDTH * 0.5,
-        y = viewport.y + 12,
+        x = viewport.x + viewport.w - SCROLLBAR_RIGHT_INSET - SCROLLBAR_WIDTH,
+        y = viewport.y + 6,
         w = SCROLLBAR_WIDTH,
-        h = viewport.h - 24,
+        h = viewport.h - 12,
     }
     local avatarLeft = viewport.x + MESSAGE_ROW_LEFT_PADDING
-    local contentRight = track.x - SCROLLBAR_BUBBLE_GAP
+    -- Preserve the established left-message width. Only the right-side Nomi
+    -- lane expands into the space recovered from the old apple scrollbar.
+    local leftContentRight = rect.x + rect.w * LEFT_CONTENT_RIGHT_RATIO - LEFT_CONTENT_RIGHT_OFFSET
+    local rightAvatarEdge = track.x - RIGHT_AVATAR_SCROLL_GAP
     viewport.avatarCenterX = avatarLeft + AVATAR_SIZE * 0.5
     viewport.bubbleX = avatarLeft + AVATAR_COLUMN_WIDTH + BUBBLE_COLUMN_GAP
-    viewport.rightAvatarCenterX = contentRight - AVATAR_SIZE * 0.5
-    viewport.rightBubbleRight = contentRight - AVATAR_SIZE - BUBBLE_COLUMN_GAP
-    viewport.bubbleW = math.max(80, contentRight - viewport.bubbleX)
+    viewport.rightAvatarCenterX = rightAvatarEdge - AVATAR_SIZE * 0.5
+    viewport.rightBubbleRight = rightAvatarEdge - AVATAR_SIZE - RIGHT_BUBBLE_AVATAR_GAP
+    viewport.bubbleW = math.max(80, leftContentRight - viewport.bubbleX)
     viewport.rightBubbleW = math.max(80, viewport.rightBubbleRight - avatarLeft)
     return viewport, track
 end
@@ -461,9 +469,10 @@ local function drawMessage(painter, controller, entry, index, viewport, scrollOf
     local textAlign = isRight and NVG_ALIGN_RIGHT or NVG_ALIGN_LEFT
     local textX = isRight and bubbleX + bubbleWidth - BUBBLE_PADDING_X
         or bubbleX + BUBBLE_PADDING_X
-    local nameX = isRight and bubbleX + bubbleWidth or bubbleX
+    local nameX = isRight and avatarX or bubbleX
+    local nameAlign = isRight and NVG_ALIGN_CENTER or NVG_ALIGN_LEFT
     painter:Text(snapToPixel(nameX, pixelScale), nameY, message.displayName or "", NAME_FONT_SIZE,
-        COLORS.dark, textAlign + NVG_ALIGN_TOP, messageFont)
+        COLORS.dark, nameAlign + NVG_ALIGN_TOP, messageFont)
     painter:RoundedRect(bubbleX, bubbleY, bubbleWidth, bubbleHeight, 7, bubbleFill, bubbleStroke, 1.5)
     for lineIndex, line in ipairs(entry.lines) do
         local lineY = bubbleY + BUBBLE_PADDING_TOP + (lineIndex - 1) * BODY_LINE_HEIGHT
@@ -474,18 +483,25 @@ local function drawMessage(painter, controller, entry, index, viewport, scrollOf
     nvgRestore(vg)
 end
 
-local function drawScrollbar(painter, track, thumbY, thumbSize, scrollable)
+local function drawScrollbar(painter, controller, track, thumbY, thumbHeight, scrollable, pixelScale)
     if not scrollable then return end
-    painter:RoundedRect(track.x, track.y, track.w, track.h, track.w * 0.5, COLORS.scrollTrack)
-    painter:RoundedRect(track.x + 3, track.y + 3, track.w - 6, track.h - 6,
-        math.max(1, (track.w - 6) * 0.5), COLORS.scrollTrackInner)
-    local apple = painter.images.apple
-    if apple and apple >= 0 then
-        painter:Image(apple, track.x + track.w * 0.5, thumbY + thumbSize * 0.5, thumbSize, thumbSize, 1)
-    else
-        painter:Circle(track.x + track.w * 0.5, thumbY + thumbSize * 0.5, thumbSize * 0.45,
-            COLORS.unread, COLORS.dark, 1.5)
-    end
+    local trackX = snapToPixel(track.x, pixelScale)
+    local trackRight = snapToPixel(track.x + track.w, pixelScale)
+    local trackWidth = math.max(1 / pixelScale, trackRight - trackX)
+    local trackY = snapToPixel(track.y, pixelScale)
+    local trackBottom = snapToPixel(track.y + track.h, pixelScale)
+    local trackHeight = math.max(1 / pixelScale, trackBottom - trackY)
+    painter:RoundedRect(trackX, trackY, trackWidth, trackHeight,
+        trackWidth * 0.5, COLORS.scrollTrack)
+    local thumbColor = controller.scrollbarDragging and COLORS.scrollThumbActive or COLORS.scrollThumb
+    local thumbX = snapToPixel(track.x + (track.w - SCROLLBAR_THUMB_WIDTH) * 0.5, pixelScale)
+    local thumbRight = snapToPixel(thumbX + SCROLLBAR_THUMB_WIDTH, pixelScale)
+    local thumbWidth = math.max(1 / pixelScale, thumbRight - thumbX)
+    local snappedThumbY = snapToPixel(thumbY, pixelScale)
+    local thumbBottom = snapToPixel(thumbY + thumbHeight, pixelScale)
+    local snappedThumbHeight = math.max(1 / pixelScale, thumbBottom - snappedThumbY)
+    painter:RoundedRect(thumbX, snappedThumbY, thumbWidth, snappedThumbHeight,
+        thumbWidth * 0.5, thumbColor)
 end
 
 local function drawAngerFooter(painter, rect, model, controller, pixelScale)
@@ -550,19 +566,24 @@ function View.Draw(painter, frame, controller)
     local centerX, centerY = rect.x + rect.w * 0.5, rect.y + rect.h * 0.5
     local button = buttonRect(rect)
     local viewport, track = conversationGeometry(rect)
-    local thumbSize = SCROLLBAR_THUMB_SIZE
     local entries = cachedLayout(painter, controller, model.messages, viewport)
     local contentHeight = visibleContentHeight(entries, model.visibleCount)
     controller:SetScrollMetrics(contentHeight, viewport.h)
     model.scrollOffset = controller.scrollOffset
     model.maxScroll = controller.maxScroll
-    local thumbY = track.y + controller:GetScrollProgress() * (track.h - thumbSize)
-    local thumb = { x = track.x + track.w * 0.5 - thumbSize * 0.5, y = thumbY, w = thumbSize, h = thumbSize }
+    local scrollable = model.maxScroll > 0
+    local thumbHeight = scrollable
+        and clamp(track.h * viewport.h / math.max(viewport.h, contentHeight),
+            SCROLLBAR_MIN_THUMB_HEIGHT, track.h)
+        or track.h
+    local thumbY = track.y + controller:GetScrollProgress() * (track.h - thumbHeight)
+    local thumbX = track.x + (track.w - SCROLLBAR_THUMB_WIDTH) * 0.5
+    local thumb = { x = thumbX - 9, y = thumbY, w = SCROLLBAR_THUMB_WIDTH + 18, h = thumbHeight }
 
     controller:SetViewGeometry({
         button = transformRect(button, contentScale, centerX, centerY),
         viewport = transformRect(viewport, contentScale, centerX, centerY),
-        track = transformRect({ x = track.x - 11, y = track.y, w = 31, h = track.h },
+        track = transformRect({ x = track.x - 10, y = track.y, w = track.w + 20, h = track.h },
             contentScale, centerX, centerY),
         thumb = transformRect(thumb, contentScale, centerX, centerY),
     })
@@ -599,7 +620,7 @@ function View.Draw(painter, frame, controller)
     end
     nvgRestore(vg)
 
-    drawScrollbar(painter, track, thumbY, thumbSize, model.maxScroll > 0)
+    drawScrollbar(painter, controller, track, thumbY, thumbHeight, scrollable, pixelScale)
     drawAngerFooter(painter, rect, model, controller, pixelScale)
     nvgRestore(vg)
 end
