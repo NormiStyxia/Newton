@@ -18,6 +18,7 @@ local CLOSE_DURATION = 0.26
 local BUBBLE_DURATION = 0.26
 local MESSAGE_INTERVAL = 0.52
 local SCROLL_WHEEL_STEP = 54 / 20
+local TOUCH_SCROLL_THRESHOLD = 6
 local MAX_ANGER = 100
 
 local function clamp(value, minimum, maximum)
@@ -65,6 +66,7 @@ function Controller:Init(context)
     self.followBottom = true
     self.scrollbarDragging = false
     self.scrollbarGrabY = 0
+    self.viewportTouchDrag = nil
     self.viewGeometry = nil
     self.historyButtonGeometry = nil
     self.historyHovered = false
@@ -154,6 +156,7 @@ function Controller:_BeginOpen(mode)
     self.pendingScrollProgress = restoreProgress
     self.followBottom = restoreProgress == nil
     self.scrollbarDragging = false
+    self.viewportTouchDrag = nil
     self.state = STATE.OPENING
     self.log:MarkRead(self.currentLevelId)
     return true
@@ -225,6 +228,7 @@ function Controller:_FinishClose()
     self.stateElapsed = 0
     self.messageElapsed = 0
     self.scrollbarDragging = false
+    self.viewportTouchDrag = nil
     self.pendingScrollProgress = nil
     self.viewGeometry = nil
 end
@@ -351,9 +355,37 @@ function Controller:_HandleScrollbar(pointerFrame)
     return false
 end
 
+function Controller:_HandleViewportTouch(pointerFrame)
+    if pointerFrame.isTouch ~= true then return false end
+    local geometry = self.viewGeometry
+    local drag = self.viewportTouchDrag
+
+    if drag then
+        local deltaY = pointerFrame.y - drag.startY
+        if math.abs(deltaY) >= TOUCH_SCROLL_THRESHOLD then drag.moved = true end
+        if drag.moved then
+            self.scrollOffset = clamp(drag.startOffset - deltaY, 0, self.maxScroll)
+            self.followBottom = self.maxScroll - self.scrollOffset <= 18
+        end
+        if pointerFrame.released or not pointerFrame.down then self.viewportTouchDrag = nil end
+        return true
+    end
+
+    if pointerFrame.pressed and geometry and pointIn(geometry.viewport, pointerFrame.x, pointerFrame.y) then
+        self.viewportTouchDrag = {
+            startY = pointerFrame.y,
+            startOffset = self.scrollOffset,
+            moved = false,
+        }
+        return true
+    end
+    return false
+end
+
 function Controller:_HandleOpenPointer(pointerFrame)
     if self.state == STATE.CLOSING then return false end
     local consumed = self:_HandleScrollbar(pointerFrame)
+    if not consumed then consumed = self:_HandleViewportTouch(pointerFrame) end
     local geometry = self.viewGeometry
     if not pointerFrame.pressed or not geometry or not pointIn(geometry.button, pointerFrame.x, pointerFrame.y) then
         return consumed
