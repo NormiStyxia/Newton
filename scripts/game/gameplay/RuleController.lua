@@ -211,7 +211,10 @@ function M.Install(context)
             end
             return true
         end
-        local applied = launched_ and ApplyDecision(id, candidate) or false
+        -- Quantum Phase is the sole prelaunch Decision exception. Keep the
+        -- ordinary Decision gate intact for impulse and mirror cards.
+        local decisionReady = launched_ or id == "quantum-phase"
+        local applied = decisionReady and ApplyDecision(id, candidate) or false
         if applied then ApplyAppleCardMaterial() end
         return applied
     end
