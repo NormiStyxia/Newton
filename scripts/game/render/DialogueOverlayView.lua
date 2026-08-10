@@ -469,8 +469,8 @@ local function drawMessage(painter, controller, entry, index, viewport, scrollOf
     local textAlign = isRight and NVG_ALIGN_RIGHT or NVG_ALIGN_LEFT
     local textX = isRight and bubbleX + bubbleWidth - BUBBLE_PADDING_X
         or bubbleX + BUBBLE_PADDING_X
-    local nameX = isRight and avatarX or bubbleX
-    local nameAlign = isRight and NVG_ALIGN_CENTER or NVG_ALIGN_LEFT
+    local nameX = isRight and (bubbleX + bubbleWidth) or bubbleX
+    local nameAlign = isRight and NVG_ALIGN_RIGHT or NVG_ALIGN_LEFT
     painter:Text(snapToPixel(nameX, pixelScale), nameY, message.displayName or "", NAME_FONT_SIZE,
         COLORS.dark, nameAlign + NVG_ALIGN_TOP, messageFont)
     painter:RoundedRect(bubbleX, bubbleY, bubbleWidth, bubbleHeight, 7, bubbleFill, bubbleStroke, 1.5)

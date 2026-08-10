@@ -190,6 +190,7 @@ function Controller:Init(context)
     self.elapsed = 0
     self.completedSteps = {}
     self.appendedMessagesByStep = {}
+    self.seenMarkers = {}
     self.observedFieldActivations = {}
     self.observedPunchResets = {}
 end
@@ -203,8 +204,35 @@ function Controller:ResetForLevel(levelId)
     self.elapsed = 0
     self.completedSteps = {}
     self.appendedMessagesByStep = {}
+    self.seenMarkers = {}
     self.observedFieldActivations = {}
     self.observedPunchResets = {}
+end
+
+function Controller:_ResumeCurrentMarker()
+    local expected = self:_CurrentStepConfig()
+    if not expected or not self.seenMarkers[expected.marker] then return false end
+    return self:BeginAction(expected.marker)
+end
+
+function Controller:RestartAttempt(levelId)
+    if self.levelId ~= levelId or self.config ~= ACTION_CONFIGS[levelId] then
+        self:ResetForLevel(levelId)
+        return
+    end
+
+    -- A level retry resets authoritative gameplay state, but the dialogue log
+    -- keeps messages that were already revealed/appended. Preserve that
+    -- dialogue progress so a consumed marker can immediately restore its
+    -- action prompt without duplicating the follow-up messages.
+    self.state = self.config and STATE.WAITING_FOR_MARKER or STATE.INACTIVE
+    self.currentStepIndex = self.config and 1 or 0
+    self.step = nil
+    self.elapsed = 0
+    self.completedSteps = {}
+    self.observedFieldActivations = {}
+    self.observedPunchResets = {}
+    self:_ResumeCurrentMarker()
 end
 
 function Controller:_CurrentStepConfig()
@@ -248,6 +276,7 @@ function Controller:_ActionReady(step)
 end
 
 function Controller:BeginAction(marker)
+    if type(marker) == "string" then self.seenMarkers[marker] = true end
     local expected = self:_CurrentStepConfig()
     if not expected or self.state ~= STATE.WAITING_FOR_MARKER or marker ~= expected.marker then
         return false
@@ -286,6 +315,7 @@ function Controller:CompleteAction(_reason)
         self.appendedMessagesByStep[completedStep.id] = true
         self.context.AppendDialogueMessages(self.levelId, completedStep.afterMessages)
     end
+    if self.state == STATE.WAITING_FOR_MARKER then self:_ResumeCurrentMarker() end
     return true
 end
 
@@ -380,7 +410,7 @@ function M.Install(context)
     end
 
     function ResetTutorialForLevel(levelId)
-        if tutorialController_ then tutorialController_:ResetForLevel(officialRuntime() and levelId or nil) end
+        if tutorialController_ then tutorialController_:RestartAttempt(officialRuntime() and levelId or nil) end
     end
 
     function NotifyTutorialDialogueMarker(levelId, marker)

@@ -133,4 +133,31 @@ do
         "the sequential runner regressed the level 02 tutorial")
 end
 
+do
+    local context, appended = newContext()
+    local controller = Tutorial.Controller.New(context)
+    controller:ResetForLevel("level_03")
+    controller:BeginAction("level03_side_gravity_action")
+    deploySideGravity(context)
+    controller:ObserveFieldRuleActivated("side-gravity")
+    controller:BeginAction("level03_newton_punch_action")
+    expect(#appended == 1, "restart setup did not append the first follow-up dialogue")
+
+    context.rules_ = Rules.NewState()
+    context.launched_ = false
+    context.stalledMs_ = 0
+    controller:RestartAttempt("level_03")
+    local cardModel = controller:GetRenderModel()
+    expect(cardModel.visible and cardModel.targetId == "side-gravity",
+        "restart lost the card prompt after its dialogue marker had already been consumed")
+
+    deploySideGravity(context)
+    controller:ObserveFieldRuleActivated("side-gravity")
+    expect(controller.state == Tutorial.STATE.WAITING_FOR_ACTION
+        and controller.step and controller.step.targetId == "newton_punch",
+        "restart did not resume the already revealed Newton Punch marker")
+    expect(#appended == 1,
+        "restart duplicated follow-up dialogue that was already present in the communication log")
+end
+
 print(string.format('{"mode":"TUTORIAL_LEVEL03","checks":%d,"status":"pass"}', checks))
