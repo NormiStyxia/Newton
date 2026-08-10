@@ -678,6 +678,12 @@ local previousNvgSave, previousNvgTranslate = nvgSave, nvgTranslate
 local previousNvgRotate, previousNvgRestore = nvgRotate, nvgRestore
 nvgSave, nvgTranslate, nvgRotate, nvgRestore = function() end, function() end, function() end, function() end
 WorldPrimitives.Install(fakeRendererType, {}, function() return {} end, function() return {} end)
+expect(math.abs(WorldPrimitives.AngerIconScale(0) - 1) < 1e-9,
+    "anger icon pulse did not start at its base scale")
+expect(math.abs(WorldPrimitives.AngerIconScale(1.05 / 4) - 1.1) < 1e-9,
+    "anger icon pulse did not reach its smooth maximum")
+expect(math.abs(WorldPrimitives.AngerIconScale(1.05 * 3 / 4) - .9) < 1e-9,
+    "anger icon pulse did not reach its smooth minimum")
 local fakeRenderer = setmetatable({
     vg = {}, wallArtCalls = 0, launcherArtCalls = 0, goalArtCalls = 0,
     images = { launcher = 21, goalObserver = 22 },

@@ -2,6 +2,16 @@ local M = {}
 local PhaseWallEffects = require("game.render.PhaseWallEffects")
 local EinsteinObserver = require("game.render.EinsteinObserver")
 
+local ANGER_ICON_PULSE_SECONDS = 1.05
+local ANGER_ICON_PULSE_AMOUNT = .1
+
+---@param elapsed number|nil
+---@return number
+function M.AngerIconScale(elapsed)
+    local phase = math.max(0, tonumber(elapsed) or 0) * math.pi * 2 / ANGER_ICON_PULSE_SECONDS
+    return 1 + math.sin(phase) * ANGER_ICON_PULSE_AMOUNT
+end
+
 function M.Install(Renderer, COLORS, color, tint)
     local function imageReady(image)
         return image ~= nil and image >= 0
@@ -271,7 +281,7 @@ function M.Install(Renderer, COLORS, color, tint)
         nvgRestore(self.vg)
     end
 
-    function Renderer:DrawNewton(frame, level, anger, observation)
+    function Renderer:DrawNewton(frame, level, anger, observation, animationTime)
         local x, y, w, h = frame.newtonX, frame.newtonY, frame.newtonWidth, frame.newtonHeight
         local angerLevel = math.max(0, math.min(100, anger or 0))
         local angerKey = angerLevel >= 100 and 100 or angerLevel >= 75 and 75 or angerLevel >= 50 and 50 or angerLevel >= 25 and 25 or 0
@@ -290,7 +300,9 @@ function M.Install(Renderer, COLORS, color, tint)
             self:Text(x + 26, y + 55, "牛顿 · 经典定律维护者", 20, COLORS.darkPrimary, NVG_ALIGN_LEFT + NVG_ALIGN_TOP, "maker-display")
             self:TextBox(x + 26, y + 128, w - 52, "“" .. (observation or (level and level.observation) or "先观察抛物线，再谈万有引力。") .. "”", 16, COLORS.body, nil, nil, 1.25)
             if angerLevel >= 50 and imageReady(self.images.newtonAnger.icon) then
-                self:Image(self.images.newtonAnger.icon, x + 82, y + 216, 34, 35, 1)
+                local iconScale = M.AngerIconScale(animationTime)
+                self:Image(self.images.newtonAnger.icon, x + 82, y + 216,
+                    48 * iconScale, 50 * iconScale, 1)
             end
             self:Text(x + 24, y + h - 105, "牛顿怒气", 18, COLORS.darkPrimary)
             self:RoundedRect(x + 44, y + 529, 162, 12, 6, COLORS.greenSoft)

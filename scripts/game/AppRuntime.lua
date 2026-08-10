@@ -702,7 +702,7 @@ function M.Install(context)
             BeginGameplayWorldShake(frame_)
             painter_:DrawGameplayWallArt(frame_)
             EndGameplayWorldShake()
-            painter_:DrawNewton(frame_, level_, anger_, observation_)
+            painter_:DrawNewton(frame_, level_, anger_, observation_, uiElapsed_)
             -- Shake only the authored Gameplay world. HUD, Newton's panel,
             -- cards and modal overlays remain in the fixed stage transform.
             BeginGameplayWorldShake(frame_)
