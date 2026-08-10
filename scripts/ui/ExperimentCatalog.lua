@@ -2,6 +2,7 @@ local CatalogTransition = require("ui.ExperimentCatalogTransition")
 local SketchDrawing = require("ui.SketchDrawing")
 local LevelPreviewTransform = require("game.layout.LevelPreviewTransform")
 local ResultReportConfig = require("ui.result_report_config")
+local RuleArchiveOverlay = require("ui.RuleArchiveOverlay")
 
 local M = {}
 
@@ -14,6 +15,7 @@ local sketchDrawing_ = SketchDrawing.New()
 
 local CATALOG_HEADER = {
     backButton = { x = 108, y = 31, w = 82, h = 82 },
+    archiveButton = { x = 1560, y = 53, w = 210, h = 42 },
     titleX = 218,
     titleCenterY = 60,
     subtitleCenterY = 97,
@@ -85,6 +87,12 @@ local function resolveCatalogHeader(frame)
             y = source.y,
             w = source.w,
             h = source.h,
+        },
+        archiveButton = {
+            x = artOffsetX + CATALOG_HEADER.archiveButton.x,
+            y = CATALOG_HEADER.archiveButton.y,
+            w = CATALOG_HEADER.archiveButton.w,
+            h = CATALOG_HEADER.archiveButton.h,
         },
         titleX = artOffsetX + CATALOG_HEADER.titleX,
         titleCenterY = CATALOG_HEADER.titleCenterY,
@@ -749,6 +757,20 @@ local function drawReportSnapshotButton(painter, rect, hovered)
         NVG_ALIGN_LEFT + NVG_ALIGN_MIDDLE, CATALOG_HEADING_FONT)
 end
 
+local function drawRuleArchiveButton(painter, rect, hovered)
+    local fill = hovered and COLORS.selected or COLORS.paperLight
+    local ink = COLORS.ink
+    painter:RoundedRect(rect.x, rect.y, rect.w, rect.h, 3, fill, COLORS.border, 1.4)
+    painter:StrokeRect(rect.x + 4, rect.y + 4, rect.w - 8, rect.h - 8, COLORS.brassSoft, 1, 145)
+    local iconX, iconY = rect.x + 14, rect.y + 12
+    painter:RoundedRect(iconX + 5, iconY - 3, 15, 18, 1.5,
+        COLORS.paperLight, ink, 1.1, 190)
+    painter:RoundedRect(iconX, iconY + 2, 15, 18, 1.5,
+        COLORS.paperLight, ink, 1.2, 225)
+    painter:Text(rect.x + 46, rect.y + rect.h * .5, "规则档案", 18, ink,
+        NVG_ALIGN_LEFT + NVG_ALIGN_MIDDLE, CATALOG_HEADING_FONT)
+end
+
 local function drawCompletionMark(painter, x, y, alpha, scale)
     local vg = painter.vg
     nvgSave(vg)
@@ -808,6 +830,15 @@ function M.Install(context)
     local experimentProgress_ = context.experimentProgress_
     local navigationTransition_ = context.navigationTransition_
     local _ENV = context
+    local ruleArchive_ = RuleArchiveOverlay.New({
+        rules = Rules,
+        cardWidth = context.CARD_RENDER_WIDTH,
+        cardHeight = context.CARD_RENDER_HEIGHT,
+        drawCard = function(id, definition, card, active, hovered, alpha, options)
+            DrawCardSurface(id, definition, card, nil, active, hovered, alpha, options)
+        end,
+        onFeedback = playUIClick,
+    })
 
     local function upgradeNavigationTransition(candidate)
         local complete = candidate
@@ -928,6 +959,7 @@ function M.Install(context)
     function InitializeExperimentCatalog()
         local state = catalogState_
         sketchDrawing_:Clear()
+        ruleArchive_:Reset()
         state.officialLevels, state.loadErrors = {}, {}
         for index = 1, CONFIG.levelCount do
             local ok, levelOrError = pcall(LoadLevelDefinition, index)
@@ -956,6 +988,7 @@ function M.Install(context)
 
     local function resetCatalogForNavigation(selected, category, preferredCustomEntryId)
         local state = catalogState_
+        ruleArchive_:Reset()
         category = category == CATEGORY_CUSTOM and CATEGORY_CUSTOM or CATEGORY_OFFICIAL
         state.category = category
         if category == CATEGORY_CUSTOM then
@@ -1094,6 +1127,7 @@ function M.Install(context)
 
     function FinalizeCatalogToTitleTransition()
         if scene_ or level_ then ReleaseLevelRuntime() end
+        ruleArchive_:Reset()
         catalogState_.dragStartY, catalogState_.dragStartScroll = nil, 0
         catalogState_.toast, catalogState_.toastTime = nil, 0
         catalogState_.reportSnapshot, catalogState_.reportSnapshotAnimation = nil, 0
@@ -1168,6 +1202,20 @@ function M.Install(context)
         end
         local x, y = pointerFrame.x, pointerFrame.y
         local header = resolveCatalogHeader(frame_)
+        local archiveWasVisible = ruleArchive_:IsVisible()
+        if archiveWasVisible then
+            ruleArchive_:Update(dt, x, y, frame_)
+            if input:GetKeyPress(KEY_ESCAPE) then
+                if ruleArchive_:Close() then playUIClick() end
+                return
+            end
+            if pointerFrame.pressed and pointIn(header.archiveButton, x, y) then
+                if ruleArchive_:Close() then playUIClick() end
+                return
+            end
+            ruleArchive_:HandlePointer(pointerFrame, frame_)
+            return
+        end
         local headerHovered = pointIn(header.backButton, x, y)
         if input:GetKeyPress(KEY_ESCAPE) then RequestReturnToTitleScreen(); return end
         if pointerFrame.pressed and headerHovered then
@@ -1194,6 +1242,13 @@ function M.Install(context)
         if input:GetKeyPress(KEY_RETURN) and actionsEnabled then RequestStartLevel(state.selectedIndex); return end
 
         if pointerFrame.pressed then
+            if actionsEnabled and pointIn(header.archiveButton, x, y) then
+                if ruleArchive_:Open() then
+                    state.dragStartY, state.listDragStartY, state.listScrollbarDragOffset = nil, nil, nil
+                    playUIClick()
+                end
+                return
+            end
             if actionsEnabled and listScrollbar and pointIn(listScrollbar.track, x, y) then
                 local thumb = listScrollbar.thumb
                 if pointIn(thumb, x, y) then
@@ -1318,6 +1373,9 @@ function M.Install(context)
             nvgRestore(painter.vg)
             return
         end
+
+        drawRuleArchiveButton(painter, header.archiveButton,
+            pointIn(header.archiveButton, pointer.x, pointer.y))
 
         local layout = M.ResolveLayout(frame_)
         local panelPoses = {
@@ -1462,6 +1520,7 @@ function M.Install(context)
         if state.reportSnapshot and DrawCatalogReportSnapshot then
             DrawCatalogReportSnapshot(state.reportSnapshot, state.reportSnapshotAnimation)
         end
+        ruleArchive_:Draw(painter, frame_)
         nvgRestore(painter.vg)
     end
 end

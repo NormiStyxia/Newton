@@ -17,6 +17,13 @@ Rules.CARDS = {
     ["quantum-phase"] = { kind = "decision", name = "量子相位", short = "相位", symbol = "∿", description = "增加一层相位充能，每穿过一面可相位墙消耗一层", accent = { 128, 118, 181 } },
 }
 
+-- Canonical presentation order for views that show the complete current rule
+-- archive. Runtime hands still use each level document's authored card order.
+Rules.CARD_ORDER = {
+    "feather-gravity", "side-gravity", "hooke-bounce",
+    "up-impulse", "mirror-motion", "quantum-phase",
+}
+
 function Rules.NewState()
     return {
         selectedFields = {},

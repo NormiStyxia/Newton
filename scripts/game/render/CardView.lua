@@ -68,7 +68,8 @@ function M.Install(context)
             NVG_ALIGN_CENTER + NVG_ALIGN_MIDDLE, "report-green", opacity)
     end
 
-    function DrawCardSurface(id, def, card, cardState, active, hovered, alpha)
+    function DrawCardSurface(id, def, card, cardState, active, hovered, alpha, options)
+        options = options or {}
         local field = def.kind == "field"
         local usage = cardState and cardState.usageMode or card.usageMode
         local remaining = cardState and cardState.remainingUses or card.count
@@ -113,7 +114,8 @@ function M.Install(context)
         painter_:Text(0, titleY, def.name, titleSize, titleColor,
             NVG_ALIGN_CENTER + NVG_ALIGN_TOP, "maker-display", opaque)
 
-        local useText = (field and "场地 · " or "决策 · ") .. CardUseLabel(usage, remaining)
+        local useText = options.hideUsage and (field and "场地规则" or "决策规则")
+            or ((field and "场地 · " or "决策 · ") .. CardUseLabel(usage, remaining))
         local useSize = FitSingleLine(useText, "maker-body", 8.5, 7, CARD_RENDER_WIDTH * .62)
         painter_:Text(0, top + CARD_RENDER_HEIGHT * .14, useText, useSize, accent,
             NVG_ALIGN_CENTER + NVG_ALIGN_TOP, "maker-body", opaque)
@@ -132,7 +134,7 @@ function M.Install(context)
         painter_:TextBox(-descriptionWidth * .5, top + CARD_RENDER_HEIGHT * .873,
             descriptionWidth, def.description, descriptionSize, bodyColor,
             NVG_ALIGN_CENTER + NVG_ALIGN_TOP, "maker-body", 1.15, opaque)
-        DrawCardBadge(CardBadgeText(usage, remaining), opacity)
+        if not options.hideUsage then DrawCardBadge(CardBadgeText(usage, remaining), opacity) end
     end
 
     -- Cards and the direction selector occupy distinct Phaser depth bands. Keep
