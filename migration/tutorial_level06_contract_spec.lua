@@ -43,6 +43,10 @@ expect(config.steps[1].targetId == "quantum-phase"
     and config.steps[1].instruction == "拖出「量子相位」"
     and config.steps[1].hint == "给苹果量子充能",
     "level 06 card target or two-line instruction changed")
+for _, message in ipairs(config.steps[1].afterMessages) do
+    expect(message.revealInterval == 1.05,
+        "level 06 quantum explanation lost its slower per-message pacing")
+end
 expect(config.steps[2].targetType == "event"
     and config.steps[2].targetId == "phase_wall_traversed",
     "level 06 first-traversal observation step changed")

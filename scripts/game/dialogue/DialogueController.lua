@@ -224,6 +224,11 @@ function Controller:OnWallImpact(levelId)
     return true
 end
 
+function Controller:_CurrentMessageInterval()
+    local message = self.messages[self.visibleCount]
+    return math.max(BUBBLE_DURATION, tonumber(message and message.revealInterval) or MESSAGE_INTERVAL)
+end
+
 function Controller:Close()
     if self.state == STATE.CLOSED or self.state == STATE.CLOSING then return end
     self.context.playUIClick()
@@ -326,7 +331,7 @@ function Controller:_AdvanceState(dt)
         end
     elseif self.state == STATE.PLAYING then
         self.messageElapsed = self.messageElapsed + dt
-        if self.visibleCount < #self.messages and self.messageElapsed >= MESSAGE_INTERVAL then
+        if self.visibleCount < #self.messages and self.messageElapsed >= self:_CurrentMessageInterval() then
             self:_RevealNext()
         elseif self.visibleCount >= #self.messages
             and (self.messageAges[self.visibleCount] or BUBBLE_DURATION) >= BUBBLE_DURATION then

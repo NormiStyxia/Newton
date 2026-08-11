@@ -159,6 +159,7 @@ local ACTION_CONFIGS = {
                         avatarText = "爱",
                         text = "这是特殊的决策牌——「量子相位」。",
                         style = "EINSTEIN",
+                        revealInterval = 1.05,
                     },
                     {
                         speaker = "einstein",
@@ -167,6 +168,7 @@ local ACTION_CONFIGS = {
                         avatarText = "爱",
                         text = "和其他决策牌一样，不会永久修改整个场地。但它可以在发射以前预先充能。",
                         style = "EINSTEIN",
+                        revealInterval = 1.05,
                     },
                     {
                         speaker = "nomi",
@@ -175,6 +177,7 @@ local ACTION_CONFIGS = {
                         avatarText = "诺",
                         text = "充能？",
                         style = "NOMI",
+                        revealInterval = 1.05,
                     },
                     {
                         speaker = "green",
@@ -183,6 +186,7 @@ local ACTION_CONFIGS = {
                         avatarText = "绿",
                         text = "翻译：次数可以累计，场地规则里可以看见。",
                         style = "GREEN",
+                        revealInterval = 1.05,
                     },
                     {
                         speaker = "einstein",
@@ -191,6 +195,7 @@ local ACTION_CONFIGS = {
                         avatarText = "爱",
                         text = "苹果碰到这种紫色墙体时，会消耗一次相位充能。",
                         style = "EINSTEIN",
+                        revealInterval = 1.05,
                     },
                     {
                         speaker = "einstein",
@@ -199,6 +204,7 @@ local ACTION_CONFIGS = {
                         avatarText = "爱",
                         text = "然后——穿过去。",
                         style = "EINSTEIN",
+                        revealInterval = 1.05,
                     },
                     {
                         speaker = "einstein",
@@ -207,6 +213,7 @@ local ACTION_CONFIGS = {
                         avatarText = "爱",
                         text = "暂时。",
                         style = "EINSTEIN",
+                        revealInterval = 1.05,
                     },
                 },
             },
