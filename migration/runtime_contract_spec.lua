@@ -234,6 +234,19 @@ expect(type(app.context.RequestEnterWorkshop) == "function"
     and type(app.context.ExitWorkshopPreview) == "function",
     "catalog, workshop, and formal preview routing were not composed")
 
+local bgmStartCalls = 0
+app.context.globalBGM_.startAttempted = false
+app.context.setMusicContext = function(musicContext, options)
+    bgmStartCalls = bgmStartCalls + 1
+    expect(musicContext == "academy" and options.showNowPlaying == false,
+        "first audio gesture requested the wrong music context")
+    app.context.globalBGM_.startAttempted = true
+    return true
+end
+expect(app.context.HandleFirstAudioGesture(), "first audio gesture did not start BGM")
+expect(not app.context.HandleFirstAudioGesture(), "duplicate first audio gesture restarted BGM")
+expect(bgmStartCalls == 1, "mouse and touch startup callbacks were not deduplicated")
+
 dofile("scripts/main.lua")
 for _, callback in ipairs({
     "Start", "Stop", "HandleUpdate", "HandlePhysicsPreStep", "HandlePhysicsPostStep",

@@ -26,6 +26,7 @@ function M.Install(context)
     local newtonPunchShake_ = context.newtonPunchShake_
     local lastValidPhysicsTimeStep = 1 / 60
     local frameScreen_ = nil
+    local firstAudioGestureHandled_ = false
     local _ENV = context
 
     local function currentNavigationTransition()
@@ -205,7 +206,19 @@ function M.Install(context)
     end
 
     function HandleFirstAudioGesture()
-        StartGlobalBGM()
+        if firstAudioGestureHandled_ then return false end
+
+        -- A physical touch can emit both MouseButtonDown and TouchBegin. Treat
+        -- the audio unlock as one transaction so the second callback cannot
+        -- restart the source while SoundSource:Play() is still settling.
+        firstAudioGestureHandled_ = true
+        local started = StartGlobalBGM()
+        if not started and not context.globalBGM_.startAttempted then
+            -- Resource creation may fail before a play attempt is made. In that
+            -- case a later gesture should be allowed to try again.
+            firstAudioGestureHandled_ = false
+        end
+        return started
     end
 
     function RefreshWorkspaceLayout()
@@ -219,6 +232,7 @@ function M.Install(context)
     end
 
     function Start()
+        firstAudioGestureHandled_ = false
         graphics.windowTitle = CONFIG.title
         painter_ = Renderer2D.New()
         -- The catalog uses the same fixed 1880 x 840 stage as gameplay, so its
@@ -253,10 +267,11 @@ function M.Install(context)
         SubscribeToEvent("PhysicsUpdateContact2D", "HandleCollisionUpdate")
         SubscribeToEvent("PhysicsEndContact2D", "HandleCollisionEnd")
         SubscribeToEvent(painter_.vg, "NanoVGRender", "HandleRender")
-        if context.globalBGM_:canStartWithoutGesture() then StartGlobalBGM() end
+        if context.globalBGM_:canStartWithoutGesture() then HandleFirstAudioGesture() end
         print("[Migration] 1:1 design-space runtime started")
     end
     function Stop()
+        firstAudioGestureHandled_ = false
         context.globalBGM_:stopBGM()
         if context.uiAudio_ then context.uiAudio_:Dispose() end
         ShutdownLevelWorkshop()

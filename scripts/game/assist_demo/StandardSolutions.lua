@@ -213,7 +213,7 @@ local SOLUTIONS = {
             -- A shallow launch lands on the spring. Hooke's response supplies
             -- enough height to press the upper button and open the goal bay.
             Card("hooke-bounce"),
-            { type = "LAUNCH", pullX = -73, pullY = 10, cursorDuration = 0.65 },
+            { type = "LAUNCH", pullX = -76, pullY = 10, cursorDuration = 0.65 },
             { type = "WAIT_CONDITION", condition = "GOAL_REACHED", timeout = 10.0 }
         ),
     },
@@ -223,9 +223,9 @@ local SOLUTIONS = {
         actions = Append(BaseActions(),
             -- Thread the natural spring corridor first. On the descending pass
             -- through the sensor, cancel just enough fall speed to hold overlap.
-            { type = "LAUNCH", pullX = -76, pullY = 46, cursorDuration = 0.65 },
+            { type = "LAUNCH", pullX = -76, pullY = 48, cursorDuration = 0.65 },
             WaitX(1100, "RIGHT", 8.0),
-            WaitY(320, "DOWN", 6.0, CardTarget("up-impulse")),
+            WaitY(380, "DOWN", 6.0, CardTarget("up-impulse")),
             Card("up-impulse"),
             { type = "WAIT_CONDITION", condition = "GOAL_REACHED", timeout = 8.0 }
         ),
@@ -244,7 +244,7 @@ local SOLUTIONS = {
             Side("UP"),
             WaitStopped(8.0, CardTarget("side-gravity")),
             Side("RIGHT"),
-            WaitX(1180, "RIGHT", 8.0, CardTarget("side-gravity")),
+            WaitX(1110, "RIGHT", 8.0, CardTarget("side-gravity")),
             Side("UP"),
             WaitStopped(10.0, CardTarget("side-gravity")),
             Side("RIGHT"),
@@ -252,7 +252,7 @@ local SOLUTIONS = {
             Side("LEFT"),
             WaitX(1000, "LEFT", 8.0, CardTarget("side-gravity")),
             Side("UP"),
-            WaitStopped(8.0, CardTarget("side-gravity")),
+            WaitY(160, "UP", 8.0, CardTarget("side-gravity")),
             Side("LEFT"),
             WaitStopped(8.0, CardTarget("side-gravity")),
             Side("DOWN"),

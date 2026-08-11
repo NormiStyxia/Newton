@@ -132,6 +132,26 @@ for levelIndex = 1, 9 do
     end
 end
 
+local level07 = StandardSolutions.Get("level_07").actions
+Expect(level07[4].type == "LAUNCH" and level07[4].pullX == -76 and level07[4].pullY == 10,
+    "level 07 spring launch tuning regressed")
+
+local level08 = StandardSolutions.Get("level_08").actions
+Expect(level08[3].type == "LAUNCH" and level08[3].pullX == -76 and level08[3].pullY == 48,
+    "level 08 corridor launch tuning regressed")
+Expect(level08[4].condition == "APPLE_CROSSED_X" and level08[4].x == 1100,
+    "level 08 horizontal impulse preparation regressed")
+Expect(level08[5].condition == "APPLE_CROSSED_Y" and level08[5].y == 380
+        and level08[5].direction == "DOWN",
+    "level 08 impulse timing regressed")
+
+local level09 = StandardSolutions.Get("level_09").actions
+Expect(level09[10].condition == "APPLE_CROSSED_X" and level09[10].x == 1110,
+    "level 09 upper-lane gap alignment regressed")
+Expect(level09[18].condition == "APPLE_CROSSED_Y" and level09[18].y == 160
+        and level09[18].direction == "UP",
+    "level 09 top-gate timing regressed")
+
 local conditionPosition = { x = 400, y = 100 }
 local conditionContext = {
     CONFIG = { matterFramesPerSecond = 60 },
