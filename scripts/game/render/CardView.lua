@@ -218,7 +218,7 @@ function M.Install(context)
     -- just inside the laboratory edge. The same surface renderer supplies the
     -- artwork, definition text and live usage badge as the hand card.
     function DrawSelectedCardDetail()
-        if not selectedCardId_ or screen_ ~= "game" or isPaused_ or replayActive_ or success_ or failed_
+        if not selectedCardId_ or screen_ ~= "game" or replayActive_ or success_ or failed_
             or context.assistantInputLocked_ or assistSceneActive_
             or (dialogueController_ and dialogueController_:IsActive())
             or (IsResultOverlayVisible and IsResultOverlayVisible())

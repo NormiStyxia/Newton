@@ -29,7 +29,6 @@ function M.Install(context)
         if not isPaused_ then CancelAppleDrag() end
         isPaused_ = not isPaused_
         if isPaused_ then
-            ClearSelectedCard()
             SetStatus("TACTICAL PAUSE 路 规则卡仍可操作")
         else
             SetStatus(launched_ and "RUNNING 路 实验进行中" or "READY 路 等待发射")

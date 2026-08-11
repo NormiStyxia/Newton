@@ -482,7 +482,9 @@ function M.Install(context)
         local wasDragged = activeCardDragged_
         local wasDeploying = activeCardDeploying_
         if not wasDragged then
-            if not isPaused_ then SelectCard(id) end
+            -- Selection only drives the read-only detail card and remains
+            -- available while tactical pause freezes the experiment.
+            SelectCard(id)
             -- Phaser's primed transition starts from the nominal slot, not an
             -- interrupted hand-reorder tween.
             cardHomeMotions_[id] = nil
