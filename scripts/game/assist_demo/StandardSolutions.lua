@@ -52,6 +52,16 @@ local function Phase()
     }
 end
 
+local function Card(cardId, parameter)
+    return {
+        type = "PLAY_CARD",
+        cardId = cardId,
+        parameter = parameter,
+        cursorDuration = 0.2,
+        approachDuration = 0.12,
+    }
+end
+
 local function CardTarget(cardId)
     return { type = "CARD", cardId = cardId, duration = 0.14 }
 end
@@ -197,54 +207,59 @@ local SOLUTIONS = {
         ),
     },
 
+    level_07 = {
+        levelId = "level_07",
+        actions = Append(BaseActions(),
+            -- A shallow launch lands on the spring. Hooke's response supplies
+            -- enough height to press the upper button and open the goal bay.
+            Card("hooke-bounce"),
+            { type = "LAUNCH", pullX = -73, pullY = 10, cursorDuration = 0.65 },
+            { type = "WAIT_CONDITION", condition = "GOAL_REACHED", timeout = 10.0 }
+        ),
+    },
+
+    level_08 = {
+        levelId = "level_08",
+        actions = Append(BaseActions(),
+            -- Thread the natural spring corridor first. On the descending pass
+            -- through the sensor, cancel just enough fall speed to hold overlap.
+            { type = "LAUNCH", pullX = -76, pullY = 46, cursorDuration = 0.65 },
+            WaitX(1100, "RIGHT", 8.0),
+            WaitY(320, "DOWN", 6.0, CardTarget("up-impulse")),
+            Card("up-impulse"),
+            { type = "WAIT_CONDITION", condition = "GOAL_REACHED", timeout = 8.0 }
+        ),
+    },
+
     level_09 = {
         levelId = "level_09",
-        assistRegions = {
-            passage_exit = { x = 645, y = 210, width = 120, height = 125 },
-        },
-        actions = {
-            { type = "RESET_LEVEL" },
-            { type = "SHOW_MESSAGE", text = "我来试一次。", duration = 0.8 },
-            { type = "LAUNCH", pullX = -70, pullY = 60, cursorDuration = 0.65 },
-            {
-                type = "WAIT_CONDITION",
-                condition = "APPLE_CROSSED_X",
-                x = 350,
-                direction = "RIGHT",
-                timeout = 5.0,
-                prepareTarget = { type = "CARD", cardId = "up-impulse", duration = 0.14 },
-            },
-            {
-                type = "PLAY_CARD",
-                cardId = "up-impulse",
-                cursorDuration = 0.2,
-                approachDuration = 0.12,
-            },
-            {
-                type = "WAIT_CONDITION",
-                condition = "APPLE_ENTER_REGION",
-                regionId = "passage_exit",
-                timeout = 5.0,
-                prepareTarget = { type = "CARD", cardId = "side-gravity", duration = 0.24 },
-            },
-            {
-                type = "PLAY_CARD",
-                cardId = "side-gravity",
-                parameter = "RIGHT",
-                cursorDuration = 0.2,
-                approachDuration = 0.12,
-            },
-            {
-                type = "WAIT_CONDITION",
-                condition = "APPLE_CROSSED_X",
-                x = 850,
-                direction = "RIGHT",
-                timeout = 5.0,
-                prepareTarget = { type = "NEWTON_PUNCH", duration = 0.2 },
-            },
-            { type = "NEWTON_PUNCH", cursorDuration = 0.12 },
-            { type = "WAIT_CONDITION", condition = "GOAL_REACHED", timeout = 8.0 },
-        },
+        actions = Append(BaseActions(),
+            -- Reproduce the authored ten-intervention route. Crossings handle
+            -- open corridors; stopped checks hand control over at each wall or
+            -- closed door so the route stays stable when contacts settle.
+            { type = "LAUNCH", pullX = -76, pullY = 30, cursorDuration = 0.65 },
+            WaitX(500, "RIGHT", 8.0, CardTarget("side-gravity")),
+            Side("RIGHT"),
+            WaitX(850, "RIGHT", 8.0, CardTarget("side-gravity")),
+            Side("UP"),
+            WaitStopped(8.0, CardTarget("side-gravity")),
+            Side("RIGHT"),
+            WaitX(1180, "RIGHT", 8.0, CardTarget("side-gravity")),
+            Side("UP"),
+            WaitStopped(10.0, CardTarget("side-gravity")),
+            Side("RIGHT"),
+            WaitStopped(8.0, CardTarget("side-gravity")),
+            Side("LEFT"),
+            WaitX(1000, "LEFT", 8.0, CardTarget("side-gravity")),
+            Side("UP"),
+            WaitStopped(8.0, CardTarget("side-gravity")),
+            Side("LEFT"),
+            WaitStopped(8.0, CardTarget("side-gravity")),
+            Side("DOWN"),
+            WaitStopped(8.0, CardTarget("side-gravity")),
+            Side("LEFT"),
+            { type = "WAIT_CONDITION", condition = "GOAL_REACHED", timeout = 8.0 }
+        ),
     },
 }
 

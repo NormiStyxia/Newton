@@ -90,12 +90,13 @@ local adapter = NewAdapter(false)
 local runner = Runner.New(adapter, NewView())
 local started, errorMessage = runner:start(StandardSolutions.Get("level_09"), { x = 0, y = 0 })
 Expect(started, errorMessage or "runner did not start")
-for _ = 1, 200 do
+for _ = 1, 400 do
     runner:update(0.05)
     if State.IsTerminal(runner:getState()) then break end
 end
 Expect(runner:getState() == State.COMPLETED, "standard solution did not complete")
-Expect(table.concat(adapter.calls, ",") == "begin,reset,launch,card,card,punch", "semantic action order changed")
+Expect(table.concat(adapter.calls, ",") == "begin,reset,launch,card,card,card,card,card,card,card,card,card,card",
+    "level 09 semantic action order changed")
 
 local timeoutRunner = Runner.New(NewAdapter(true), NewView())
 Expect(timeoutRunner:start({ actions = {
@@ -116,7 +117,7 @@ local invalidWaitStarted = invalidWaitRunner:start({ actions = {
 } })
 Expect(not invalidWaitStarted, "WAIT_CONDITION without a timeout was accepted")
 
-for levelIndex = 1, 5 do
+for levelIndex = 1, 9 do
     local levelId = string.format("level_%02d", levelIndex)
     local solution = StandardSolutions.Get(levelId)
     Expect(solution ~= nil and solution.levelId == levelId,
