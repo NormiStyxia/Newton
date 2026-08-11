@@ -87,6 +87,9 @@ function M.Install(context)
         else
             SetStatus("PHASE · 消耗 1 层，充能已耗尽")
         end
+        if context.NotifyTutorialGameplayEvent then
+            context.NotifyTutorialGameplayEvent("phase_wall_traversed")
+        end
     end
     function UpdatePhaseTraversal()
         if not apple_ then return end
@@ -215,7 +218,12 @@ function M.Install(context)
         -- ordinary Decision gate intact for impulse and mirror cards.
         local decisionReady = launched_ or id == "quantum-phase"
         local applied = decisionReady and ApplyDecision(id, candidate) or false
-        if applied then ApplyAppleCardMaterial() end
+        if applied then
+            ApplyAppleCardMaterial()
+            if context.NotifyTutorialDecisionCardApplied then
+                context.NotifyTutorialDecisionCardApplied(id)
+            end
+        end
         return applied
     end
 

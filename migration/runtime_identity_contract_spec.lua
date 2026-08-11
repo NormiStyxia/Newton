@@ -111,19 +111,30 @@ context.dialogueController_:Close()
 context.dialogueController_:_FinishClose()
 expect(context.NotifyDialogueWallImpact("level_05"),
     "first real level 05 wall impact did not trigger dialogue")
-expect(context.dialogueController_:IsActive()
-    and context.dialogueController_.openMode == "continuation"
-    and context.dialogueController_.visibleCount == level05IntroCount,
-    "wall-impact dialogue did not reopen after the existing intro history")
+expect(not context.dialogueController_:IsActive()
+    and context.dialogueController_:HasUnread(),
+    "closed communication did not stay closed with an unread wall-impact dot")
 expect(context.dialogueController_.log:MessageCount("level_05") == level05IntroCount + 2,
     "wall-impact dialogue did not append exactly two messages")
+expect(context.dialogueController_:OpenHistory()
+    and context.dialogueController_.openMode == "history"
+    and context.dialogueController_.visibleCount == level05IntroCount + 2
+    and not context.dialogueController_:HasUnread(),
+    "opening wall-impact history did not reveal and mark the queued messages read")
+context.dialogueController_:Close()
+context.dialogueController_:_FinishClose()
 expect(not context.NotifyDialogueWallImpact("level_05")
     and context.dialogueController_.log:MessageCount("level_05") == level05IntroCount + 2,
     "repeated wall impact duplicated level 05 dialogue")
 context.NotifyDialogueLevelReady(nil)
 context.NotifyDialogueLevelReady("level_05")
+context.dialogueController_:RevealAll()
+context.dialogueController_:Close()
+context.dialogueController_:_FinishClose()
 expect(context.NotifyDialogueWallImpact("level_05")
-    and context.dialogueController_.log:MessageCount("level_05") == level05IntroCount + 2,
+    and context.dialogueController_.log:MessageCount("level_05") == level05IntroCount + 2
+    and not context.dialogueController_:IsActive()
+    and context.dialogueController_:HasUnread(),
     "level 05 re-entry did not reset the per-session first-wall observation")
 context.NotifyDialogueLevelReady("level_04")
 expect(not context.NotifyDialogueWallImpact("level_04"),

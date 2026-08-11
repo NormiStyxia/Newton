@@ -140,6 +140,126 @@ local ACTION_CONFIGS = {
             },
         },
     },
+    level_06 = {
+        id = "level06_quantum_phase",
+        steps = {
+            {
+                id = "level06_charge_quantum_phase",
+                marker = "level06_quantum_phase_action",
+                instruction = "拖出「量子相位」",
+                hint = "给苹果量子充能",
+                targetType = "card",
+                targetId = "quantum-phase",
+                completion = "decision_card_applied",
+                afterMessages = {
+                    {
+                        speaker = "einstein",
+                        side = "left",
+                        displayName = "爱因斯坦",
+                        avatarText = "爱",
+                        text = "这是特殊的决策牌——「量子相位」。",
+                        style = "EINSTEIN",
+                    },
+                    {
+                        speaker = "einstein",
+                        side = "left",
+                        displayName = "爱因斯坦",
+                        avatarText = "爱",
+                        text = "和其他决策牌一样，不会永久修改整个场地。但它可以在发射以前预先充能。",
+                        style = "EINSTEIN",
+                    },
+                    {
+                        speaker = "nomi",
+                        side = "right",
+                        displayName = "诺米",
+                        avatarText = "诺",
+                        text = "充能？",
+                        style = "NOMI",
+                    },
+                    {
+                        speaker = "green",
+                        side = "left",
+                        displayName = "绿毛同事",
+                        avatarText = "绿",
+                        text = "翻译：次数可以累计，场地规则里可以看见。",
+                        style = "GREEN",
+                    },
+                    {
+                        speaker = "einstein",
+                        side = "left",
+                        displayName = "爱因斯坦",
+                        avatarText = "爱",
+                        text = "苹果碰到这种紫色墙体时，会消耗一次相位充能。",
+                        style = "EINSTEIN",
+                    },
+                    {
+                        speaker = "einstein",
+                        side = "left",
+                        displayName = "爱因斯坦",
+                        avatarText = "爱",
+                        text = "然后——穿过去。",
+                        style = "EINSTEIN",
+                    },
+                    {
+                        speaker = "einstein",
+                        side = "left",
+                        displayName = "爱因斯坦",
+                        avatarText = "爱",
+                        text = "暂时。",
+                        style = "EINSTEIN",
+                    },
+                },
+            },
+            {
+                id = "level06_first_phase_traversal",
+                targetType = "event",
+                targetId = "phase_wall_traversed",
+                completion = "gameplay_event",
+                afterMessages = {
+                    {
+                        speaker = "newton",
+                        side = "left",
+                        displayName = "牛顿",
+                        avatarText = "牛",
+                        text = "所以它们互相当对方不存在？",
+                        style = "NEWTON",
+                    },
+                    {
+                        speaker = "green",
+                        side = "left",
+                        displayName = "绿毛同事",
+                        avatarText = "绿",
+                        text = "理解正确。",
+                        style = "GREEN",
+                    },
+                    {
+                        speaker = "newton",
+                        side = "left",
+                        displayName = "牛顿",
+                        avatarText = "牛",
+                        text = "……我想把某些人请出实验室了",
+                        style = "NEWTON",
+                    },
+                    {
+                        speaker = "nomi",
+                        side = "right",
+                        displayName = "诺米",
+                        avatarText = "诺",
+                        text = "那去哪，食堂？",
+                        style = "NOMI",
+                    },
+                    {
+                        speaker = "einstein",
+                        side = "left",
+                        displayName = "爱因斯坦",
+                        avatarText = "爱",
+                        text = "给我带份小炒肉。",
+                        style = "EINSTEIN",
+                    },
+                },
+            },
+        },
+    },
 }
 
 local function fieldIsActive(context, cardId)
@@ -193,6 +313,8 @@ function Controller:Init(context)
     self.seenMarkers = {}
     self.observedFieldActivations = {}
     self.observedPunchResets = {}
+    self.observedDecisionCardApplications = {}
+    self.observedGameplayEvents = {}
 end
 
 function Controller:ResetForLevel(levelId)
@@ -207,11 +329,15 @@ function Controller:ResetForLevel(levelId)
     self.seenMarkers = {}
     self.observedFieldActivations = {}
     self.observedPunchResets = {}
+    self.observedDecisionCardApplications = {}
+    self.observedGameplayEvents = {}
 end
 
 function Controller:_ResumeCurrentMarker()
     local expected = self:_CurrentStepConfig()
-    if not expected or not self.seenMarkers[expected.marker] then return false end
+    if not expected then return false end
+    if expected.marker == nil then return self:BeginAction(nil) end
+    if not self.seenMarkers[expected.marker] then return false end
     return self:BeginAction(expected.marker)
 end
 
@@ -232,6 +358,8 @@ function Controller:RestartAttempt(levelId)
     self.completedSteps = {}
     self.observedFieldActivations = {}
     self.observedPunchResets = {}
+    self.observedDecisionCardApplications = {}
+    self.observedGameplayEvents = {}
     self:_ResumeCurrentMarker()
 end
 
@@ -244,6 +372,14 @@ function Controller:_CompletionSatisfied(step)
     if step.completion == "field_rule_activated" then
         return self.observedFieldActivations[step.targetId] == true
             or fieldIsActive(self.context, step.targetId)
+    end
+    if step.completion == "decision_card_applied" then
+        local rules = self.context.rules_
+        return self.observedDecisionCardApplications[step.targetId] == true
+            or rules ~= nil and rules.usedDecisions ~= nil and rules.usedDecisions[step.targetId] == true
+    end
+    if step.completion == "gameplay_event" then
+        return self.observedGameplayEvents[step.targetId] == true
     end
     if step.completion == "field_rules_reset" then
         local fieldId = step.prerequisiteTargetId
@@ -303,6 +439,10 @@ function Controller:CompleteAction(_reason)
 
     if completedStep.completion == "field_rule_activated" then
         self.observedFieldActivations[completedStep.targetId] = true
+    elseif completedStep.completion == "decision_card_applied" then
+        self.observedDecisionCardApplications[completedStep.targetId] = true
+    elseif completedStep.completion == "gameplay_event" then
+        self.observedGameplayEvents[completedStep.targetId] = true
     end
     self.completedSteps[completedStep.id] = true
     self.step = nil
@@ -343,6 +483,28 @@ function Controller:ObserveNewtonPunchExecuted(removedRules)
     return true
 end
 
+function Controller:ObserveDecisionCardApplied(cardId)
+    if not self.config or type(cardId) ~= "string" then return false end
+    self.observedDecisionCardApplications[cardId] = true
+    if self.state == STATE.WAITING_FOR_ACTION and self.step
+        and self.step.completion == "decision_card_applied"
+        and self.step.targetId == cardId then
+        return self:CompleteAction("decision-card-applied")
+    end
+    return true
+end
+
+function Controller:ObserveGameplayEvent(eventId)
+    if not self.config or type(eventId) ~= "string" then return false end
+    self.observedGameplayEvents[eventId] = true
+    if self.state == STATE.WAITING_FOR_ACTION and self.step
+        and self.step.completion == "gameplay_event"
+        and self.step.targetId == eventId then
+        return self:CompleteAction("gameplay-event")
+    end
+    return true
+end
+
 function Controller:CancelForLevelComplete()
     if self.state == STATE.INACTIVE or self.state == STATE.CANCELLED then return false end
     self.state = STATE.CANCELLED
@@ -373,7 +535,7 @@ function Controller:GetRenderModel()
     end
     local ready = self:_ActionReady(self.step)
     return {
-        visible = ready,
+        visible = ready and self.step.targetType ~= "event",
         ready = ready,
         state = self.state,
         tutorialId = self.config and self.config.id or nil,
@@ -428,6 +590,18 @@ function M.Install(context)
     function NotifyTutorialNewtonPunchExecuted(removedRules)
         if officialRuntime() and tutorialController_ then
             tutorialController_:ObserveNewtonPunchExecuted(removedRules)
+        end
+    end
+
+    function NotifyTutorialDecisionCardApplied(cardId)
+        if officialRuntime() and not replayActive_ and not assistDemoActive_ and tutorialController_ then
+            tutorialController_:ObserveDecisionCardApplied(cardId)
+        end
+    end
+
+    function NotifyTutorialGameplayEvent(eventId)
+        if officialRuntime() and not replayActive_ and not assistDemoActive_ and tutorialController_ then
+            tutorialController_:ObserveGameplayEvent(eventId)
         end
     end
 

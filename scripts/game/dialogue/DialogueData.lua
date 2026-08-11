@@ -5,6 +5,7 @@ DialogueData.SECOND_LEVEL_ID = "level_02"
 DialogueData.THIRD_LEVEL_ID = "level_03"
 DialogueData.FOURTH_LEVEL_ID = "level_04"
 DialogueData.FIFTH_LEVEL_ID = "level_05"
+DialogueData.SIXTH_LEVEL_ID = "level_06"
 DialogueData.ANGER_THRESHOLDS = { 25, 50, 75, 100 }
 
 local FIRST_LEVEL_INTRO = {
@@ -266,11 +267,40 @@ local FIFTH_LEVEL_FIRST_WALL_IMPACT = {
     },
 }
 
+local SIXTH_LEVEL_INTRO = {
+    {
+        speaker = "newton",
+        side = "left",
+        displayName = "牛顿",
+        avatarText = "牛",
+        text = "等等，这些墙为什么是紫色的。",
+        style = "NEWTON",
+    },
+    {
+        speaker = "einstein",
+        side = "left",
+        displayName = "爱因斯坦",
+        avatarText = "爱",
+        text = "我们实验室拉来的新产品",
+        style = "EINSTEIN",
+    },
+    {
+        speaker = "nomi",
+        side = "right",
+        displayName = "诺米",
+        avatarText = "诺",
+        text = "像果冻，能吃吗？",
+        style = "NOMI",
+        tutorialMarker = "level06_quantum_phase_action",
+    },
+}
+
 function DialogueData.Intro(levelId)
     if levelId == DialogueData.SECOND_LEVEL_ID then return SECOND_LEVEL_INTRO end
     if levelId == DialogueData.THIRD_LEVEL_ID then return THIRD_LEVEL_INTRO end
     if levelId == DialogueData.FOURTH_LEVEL_ID then return FOURTH_LEVEL_INTRO end
     if levelId == DialogueData.FIFTH_LEVEL_ID then return FIFTH_LEVEL_INTRO end
+    if levelId == DialogueData.SIXTH_LEVEL_ID then return SIXTH_LEVEL_INTRO end
     if levelId ~= DialogueData.FIRST_LEVEL_ID then return {} end
     return FIRST_LEVEL_INTRO
 end

@@ -55,6 +55,8 @@
 ---@field NotifyTutorialDialogueMarker fun(levelId: string, marker: string)
 ---@field NotifyTutorialFieldRuleActivated fun(cardId: string)
 ---@field NotifyTutorialNewtonPunchExecuted fun(removedRules: string[])
+---@field NotifyTutorialDecisionCardApplied fun(cardId: string)
+---@field NotifyTutorialGameplayEvent fun(eventId: string)
 ---@field UpdateTutorial fun(dt: number)
 ---@field GetTutorialRenderModel fun(): table
 ---@field CancelTutorialForLevelComplete fun()

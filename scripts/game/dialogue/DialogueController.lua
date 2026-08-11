@@ -139,7 +139,7 @@ function Controller:_RememberScrollPosition()
     self.scrollProgressByLevel[self.currentLevelId] = self:GetScrollProgress()
 end
 
-function Controller:_BeginOpen(mode, initialVisibleCount)
+function Controller:_BeginOpen(mode)
     if self.state ~= STATE.CLOSED then return false end
     local restoreProgress = nil
     if mode == "history" and not self.log:HasUnread(self.currentLevelId) then
@@ -147,8 +147,7 @@ function Controller:_BeginOpen(mode, initialVisibleCount)
     end
     self.openMode = mode
     self.messages = self.log:GetMessages(self.currentLevelId)
-    self.visibleCount = mode == "history" and #self.messages
-        or clamp(math.floor(tonumber(initialVisibleCount) or 0), 0, #self.messages)
+    self.visibleCount = mode == "history" and #self.messages or 0
     self.messageAges = {}
     for index = 1, self.visibleCount do self.messageAges[index] = BUBBLE_DURATION end
     self.stateElapsed = 0
@@ -217,15 +216,11 @@ function Controller:OnWallImpact(levelId)
     local messages = DialogueData.FirstWallImpact(levelId)
     if #messages == 0 then return false end
 
-    local previousCount = self.log:MessageCount(levelId)
     if not self:AppendMessages(levelId, messages) then return false end
     self.firstWallImpactTriggered = true
-
-    -- Collision dialogue is an immediate observation. If the intro was already
-    -- closed, reopen at the existing history boundary and reveal only the new
-    -- messages instead of replaying the full intro.
-    if self.state == STATE.CLOSING then self:_FinishClose() end
-    if self.state == STATE.CLOSED then self:_BeginOpen("continuation", previousCount) end
+    -- AppendMessages leaves the log read cursor untouched. When communication
+    -- is closed (or closing), the existing history-button unread dot is enough;
+    -- do not interrupt gameplay by reopening the panel.
     return true
 end
 
