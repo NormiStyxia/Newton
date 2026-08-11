@@ -1,6 +1,24 @@
 -- gameplay/Experiment: private runtime functions installed into the App context.
 local M = {}
 
+local HORIZONTAL_ESCAPE_MARGIN = 120
+local VERTICAL_ESCAPE_MARGIN = 140
+
+---@param screenX number
+---@param screenY number
+---@param frame table
+---@return boolean
+function M.IsAppleOutsideFailureBounds(screenX, screenY, frame)
+    local left = frame.playfieldX
+    local top = frame.playfieldY
+    local right = left + frame.playfieldWidth
+    local bottom = top + frame.playfieldHeight
+    return screenX < left - HORIZONTAL_ESCAPE_MARGIN
+        or screenX > right
+        or screenY < top - VERTICAL_ESCAPE_MARGIN
+        or screenY > bottom + VERTICAL_ESCAPE_MARGIN
+end
+
 ---@param context GameContext
 function M.Install(context)
     local MatterCalibration = context.MatterCalibration
@@ -166,8 +184,7 @@ function M.Install(context)
                 PlaySound("success")
             end
         else goalContactMs_ = 0 end
-        if screenX < frame_.playfieldX - 120 or screenX > frame_.playfieldX + frame_.playfieldWidth + 120
-            or screenY < frame_.playfieldY - 140 or screenY > frame_.playfieldY + frame_.playfieldHeight + 140 then
+        if M.IsAppleOutsideFailureBounds(screenX, screenY, frame_) then
             CaptureReplayFinalSample()
             failed_ = true
             launched_ = false
