@@ -2,10 +2,11 @@
 local M = {}
 
 local DESCRIPTION_WIDTH_RATIO = .80
-local DESCRIPTION_TOP_RATIO = .852
-local DESCRIPTION_HEIGHT_RATIO = .102
+local DESCRIPTION_TOP_RATIO = .825
+local DESCRIPTION_HEIGHT_RATIO = .130
 local DESCRIPTION_FONT_RATIO = .042
 local DESCRIPTION_LINE_HEIGHT = 1.08
+local DESCRIPTION_MULTILINE_INSET_RATIO = .012
 
 ---@param context GameContext
 function M.Install(context)
@@ -128,8 +129,10 @@ function M.Install(context)
         local measuredTop = bounds and bounds[2] or 0
         local measuredHeight = bounds and bounds[4]
             and math.max(0, bounds[4] - measuredTop) or descriptionSize
-        local descriptionY = descriptionTop + math.max(0, (descriptionHeight - measuredHeight) * .5)
-            - measuredTop
+        local wraps = measuredHeight > descriptionSize * 1.45
+        local descriptionY = wraps
+            and (descriptionTop + CARD_RENDER_HEIGHT * DESCRIPTION_MULTILINE_INSET_RATIO - measuredTop)
+            or (descriptionTop + math.max(0, (descriptionHeight - measuredHeight) * .5) - measuredTop)
         nvgSave(painter_.vg)
         nvgIntersectScissor(painter_.vg, descriptionLeft, descriptionTop,
             descriptionWidth, descriptionHeight)
