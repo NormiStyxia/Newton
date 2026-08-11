@@ -294,16 +294,49 @@ expect(assistant:getBehavior() == GreenAssistant.Behavior.TAKEOVER and adapter.l
     "takeover did not lock input and start replay")
 expect(assistant.animator:getCurrentAnimation() == "takeover_raise",
     "takeover did not begin with the raise animation")
+expect(assistant:cancelTakeover("contract-cancel") and adapter.cancelled and not adapter.locked,
+    "takeover cancellation did not stop the logical takeover and unlock input")
+expect(assistant:getBehavior() == GreenAssistant.Behavior.TAKEOVER
+    and assistant.animator:getCurrentAnimation() == "takeover_raise",
+    "takeover cancellation interrupted the raise animation")
 assistant:update(.21)
 expect(assistant:getBehavior() == GreenAssistant.Behavior.TAKEOVER
     and assistant.animator:getCurrentAnimation() == "takeover_loop",
-    "takeover raise did not transition into the looping animation")
+    "cancelled takeover did not complete raise before entering the loop")
+assistant:update(.19)
+expect(assistant.animator:getCurrentAnimation() == "takeover_loop",
+    "cancelled takeover did not retain one complete loop cycle")
+assistant:update(.02)
+expect(assistant:getBehavior() == GreenAssistant.Behavior.TAKEOVER
+    and assistant.animator:getCurrentAnimation() == "takeover_finish",
+    "cancelled takeover did not begin the finish animation")
+assistant:update(.2)
+expect(assistant:getBehavior() == GreenAssistant.Behavior.IDLE,
+    "cancelled takeover did not leave TAKEOVER after the finish animation")
+
+expect(assistant:poke() and assistant:getBehavior() == GreenAssistant.Behavior.OFFER,
+    "cancelled takeover could not be offered again")
+adapter.finished = false
+expect(assistant:acceptTakeover(), "second takeover acceptance failed")
+assistant:update(.21)
+expect(assistant:getBehavior() == GreenAssistant.Behavior.TAKEOVER
+    and assistant.animator:getCurrentAnimation() == "takeover_loop",
+    "second takeover did not complete raise into loop")
 adapter.finished = true
 assistant:update(.016)
 expect(adapter.assisted and not adapter.locked, "takeover did not finish assisted and unlock input")
-expect(assistant:getBehavior() == GreenAssistant.Behavior.SUCCESS, "takeover did not enter success behavior")
-expect(assistant.animator:getCurrentAnimation() == "takeover_finish",
-    "takeover completion did not begin the finish animation")
+expect(assistant:getBehavior() == GreenAssistant.Behavior.TAKEOVER
+    and assistant.animator:getCurrentAnimation() == "takeover_loop",
+    "logical completion skipped the minimum takeover loop")
+assistant:update(.19)
+expect(assistant:getBehavior() == GreenAssistant.Behavior.TAKEOVER
+    and assistant.animator:getCurrentAnimation() == "takeover_finish",
+    "takeover completion did not begin the independent finish animation")
+assistant:update(.02)
+expect(assistant:getBehavior() == GreenAssistant.Behavior.SUCCESS,
+    "takeover did not enter success behavior after the finish animation")
+expect(assistant.animator:getCurrentAnimation() ~= "takeover_finish",
+    "SUCCESS behavior replayed the takeover finish animation")
 mockView.hitCharacter = true
 local successDragX, successDragY = mockView.x, mockView.y
 expect(assistant:handlePointer(successDragX, successDragY,

@@ -131,7 +131,7 @@
       }
     },
     "takeover_raise": {
-      "fps": 16,
+      "fps": 12,
       "loop": false,
       "footAnchor": {
         "x": 0.5,

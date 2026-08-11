@@ -84,7 +84,7 @@ def main() -> int:
         "drag": {"frames": 16, "fps": 16.0, "loop": True, "duration": 1.0, "grounded": False},
         "tap_react_a": {"frames": 16, "fps": 16.0, "loop": False, "duration": 1.0, "grounded": True},
         "tap_react_b": {"frames": 16, "fps": 16.0, "loop": False, "duration": 1.0, "grounded": True},
-        "takeover_raise": {"frames": 15, "fps": 16.0, "loop": False, "duration": 15 / 16, "grounded": True},
+        "takeover_raise": {"frames": 15, "fps": 12.0, "loop": False, "duration": 15 / 12, "grounded": True},
         "takeover_loop": {"frames": 16, "fps": 16.0, "loop": True, "duration": 1.0, "grounded": True},
         "takeover_finish": {"frames": 16, "fps": 16.0, "loop": False, "duration": 1.0, "grounded": True},
     }
@@ -203,10 +203,15 @@ def main() -> int:
         expect(preset in config_source, f"missing quality preset {preset}")
     expect("master_1080" not in config_source,
            "GreenAssistant config still references the removed master asset set")
-    expect('TAKEOVER = { "takeover_raise", "takeover_loop" }' in config_source,
-           "GreenAssistant takeover raise/loop animation sequence is missing")
-    expect('SUCCESS = { "takeover_finish" }' in config_source,
-           "GreenAssistant takeover finish animation sequence is missing")
+    expect('takeoverAnimationFlow = {' in config_source
+           and 'raise = "takeover_raise"' in config_source
+           and 'loop = "takeover_loop"' in config_source
+           and 'finish = "takeover_finish"' in config_source,
+           "GreenAssistant takeover raise/loop/finish animation flow is missing")
+    expect('minimumLoopCycles = 1' in config_source,
+           "GreenAssistant takeover flow no longer guarantees a complete loop")
+    expect('SUCCESS = "idle_base"' in config_source,
+           "GreenAssistant takeover finish is still coupled to SUCCESS behavior")
 
     runtime_memory = rgba_memory(runtime)
     variants = {

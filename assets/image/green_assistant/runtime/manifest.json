@@ -3155,7 +3155,7 @@
         },
         "takeover_raise": {
           "sourceType": "imageSequence",
-          "fps": 16.0,
+          "fps": 12.0,
           "loop": false,
           "frameCount": 15,
           "frameWidth": 360,

@@ -135,7 +135,7 @@ GreenAssistConfig.DEFAULTS = {
         takeover_raise = {
             assetClip = "takeover_raise",
             frames = Frames("takeover_raise", 15),
-            fps = 16,
+            fps = 12,
             loop = false,
             playbackSpeed = 1,
             anchor = { x = 0.5, y = 1 },
@@ -173,12 +173,15 @@ GreenAssistConfig.DEFAULTS = {
         DIALOGUE = "idle_base",
         OFFER = "idle_base",
         TAKEOVER = "takeover_loop",
-        SUCCESS = "takeover_finish",
+        SUCCESS = "idle_base",
         DISABLED = "idle_base",
     },
-    behaviorAnimationSequences = {
-        TAKEOVER = { "takeover_raise", "takeover_loop" },
-        SUCCESS = { "takeover_finish" },
+    takeoverAnimationFlow = {
+        raise = "takeover_raise",
+        loop = "takeover_loop",
+        finish = "takeover_finish",
+        minimumLoopCycles = 1,
+        fallbackAnimation = "idle_base",
     },
     assets = {
         enabled = true,

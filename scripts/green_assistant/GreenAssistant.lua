@@ -8,6 +8,7 @@ local BehaviorState = require("green_assistant.GreenAssistBehaviorState")
 local Interaction = require("green_assistant.GreenAssistInteraction")
 local FailureAssist = require("green_assistant.GreenAssistFailureAssist")
 local Takeover = require("green_assistant.GreenAssistTakeover")
+local TakeoverAnimation = require("green_assistant.GreenAssistTakeoverAnimation")
 local Adapter = require("green_assistant.GreenAssistAdapter")
 local View = require("green_assistant.GreenAssistView")
 
@@ -17,6 +18,7 @@ GreenAssistant.__index = GreenAssistant
 
 GreenAssistant.Behavior = BehaviorState
 GreenAssistant.Animation = AnimationState
+GreenAssistant.TakeoverAnimationPhase = TakeoverAnimation.Phase
 
 local function RandomRange(minimum, maximum)
     if maximum <= minimum then return minimum end
@@ -122,6 +124,11 @@ function GreenAssistant.New(options)
         end,
     })
     for name, animation in pairs(self.config.animations) do self.animator:registerAnimation(name, animation) end
+    self.takeoverAnimation = TakeoverAnimation.New(self.animator, self.config.takeoverAnimationFlow, {
+        onFinished = function(request)
+            self:_completeTakeoverAnimationExit(request)
+        end,
+    })
 
     self.animationState = AnimationState.New(self.config.behaviorAnimationMap, self.config.fallbackAnimation)
     self.behaviorState = BehaviorState.New(self.enabled and BehaviorState.IDLE or BehaviorState.DISABLED)
@@ -147,13 +154,13 @@ function GreenAssistant.New(options)
         end,
         onFinished = function(replayData)
             self:_emit("onTakeoverFinished", replayData)
-            self:setBehavior(BehaviorState.SUCCESS, "takeover-finished")
-            self:_showTimedMessage(self.config.failureAssist.successText, 1.8, BehaviorState.SUCCESS)
+            self:_requestTakeoverAnimationExit(BehaviorState.SUCCESS, "takeover-finished",
+                self.config.failureAssist.successText, 1.8)
         end,
         onError = function(errorMessage)
             print("[GreenAssistant] takeover failed: " .. tostring(errorMessage))
-            self:setBehavior(BehaviorState.IDLE, "takeover-error")
-            self:_showTimedMessage(self.config.failureAssist.unavailableText, 2.2, BehaviorState.DIALOGUE)
+            self:_requestTakeoverAnimationExit(BehaviorState.DIALOGUE, "takeover-error",
+                self.config.failureAssist.unavailableText, 2.2)
         end,
     })
     self:_scheduleBlink()
@@ -232,6 +239,28 @@ function GreenAssistant:_playBehaviorAnimation(behavior, restart)
     if requested then self.animator:play(requested, options) end
 end
 
+function GreenAssistant:_completeTakeoverAnimationExit(request)
+    request = request or {}
+    local behavior = request.behavior or BehaviorState.IDLE
+    if request.message ~= nil then
+        self:_showTimedMessage(request.message, request.duration, behavior)
+    elseif self.enabled then
+        self:setBehavior(behavior, request.reason or "takeover-animation-finished")
+    end
+end
+
+function GreenAssistant:_requestTakeoverAnimationExit(behavior, reason, message, duration)
+    local request = {
+        behavior = behavior or BehaviorState.IDLE,
+        reason = reason,
+        message = message,
+        duration = duration,
+    }
+    if self.takeoverAnimation and self.takeoverAnimation:requestFinish(request) then return true end
+    self:_completeTakeoverAnimationExit(request)
+    return true
+end
+
 function GreenAssistant:_onBehaviorChanged(current, previous, reason)
     if self.companion and not COMPANION_BEHAVIORS[current] then
         self._ignoreCompanionState = true
@@ -246,7 +275,11 @@ function GreenAssistant:_onBehaviorChanged(current, previous, reason)
         self:_syncCompanionView()
     end
     if current ~= BehaviorState.IDLE then self.blinkActive = false end
-    self:_playBehaviorAnimation(current, true)
+    if current == BehaviorState.TAKEOVER and self.takeoverAnimation then
+        self.takeoverAnimation:start()
+    else
+        self:_playBehaviorAnimation(current, true)
+    end
     if current == BehaviorState.IDLE then
         self:_scheduleBlink()
     end
@@ -413,6 +446,7 @@ function GreenAssistant:update(dt, frame)
     local behavior = self.behaviorState:get()
     if behavior == BehaviorState.TAKEOVER then
         self.takeover:update(dt)
+        self.takeoverAnimation:update(dt)
         self.animator:update(dt)
         return
     end
@@ -569,7 +603,7 @@ end
 
 function GreenAssistant:onAttemptSucceeded()
     self.failureAssist:onAttemptSucceeded()
-    if not self.enabled or self.takeover:isActive() then return end
+    if not self.enabled or self.takeover:isActive() or self.takeoverAnimation:isActive() then return end
     local behavior = self.behaviorState:get()
     if not COMPANION_BEHAVIORS[behavior] then
         self:_hideMessage()
@@ -584,6 +618,7 @@ function GreenAssistant:onLevelChanged(levelId)
         if self.view.cancelRelocationEffect then self.view:cancelRelocationEffect() end
         self.companion:interrupt("level-changed")
     end
+    local takeoverAnimationActive = self.takeoverAnimation:isActive()
     if self.takeover:isActive() then self.takeover:cancel() end
     self.levelId = levelId
     self.failureAssist:onLevelChanged()
@@ -593,7 +628,13 @@ function GreenAssistant:onLevelChanged(levelId)
     self._ignoreCompanionState = false
     self:_syncCompanionView()
     self:_hideMessage()
-    if self.enabled then self:setBehavior(BehaviorState.IDLE, "level-changed") end
+    if self.enabled then
+        if takeoverAnimationActive then
+            self:_requestTakeoverAnimationExit(BehaviorState.IDLE, "level-changed")
+        else
+            self:setBehavior(BehaviorState.IDLE, "level-changed")
+        end
+    end
 end
 
 function GreenAssistant:acceptTakeover()
@@ -604,7 +645,8 @@ function GreenAssistant:acceptTakeover()
     local started, errorMessage = self.takeover:start(self.levelId)
     if not started then
         print("[GreenAssistant] takeover unavailable: " .. tostring(errorMessage))
-        self:_showTimedMessage(self.config.failureAssist.unavailableText, 2.2, BehaviorState.DIALOGUE)
+        self:_requestTakeoverAnimationExit(BehaviorState.DIALOGUE, "takeover-unavailable",
+            self.config.failureAssist.unavailableText, 2.2)
         return false
     end
     return true
@@ -619,10 +661,14 @@ function GreenAssistant:declineTakeover()
 end
 
 function GreenAssistant:cancelTakeover(reason)
-    if not self.takeover:isActive() then return false end
-    self.takeover:cancel()
+    local logicalActive = self.takeover:isActive()
+    local animationActive = self.takeoverAnimation:isActive()
+    if not logicalActive and not animationActive then return false end
+    if logicalActive then self.takeover:cancel() end
     self:_hideMessage()
-    if self.enabled then self:setBehavior(BehaviorState.IDLE, reason or "takeover-cancelled") end
+    if self.enabled then
+        self:_requestTakeoverAnimationExit(BehaviorState.IDLE, reason or "takeover-cancelled")
+    end
     self:_emit("onTakeoverAborted", reason or "cancelled")
     return true
 end
@@ -654,6 +700,11 @@ end
 
 function GreenAssistant:setBehavior(state, reason)
     local normalized = type(state) == "string" and string.upper(state) or state
+    if self.behaviorState:get() == BehaviorState.TAKEOVER
+        and normalized ~= BehaviorState.TAKEOVER
+        and self.takeoverAnimation:isActive() then
+        return self:_requestTakeoverAnimationExit(normalized, reason)
+    end
     if normalized == BehaviorState.WALK or normalized == BehaviorState.ROAM then
         if not self.companion.initialized and self.view.getCompanionZone then self:setZone(self.view:getCompanionZone()) end
         return self.companion:startWalk()
@@ -687,6 +738,7 @@ function GreenAssistant:setEnabled(enabled)
     if enabled then self:setBehavior(BehaviorState.IDLE, "enabled")
     else
         if self.takeover:isActive() then self.takeover:cancel() end
+        self.takeoverAnimation:abort()
         self:_hideMessage()
         self:setBehavior(BehaviorState.DISABLED, "disabled")
     end
@@ -713,11 +765,13 @@ function GreenAssistant:getDebugInfo()
         string.format("Failures: %d / %d", self.failureAssist.failureCount, self.failureAssist.threshold),
         "Offer: " .. tostring(self.failureAssist.hasOfferedThisLevel),
         "Takeover: " .. tostring(self.takeover:isActive()),
+        "Takeover Animation: " .. tostring(self.takeoverAnimation:getPhase()),
     }
 end
 
 function GreenAssistant:destroy()
     if self.takeover:isActive() then self.takeover:cancel() end
+    self.takeoverAnimation:abort()
     self.view:destroy()
     self.listeners = {}
 end

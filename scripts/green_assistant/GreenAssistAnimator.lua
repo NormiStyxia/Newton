@@ -87,6 +87,14 @@ function Animator:hasAnimation(name)
     return self.animations[name] ~= nil
 end
 
+function Animator:getAnimationDuration(name)
+    local config = self.animations[name]
+    if not config then return nil end
+    local speed = math.max(0, config.playbackSpeed or 1)
+    if speed == 0 then return math.huge end
+    return #config.frames / config.fps / speed
+end
+
 function Animator:setFallbackAnimation(name)
     self.fallbackAnimation = name
 end
