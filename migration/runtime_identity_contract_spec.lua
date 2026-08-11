@@ -42,9 +42,44 @@ expect(assistedLayout.panel.w == 620 and assistedLayout.panel.h == 210,
     "assisted result panel no longer matches the failure overlay footprint")
 expect(assistedLayout.centerX == 1073 and assistedLayout.centerY == 410,
     "assisted result panel no longer shares the failure overlay center")
-expect(assistedLayout.returnButton.x == 973 and assistedLayout.retryButton.x == 1173
-    and assistedLayout.returnButton.y == 470 and assistedLayout.retryButton.y == 470,
-    "assisted result buttons lost their symmetric compact spacing")
+expect(assistedLayout.returnButton.x == 913 and assistedLayout.replayButton.x == 1073
+    and assistedLayout.retryButton.x == 1233 and assistedLayout.returnButton.y == 470
+    and assistedLayout.replayButton.y == 470 and assistedLayout.retryButton.y == 470,
+    "assisted result buttons lost their symmetric three-button spacing")
+
+local assistedReplayStarts = 0
+overlayContext.frame_ = {
+    playfieldX = 323,
+    playfieldY = 112,
+    playfieldWidth = 1500,
+    playfieldHeight = 596,
+}
+overlayContext.apple_ = {}
+overlayContext.success_, overlayContext.failed_, overlayContext.assistedClear_ = true, false, true
+overlayContext.replayActive_, overlayContext.assistantInputLocked_ = false, false
+overlayContext.ResolveHUDLayout = function()
+    return {
+        left = { x = -100, y = -100, w = 1, h = 1 },
+        right = { x = -100, y = -100, w = 1, h = 1 },
+    }
+end
+overlayContext.HandleGreenAssistantPointer = function() return false end
+overlayContext.IsResultReportVisible = function() return false end
+overlayContext.IsResultOverlayVisible = function() return true end
+overlayContext.SetHoveredCard = function() end
+overlayContext.StartReplay = function()
+    assistedReplayStarts = assistedReplayStarts + 1
+    return true
+end
+overlayContext.HandlePointer({
+    x = assistedLayout.replayButton.x,
+    y = assistedLayout.replayButton.y,
+    down = false,
+    pressed = true,
+    released = false,
+})
+expect(assistedReplayStarts == 1,
+    "assisted result replay button did not start the recorded experiment replay")
 
 context.runtimeSession_ = { sourceKind = "custom", levelId = "level_02" }
 context.level_ = { levelId = "level_02" }

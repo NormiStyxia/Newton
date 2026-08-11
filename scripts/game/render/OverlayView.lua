@@ -294,6 +294,7 @@ function M.Install(context)
                         "辅助观测成功", 34, Renderer2D.COLORS.text,
                         NVG_ALIGN_CENTER + NVG_ALIGN_TOP, "report-green")
                     overlayButton(layout.returnButton.x, layout.returnButton.y, "返回目录", false)
+                    overlayButton(layout.replayButton.x, layout.replayButton.y, "查看实验回放", true)
                     overlayButton(layout.retryButton.x, layout.retryButton.y, "再次尝试", true)
                     return
                 end

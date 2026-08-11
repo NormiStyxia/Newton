@@ -20,7 +20,7 @@ function M.Install(context)
         local centerX = frame.playfieldX + frame.playfieldWidth * .5
         local centerY = frame.playfieldY + frame.playfieldHeight * .5
         local panelWidth, panelHeight = 620, 210
-        local buttonOffset, buttonY = 100, centerY + 60
+        local buttonOffset, buttonY = 160, centerY + 60
         return {
             centerX = centerX,
             centerY = centerY,
@@ -31,6 +31,7 @@ function M.Install(context)
                 h = panelHeight,
             },
             returnButton = { x = centerX - buttonOffset, y = buttonY },
+            replayButton = { x = centerX, y = buttonY },
             retryButton = { x = centerX + buttonOffset, y = buttonY },
         }
     end
@@ -139,6 +140,8 @@ function M.Install(context)
                         local layout = ResolveAssistedResultLayout(frame_)
                         if inOverlayButton(layout.returnButton.x, layout.returnButton.y) then
                             RequestReturnToCatalog(resultReturnIndex())
+                        elseif inOverlayButton(layout.replayButton.x, layout.replayButton.y) then
+                            StartReplay()
                         elseif inOverlayButton(layout.retryButton.x, layout.retryButton.y) then
                             ResetExperiment()
                         end
