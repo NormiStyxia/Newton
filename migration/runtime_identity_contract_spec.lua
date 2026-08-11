@@ -101,6 +101,34 @@ context.dialogueController_:RevealAll()
 expect(context.GetTutorialRenderModel().visible == true,
     "re-entered communication did not replay the tutorial marker")
 
+context.NotifyDialogueLevelReady("level_05")
+local level05IntroCount = #DialogueData.Intro("level_05")
+expect(level05IntroCount == 7
+    and context.dialogueController_.log:MessageCount("level_05") == level05IntroCount,
+    "level 05 intro dialogue was not initialized with seven messages")
+context.dialogueController_:RevealAll()
+context.dialogueController_:Close()
+context.dialogueController_:_FinishClose()
+expect(context.NotifyDialogueWallImpact("level_05"),
+    "first real level 05 wall impact did not trigger dialogue")
+expect(context.dialogueController_:IsActive()
+    and context.dialogueController_.openMode == "continuation"
+    and context.dialogueController_.visibleCount == level05IntroCount,
+    "wall-impact dialogue did not reopen after the existing intro history")
+expect(context.dialogueController_.log:MessageCount("level_05") == level05IntroCount + 2,
+    "wall-impact dialogue did not append exactly two messages")
+expect(not context.NotifyDialogueWallImpact("level_05")
+    and context.dialogueController_.log:MessageCount("level_05") == level05IntroCount + 2,
+    "repeated wall impact duplicated level 05 dialogue")
+context.NotifyDialogueLevelReady(nil)
+context.NotifyDialogueLevelReady("level_05")
+expect(context.NotifyDialogueWallImpact("level_05")
+    and context.dialogueController_.log:MessageCount("level_05") == level05IntroCount + 2,
+    "level 05 re-entry did not reset the per-session first-wall observation")
+context.NotifyDialogueLevelReady("level_04")
+expect(not context.NotifyDialogueWallImpact("level_04"),
+    "non-level-05 wall impact inherited level 05 dialogue")
+
 context.level_, context.apple_ = {}, {}
 context.replayBusinessMode_, context.assistDemoActive_ = ReplayMode.NONE, false
 local adapter = GreenAdapter.New(context)

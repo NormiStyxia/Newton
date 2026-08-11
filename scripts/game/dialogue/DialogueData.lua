@@ -4,6 +4,7 @@ DialogueData.FIRST_LEVEL_ID = "level_01"
 DialogueData.SECOND_LEVEL_ID = "level_02"
 DialogueData.THIRD_LEVEL_ID = "level_03"
 DialogueData.FOURTH_LEVEL_ID = "level_04"
+DialogueData.FIFTH_LEVEL_ID = "level_05"
 DialogueData.ANGER_THRESHOLDS = { 25, 50, 75, 100 }
 
 local FIRST_LEVEL_INTRO = {
@@ -187,12 +188,96 @@ local FOURTH_LEVEL_INTRO = {
     },
 }
 
+local FIFTH_LEVEL_INTRO = {
+    {
+        speaker = "newton",
+        side = "left",
+        displayName = "牛顿",
+        avatarText = "牛",
+        text = "……所以这次的实验内容是什么？",
+        style = "NEWTON",
+    },
+    {
+        speaker = "nomi",
+        side = "right",
+        displayName = "诺米",
+        avatarText = "诺",
+        text = "墙。",
+        style = "NOMI",
+    },
+    {
+        speaker = "einstein",
+        side = "left",
+        displayName = "爱因斯坦",
+        avatarText = "爱",
+        text = "墙。",
+        style = "EINSTEIN",
+    },
+    {
+        speaker = "newton",
+        side = "left",
+        displayName = "牛顿",
+        avatarText = "牛",
+        text = "我没瞎。",
+        style = "NEWTON",
+    },
+    {
+        speaker = "nomi",
+        side = "right",
+        displayName = "诺米",
+        avatarText = "诺",
+        text = "墙存在。",
+        style = "NOMI",
+    },
+    {
+        speaker = "newton",
+        side = "left",
+        displayName = "牛顿",
+        avatarText = "牛",
+        text = "……",
+        style = "NEWTON",
+    },
+    {
+        speaker = "einstein",
+        side = "left",
+        displayName = "爱因斯坦",
+        avatarText = "爱",
+        text = "你看，实验结论非常稳定不是吗？",
+        style = "EINSTEIN",
+    },
+}
+
+local FIFTH_LEVEL_FIRST_WALL_IMPACT = {
+    {
+        speaker = "newton",
+        side = "left",
+        displayName = "牛顿",
+        avatarText = "牛",
+        text = "很好。至少这次墙还遵守墙的基本职业道德。",
+        style = "NEWTON",
+    },
+    {
+        speaker = "green",
+        side = "left",
+        displayName = "绿毛同事",
+        avatarText = "绿",
+        text = "检测完成：墙确实很墙。",
+        style = "GREEN",
+    },
+}
+
 function DialogueData.Intro(levelId)
     if levelId == DialogueData.SECOND_LEVEL_ID then return SECOND_LEVEL_INTRO end
     if levelId == DialogueData.THIRD_LEVEL_ID then return THIRD_LEVEL_INTRO end
     if levelId == DialogueData.FOURTH_LEVEL_ID then return FOURTH_LEVEL_INTRO end
+    if levelId == DialogueData.FIFTH_LEVEL_ID then return FIFTH_LEVEL_INTRO end
     if levelId ~= DialogueData.FIRST_LEVEL_ID then return {} end
     return FIRST_LEVEL_INTRO
+end
+
+function DialogueData.FirstWallImpact(levelId)
+    if levelId == DialogueData.FIFTH_LEVEL_ID then return FIFTH_LEVEL_FIRST_WALL_IMPACT end
+    return {}
 end
 
 function DialogueData.AngerMessage(threshold)

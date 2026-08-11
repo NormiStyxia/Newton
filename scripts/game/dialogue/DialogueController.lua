@@ -70,6 +70,7 @@ function Controller:Init(context)
     self.viewGeometry = nil
     self.historyButtonGeometry = nil
     self.historyHovered = false
+    self.firstWallImpactTriggered = false
 end
 
 function Controller:_NotifyTutorialMarker(message)
@@ -138,7 +139,7 @@ function Controller:_RememberScrollPosition()
     self.scrollProgressByLevel[self.currentLevelId] = self:GetScrollProgress()
 end
 
-function Controller:_BeginOpen(mode)
+function Controller:_BeginOpen(mode, initialVisibleCount)
     if self.state ~= STATE.CLOSED then return false end
     local restoreProgress = nil
     if mode == "history" and not self.log:HasUnread(self.currentLevelId) then
@@ -146,7 +147,8 @@ function Controller:_BeginOpen(mode)
     end
     self.openMode = mode
     self.messages = self.log:GetMessages(self.currentLevelId)
-    self.visibleCount = mode == "history" and #self.messages or 0
+    self.visibleCount = mode == "history" and #self.messages
+        or clamp(math.floor(tonumber(initialVisibleCount) or 0), 0, #self.messages)
     self.messageAges = {}
     for index = 1, self.visibleCount do self.messageAges[index] = BUBBLE_DURATION end
     self.stateElapsed = 0
@@ -210,6 +212,23 @@ function Controller:AppendMessages(levelId, messages)
     return #(messages or {}) > 0
 end
 
+function Controller:OnWallImpact(levelId)
+    if self.firstWallImpactTriggered or levelId == nil or levelId ~= self.currentLevelId then return false end
+    local messages = DialogueData.FirstWallImpact(levelId)
+    if #messages == 0 then return false end
+
+    local previousCount = self.log:MessageCount(levelId)
+    if not self:AppendMessages(levelId, messages) then return false end
+    self.firstWallImpactTriggered = true
+
+    -- Collision dialogue is an immediate observation. If the intro was already
+    -- closed, reopen at the existing history boundary and reveal only the new
+    -- messages instead of replaying the full intro.
+    if self.state == STATE.CLOSING then self:_FinishClose() end
+    if self.state == STATE.CLOSED then self:_BeginOpen("continuation", previousCount) end
+    return true
+end
+
 function Controller:Close()
     if self.state == STATE.CLOSED or self.state == STATE.CLOSING then return end
     self.context.playUIClick()
@@ -244,6 +263,7 @@ function Controller:OnLevelReady(levelId, anger)
     end
     self.currentLevelId = levelId
     self.historyButtonGeometry = nil
+    self.firstWallImpactTriggered = false
     self.lastAnger = clamp(anger or 0, 0, MAX_ANGER)
     local intro = DialogueData.Intro(levelId)
     if #intro == 0 then return end
@@ -486,6 +506,13 @@ function M.Install(context)
     function AppendDialogueMessages(levelId, messages)
         if officialRuntime() and dialogueController_ then
             return dialogueController_:AppendMessages(levelId, messages)
+        end
+        return false
+    end
+
+    function NotifyDialogueWallImpact(levelId)
+        if officialRuntime() and dialogueController_ then
+            return dialogueController_:OnWallImpact(levelId)
         end
         return false
     end

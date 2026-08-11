@@ -569,6 +569,10 @@ function M.Install(context)
             end
             WallImpactShake.Trigger(object, velocity, Vector2(normalX, normalY),
                 contactX, contactY, CurrentPhysicsStepScale())
+            if launched_ and not replayActive_ and not assistDemoActive_
+                and context.NotifyDialogueWallImpact and level_ then
+                context.NotifyDialogueWallImpact(level_.levelId)
+            end
         end
         if object.type == "wall" and object.phaseable then
             -- A charged apple skips this contact through its collision mask;

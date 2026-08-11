@@ -59,6 +59,7 @@
 ---@field GetTutorialRenderModel fun(): table
 ---@field CancelTutorialForLevelComplete fun()
 ---@field AppendDialogueMessages fun(levelId: string, messages: table): boolean
+---@field NotifyDialogueWallImpact fun(levelId: string): boolean
 ---@field InitializeAssistDemo fun()
 ---@field DestroyAssistDemo fun()
 ---@field StartAssistDemo fun(solution: table): boolean, string|nil
