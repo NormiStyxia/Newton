@@ -326,7 +326,9 @@ def main() -> int:
            "spring exit no longer wins after slow-motion restitution compensation")
     expect("uiElapsed_ * 1000 - object.triggeredAt" in main_lua and "uiElapsed_ * 1000 >= object.closeAt" in main_lua, "scene-time cooldown or door delay differs from source")
     expect("if #trail_ > 18" in main_lua and "flightMs_ - lastTrailAt_ > 55" in main_lua and "DrawVelocityArrow" in main_lua, "trail or velocity visualization differs from Phaser")
-    expect("input:GetMouseButtonPress(MOUSEB_RIGHT)" in main_lua and "input:GetKeyPress(KEY_ESCAPE)" in main_lua and "ToggleTacticalPause" in main_lua, "source keyboard or cancel interaction is missing")
+    expect("MOUSEB_RIGHT" in all_lua and "HandleCancelAction" in main_lua
+           and "navigation.cancel_fallback" in app_runtime_lua and "HandlePauseAction" in main_lua,
+           "semantic keyboard pause or cancel interaction is missing")
     expect("replayNextSampleMs_" in main_lua and "while replayNextSampleMs_ <= flightMs_ + .0001 do" in main_lua, "replay no longer interpolates at the source sample cadence")
     expect("replayPreviousSample_" in main_lua and "deltaAngle = ((current.angle - previous.angle + 540) % 360) - 180" in main_lua, "replay angle interpolation differs from Phaser")
     replay_update = main_lua.split("function UpdateReplay(dt)", 1)[1].split("function RegisterFailure()", 1)[0]

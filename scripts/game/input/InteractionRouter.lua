@@ -6,6 +6,7 @@ function M.Install(context)
     local Rules = context.Rules
     local ReplayMode = context.ReplayMode
     local CONFIG = context.CONFIG
+    local SemanticActions = context.SemanticActions or require("game.input.SemanticActions")
     local _ENV = context
     local function pointInRect(rect, x, y)
         return rect and x >= rect.x and x <= rect.x + rect.w and y >= rect.y and y <= rect.y + rect.h
@@ -66,6 +67,32 @@ function M.Install(context)
         return x >= frame_.playfieldX + 18 and x <= frame_.playfieldX + frame_.playfieldWidth - 18
             and y >= frame_.playfieldY + 18 and y <= frame_.groundY - 18
     end
+
+    function HandleCancelAction(action)
+        if not action or action.consumedBy then return false end
+        local id = activeCardId_ or primedCardId_
+        local hadSelection = selectedCardId_ ~= nil
+        if not id and not hadSelection then return false end
+        if id then
+            local from = activeCardId_ and CurrentCardVisualPose(id) or PrimedCardPose(id)
+            activeCardId_, primedCardId_ = nil, nil
+            AnimateCardToHome(id, from, .18)
+            ClearCardInteraction()
+        end
+        ClearSelectedCard()
+        SemanticActions.Consume(action, "CardInteraction")
+        return true
+    end
+
+    function HandlePauseAction(action)
+        if not action or action.consumedBy then return false end
+        hudDropdown_ = nil
+        if action.feedback ~= false then playUIClick() end
+        SemanticActions.Consume(action, "TacticalPause")
+        ToggleTacticalPause()
+        return true
+    end
+
     function UpdateHoverState(x, y)
         hoveredNavigation_ = nil
         punchHovered_ = false
@@ -96,7 +123,7 @@ function M.Install(context)
     end
     function HandlePointer(pointerFrame, assistantHandled)
         if not frame_ or not apple_ then return end
-        pointerFrame = pointerFrame or PointerState()
+        pointerFrame = SemanticActions.Ensure(pointerFrame or PointerState())
         local x, y = pointerFrame.x, pointerFrame.y
         local down, press, release = pointerFrame.down, pointerFrame.pressed, pointerFrame.released
         local assistantConsumed = assistantHandled
@@ -122,7 +149,16 @@ function M.Install(context)
             SetHoveredCard(nil)
             return
         end
-        UpdateHoverState(x, y)
+        local pauseAction = SemanticActions.Find(pointerFrame, SemanticActions.PAUSE_TOGGLE)
+        if pauseAction and HandlePauseAction(pauseAction) then return end
+        local cancelAction = SemanticActions.Find(pointerFrame, SemanticActions.CANCEL, "interaction")
+        if cancelAction and HandleCancelAction(cancelAction) then return end
+        if SemanticActions.SupportsHover(pointerFrame) then
+            UpdateHoverState(x, y)
+        else
+            hoveredNavigation_, punchHovered_ = nil, false
+            SetHoveredCard(nil)
+        end
         if replayActive_ then
             if replayBusinessMode_ == ReplayMode.PLAYER_REPLAY then HandleReplayPointer(x, y, press) end
             return
@@ -166,9 +202,11 @@ function M.Install(context)
                 hudDropdown_ = nil
                 ResetExperiment()
             elseif x >= titleX + 375 and x <= titleX + 421 and y >= 23 and y <= 69 then
-                hudDropdown_ = nil
-                playUIClick()
-                ToggleTacticalPause()
+                HandlePauseAction(SemanticActions.Add(pointerFrame, SemanticActions.PAUSE_TOGGLE, {
+                    source = pointerFrame.source,
+                    feedback = true,
+                    raw = "primary.pause_button",
+                }))
             elseif x >= frame_.playfieldX + frame_.playfieldWidth - 98 and x <= frame_.playfieldX + frame_.playfieldWidth - 18
                 and y >= frame_.cardHandY - 17 and y <= frame_.cardHandY + 63 then
                 ExecuteNewtonPunch()
@@ -178,7 +216,17 @@ function M.Install(context)
                 -- event. Keep the line and prediction visible for short drags.
                 UpdateAppleDrag(x, y)
             else
-                if not TryCardPress(x, y) then ClearSelectedCard() end
+                if not TryCardPress(x, y) then
+                    if activeCardId_ or primedCardId_ or selectedCardId_ then
+                        HandleCancelAction(SemanticActions.Add(pointerFrame, SemanticActions.CANCEL, {
+                            scope = "interaction",
+                            source = pointerFrame.source,
+                            raw = "primary.contextual_blank",
+                        }))
+                    else
+                        ClearSelectedCard()
+                    end
+                end
             end
         end
         if down and draggedApple_ and not launched_ then UpdateAppleDrag(x, y) end

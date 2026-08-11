@@ -1,6 +1,7 @@
 local DialogueData = require("game.dialogue.DialogueData")
 local DialogueLog = require("game.dialogue.DialogueLog")
 local DialogueOverlayView = require("game.render.DialogueOverlayView")
+local SemanticActions = require("game.input.SemanticActions")
 
 local M = {}
 
@@ -17,7 +18,7 @@ local OPEN_DURATION = 0.34
 local CLOSE_DURATION = 0.26
 local BUBBLE_DURATION = 0.26
 local MESSAGE_INTERVAL = 0.52
-local SCROLL_WHEEL_STEP = 54 / 20
+local SCROLL_WHEEL_STEP = 54 / 16
 local TOUCH_SCROLL_THRESHOLD = 6
 local MAX_ANGER = 100
 
@@ -66,7 +67,7 @@ function Controller:Init(context)
     self.followBottom = true
     self.scrollbarDragging = false
     self.scrollbarGrabY = 0
-    self.viewportTouchDrag = nil
+    self.viewportScrollGesture = nil
     self.viewGeometry = nil
     self.historyButtonGeometry = nil
     self.historyHovered = false
@@ -157,7 +158,7 @@ function Controller:_BeginOpen(mode)
     self.pendingScrollProgress = restoreProgress
     self.followBottom = restoreProgress == nil
     self.scrollbarDragging = false
-    self.viewportTouchDrag = nil
+    self.viewportScrollGesture = nil
     self.state = STATE.OPENING
     self.log:MarkRead(self.currentLevelId)
     return true
@@ -247,7 +248,7 @@ function Controller:_FinishClose()
     self.stateElapsed = 0
     self.messageElapsed = 0
     self.scrollbarDragging = false
-    self.viewportTouchDrag = nil
+    self.viewportScrollGesture = nil
     self.pendingScrollProgress = nil
     self.viewGeometry = nil
 end
@@ -371,45 +372,48 @@ function Controller:_HandleScrollbar(pointerFrame)
         end
     end
 
-    local wheel = self.context.input.mouseMoveWheel
-    if wheel ~= 0 and pointIn(geometry.viewport, x, y) then
-        self:ScrollBy(-wheel * SCROLL_WHEEL_STEP)
+    local scrollAction = SemanticActions.Find(pointerFrame, SemanticActions.SCROLL)
+    if scrollAction and pointIn(geometry.viewport, x, y) then
+        local deltaX, deltaY = SemanticActions.ScrollDelta(scrollAction, SCROLL_WHEEL_STEP)
+        self:HandleScroll(deltaX, deltaY)
+        SemanticActions.Consume(scrollAction, "DialogueHistory")
         return true
     end
     return false
 end
 
-function Controller:_HandleViewportTouch(pointerFrame)
-    if pointerFrame.isTouch ~= true then return false end
+function Controller:HandleScroll(_deltaX, deltaY)
+    deltaY = tonumber(deltaY) or 0
+    if deltaY == 0 then return false end
+    self:ScrollBy(deltaY)
+    return true
+end
+
+function Controller:_HandleViewportScroll(pointerFrame)
     local geometry = self.viewGeometry
-    local drag = self.viewportTouchDrag
-
-    if drag then
-        local deltaY = pointerFrame.y - drag.startY
-        if math.abs(deltaY) >= TOUCH_SCROLL_THRESHOLD then drag.moved = true end
-        if drag.moved then
-            self.scrollOffset = clamp(drag.startOffset - deltaY, 0, self.maxScroll)
-            self.followBottom = self.maxScroll - self.scrollOffset <= 18
-        end
-        if pointerFrame.released or not pointerFrame.down then self.viewportTouchDrag = nil end
-        return true
+    local targets = geometry and {
+        {
+            id = "dialogue",
+            rect = geometry.viewport,
+            value = self.scrollOffset,
+            maximum = self.maxScroll,
+        },
+    } or {}
+    local result
+    self.viewportScrollGesture, result = SemanticActions.UpdateDirectScroll(
+        self.viewportScrollGesture, pointerFrame, targets, TOUCH_SCROLL_THRESHOLD)
+    if result and result.action then
+        local deltaX, deltaY = SemanticActions.ScrollDelta(result.action)
+        self:HandleScroll(deltaX, deltaY)
+        SemanticActions.Consume(result.action, "DialogueHistory")
     end
-
-    if pointerFrame.pressed and geometry and pointIn(geometry.viewport, pointerFrame.x, pointerFrame.y) then
-        self.viewportTouchDrag = {
-            startY = pointerFrame.y,
-            startOffset = self.scrollOffset,
-            moved = false,
-        }
-        return true
-    end
-    return false
+    return result and result.consume == true or false
 end
 
 function Controller:_HandleOpenPointer(pointerFrame)
     if self.state == STATE.CLOSING then return false end
     local consumed = self:_HandleScrollbar(pointerFrame)
-    if not consumed then consumed = self:_HandleViewportTouch(pointerFrame) end
+    if not consumed then consumed = self:_HandleViewportScroll(pointerFrame) end
     local geometry = self.viewGeometry
     if not pointerFrame.pressed or not geometry or not pointIn(geometry.button, pointerFrame.x, pointerFrame.y) then
         return consumed
@@ -424,13 +428,15 @@ function Controller:_HandleOpenPointer(pointerFrame)
 end
 
 function Controller:Update(dt, pointerFrame, anger)
+    SemanticActions.Ensure(pointerFrame)
     self:_TrackAnger(anger)
     local wasActive = self:IsActive()
 
     if not wasActive then
-        self.historyHovered = self:IsHistoryAvailable()
+        local historyHit = self:IsHistoryAvailable()
             and pointIn(self.historyButtonGeometry, pointerFrame.x, pointerFrame.y)
-        if self.historyHovered and pointerFrame.pressed then
+        self.historyHovered = SemanticActions.SupportsHover(pointerFrame) and historyHit
+        if historyHit and pointerFrame.pressed then
             self:OpenHistory()
             return true
         end

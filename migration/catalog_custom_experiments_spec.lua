@@ -11,6 +11,7 @@ local ExperimentCatalog = require("ui.ExperimentCatalog")
 local LevelDocument = require("game.level.LevelDocument")
 local LevelPresentation = require("game.level.Presentation")
 local Rules = require("game.gameplay.Rules")
+local SemanticActions = require("game.input.SemanticActions")
 
 local function level(levelId, name)
     local document = LevelDocument.New(levelId, name)
@@ -142,14 +143,15 @@ context.UpdateExperimentCatalog(.016, {
 expect(context.catalogState_.category == "custom" and context.catalogState_.levels[1].levelId == "custom_001",
     "custom category did not replace the active list")
 
-context.input.mouseMoveWheel = -1
-context.UpdateExperimentCatalog(.016, {
+local wheelPointer = SemanticActions.Attach({
     x = layout.listViewport.x + 60, y = layout.listViewport.y + 30,
     down = false, pressed = false, released = false,
+}, {
+    source = "mouse", hover = true, scrollY = -1,
 })
+context.UpdateExperimentCatalog(.016, wheelPointer)
 expect(math.abs(context.catalogState_.listScroll - layout.listItemHeight * .42) < 1e-9,
     "catalog mouse wheel step is faster than the intended partial-row movement")
-context.input.mouseMoveWheel = 0
 local scrollbarTrack = layout.listScrollbarTrack
 context.UpdateExperimentCatalog(.016, {
     x = scrollbarTrack.x + scrollbarTrack.w * .5,

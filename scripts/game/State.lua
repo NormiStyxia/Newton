@@ -41,6 +41,7 @@
 ---@field assistDemoActive_ boolean
 ---@field assistUsed_ boolean
 ---@field pointer_ table
+---@field SemanticActions table
 ---@field dialogueController_ table|nil
 ---@field InitializeDialogue fun()
 ---@field DestroyDialogue fun()
@@ -263,6 +264,9 @@ function State.New(dependencies, constants)
     context.pointer_ = {
         activeTouchId = nil,
         pauseTouchId = nil,
+        pauseRequested = false,
+        pauseRequestPointerId = nil,
+        touchPointerId = nil,
         touchX = 0,
         touchY = 0,
         touchPressed = false,

@@ -1,4 +1,5 @@
 local Selection = {}
+local SemanticActions = require("game.input.SemanticActions")
 
 local function findObject(document, objectId)
     for _, object in ipairs(document and document.objects or {}) do
@@ -185,7 +186,8 @@ local function panTransaction(current, x, y)
         panX = current.view.panX, panY = current.view.panY, changed = false }
 end
 
-function Selection.BeginCanvasGesture(current, pointerFrame, interaction, ctrlDown)
+function Selection.BeginCanvasGesture(current, pointerFrame, interaction)
+    SemanticActions.Ensure(pointerFrame)
     local controls = current.controls
     local transform = controls.canvasTransform
     if not transform then return false end
@@ -220,7 +222,8 @@ function Selection.BeginCanvasGesture(current, pointerFrame, interaction, ctrlDo
     end
 
     local tool = current.canvasTool == "marquee" and "marquee" or "pan"
-    if not pointerFrame.isTouch and ctrlDown then tool = "marquee" end
+    if SemanticActions.Find(pointerFrame, SemanticActions.BOX_SELECT_BEGIN) then tool = "marquee" end
+    if tool == "marquee" then SemanticActions.PromotePrimaryToBoxSelect(pointerFrame) end
     current.transaction = {
         kind = "pendingCanvas", tool = tool,
         startX = x, startY = y, panX = current.view.panX, panY = current.view.panY,
@@ -232,6 +235,10 @@ end
 function Selection.UpdateCanvasGesture(current, pointerFrame, interaction)
     local transaction = current.transaction
     if not transaction or not pointerFrame.down then return nil end
+    if transaction.kind == "marquee"
+        or (transaction.kind == "pendingCanvas" and transaction.tool == "marquee") then
+        SemanticActions.PromotePrimaryToBoxSelect(pointerFrame)
+    end
     local deltaX, deltaY = pointerFrame.x - (transaction.startX or pointerFrame.x),
         pointerFrame.y - (transaction.startY or pointerFrame.y)
 
@@ -290,10 +297,14 @@ function Selection.UpdateCanvasGesture(current, pointerFrame, interaction)
     return "document"
 end
 
-function Selection.EndCanvasGesture(current)
+function Selection.EndCanvasGesture(current, pointerFrame)
     local transaction = current.transaction
     current.transaction = nil
     if not transaction then return nil end
+    if pointerFrame and (transaction.kind == "marquee"
+        or (transaction.kind == "pendingCanvas" and transaction.tool == "marquee")) then
+        SemanticActions.PromotePrimaryToBoxSelect(pointerFrame)
+    end
     if transaction.kind == "pendingCanvas" then
         Selection.Clear(current)
         current.status = "未选择对象 · 显示关卡属性"

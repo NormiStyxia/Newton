@@ -1,6 +1,7 @@
 local Config = require("ui.result_report_config")
 local Pools = require("ui.review_pools")
 local Selector = require("ui.review_selector")
+local SemanticActions = require("game.input.SemanticActions")
 
 local M = {}
 
@@ -223,6 +224,7 @@ function M.Install(context)
 
     function HandleResultReportInput(pointerFrame)
         if not IsResultReportVisible() or resultReportClosing_ then return true end
+        SemanticActions.Ensure(pointerFrame)
         local state = resultReportState_
         local x, y = pointerFrame.x, pointerFrame.y
         local hasReplay = HasResultReportReplay()
@@ -239,6 +241,7 @@ function M.Install(context)
         }
         local optionStartY = selfBox.y + selfBox.h + 5
         state.hoveredOption = nil
+        local hitOption = nil
         if state.isDropdownOpen then
             local optionReveal = dropdownEaseOut(state.dropdownProgress)
             local optionHeight = selfBox.h
@@ -250,11 +253,14 @@ function M.Install(context)
                     w = selfBox.w,
                     h = optionHeight,
                 }
-                if pointInRect(x, y, optionRect) then state.hoveredOption = index; break end
+                if pointInRect(x, y, optionRect) then hitOption = index; break end
             end
         end
-        if input:GetKeyPress(KEY_ESCAPE) then
+        if SemanticActions.SupportsHover(pointerFrame) then state.hoveredOption = hitOption end
+        local navigationCancel = SemanticActions.Find(pointerFrame, SemanticActions.CANCEL, "navigation")
+        if navigationCancel then
             state.isDropdownOpen = false
+            SemanticActions.Consume(navigationCancel, "ResultReport")
             return true
         end
         if state.isDropdownOpen then
@@ -272,9 +278,9 @@ function M.Install(context)
             end
         end
         if not pointerFrame.pressed then return true end
-        if state.isDropdownOpen and state.hoveredOption then
-            state.selectedSelfReview = state.selfOptions[state.hoveredOption]
-            state.highlightedOption = state.hoveredOption
+        if state.isDropdownOpen and hitOption then
+            state.selectedSelfReview = state.selfOptions[hitOption]
+            state.highlightedOption = hitOption
             state.isDropdownOpen = false
             state.validationMessage = nil
             return true

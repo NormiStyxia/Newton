@@ -22,6 +22,7 @@ local ReplayMode = require("game.replay.Mode")
 local PhaseWallEffects = require("game.render.PhaseWallEffects")
 local ExperimentProgress = require("game.progress.ExperimentProgress")
 local CatalogTransition = require("ui.ExperimentCatalogTransition")
+local SemanticActions = require("game.input.SemanticActions")
 
 local INSTALLERS = {
     "game.gameplay.Status", "game.replay.Controller", "game.gameplay.RuleController",
@@ -48,7 +49,7 @@ function App.New()
         AudioManager = AudioManager,
         TrajectoryPrediction = TrajectoryPrediction, ReplayTimeline = ReplayTimeline, ReplayFeed = ReplayFeed,
         ReplayMode = ReplayMode, PhaseWallEffects = PhaseWallEffects, ExperimentProgress = ExperimentProgress,
-        CatalogTransition = CatalogTransition,
+        CatalogTransition = CatalogTransition, SemanticActions = SemanticActions,
     }
     local context = State.New(dependencies, Config.LegacyConstants())
     for _, moduleName in ipairs(INSTALLERS) do require(moduleName).Install(context) end

@@ -239,6 +239,9 @@ gesture, touchResult = TouchScroller.Update(gesture,
     { x = 20, y = 40, down = true, pressed = false, released = false, isTouch = true }, {}, 8)
 expect(touchResult.value == 40 and touchResult.target == "inspector",
     "touch scroll distance was not mapped to panel offset")
+expect(touchResult.action and touchResult.action.action == "SCROLL"
+    and touchResult.action.deltaY == 40,
+    "touch scroll did not emit a semantic SCROLL action")
 gesture, touchResult = TouchScroller.Update(gesture,
     { x = 20, y = 40, down = false, pressed = false, released = true, isTouch = true }, {}, 8)
 expect(not gesture and touchResult.consume and not touchResult.tap,
@@ -790,6 +793,8 @@ local clipboard = { value = clipboardValue }
 function clipboard:SetUseSystemClipboard(value) self.enabled = value end
 function clipboard:SetClipboardText(value) self.value = value end
 function clipboard:GetClipboardText() return self.value end
+local clipboardPlatform = _G.GetPlatform
+_G.GetPlatform = function() return "Windows" end
 local clipboardRead = TextTransfer.ReadClipboard(clipboard, Export.MAX_IMPORT_BYTES)
 expect(clipboardRead == clipboardValue and clipboard.enabled,
     "clipboard JSON read did not use the confirmed system clipboard API")
@@ -800,6 +805,7 @@ local oversizedClipboard, oversizedClipboardError = TextTransfer.ReadClipboard(c
 expect(not oversizedClipboard and oversizedClipboardError:match("超过"),
     "oversized clipboard import bypassed the byte limit")
 
+_G.GetPlatform = clipboardPlatform
 local modal = { scroll = 0 }
 local virtualText = string.rep("0123456789", 80) .. "\n中文末尾"
 TextTransfer.UpdateModal(modal, virtualText, { w = 140, h = 64 }, 12, 1.35)

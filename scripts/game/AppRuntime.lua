@@ -20,6 +20,7 @@ function M.Install(context)
     local PhaseWallEffects = context.PhaseWallEffects
     local State = context.State
     local CONFIG = context.CONFIG
+    local SemanticActions = context.SemanticActions or require("game.input.SemanticActions")
     local CARD_RENDER_WIDTH = context.CARD_RENDER_WIDTH
     local CARD_RENDER_HEIGHT = context.CARD_RENDER_HEIGHT
     local navigationTransition_ = context.navigationTransition_
@@ -317,8 +318,12 @@ function M.Install(context)
         end
         if not level_ or not apple_ then return end
         local assistEscapeHandled = false
-        if assistSceneActive_ and input:GetKeyPress(KEY_ESCAPE) then
+        local navigationCancel = SemanticActions.Find(pointerFrame, SemanticActions.CANCEL, "navigation")
+        if assistSceneActive_ and navigationCancel then
             assistEscapeHandled = context.AbortGreenAssistantTakeover("escape") == true
+            if assistEscapeHandled then
+                SemanticActions.Consume(navigationCancel, "AssistTakeover")
+            end
         end
         local assistPointerHandled = false
         if assistSceneActive_ and not assistEscapeHandled and context.HandleAssistDemoPointer then
@@ -326,10 +331,12 @@ function M.Install(context)
         end
         RefreshHUDSummary()
         hudEscapeConsumed_ = false
-        if not assistEscapeHandled and hudDropdown_ and input:GetKeyPress(KEY_ESCAPE) then
+        navigationCancel = SemanticActions.Find(pointerFrame, SemanticActions.CANCEL, "navigation")
+        if not assistEscapeHandled and hudDropdown_ and navigationCancel then
             hudDropdown_ = nil
             playUIClick()
             hudEscapeConsumed_ = true
+            SemanticActions.Consume(navigationCancel, "HUDDropdown")
         end
         local reportVisible = IsResultReportVisible and IsResultReportVisible()
         frame_.assistantBubbleAvoidRect = reportVisible and ResultReportConfig.ResolveRect(frame_) or nil
@@ -361,7 +368,11 @@ function M.Install(context)
         -- or normal completion updates mutate the suspended experiment.
         if replayActive_ then
             HandlePointer(pointerFrame, assistantPointerConsumed)
-            if replayBusinessMode_ == ReplayMode.PLAYER_REPLAY and input:GetKeyPress(KEY_ESCAPE) then StopReplay() end
+            navigationCancel = SemanticActions.Find(pointerFrame, SemanticActions.CANCEL, "navigation")
+            if replayBusinessMode_ == ReplayMode.PLAYER_REPLAY and navigationCancel then
+                SemanticActions.Consume(navigationCancel, "Replay")
+                StopReplay()
+            end
             SyncPhysicsUpdateEnabled()
             if replayActive_ then UpdateReplay(dt) end
             if context.debugDraw_ and physicsWorld_ then physicsWorld_:DrawDebugGeometry() end
@@ -415,18 +426,15 @@ function M.Install(context)
         end
         UpdateCardParameter(dt)
         if not context.assistantInputLocked_ and input:GetKeyPress(KEY_R) then ResetExperiment() end
-        if pointerFrame.insideStage ~= false and not context.assistantInputLocked_
-            and input:GetMouseButtonPress(MOUSEB_RIGHT) and (activeCardId_ or primedCardId_) then
-            local id = activeCardId_ or primedCardId_
-            local from = activeCardId_ and CurrentCardVisualPose(id) or PrimedCardPose(id)
-            activeCardId_ = nil
-            primedCardId_ = nil
-            AnimateCardToHome(id, from, .18)
-            ClearCardInteraction()
-        end
+        navigationCancel = SemanticActions.Find(pointerFrame, SemanticActions.CANCEL, "navigation")
         if not context.assistantInputLocked_ and not assistEscapeHandled and not hudEscapeConsumed_
-            and input:GetKeyPress(KEY_ESCAPE) then
-            if replayActive_ then StopReplay() else ToggleTacticalPause() end
+            and navigationCancel then
+            SemanticActions.Consume(navigationCancel, "GameplayPauseFallback")
+            HandlePauseAction(SemanticActions.Add(pointerFrame, SemanticActions.PAUSE_TOGGLE, {
+                source = navigationCancel.source,
+                feedback = false,
+                raw = "navigation.cancel_fallback",
+            }))
         end
         EinsteinObserver.Update(runtime_, apple_, dt, isPaused_)
         SyncPhysicsUpdateEnabled()

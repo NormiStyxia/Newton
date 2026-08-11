@@ -141,10 +141,14 @@ def main() -> int:
 
     priority_markers = (
         "if assistantConsumed then",
+        "if IsResultReportVisible and IsResultReportVisible() then",
+        "if HandleHUDPointer(pointerFrame) then",
+        "if pauseAction and HandlePauseAction(pauseAction) then return end",
+        "if cancelAction and HandleCancelAction(cancelAction) then return end",
         "if replayActive_ then",
         "if IsResultOverlayVisible() then",
-        "for index = 1, CONFIG.levelCount do",
-        "Rules.Punch(rules_)",
+        "RequestReturnToCatalog(levelIndex_)",
+        "ExecuteNewtonPunch()",
         "IsNearApple(x, y)",
         "TryCardPress(x, y)",
     )
@@ -154,11 +158,12 @@ def main() -> int:
     expect("not isPaused_ and not launched_ and IsNearApple" in input_source
            and "TryCardPress(x, y)" in input_source,
            "tactical pause no longer leaves cards interactive")
-    expect("bulletTimeScale = 0.05" in runtime and "MOUSEB_RIGHT" in legacy and "AnimateCardToHome" in legacy,
-           "bullet time or right-click cancel contract is missing")
+    expect("bulletTimeScale = 0.05" in runtime and "MOUSEB_RIGHT" in runtime
+           and "HandleCancelAction" in input_source and "AnimateCardToHome" in legacy,
+           "bullet time or semantic cancel contract is missing")
 
-    expect("context.failureCountsByLevel_[level_.levelId] = failureCount_" in legacy
-           and "failureCount_ = context.failureCountsByLevel_[level_.levelId] or 0" in level_session,
+    expect("context.failureCountsByLevel_[RuntimeLevelStateKey()] = failureCount_" in legacy
+           and "failureCount_ = context.failureCountsByLevel_[RuntimeLevelStateKey()] or 0" in level_session,
            "failure counts are not isolated by level")
     expect("ResetSessionState(true)" in level_session and "ResetSessionState(false)" in level_session,
            "build/reset do not share one initialization path")

@@ -1,45 +1,8 @@
 local TouchScroller = {}
-
-local function pointIn(rect, x, y)
-    return rect and x >= rect.x and x <= rect.x + rect.w and y >= rect.y and y <= rect.y + rect.h
-end
-
-local function clamp(value, minimum, maximum)
-    return math.max(minimum, math.min(maximum, value))
-end
+local SemanticActions = require("game.input.SemanticActions")
 
 function TouchScroller.Update(gesture, pointer, targets, threshold)
-    if not pointer or pointer.isTouch ~= true then return nil, nil end
-    threshold = tonumber(threshold) or 8
-    if pointer.pressed then
-        for _, target in ipairs(targets or {}) do
-            if pointIn(target.rect, pointer.x, pointer.y) then
-                return {
-                    target = target.id,
-                    startX = pointer.x,
-                    startY = pointer.y,
-                    startValue = tonumber(target.value) or 0,
-                    maximum = math.max(0, tonumber(target.maximum) or 0),
-                    moved = false,
-                }, { consume = true }
-            end
-        end
-        return nil, nil
-    end
-    if not gesture then return nil, nil end
-    local deltaX, deltaY = pointer.x - gesture.startX, pointer.y - gesture.startY
-    if math.abs(deltaX) >= threshold or math.abs(deltaY) >= threshold then gesture.moved = true end
-    if pointer.released or not pointer.down then
-        return nil, { consume = true, tap = not gesture.moved, target = gesture.target }
-    end
-    if gesture.moved then
-        return gesture, {
-            consume = true,
-            target = gesture.target,
-            value = clamp(gesture.startValue - deltaY, 0, gesture.maximum),
-        }
-    end
-    return gesture, { consume = true }
+    return SemanticActions.UpdateDirectScroll(gesture, pointer, targets, threshold)
 end
 
 function TouchScroller.Targets(state)

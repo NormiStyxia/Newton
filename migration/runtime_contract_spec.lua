@@ -193,7 +193,12 @@ expect(points[4].x > points[1].x and points[4].y > points[1].y, "trajectory inte
 
 local State = require("game.State")
 local designStub = { New = function(pixelsPerMeter) return { pixelsPerMeter = pixelsPerMeter } end }
-local context = State.New({ DesignSpace = designStub, Rules = Rules }, { CONFIG = { pixelsPerMeter = 100 } })
+local serviceStub = { New = function() return {} end }
+local context = State.New({
+    DesignSpace = designStub,
+    Rules = Rules,
+    ExperimentProgress = serviceStub,
+}, { CONFIG = { pixelsPerMeter = 100 } })
 expect(context.domains.experiment.mode == "ready", "initial experiment mode")
 expect(context.domains.cards.mode == "idle", "initial cards mode")
 expect(context.domains.replay.mode == "none", "initial replay mode")
@@ -225,7 +230,10 @@ for _, method in ipairs({
     expect(type(app[method]) == "function", "App adapter method missing: " .. method)
 end
 expect(type(app.context.BuildLevel) == "function" and type(app.context.HandlePointer) == "function"
-    and type(app.context.HandleRender) == "function", "App installers did not compose")
+    and type(app.context.HandleRender) == "function"
+    and type(app.context.HandleCancelAction) == "function"
+    and type(app.context.HandlePauseAction) == "function"
+    and type(app.context.SemanticActions) == "table", "App installers did not compose")
 expect(type(app.context.HandleAssistDemoPointer) == "function",
     "assist status pointer exit was not composed into the App runtime")
 expect(type(app.context.RequestEnterWorkshop) == "function"

@@ -12,6 +12,7 @@ local State = require("game.State")
 local Controller = require("game.workshop.Controller")
 local Interaction = require("game.workshop.Interaction")
 local Export = require("game.workshop.Export")
+local SemanticActions = require("game.input.SemanticActions")
 
 local codecStore, codecIndex = {}, 0
 cjson = {}
@@ -164,7 +165,21 @@ local function idlePointer()
 end
 
 local function updateWorkshop(targetContext, pointer)
-    targetContext.UpdateLevelWorkshop(0, pointer or idlePointer())
+    pointer = pointer or idlePointer()
+    if not pointer.actions then
+        local isTouch = pointer.isTouch == true
+        local ctrl = input:GetKeyDown(KEY_CTRL)
+        SemanticActions.Attach(pointer, {
+            source = isTouch and "touch" or "mouse",
+            hover = not isTouch,
+            directScroll = isTouch,
+            modifiers = { ctrl = ctrl, shift = input:GetKeyDown(KEY_SHIFT), alt = false },
+            cancelNavigation = input:GetKeyPress(KEY_ESCAPE),
+            scrollY = not isTouch and (input.mouseMoveWheel or 0) or 0,
+            boxSelect = not isTouch and ctrl,
+        })
+    end
+    targetContext.UpdateLevelWorkshop(0, pointer)
 end
 
 local function rawPoint(current, x, y)
@@ -996,7 +1011,7 @@ context.frame_ = {
 }
 workshop.dirty = true
 input.pressedKey = KEY_ESCAPE
-context.UpdateLevelWorkshop(0, { x = 0, y = 0, down = false, pressed = false, released = false })
+updateWorkshop(context)
 expect(context.screen_ == "catalog" and not workshop.dirty
     and workshop.draftStore:LoadDraft(workshop.document.levelId) ~= nil,
     "unsupported-size escape trapped the editor or lost its dirty draft")

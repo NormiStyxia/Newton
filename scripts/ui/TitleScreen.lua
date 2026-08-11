@@ -1,6 +1,7 @@
 local M = {}
 local CharacterProfiles = require("ui.CharacterProfiles")
 local Renderer2D = require("game.render.Canvas")
+local SemanticActions = require("game.input.SemanticActions")
 local SOURCE_OFFSET_X = 0
 local TITLE_FILL = { 248, 231, 206, 255 }
 local MENU = {
@@ -1295,20 +1296,23 @@ function M.Install(context)
         end
 
         local profile = profileForState(state)
-        local hovered = pointIn(profile.backHit or PROFILE.backHit, pointerFrame.x, pointerFrame.y)
+        local insideBack = pointIn(profile.backHit or PROFILE.backHit, pointerFrame.x, pointerFrame.y)
+        local hovered = SemanticActions.SupportsHover(pointerFrame) and insideBack
         state.profileBackHover = hovered
         state.profileBackHoverProgress = moveTowards(state.profileBackHoverProgress or 0, hovered and 1 or 0,
             frameDt / CHARACTER_HOVER_SECONDS)
-        if input:GetKeyPress(KEY_ESCAPE) then
+        local navigationCancel = SemanticActions.Find(pointerFrame, SemanticActions.CANCEL, "navigation")
+        if navigationCancel then
+            SemanticActions.Consume(navigationCancel, "TitleProfile")
             startProfileExit()
             return
         end
         if pointerFrame.pressed then
-            state.profileBackPressed = hovered
+            state.profileBackPressed = insideBack
         elseif pointerFrame.released then
             local pressed = state.profileBackPressed
             state.profileBackPressed = false
-            if pressed and hovered then startProfileExit() end
+            if pressed and insideBack then startProfileExit() end
         elseif not pointerFrame.down then
             state.profileBackPressed = false
         end
@@ -1316,7 +1320,9 @@ function M.Install(context)
 
     local function updateSettings(pointerFrame)
         local rows = settingsRows()
-        if input:GetKeyPress(KEY_ESCAPE) then
+        local navigationCancel = SemanticActions.Find(pointerFrame, SemanticActions.CANCEL, "navigation")
+        if navigationCancel then
+            SemanticActions.Consume(navigationCancel, "TitleSettings")
             state.settingsOpen = false
             state.settingsDrag = nil
             context.playUIClick()
@@ -1363,6 +1369,7 @@ function M.Install(context)
     end
 
     function UpdateTitleScreen(dt, pointerFrame)
+        SemanticActions.Ensure(pointerFrame)
         local frameDt = math.max(0, dt or 0)
         state.animationElapsed = (state.animationElapsed or 0) + frameDt
         if state.profileMode ~= PROFILE_MODE.TITLE_IDLE then
@@ -1391,8 +1398,11 @@ function M.Install(context)
             return
         end
 
-        local hovered = menuIndexAt(pointerFrame.x, pointerFrame.y)
-        local hoveredCharacter = characterAt(pointerFrame.x, pointerFrame.y)
+        local hitIndex = menuIndexAt(pointerFrame.x, pointerFrame.y)
+        local hitCharacter = characterAt(pointerFrame.x, pointerFrame.y)
+        local canHover = SemanticActions.SupportsHover(pointerFrame)
+        local hovered = canHover and hitIndex or nil
+        local hoveredCharacter = canHover and hitCharacter or nil
         state.hoverIndex = hovered
         state.hoverCharacter = hoveredCharacter and hoveredCharacter.id or nil
         if hovered then state.selectedIndex = hovered else state.selectedIndex = state.focusIndex or 1 end
@@ -1409,15 +1419,14 @@ function M.Install(context)
         end
 
         if pointerFrame.pressed then
-            state.pressedIndex = hovered
-            if hovered then state.selectedIndex, state.focusIndex = hovered, hovered end
+            state.pressedIndex = hitIndex
+            if hitIndex then state.selectedIndex, state.focusIndex = hitIndex, hitIndex end
         elseif pointerFrame.released then
             local pressed = state.pressedIndex
             state.pressedIndex = nil
-            if pressed and pressed == hovered then activateMenu(state, context, pressed) end
-            local character = characterAt(pointerFrame.x, pointerFrame.y)
-            if character then
-                openAcademyIdCard(character.id)
+            if pressed and pressed == hitIndex then activateMenu(state, context, pressed) end
+            if hitCharacter then
+                openAcademyIdCard(hitCharacter.id)
                 return
             end
         end

@@ -3,6 +3,7 @@ local SketchDrawing = require("ui.SketchDrawing")
 local LevelPreviewTransform = require("game.layout.LevelPreviewTransform")
 local ResultReportConfig = require("ui.result_report_config")
 local RuleArchiveOverlay = require("ui.RuleArchiveOverlay")
+local SemanticActions = require("game.input.SemanticActions")
 
 local M = {}
 
@@ -1163,8 +1164,29 @@ function M.Install(context)
         playUIClick()
     end
 
+    local function applyCatalogScroll(pointerFrame, state, layout, target, deltaY, raw, action)
+        if deltaY == 0 then return false end
+        action = action or SemanticActions.AddScroll(pointerFrame, 0, deltaY, {
+            target = target,
+            source = pointerFrame.source,
+            raw = raw,
+        })
+        if target == "list" then
+            state.listScroll = clamp(state.listScroll + deltaY, 0, state.listScrollMax or 0)
+            rememberActiveCategory(state)
+        elseif target == "brief" then
+            state.scroll = clamp(state.scroll + deltaY, 0, state.scrollMax)
+        else
+            return false
+        end
+        SemanticActions.Consume(action, "ExperimentCatalog")
+        return true
+    end
+
     function UpdateExperimentCatalog(dt, pointerFrame)
+        SemanticActions.Ensure(pointerFrame)
         local state = catalogState_
+        state.hoverEnabled = SemanticActions.SupportsHover(pointerFrame)
         if state.transition then state.transition:Update(dt) end
         if state.progressFeedback then
             state.progressFeedbackElapsed = (state.progressFeedbackElapsed or 0) + math.max(0, dt)
@@ -1184,7 +1206,9 @@ function M.Install(context)
                 state.reportSnapshot = nil
                 state.reportSnapshotClosing = false
             else
-                if not state.reportSnapshotClosing and input:GetKeyPress(KEY_ESCAPE) then
+                local navigationCancel = SemanticActions.Find(pointerFrame, SemanticActions.CANCEL, "navigation")
+                if not state.reportSnapshotClosing and navigationCancel then
+                    SemanticActions.Consume(navigationCancel, "CatalogReportSnapshot")
                     closeReportSnapshot()
                     return
                 end
@@ -1205,7 +1229,9 @@ function M.Install(context)
         local archiveWasVisible = ruleArchive_:IsVisible()
         if archiveWasVisible then
             ruleArchive_:Update(dt, x, y, frame_)
-            if input:GetKeyPress(KEY_ESCAPE) then
+            local navigationCancel = SemanticActions.Find(pointerFrame, SemanticActions.CANCEL, "navigation")
+            if navigationCancel then
+                SemanticActions.Consume(navigationCancel, "RuleArchive")
                 if ruleArchive_:Close() then playUIClick() end
                 return
             end
@@ -1217,7 +1243,12 @@ function M.Install(context)
             return
         end
         local headerHovered = pointIn(header.backButton, x, y)
-        if input:GetKeyPress(KEY_ESCAPE) then RequestReturnToTitleScreen(); return end
+        local navigationCancel = SemanticActions.Find(pointerFrame, SemanticActions.CANCEL, "navigation")
+        if navigationCancel then
+            SemanticActions.Consume(navigationCancel, "ExperimentCatalog")
+            RequestReturnToTitleScreen()
+            return
+        end
         if pointerFrame.pressed and headerHovered then
             state.headerBackPressed = true
             state.dragStartY, state.listDragStartY, state.listScrollbarDragOffset = nil, nil, nil
@@ -1322,8 +1353,9 @@ function M.Install(context)
         if pointerFrame.down and state.listDragStartY then
             local delta = state.listDragStartY - y
             if math.abs(delta) >= 7 then state.listDragMoved = true end
-            state.listScroll = clamp(state.listDragStartScroll + delta, 0, state.listScrollMax or 0)
-            rememberActiveCategory(state)
+            local desired = clamp(state.listDragStartScroll + delta, 0, state.listScrollMax or 0)
+            applyCatalogScroll(pointerFrame, state, layout, "list", desired - state.listScroll,
+                "primary.list_drag")
         end
         if pointerFrame.released and state.listDragStartY then
             local selectedIndex = not state.listDragMoved and state.listPressIndex or nil
@@ -1339,18 +1371,21 @@ function M.Install(context)
             return
         end
         if pointerFrame.down and state.dragStartY then
-            state.scroll = clamp(state.dragStartScroll + state.dragStartY - y, 0, state.scrollMax)
+            local desired = clamp(state.dragStartScroll + state.dragStartY - y, 0, state.scrollMax)
+            applyCatalogScroll(pointerFrame, state, layout, "brief", desired - state.scroll,
+                "primary.brief_drag")
         end
         if pointerFrame.released or not pointerFrame.down then state.dragStartY = nil end
-        local wheel = input.mouseMoveWheel or 0
-        if wheel ~= 0 then
+        local wheelAction = SemanticActions.Find(pointerFrame, SemanticActions.SCROLL)
+        if wheelAction then
             if pointIn(layout.listViewport, x, y) then
-                local wheelDelta = clamp(wheel, -1, 1)
-                state.listScroll = clamp(state.listScroll - wheelDelta * layout.listItemHeight * .42,
-                    0, state.listScrollMax or 0)
-                rememberActiveCategory(state)
+                local _, deltaY = SemanticActions.ScrollDelta(wheelAction, layout.listItemHeight * .42, 1)
+                applyCatalogScroll(pointerFrame, state, layout, "list", deltaY,
+                    "mouse.wheel", wheelAction)
             elseif pointIn(layout.briefViewport, x, y) then
-                state.scroll = clamp(state.scroll - wheel * 52, 0, state.scrollMax)
+                local _, deltaY = SemanticActions.ScrollDelta(wheelAction, 52)
+                applyCatalogScroll(pointerFrame, state, layout, "brief", deltaY,
+                    "mouse.wheel", wheelAction)
             end
         end
     end
@@ -1361,7 +1396,8 @@ function M.Install(context)
         nvgSave(painter.vg)
         nvgTranslate(painter.vg, visual and visual.rootOffsetX or 0, 0)
         local pointerX, pointerY = DesignPointer()
-        local pointer = entrance and { x = -10000, y = -10000 } or { x = pointerX, y = pointerY }
+        local pointer = (entrance or state.hoverEnabled ~= true)
+            and { x = -10000, y = -10000 } or { x = pointerX, y = pointerY }
         local header = resolveCatalogHeader(frame_)
         local backHovered = pointIn(header.backButton, pointer.x, pointer.y)
         drawCatalogDecor(painter, frame_, header, backHovered, state.headerBackPressed == true)

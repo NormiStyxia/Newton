@@ -15,6 +15,7 @@ local TextEditor = require("game.workshop.TextEditor")
 local Numeric = require("game.workshop.Numeric")
 local TouchScroller = require("game.workshop.TouchScroller")
 local PreviewSession = require("game.workshop.PreviewSession")
+local SemanticActions = require("game.input.SemanticActions")
 local M = {}
 local function clone(levelDocument, value) return levelDocument.Clone(value) end
 local function clamp(value, minimum, maximum)
@@ -590,17 +591,24 @@ function M.Install(context)
         return true
     end
 
-    local function updateTextEditKeys()
+    local function updateTextEditKeys(pointerFrame)
         local current = state()
         local edit = current.textEdit
         if not edit then return false end
-        local directClipboard = TextTransfer.GetClipboardMode(ui) == "direct"
-        local action = TextEditor.KeyAction(edit, input, current.elapsed, directClipboard)
-        if action == "paste" then pasteImportClipboard()
-        elseif action == "cancel" then
+        local navigationCancel = SemanticActions.Find(pointerFrame, SemanticActions.CANCEL, "navigation")
+        if navigationCancel then
+            SemanticActions.Consume(navigationCancel, "WorkshopTextEdit")
             if current.modal and (edit.mode == "rename" or edit.mode == "import") then current.modal = nil end
             cancelTextEdit()
-        elseif action == "commit" then commitTextEdit() end
+            return true
+        end
+        local directClipboard = TextTransfer.GetClipboardMode(ui) == "direct"
+        local keyAction = TextEditor.KeyAction(edit, input, current.elapsed, directClipboard)
+        if keyAction == "paste" then pasteImportClipboard()
+        elseif keyAction == "cancel" then
+            if current.modal and (edit.mode == "rename" or edit.mode == "import") then current.modal = nil end
+            cancelTextEdit()
+        elseif keyAction == "commit" then commitTextEdit() end
         return true
     end
 
@@ -873,7 +881,7 @@ function M.Install(context)
 
     local function beginCanvasGesture(pointerFrame)
         local current = state()
-        Selection.BeginCanvasGesture(current, pointerFrame, Interaction, input:GetKeyDown(KEY_CTRL))
+        Selection.BeginCanvasGesture(current, pointerFrame, Interaction)
         rebuildUI()
     end
 
@@ -886,14 +894,40 @@ function M.Install(context)
         rebuildUI()
     end
 
-    local function endCanvasGesture()
+    local function endCanvasGesture(pointerFrame)
         local current = state()
-        local historyLabel = Selection.EndCanvasGesture(current)
+        local historyLabel = Selection.EndCanvasGesture(current, pointerFrame)
         if historyLabel then markChanged(historyLabel) else refreshSelection() end
         rebuildUI()
     end
 
+    local function handleWorkshopScroll(current, action, target)
+        if not action then return false end
+        local wheelStep = (target == "modal" and .54)
+            or ((target == "files" or target == "inspector") and .48) or 1
+        local _, deltaY = SemanticActions.ScrollDelta(action, wheelStep)
+        if target == "modal" and current.modal then
+            current.modal.scroll = clamp((current.modal.scroll or 0) + deltaY,
+                0, current.modal.scrollMax or 0)
+        elseif target == "files" then
+            current.view.fileScroll = clamp(current.view.fileScroll + deltaY,
+                0, current.view.fileScrollMax)
+        elseif target == "inspector" then
+            current.view.inspectorScroll = clamp(current.view.inspectorScroll + deltaY,
+                0, current.view.inspectorScrollMax)
+        elseif target == "canvas" then
+            if deltaY == 0 then return false end
+            current.view.zoom = clamp(current.view.zoom * (deltaY < 0 and 1.12 or .89), .35, 4)
+        else
+            return false
+        end
+        SemanticActions.Consume(action, "Workshop:" .. target)
+        rebuildUI()
+        return true
+    end
+
     function UpdateLevelWorkshop(dt, pointerFrame)
+        SemanticActions.Ensure(pointerFrame)
         local current = state()
         current.elapsed = current.elapsed + math.max(0, dt or 0)
         current.toastTime = math.max(0, (current.toastTime or 0) - math.max(0, dt or 0))
@@ -906,24 +940,35 @@ function M.Install(context)
         end
         rebuildUI()
         if not current.layout.supported then
-            if input:GetKeyPress(KEY_ESCAPE) then
+            local navigationCancel = SemanticActions.Find(pointerFrame, SemanticActions.CANCEL, "navigation")
+            if navigationCancel then
+                SemanticActions.Consume(navigationCancel, "WorkshopUnsupported")
                 if current.dirty then current.modal = { targetExit = true }; finishDirtyAction("save") else leaveWorkshop() end
             end
             return
         end
-        local textEditing = updateTextEditKeys()
+        local textEditing = updateTextEditKeys(pointerFrame)
         local x, y = Layout.PointerToWorkspace(current.layout, pointerFrame.x, pointerFrame.y)
         pointerFrame.x, pointerFrame.y = x, y
-        local wheel = input.mouseMoveWheel or 0
         local gesture, touch = TouchScroller.Update(current.touchScroll, pointerFrame,
             TouchScroller.Targets(current), 8)
         current.touchScroll = gesture
-        if touch and touch.value ~= nil then TouchScroller.Apply(current, touch); rebuildUI() end
+        if touch and touch.action then handleWorkshopScroll(current, touch.action, touch.target) end
         if touch and touch.consume then
-            if touch.tap then pointerFrame.pressed = true else return end
+            if touch.tap then
+                pointerFrame.pressed = true
+                SemanticActions.Add(pointerFrame, SemanticActions.PRIMARY_PRESS, {
+                    x = pointerFrame.x,
+                    y = pointerFrame.y,
+                    source = pointerFrame.source,
+                    raw = "direct.scroll_tap",
+                })
+            else
+                return
+            end
         end
         current.hoverTooltip = nil
-        if not pointerFrame.isTouch and not current.modal then
+        if SemanticActions.SupportsHover(pointerFrame) and not current.modal then
             for _, row in ipairs(current.controls.fileRows or {}) do
                 if View.PointIn(row.rect, x, y) then
                     current.hoverTooltip = { text = row.entry.name .. "  ·  " .. row.entry.levelId, x = x + 14, y = y + 18 }
@@ -941,8 +986,9 @@ function M.Install(context)
             end
         end
         if current.modal then
-            if wheel ~= 0 and current.controls.modalBody and View.PointIn(current.controls.modalBody, x, y) then
-                current.modal.scroll = clamp((current.modal.scroll or 0) - wheel * .54, 0, current.modal.scrollMax or 0)
+            local scrollAction = SemanticActions.Find(pointerFrame, SemanticActions.SCROLL)
+            if scrollAction and current.controls.modalBody and View.PointIn(current.controls.modalBody, x, y) then
+                handleWorkshopScroll(current, scrollAction, "modal")
             end
             if pointerFrame.pressed then
                 if current.controls.renameField and View.PointIn(current.controls.renameField, x, y) then
@@ -954,7 +1000,11 @@ function M.Install(context)
                     if View.PointIn(button.rect, x, y) then handleModalButton(button.id); return end
                 end
             end
-            if input:GetKeyPress(KEY_ESCAPE) then handleModalButton("cancel") end
+            local navigationCancel = SemanticActions.Find(pointerFrame, SemanticActions.CANCEL, "navigation")
+            if navigationCancel then
+                SemanticActions.Consume(navigationCancel, "WorkshopModal")
+                handleModalButton("cancel")
+            end
             return
         end
         if textEditing then
@@ -978,17 +1028,22 @@ function M.Install(context)
         if input:GetKeyDown(KEY_CTRL) and input:GetKeyPress(KEY_C) then duplicateSelected(); return end
         if input:GetKeyDown(KEY_CTRL) and input:GetKeyPress(KEY_D) then duplicateSelected(); return end
         if input:GetKeyPress(KEY_DELETE) then deleteSelected(); return end
-        if input:GetKeyPress(KEY_ESCAPE) then leaveWorkshop(); return end
+        local navigationCancel = SemanticActions.Find(pointerFrame, SemanticActions.CANCEL, "navigation")
+        if navigationCancel then
+            SemanticActions.Consume(navigationCancel, "Workshop")
+            leaveWorkshop()
+            return
+        end
 
-        if wheel ~= 0 then
+        local scrollAction = SemanticActions.Find(pointerFrame, SemanticActions.SCROLL)
+        if scrollAction then
             if current.layout.fileViewport and View.PointIn(current.layout.fileViewport, x, y) then
-                current.view.fileScroll = clamp(current.view.fileScroll - wheel * .48, 0, current.view.fileScrollMax)
+                handleWorkshopScroll(current, scrollAction, "files")
             elseif current.layout.inspectorViewport and View.PointIn(current.layout.inspectorViewport, x, y) then
-                current.view.inspectorScroll = clamp(current.view.inspectorScroll - wheel * .48, 0, current.view.inspectorScrollMax)
+                handleWorkshopScroll(current, scrollAction, "inspector")
             elseif View.ControlHitAllowed(current.layout, "canvas", x, y) and View.PointIn(current.layout.canvasViewport, x, y) then
-                current.view.zoom = clamp(current.view.zoom * (wheel > 0 and 1.12 or .89), .35, 4)
+                handleWorkshopScroll(current, scrollAction, "canvas")
             end
-            rebuildUI()
         end
 
         if pointerFrame.pressed then
@@ -1007,7 +1062,7 @@ function M.Install(context)
             if View.ControlHitAllowed(current.layout, "canvas", x, y) and View.PointIn(current.layout.canvasViewport, x, y) then beginCanvasGesture(pointerFrame); return end
         end
         updateCanvasGesture(pointerFrame)
-        if pointerFrame.released or (current.transaction and not pointerFrame.down) then endCanvasGesture() end
+        if pointerFrame.released or (current.transaction and not pointerFrame.down) then endCanvasGesture(pointerFrame) end
     end
 
     function DrawLevelWorkshop()

@@ -20,6 +20,7 @@ graphics = {
 }
 
 local DesignSpace = require("game.layout.DesignSpace")
+local SemanticActions = require("game.input.SemanticActions")
 local design = DesignSpace.New(100)
 
 local normal = design:Frame(true)
@@ -121,11 +122,16 @@ expect(byName.restore and calls[#calls].name == "end",
 for _, name in ipairs(nvgNames) do _G[name] = previousNvg[name] end
 NVG_ALIGN_LEFT, NVG_ALIGN_TOP = previousAlignLeft, previousAlignTop
 
-local mouse = { x = 1880, y = 100, down = true, pressed = true, released = false }
-local inputStub = { mousePosition = mouse }
+local mouse = { x = 1880, y = 100, down = true, pressed = true, released = false, rightPressed = false }
+local inputStub = { mousePosition = mouse, mouseMoveWheel = 0, downKeys = {}, pressedKeys = {} }
 function inputStub:GetMouseButtonDown() return mouse.down end
-function inputStub:GetMouseButtonPress() return mouse.pressed end
+function inputStub:GetMouseButtonPress(button)
+    if button == 2 then return mouse.rightPressed end
+    return mouse.pressed
+end
 function inputStub:GetMouseButtonRelease() return mouse.released end
+function inputStub:GetKeyDown(key) return self.downKeys[key] == true end
+function inputStub:GetKeyPress(key) return self.pressedKeys[key] == true end
 local pointerContext
 pointerContext = {
     design_ = design,
@@ -138,6 +144,11 @@ pointerContext = {
     },
     input = inputStub,
     MOUSEB_LEFT = 1,
+    MOUSEB_RIGHT = 2,
+    KEY_ESCAPE = 27,
+    KEY_CTRL = 1000,
+    KEY_SHIFT = 1001,
+    KEY_ALT = 1002,
     HandleFirstAudioGesture = function() end,
     ToggleTacticalPause = function() pointerContext.pauseToggleCount = (pointerContext.pauseToggleCount or 0) + 1 end,
     playUIClick = function() pointerContext.pauseClickCount = (pointerContext.pauseClickCount or 0) + 1 end,
@@ -164,6 +175,25 @@ local outsideRelease = pointerContext.PointerState()
 expect(outsideRelease.released and pointerContext.pointer_.stagePointerCaptured == nil,
     "a captured drag could not release outside the stage")
 
+mouse.y, mouse.down, mouse.pressed, mouse.released, mouse.rightPressed = 1120, false, false, false, true
+inputStub.mouseMoveWheel = -1
+inputStub.pressedKeys[pointerContext.KEY_ESCAPE] = true
+local deviceActionFrame = pointerContext.PointerState()
+expect(SemanticActions.Find(deviceActionFrame, SemanticActions.CANCEL, "interaction")
+    and SemanticActions.Find(deviceActionFrame, SemanticActions.CANCEL, "navigation")
+    and SemanticActions.Find(deviceActionFrame, SemanticActions.SCROLL),
+    "mouse right, Escape, or wheel did not enter the semantic adapter")
+mouse.rightPressed, inputStub.mouseMoveWheel = false, 0
+inputStub.pressedKeys[pointerContext.KEY_ESCAPE] = nil
+
+mouse.down, mouse.pressed = true, true
+inputStub.downKeys[pointerContext.KEY_CTRL] = true
+local boxSelectFrame = pointerContext.PointerState()
+expect(SemanticActions.Find(boxSelectFrame, SemanticActions.BOX_SELECT_BEGIN),
+    "Ctrl+mouse primary did not enter the semantic box-select adapter")
+mouse.down, mouse.pressed = false, false
+inputStub.downKeys[pointerContext.KEY_CTRL] = nil
+
 local function touchEvent(id, x, y)
     local values = { TouchID = id, X = x, Y = y }
     return { GetInt = function(_, key) return values[key] end }
@@ -187,10 +217,12 @@ expect(insideTouch.isTouch and insideTouch.insideStage and insideTouch.pressed a
 -- high-DPR frame has 140 logical pixels of top stage padding).
 pointerContext.HandleTouchBegin("TouchBegin", touchEvent(9, 836, 372))
 local secondaryTouchFrame = pointerContext.PointerState()
+local pauseAction = SemanticActions.Find(secondaryTouchFrame, SemanticActions.PAUSE_TOGGLE)
 expect(pointerContext.pointer_.pauseTouchId == 9
-    and pointerContext.pauseToggleCount == 1 and pointerContext.pauseClickCount == 1
+    and pauseAction and pauseAction.source == "touch" and pauseAction.pointerId == 9
+    and pointerContext.pauseToggleCount == nil and pointerContext.pauseClickCount == nil
     and secondaryTouchFrame.down and not secondaryTouchFrame.pressed,
-    "a secondary pause touch did not coexist with the primary stage gesture")
+    "a secondary pause touch did not emit one semantic action beside the primary gesture")
 pointerContext.HandleTouchEnd("TouchEnd", touchEvent(9, 836, 372))
 expect(pointerContext.pointer_.pauseTouchId == nil and pointerContext.pointer_.activeTouchId == 8,
     "secondary pause touch release stole the primary touch")
